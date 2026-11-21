@@ -10,7 +10,8 @@
 # The bridge (run/bridge.py) holds one episode; the server keeps the tasks, tests and artifacts.
 #
 # Env: SWB, PILOT (results dir), MODEL (default claude-opus-4-8), WALL_MIN (default 90),
-#      PORT (default 8800).
+#      PORT (default 8800), RUN_TAG (default the UTC date; a second run on one date: e.g. 2026-11-21-r2,
+#      so the first run's directories and episodes are not overwritten).
 set -euo pipefail
 TASK=$1
 SWB=${SWB:-/mnt/scratch/ec2-user/swe-bin}
@@ -21,7 +22,8 @@ WALL_MIN=${WALL_MIN:-90}
 PORT=${PORT:-8800}
 PY=$SWB/venv312/bin/python
 DATE=${DATE:-$(date -u +%Y-%m-%d)}
-RUN=$SWB/pilot/$DATE/$TASK
+RUN_TAG=${RUN_TAG:-$DATE}
+RUN=$SWB/pilot/$RUN_TAG/$TASK
 SHORT=$(echo "$TASK" | sed 's/__/-/; s/[^A-Za-z0-9-]//g' | cut -c1-40)
 SESSION=swe-$SHORT
 
@@ -50,7 +52,7 @@ DEADLINE=$((START + WALL_MIN * 60))
 cat > "$RUN/mcp.json" <<EOF
 {"mcpServers": {"swebin": {"type": "stdio", "command": "$PY",
   "args": ["$HERE/bridge.py", "--url", "http://127.0.0.1:$PORT", "--seed", "$SEED",
-           "--episode-id", "pilot-$SHORT", "--log-dir", "$RUN/logs", "--deadline", "$DEADLINE",
+           "--episode-id", "pilot-$RUN_TAG-$SHORT", "--log-dir", "$RUN/logs", "--deadline", "$DEADLINE",
            "--task", "$TASK"]}}}
 EOF
 DENY='"Bash","Read","Write","Edit","Glob","Grep","NotebookEdit","WebFetch","WebSearch","Agent","Task","LSP","Skill"'
@@ -93,7 +95,7 @@ tmux kill-session -t "$SESSION" 2>/dev/null || true
 # the transcript Claude Code wrote for this cwd
 TDIR=$HOME/.claude/projects/$(echo "$RUN/cwd" | sed 's#[^A-Za-z0-9-]#-#g')
 TRANSCRIPT=$(ls -t "$TDIR"/*.jsonl 2>/dev/null | head -1 || true)
-$PY - "$RUN" "$TASK" "$START" "$END" "$TRANSCRIPT" "$SWB/episodes-pilot/pilot-$SHORT" <<'EOF'
+$PY - "$RUN" "$TASK" "$START" "$END" "$TRANSCRIPT" "$SWB/episodes-pilot/pilot-$RUN_TAG-$SHORT" <<'EOF'
 import hashlib, json, os, sys
 run, task, s, e, tr, ep = sys.argv[1:7]
 res = json.load(open(os.path.join(run, "logs", "result.json"))) if os.path.exists(os.path.join(run, "logs", "result.json")) else None
