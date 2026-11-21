@@ -43,6 +43,10 @@ pub struct Binary<'a> {
     pub dwarf: dwarf::FrameVars,
     /// Every allocated section that is not code, in header order.
     pub segments: Vec<DataSegment>,
+    /// Executable sections besides `.text` (e.g. `.swb`, which `swb-elf link`
+    /// adds): their functions are in `funcs`, but the binary is not one image,
+    /// so the Lean export refuses it.
+    pub extra_exec: Vec<String>,
 }
 
 /// An allocated, non-executable section: `.rodata`, `.data`, `.bss`, ...
@@ -71,40 +75,52 @@ pub fn load(bytes: &[u8]) -> Result<Binary<'_>, String> {
         );
     }
     let text = e.section(".text").ok_or("no .text section")?;
-    for s in &e.sections {
-        if s.flags & elf::SHF_EXECINSTR != 0 && s.name != ".text" && s.size > 0 {
-            return Err(format!(
-                "executable section {} besides .text; the profile has one",
-                s.name
-            ));
-        }
-    }
-    if text.addr % 4 != 0 || text.size % 4 != 0 {
-        return Err(".text is not a whole number of aligned words".into());
-    }
-    let words: Vec<u32> = e
-        .bytes(text)
-        .chunks_exact(4)
-        .map(|c| u32::from_le_bytes(c.try_into().unwrap()))
+    // Other executable sections (as `swb-elf link` adds `.swb`): read, and their
+    // functions recovered, but the binary is not one image for the Lean export
+    // (`Binary::extra_exec`).
+    let execs: Vec<&elf::Section> = std::iter::once(text)
+        .chain(
+            e.sections
+                .iter()
+                .filter(|s| s.flags & elf::SHF_EXECINSTR != 0 && s.name != ".text" && s.size > 0),
+        )
         .collect();
+    let mut sec_words = Vec::new();
+    for s in &execs {
+        if s.addr % 4 != 0 || s.size % 4 != 0 {
+            return Err(format!("{} is not a whole number of aligned words", s.name));
+        }
+        let w: Vec<u32> = e
+            .bytes(s)
+            .chunks_exact(4)
+            .map(|c| u32::from_le_bytes(c.try_into().unwrap()))
+            .collect();
+        sec_words.push(w);
+    }
+    let words = sec_words[0].clone();
     let mut funcs = Vec::new();
     for s in e.functions() {
-        if s.value < text.addr || s.value + s.size > text.addr + text.size {
+        let Some(k) = execs
+            .iter()
+            .position(|x| s.value >= x.addr && s.value + s.size <= x.addr + x.size)
+        else {
             continue;
-        }
-        if (s.value - text.addr) % 4 != 0 || s.size % 4 != 0 {
+        };
+        let x = execs[k];
+        if (s.value - x.addr) % 4 != 0 || s.size % 4 != 0 {
             return Err(format!(
                 "function {} is not a whole number of aligned words",
                 s.name
             ));
         }
-        let i = ((s.value - text.addr) / 4) as usize;
+        let i = ((s.value - x.addr) / 4) as usize;
         funcs.push(Func {
             name: s.name.clone(),
             entry: s.value,
-            words: words[i..i + (s.size / 4) as usize].to_vec(),
+            words: sec_words[k][i..i + (s.size / 4) as usize].to_vec(),
         });
     }
+    let extra_exec: Vec<String> = execs[1..].iter().map(|s| s.name.clone()).collect();
     let segments = e
         .sections
         .iter()
@@ -152,6 +168,7 @@ pub fn load(bytes: &[u8]) -> Result<Binary<'_>, String> {
     };
     Ok(Binary {
         bytes,
+        extra_exec,
         text_addr: text.addr,
         text: words,
         funcs,

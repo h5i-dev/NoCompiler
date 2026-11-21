@@ -181,6 +181,11 @@ fn export_as(
     chunked: bool,
     level_check: bool,
 ) -> Result<String, String> {
+    if let Some(x) = bin.extra_exec.first() {
+        return Err(format!(
+            "executable section {x} besides .text; the Lean image has one code section"
+        ));
+    }
     // A function's `_dom` is it and everything it calls, so the array format
     // exports only the functions whose callees passed (`exportable`). The
     // chunk format exports every function that passed: its level check is on
