@@ -511,10 +511,8 @@ pub(crate) fn build_raw(
 ) -> RawCfg {
     // The executable range the entry sits in bounds every jump table target:
     // a switch does not branch into another section.
-    let section = mem
-        .segment_at(entry)
-        .map(|s| s.range)
-        .unwrap_or(AddrRange::empty_at(entry));
+    let segment = mem.segment_at(entry).map(|s| s.range);
+    let section = segment.unwrap_or(AddrRange::empty_at(entry));
     let mut starts: BTreeSet<Addr> = BTreeSet::new();
     let mut work: Vec<Addr> = vec![entry];
     let mut seen: BTreeSet<Addr> = BTreeSet::new();
@@ -589,9 +587,43 @@ pub(crate) fn build_raw(
             body.push(insn);
             let next = insn.next();
             end = next;
+            // Execution does not run off the end of the range it started in:
+            // in a relocatable object that range is one section, and what
+            // follows it is another section's bytes. An instruction that would
+            // fall through out of it ends the walk, and a call there is one
+            // that does not come back, which is what a linked copy of the same
+            // function says once it knows the callee: glibc's `snprintf.o` ends
+            // in `bl __stack_chk_fail` with its relocation unapplied.
+            let falls_out = segment.is_some_and(|r| !r.contains(next));
 
             match insn.flow {
+                Flow::Next if falls_out => {
+                    halt = Halt::Undecodable;
+                    term = Terminator::Unresolved;
+                    break (Vec::new(), true);
+                }
                 Flow::Next => {
+                    at = next;
+                    continue;
+                }
+                Flow::Call(_) | Flow::IndirectCall | Flow::Syscall if falls_out => {
+                    if let Flow::Call(t) = insn.flow
+                        && t != insn.addr
+                    {
+                        calls.insert(t);
+                    }
+                    term = Terminator::NoReturnCall;
+                    break (Vec::new(), false);
+                }
+                // A call to its own address is a relocation the loader could
+                // not apply: an AArch64 `bl` or a RISC-V `auipc`+`jalr` to an
+                // undefined symbol in a relocatable object keeps a zero
+                // displacement. No linked code calls itself before doing
+                // anything, so this is a call to something unknown, not a new
+                // function. Making it one put a function entry in the middle
+                // of glibc's `snprintf.o`, and a function's own `b.ne` to its
+                // `bl __stack_chk_fail` became a jump into another function.
+                Flow::Call(t) if t == insn.addr => {
                     at = next;
                     continue;
                 }

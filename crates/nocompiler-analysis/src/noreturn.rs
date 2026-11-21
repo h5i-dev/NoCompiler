@@ -77,10 +77,14 @@ pub fn name_never_returns(name: &str) -> bool {
 
 /// Work out which of the recovered functions never return.
 ///
-/// `named` gives each function's name where one is known, and `graph` gives
-/// the calls each one makes. A function is added when its name says so, or
-/// when every one of its terminating blocks ends in a call to something
-/// already in the set.
+/// `named` gives each function's name where one is known, and `graph` each
+/// function's CFG. A function is in the set when its name says so, or when
+/// every one of its terminating blocks ends in a trap or in a call the walk
+/// already knew does not return.
+///
+/// One pass: the CFGs carry what the set was when they were walked, so a
+/// function whose callee joins here is settled by walking it again with the
+/// new set, which is what `refine_noreturn` does until nothing is added.
 pub fn compute(
     named: &BTreeMap<Addr, Option<String>>,
     graph: &BTreeMap<Addr, &Cfg>,
@@ -90,34 +94,30 @@ pub fn compute(
         .filter(|(_, n)| n.as_deref().is_some_and(name_never_returns))
         .map(|(a, _)| *a)
         .collect();
-
-    // A fixpoint, bounded: each round can only add, and there are finitely
-    // many functions, but a bound keeps a pathological graph from looping.
-    for _ in 0..8 {
-        let mut added = false;
-        for (addr, cfg) in graph {
-            if set.contains(addr) {
-                continue;
-            }
-            if never_returns(cfg, &set) {
-                set.insert(*addr);
-                added = true;
-            }
-        }
-        if !added {
-            break;
-        }
-    }
+    set.extend(
+        graph
+            .iter()
+            .filter(|(_, cfg)| never_returns(cfg))
+            .map(|(a, _)| *a),
+    );
     set
 }
 
 /// True when no path through `cfg` reaches a return.
 ///
-/// Every block that ends the function has to end in a trap or in a call to
-/// something already known not to return. A single `ret`, a tail call to a
-/// function that does return, or anything unresolved means the claim cannot be
-/// made: the conservative answer is that it returns.
-fn never_returns(cfg: &Cfg, set: &BTreeSet<Addr>) -> bool {
+/// Every block that ends the function has to end in a trap or in a call the
+/// walk marked as not returning. A single `ret`, a tail call, or anything
+/// unresolved means the claim cannot be made: the conservative answer is that
+/// it returns.
+///
+/// A tail call to a member of the set is not an exception here, because a
+/// block does not record which of `cfg.calls` it jumps to: `__memmove_chk` is
+/// `b.lo 1f; b memmove; 1: bl __chk_fail`, and "some call is in the set" made
+/// it a function that never returns, so the code after every `__memmove_chk`
+/// call was cut off. The walk marks a tail call to a member as
+/// [`Terminator::NoReturnCall`] once it knows the set, so the chain is still
+/// followed one re-walk at a time.
+fn never_returns(cfg: &Cfg) -> bool {
     if cfg.blocks.is_empty() || cfg.has_indirect || !cfg.is_complete() {
         return false;
     }
@@ -129,8 +129,6 @@ fn never_returns(cfg: &Cfg, set: &BTreeSet<Addr>) -> bool {
         terminal += 1;
         match b.terminator {
             Terminator::Trap | Terminator::NoReturnCall => {}
-            // A tail call to something in the set is also an exit.
-            Terminator::TailCall if cfg.calls.iter().any(|c| set.contains(c)) => {}
             _ => return false,
         }
     }
