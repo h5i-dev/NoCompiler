@@ -126,4 +126,23 @@ theorem CallQ.ret {c : Code} {P : Perm} {D Dc : Dom} {Q : State → Prop} {ces :
   refine ⟨he.retAligned, fun ht => CallQ.other (fun hm' => he.ret ?_) (hq (by simpa using ht))⟩
   exact of_decide_eq_true (List.all_eq_true.1 hcalls _ hm')
 
+/-! ### Opening a path's end without unfolding the goal
+
+`PEnd.Next` on a closed end is a large literal (the symbolic state); `simp
+only [PEnd.Next]` and a pattern on `Matches` both traverse it. These lemmas
+state the same with the hypotheses curried, so `refine` opens an end by
+unification alone. -/
+
+theorem PEnd.cut_intro {ρ : Nat → Word} {μ : Word → Byte} {Q : State → Prop} {S : SState} {cs : List Cond}
+    (h : (∀ x ∈ cs, x.den ρ μ) → ∀ s' : State, s'.pc = S.pc → (∀ r : Reg, s'.reg r = (S.reg r).den ρ μ) →
+      s'.mem = S.mem.den ρ μ → s'.exit = none → Q s') : PEnd.Next ρ μ Q (.cut S cs) :=
+  fun hc s' hm hx => h hc s' hm.2.1 hm.2.2.1 hm.2.2.2 hx
+
+theorem PEnd.ret_intro {ρ : Nat → Word} {μ : Word → Byte} {Q : State → Prop} {S : SState} {cs : List Cond}
+    (h : (∀ x ∈ cs, x.den ρ μ) → ∀ s' : State, s'.pc = S.pc → (∀ r : Reg, s'.reg r = (S.reg r).den ρ μ) →
+      s'.mem = S.mem.den ρ μ → s'.exit = none →
+      NoCompiler.aligned ((S.reg 1).den ρ μ &&& ~~~1) 4 ∧ Q (s'.setPc ((S.reg 1).den ρ μ &&& ~~~1))) :
+    PEnd.Next ρ μ Q (.ret S cs) :=
+  fun hc s' hm hx => h hc s' hm.2.1 hm.2.2.1 hm.2.2.2 hx
+
 end NoCompiler.VC.M

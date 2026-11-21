@@ -1923,10 +1923,8 @@ partial def vcRun (cx : Ctx) (vx : VCx) (g : MVarId) (pc : Nat) (hpcT hxT : Lean
       continue
     let pe ← evalPEnd t.appArg!
     let gs ← run g (← `(tactic| open NoCompiler.VC.M in (
-      simp only [PEnd.Next];
-      intro nocompiler_vc nocompiler_s' ⟨nocompiler_vlen, nocompiler_vpc, nocompiler_vreg, nocompiler_vmem⟩
-        nocompiler_vx;
-      clear nocompiler_vlen;
+      first | refine PEnd.cut_intro ?_ | refine PEnd.ret_intro ?_;
+      intro nocompiler_vc nocompiler_s' nocompiler_vpc nocompiler_vreg nocompiler_vmem nocompiler_vx;
       have nocompiler_hS' : Same $s0 nocompiler_s' $rs := Same.of_den nocompiler_hS (by decide) nocompiler_vreg;
       try simp only [List.forall_mem_cons, List.not_mem_nil, false_imp_iff, imp_true_iff, and_true]
         at nocompiler_vc)))
@@ -2225,6 +2223,17 @@ def chunkOf (f : Syntax) : TacticM (Option Name) := do
   let cn := Name.str p ((String.ofList (s.toList.take (s.length - 5))) ++ "_chunk")
   return if (← getEnv).contains cn then some cn else none
 
+/-- The code the front end analyses (`writes`, `ecalls`, `frameOf`, which read only the
+    function's own words) are evaluated over: the function's chunk on a chunk image (on the whole
+    image they decode every chunk: `writes` measured 199 ms on the 87,242-instruction artifact
+    against 1 ms on the chunk), else the image. -/
+def analysisCode (call : Call) (chunkThm : Option Name) : MetaM Expr := do
+  let some n := chunkThm | return call.code
+  let ty ← instantiateMVars (← inferType (mkConst n))
+  forallTelescope ty fun _ b => do
+    let cE := (b.getArg! 2).appFn!.appArg!
+    return if cE.isAppOfArity ``NoCompiler.Chunk.code 2 then cE else call.code
+
 /-- Whether `vcCore` covers the function: no syscalls. -/
 def vcCovers (_call : Call) (_fE : Expr) : TacticM Bool := return true
 
@@ -2234,20 +2243,22 @@ def vcCovers (_call : Call) (_fE : Expr) : TacticM Bool := return true
   let callees ← parseCallees {} stx[5]
   let fE ← Term.elabTerm f (some (mkConst ``Struct.Func))
   let heads ← evalNatList (mkApp (mkConst ``loopHeads) fE)
-  let rsList ← evalNatList (mkApp2 (mkConst ``writes) call.code fE)
+  let chunkThm ← chunkOf stx[1]
+  let ac ← analysisCode call chunkThm
+  let rsList ← evalNatList (mkApp2 (mkConst ``writes) ac fE)
   let rsList := if callees.isEmpty then rsList else
     (rsList ++ nonPreserved.filter (fun r => r != 1 || rsList.contains 1)).eraseDups
   unless ← vcCovers call fE do
     throwError "vc_auto: not covered"
-  let frameList ← evalNatList (mkApp2 (mkConst ``frameOf) call.code fE)
+  let frameList ← evalNatList (mkApp2 (mkConst ``frameOf) ac fE)
   let entryN ← evalNat (← mkAppM ``BitVec.toNat #[mkApp (mkConst ``Struct.Func.entry) fE])
   let given := call.cuts.toList.map (·.1)
   for h in heads do
     unless given.contains h do throwError "vc_auto: no invariant for the loop at {hex h}"
   for h in given do
     unless heads.contains h do throwError "vc_auto: {hex h} is not a loop head of {f}"
-  let ecallList ← evalNatList (mkApp2 (mkConst ``ecalls) call.code fE)
-  vcCore call heads rsList entryN callees frameList ecallList (← chunkOf stx[1])
+  let ecallList ← evalNatList (mkApp2 (mkConst ``ecalls) ac fE)
+  vcCore call heads rsList entryN callees frameList ecallList chunkThm
 
 end VCPath
 
@@ -2259,12 +2270,14 @@ end VCPath
   -- The function's tree: its loop heads are the cut points.
   let fE ← Term.elabTerm f (some (mkConst ``Struct.Func))
   let heads ← evalNatList (mkApp (mkConst ``loopHeads) fE)
-  let rsList ← evalNatList (mkApp2 (mkConst ``writes) call.code fE)
+  let chunkThm ← chunkOf stx[1]
+  let ac ← analysisCode call chunkThm
+  let rsList ← evalNatList (mkApp2 (mkConst ``writes) ac fE)
   -- A function that calls may lose every caller-saved register to its callee.
   let rsList := if callees.isEmpty then rsList else
     (rsList ++ nonPreserved.filter (fun r => r != 1 || rsList.contains 1)).eraseDups
-  let ecallList ← evalNatList (mkApp2 (mkConst ``ecalls) call.code fE)
-  let frameList ← evalNatList (mkApp2 (mkConst ``frameOf) call.code fE)
+  let ecallList ← evalNatList (mkApp2 (mkConst ``ecalls) ac fE)
+  let frameList ← evalNatList (mkApp2 (mkConst ``frameOf) ac fE)
   let entryN ← evalNat (← mkAppM ``BitVec.toNat #[mkApp (mkConst ``Struct.Func.entry) fE])
   let given := call.cuts.toList.map (·.1)
   for h in heads do
@@ -2281,7 +2294,7 @@ end VCPath
     -- counts as a failure, and so does a timeout: the run starts again step by step.
     let ok ← tryCatchRuntimeEx
       (do
-        withoutRecover (vcCore call heads rsList entryN callees frameList ecallList (← chunkOf stx[1]))
+        withoutRecover (vcCore call heads rsList entryN callees frameList ecallList chunkThm)
         if errors (← getThe Core.State).messages != e0 then throwError "an error was logged"
         traceLine "[nocompiler_auto] paths by explore"
         pure true)
