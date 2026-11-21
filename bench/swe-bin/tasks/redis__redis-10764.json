@@ -1,0 +1,833 @@
+{
+ "instance_id": "redis__redis-10764",
+ "repo": "redis/redis",
+ "base_commit": "843a4cdc075a5b251e1b154f8013a9e0abe1038b",
+ "language": "C",
+ "recipe": "redis-libc-malloc",
+ "subjects": [
+  "src/redis-server",
+  "src/redis-cli"
+ ],
+ "test_command": "(TERM=dumb ./runtest --durable --single unit/type/zset --only \"BZMPOP\") | cat",
+ "FAIL_TO_PASS": [
+  "BZMPOP should not blocks on non key arguments - #10762"
+ ],
+ "PASS_TO_PASS": [
+  "BZMPOP_MIN/BZMPOP_MAX with a single existing sorted set - listpack",
+  "BZMPOP_MIN/BZMPOP_MAX with multiple existing sorted sets - listpack",
+  "BZMPOP_MIN/BZMPOP_MAX second sorted set has members - listpack",
+  "BZMPOP_MIN/BZMPOP_MAX - listpack RESP3",
+  "BZMPOP_MIN/BZMPOP_MAX with a single existing sorted set - skiplist",
+  "BZMPOP_MIN/BZMPOP_MAX with multiple existing sorted sets - skiplist",
+  "BZMPOP_MIN/BZMPOP_MAX second sorted set has members - skiplist",
+  "BZMPOP_MIN/BZMPOP_MAX - skiplist RESP3",
+  "BZMPOP readraw in RESP3",
+  "BZMPOP readraw in RESP2",
+  "BZMPOP_MIN, ZADD + DEL should not awake blocked client",
+  "BZMPOP_MIN, ZADD + DEL + SET should not awake blocked client",
+  "MULTI/EXEC is isolated from the point of view of BZMPOP_MIN",
+  "BZMPOP_MIN with variadic ZADD",
+  "BZMPOP_MIN with zero timeout should block indefinitely",
+  "BZPOP/BZMPOP against wrong type",
+  "BZMPOP with illegal argument",
+  "BZMPOP with multiple blocked clients",
+  "BZMPOP propagate as pop with count command to replica"
+ ],
+ "status": "kept",
+ "tests": [
+  {
+   "test": "BZMPOP should not blocks on non key arguments - #10762",
+   "kind": "FAIL_TO_PASS",
+   "base": "FAILED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BZMPOP_MIN/BZMPOP_MAX with a single existing sorted set - listpack",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BZMPOP_MIN/BZMPOP_MAX with multiple existing sorted sets - listpack",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BZMPOP_MIN/BZMPOP_MAX second sorted set has members - listpack",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BZMPOP_MIN/BZMPOP_MAX - listpack RESP3",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BZMPOP_MIN/BZMPOP_MAX with a single existing sorted set - skiplist",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BZMPOP_MIN/BZMPOP_MAX with multiple existing sorted sets - skiplist",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BZMPOP_MIN/BZMPOP_MAX second sorted set has members - skiplist",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BZMPOP_MIN/BZMPOP_MAX - skiplist RESP3",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BZMPOP readraw in RESP3",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BZMPOP readraw in RESP2",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BZMPOP_MIN, ZADD + DEL should not awake blocked client",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BZMPOP_MIN, ZADD + DEL + SET should not awake blocked client",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "MULTI/EXEC is isolated from the point of view of BZMPOP_MIN",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BZMPOP_MIN with variadic ZADD",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BZMPOP_MIN with zero timeout should block indefinitely",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BZPOP/BZMPOP against wrong type",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BZMPOP with illegal argument",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BZMPOP with multiple blocked clients",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BZMPOP propagate as pop with count command to replica",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  }
+ ],
+ "excluded_tests": {},
+ "timing_s": {
+  "base": {
+   "build": 48.9,
+   "test": 4.2
+  },
+  "gold": {
+   "build": 10.7,
+   "test": 4.2
+  }
+ },
+ "binaries": [
+  {
+   "subject": "src/redis-server",
+   "base": {
+    "path": "artifacts/redis__redis-10764/base.redis-server.elf",
+    "sha256": "26ee60538f88171699ca32b603dbc4f88bde6496a8db84a8908ceafb504b2348",
+    "bytes": 10019008,
+    "functions": 4563,
+    "instructions": 384699,
+    "levels": {
+     "L2": 2902,
+     "L0": 1099,
+     "below L0": 411,
+     "L1": 19
+    }
+   },
+   "gold": {
+    "path": "artifacts/redis__redis-10764/gold.redis-server.elf",
+    "sha256": "279643e0a17a782360d1c79f243a0b9b1db752716a677c87e8ef222a812a98e3",
+    "bytes": 10019000,
+    "functions": 4563,
+    "instructions": 384701
+   },
+   "gold_changes": {
+    "modified": [
+     {
+      "key": "::__synccall",
+      "name": "__synccall",
+      "base_insns": 186,
+      "gold_insns": 186,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_redisContextConnectTcp",
+      "name": "_redisContextConnectTcp",
+      "base_insns": 354,
+      "gold_insns": 354,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::lua_cjson_new",
+      "name": "lua_cjson_new",
+      "base_insns": 201,
+      "gold_insns": 201,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::zdiff",
+      "name": "zdiff",
+      "base_insns": 593,
+      "gold_insns": 593,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "aclCommand",
+      "name": "aclCommand",
+      "base_insns": 1884,
+      "gold_insns": 1884,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "addReplyFlagsForCommand",
+      "name": "addReplyFlagsForCommand",
+      "base_insns": 99,
+      "gold_insns": 99,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "blockingGenericZpopCommand",
+      "name": "blockingGenericZpopCommand",
+      "base_insns": 156,
+      "gold_insns": 158,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "clientCommand",
+      "name": "clientCommand",
+      "base_insns": 1695,
+      "gold_insns": 1695,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "clusterCommand",
+      "name": "clusterCommand",
+      "base_insns": 1879,
+      "gold_insns": 1879,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "commandHelpCommand",
+      "name": "commandHelpCommand",
+      "base_insns": 18,
+      "gold_insns": 18,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "configHelpCommand",
+      "name": "configHelpCommand",
+      "base_insns": 18,
+      "gold_insns": 18,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "debugCommand",
+      "name": "debugCommand",
+      "base_insns": 2156,
+      "gold_insns": 2156,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "functionHelpCommand",
+      "name": "functionHelpCommand",
+      "base_insns": 18,
+      "gold_insns": 18,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "genInfoSectionDict",
+      "name": "genInfoSectionDict",
+      "base_insns": 162,
+      "gold_insns": 162,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "genericZpopCommand",
+      "name": "genericZpopCommand",
+      "base_insns": 446,
+      "gold_insns": 446,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "hi_sdscatfmt",
+      "name": "hi_sdscatfmt",
+      "base_insns": 884,
+      "gold_insns": 884,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "hi_sdsfromlonglong",
+      "name": "hi_sdsfromlonglong",
+      "base_insns": 44,
+      "gold_insns": 44,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "hi_sdsll2str",
+      "name": "hi_sdsll2str",
+      "base_insns": 36,
+      "gold_insns": 36,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "hi_sdsull2str",
+      "name": "hi_sdsull2str",
+      "base_insns": 31,
+      "gold_insns": 31,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "latencyCommand",
+      "name": "latencyCommand",
+      "base_insns": 332,
+      "gold_insns": 332,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "loadServerConfigFromString",
+      "name": "loadServerConfigFromString",
+      "base_insns": 548,
+      "gold_insns": 548,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "memoryCommand",
+      "name": "memoryCommand",
+      "base_insns": 642,
+      "gold_insns": 642,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "moduleCommand",
+      "name": "moduleCommand",
+      "base_insns": 219,
+      "gold_insns": 219,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "objectCommand",
+      "name": "objectCommand",
+      "base_insns": 241,
+      "gold_insns": 241,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "pfdebugCommand",
+      "name": "pfdebugCommand",
+      "base_insns": 334,
+      "gold_insns": 334,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "pthread_cancel",
+      "name": "pthread_cancel",
+      "base_insns": 52,
+      "gold_insns": 52,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "pubsubCommand",
+      "name": "pubsubCommand",
+      "base_insns": 224,
+      "gold_insns": 224,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisBuildId",
+      "name": "redisBuildId",
+      "base_insns": 6,
+      "gold_insns": 6,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisBuildIdString",
+      "name": "redisBuildIdString",
+      "base_insns": 28,
+      "gold_insns": 28,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisContextConnectUnix",
+      "name": "redisContextConnectUnix",
+      "base_insns": 176,
+      "gold_insns": 176,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisFormatCommandArgv",
+      "name": "redisFormatCommandArgv",
+      "base_insns": 169,
+      "gold_insns": 169,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisFormatSdsCommandArgv",
+      "name": "redisFormatSdsCommandArgv",
+      "base_insns": 225,
+      "gold_insns": 225,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisGitDirty",
+      "name": "redisGitDirty",
+      "base_insns": 3,
+      "gold_insns": 3,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisReaderGetReply",
+      "name": "redisReaderGetReply",
+      "base_insns": 1463,
+      "gold_insns": 1463,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisvFormatCommand",
+      "name": "redisvFormatCommand",
+      "base_insns": 709,
+      "gold_insns": 709,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "scriptCommand",
+      "name": "scriptCommand",
+      "base_insns": 283,
+      "gold_insns": 283,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "sentinelCommand",
+      "name": "sentinelCommand",
+      "base_insns": 1199,
+      "gold_insns": 1199,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "sentinelInfoCommand",
+      "name": "sentinelInfoCommand",
+      "base_insns": 282,
+      "gold_insns": 282,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "slowlogCommand",
+      "name": "slowlogCommand",
+      "base_insns": 331,
+      "gold_insns": 331,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "sortGetKeys",
+      "name": "sortGetKeys",
+      "base_insns": 139,
+      "gold_insns": 139,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "syncWithMaster",
+      "name": "syncWithMaster",
+      "base_insns": 794,
+      "gold_insns": 794,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "xgroupCommand",
+      "name": "xgroupCommand",
+      "base_insns": 720,
+      "gold_insns": 720,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "xinfoCommand",
+      "name": "xinfoCommand",
+      "base_insns": 470,
+      "gold_insns": 470,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "zrangeCommand",
+      "name": "zrangeCommand",
+      "base_insns": 30,
+      "gold_insns": 30,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "zrangebylexCommand",
+      "name": "zrangebylexCommand",
+      "base_insns": 30,
+      "gold_insns": 30,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "zrangebyscoreCommand",
+      "name": "zrangebyscoreCommand",
+      "base_insns": 30,
+      "gold_insns": 30,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "zrangestoreCommand",
+      "name": "zrangestoreCommand",
+      "base_insns": 32,
+      "gold_insns": 32,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "zrevrangeCommand",
+      "name": "zrevrangeCommand",
+      "base_insns": 30,
+      "gold_insns": 30,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "zrevrangebylexCommand",
+      "name": "zrevrangebylexCommand",
+      "base_insns": 30,
+      "gold_insns": 30,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "zrevrangebyscoreCommand",
+      "name": "zrevrangebyscoreCommand",
+      "base_insns": 30,
+      "gold_insns": 30,
+      "base_level": "L2",
+      "gold_level": "L2"
+     }
+    ],
+    "added": [],
+    "removed": [],
+    "data_modified": [],
+    "data_added": [],
+    "data_removed": []
+   },
+   "anonymous_literals_changed": 2,
+   "source_changes": {
+    "base": [
+     "blockingGenericZpopCommand"
+    ],
+    "gold": [
+     "blockingGenericZpopCommand"
+    ],
+    "debug_info": true
+   },
+   "scratch": {
+    "removes": [
+     "blockingGenericZpopCommand"
+    ],
+    "basis": "source lines (DWARF)",
+    "functions": [
+     {
+      "name": "blockingGenericZpopCommand",
+      "instructions": 156,
+      "signature": "void blockingGenericZpopCommand(client * c, robj * * keys, int numkeys, int where, int timeout_idx, long count, int use_nested_array, int reply_nil_when_empty)",
+      "callers": [
+       "bzpopmaxCommand",
+       "bzpopminCommand",
+       "zmpopGenericCommand"
+      ]
+     }
+    ],
+    "instructions": 156,
+    "gold_instructions": 158,
+    "new_functions": [],
+    "data_to_write": []
+   }
+  },
+  {
+   "subject": "src/redis-cli",
+   "base": {
+    "path": "artifacts/redis__redis-10764/base.redis-cli.elf",
+    "sha256": "9b6264d69165f3ef7ffc21dfa7e0eba6a7b88e25f3c39459ee816f3adb1432b5",
+    "bytes": 1647824,
+    "functions": 835,
+    "instructions": 76202,
+    "levels": {
+     "L2": 490,
+     "L0": 211,
+     "below L0": 62,
+     "L1": 5
+    }
+   },
+   "gold": {
+    "path": "artifacts/redis__redis-10764/gold.redis-cli.elf",
+    "sha256": "3feeb80c4ecbd631894582b7224862d5969c74c2dab8b5ca784bd117ddfaa2a9",
+    "bytes": 1647832,
+    "functions": 835,
+    "instructions": 76202
+   },
+   "gold_changes": {
+    "modified": [
+     {
+      "key": "::cliInitHelp",
+      "name": "cliInitHelp",
+      "base_insns": 373,
+      "gold_insns": 373,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisBuildId",
+      "name": "redisBuildId",
+      "base_insns": 6,
+      "gold_insns": 6,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisBuildIdString",
+      "name": "redisBuildIdString",
+      "base_insns": 28,
+      "gold_insns": 28,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisGitDirty",
+      "name": "redisGitDirty",
+      "base_insns": 3,
+      "gold_insns": 3,
+      "base_level": "L2",
+      "gold_level": "L2"
+     }
+    ],
+    "added": [],
+    "removed": [],
+    "data_modified": [],
+    "data_added": [],
+    "data_removed": []
+   },
+   "anonymous_literals_changed": 2,
+   "source_changes": {
+    "base": [],
+    "gold": [],
+    "debug_info": false
+   },
+   "scratch": {
+    "removes": [
+     "cliInitHelp",
+     "redisBuildId",
+     "redisBuildIdString",
+     "redisGitDirty"
+    ],
+    "basis": "bytes (no line tables)",
+    "functions": [
+     {
+      "name": "cliInitHelp",
+      "instructions": 373,
+      "signature": "static void cliInitHelp(void)",
+      "callers": [
+       "issueCommandRepeat",
+       "repl"
+      ]
+     },
+     {
+      "name": "redisBuildId",
+      "instructions": 6,
+      "signature": "uint64_t redisBuildId(void)",
+      "callers": []
+     },
+     {
+      "name": "redisBuildIdString",
+      "instructions": 28,
+      "signature": "char * redisBuildIdString(void)",
+      "callers": []
+     },
+     {
+      "name": "redisGitDirty",
+      "instructions": 3,
+      "signature": "char * redisGitDirty(void)",
+      "callers": [
+       "cliVersion"
+      ]
+     }
+    ],
+    "instructions": 410,
+    "gold_instructions": 410,
+    "new_functions": [],
+    "data_to_write": []
+   }
+  }
+ ],
+ "commands": [
+  {
+   "stage": "checkout",
+   "cwd": "redis__redis-10764",
+   "cmd": "git clone -q /mnt/scratch/ec2-user/swe-bin/repos/redis.git /mnt/scratch/ec2-user/swe-bin/work/redis__redis-10764/src"
+  },
+  {
+   "stage": "checkout",
+   "cwd": "src",
+   "cmd": "git checkout -q 843a4cdc075a5b251e1b154f8013a9e0abe1038b"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "make CC=rv-cc AR=llvm-ar RANLIB=llvm-ranlib MALLOC=libc BUILD_TLS=no USE_SYSTEMD=no uname_S=Linux uname_M=riscv64 OPTIMIZATION=-O2 CFLAGS=-g LDFLAGS=-static -j2"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-10764/base.redis-server.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-10764/base.redis-server.elf"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-10764/base.redis-cli.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-10764/base.redis-cli.elf"
+  },
+  {
+   "stage": "test-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-10764/test.patch"
+  },
+  {
+   "stage": "test",
+   "cwd": "src",
+   "cmd": "TERM=dumb ./runtest --durable --single unit/type/zset --only \"BZMPOP\" ; true"
+  },
+  {
+   "stage": "test-unpatch",
+   "cwd": "src",
+   "cmd": "git apply -R --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-10764/test.patch"
+  },
+  {
+   "stage": "reset",
+   "cwd": "src",
+   "cmd": "git checkout -q -- . && git clean -fdq -e '*.rv.elf'"
+  },
+  {
+   "stage": "gold-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-10764/gold.patch"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "make CC=rv-cc AR=llvm-ar RANLIB=llvm-ranlib MALLOC=libc BUILD_TLS=no USE_SYSTEMD=no uname_S=Linux uname_M=riscv64 OPTIMIZATION=-O2 CFLAGS=-g LDFLAGS=-static -j2"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-10764/gold.redis-server.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-10764/gold.redis-server.elf"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-10764/gold.redis-cli.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-10764/gold.redis-cli.elf"
+  },
+  {
+   "stage": "test-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-10764/test.patch"
+  },
+  {
+   "stage": "test",
+   "cwd": "src",
+   "cmd": "TERM=dumb ./runtest --durable --single unit/type/zset --only \"BZMPOP\" ; true"
+  },
+  {
+   "stage": "test-unpatch",
+   "cwd": "src",
+   "cmd": "git apply -R --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-10764/test.patch"
+  }
+ ],
+ "convert_s": 211.2
+}

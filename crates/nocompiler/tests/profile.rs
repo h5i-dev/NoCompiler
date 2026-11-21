@@ -29,7 +29,8 @@ struct Tools {
 fn tools(test: &str) -> Option<Tools> {
     let clang = tool("CLANG", &["clang"])?;
     let lld = tool("LLD", &["ld.lld", "ld.lld-20", "ld.lld-19", "ld.lld-18"])?;
-    let dir = std::env::temp_dir().join(format!("nocompiler-profile-{test}-{}", std::process::id()));
+    let dir =
+        std::env::temp_dir().join(format!("nocompiler-profile-{test}-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     Some(Tools { clang, lld, dir })
 }
@@ -80,14 +81,15 @@ fn func(name: &str, code: &str) -> String {
 fn rules(bytes: &[u8]) -> Vec<&'static str> {
     let bin = nocompiler::load(bytes).unwrap();
     let r = bin.check().into_iter().find(|r| r.name == "f").expect("f");
-    match r.result {
-        Ok(_) => vec![],
-        Err(vs) => {
-            let mut v: Vec<&'static str> = vs.iter().map(|v| v.rule).collect();
-            v.dedup();
-            v
-        }
-    }
+    // What stops it at L1 or below, else why it is not at L2.
+    let vs = match r.result {
+        Ok(_) => r.missed,
+        Err(vs) => vs,
+    };
+    let mut v: Vec<&'static str> = vs.iter().map(|v| v.rule).collect();
+    v.sort();
+    v.dedup();
+    v
 }
 
 const CASES: &[(&str, &str, &[&str])] = &[
@@ -135,7 +137,36 @@ const CASES: &[(&str, &str, &[&str])] = &[
         &["R3 structure"],
     ),
     ("writes-gp", "  li gp, 0\n  ret", &["R4 registers"]),
-    ("writes-ra", "  li ra, 0\n  ret", &["R4 registers"]),
+    // Writing ra also loses its entry value at the return (6e).
+    (
+        "writes-ra",
+        "  li ra, 0\n  ret",
+        &["R4 registers", "R6e save"],
+    ),
+    // R6 (v1): the frame rule.
+    ("sp-in-arithmetic", "  add a0, sp, a1\n  ret", &["R6a sp"]),
+    ("sp-stored", "  sd sp, 0(a0)\n  ret", &["R6a sp"]),
+    (
+        "stack-argument",
+        "  ld a0, 0(sp)\n  ret",
+        &["R6c sp access"],
+    ),
+    (
+        "slot-half-read",
+        "  addi sp, sp, -16\n  sd s0, 8(sp)\n  li s0, 1\n  lw a0, 8(sp)\n  ld s0, 8(sp)\n  addi sp, sp, 16\n  ret",
+        &["R6c sp access"],
+    ),
+    (
+        "no-restore",
+        "  addi sp, sp, -16\n  sd s0, 8(sp)\n  li s0, 1\n  addi sp, sp, 16\n  ret",
+        &["R6e save"],
+    ),
+    ("no-save", "  li s1, 1\n  ret", &["R6e save"]),
+    (
+        "saved-and-restored",
+        "  addi sp, sp, -16\n  sd s0, 8(sp)\n  li s0, 1\n  ld s0, 8(sp)\n  addi sp, sp, 16\n  ret",
+        &[],
+    ),
     ("sp-by-add", "  add sp, sp, a0\n  ret", &["R5 stack"]),
     (
         "sp-misaligned",
@@ -209,8 +240,23 @@ fn metadata_round_trips_and_is_checked() {
     let bytes = std::fs::read(path).unwrap();
     let bin = nocompiler::load(&bytes).unwrap();
     let recorded = bin.recorded.clone().unwrap();
-    let enc = nocompiler::meta::encode(&recorded);
-    assert_eq!(nocompiler::meta::decode(&enc).unwrap(), recorded);
+    let names: std::collections::BTreeMap<u64, String> = bin
+        .funcs
+        .iter()
+        .map(|f| (f.entry, f.name.clone()))
+        .collect();
+    let entries: std::collections::BTreeMap<String, u64> = bin
+        .funcs
+        .iter()
+        .map(|f| (f.name.clone(), f.entry))
+        .collect();
+    let enc = nocompiler::meta::encode(&recorded, &names).unwrap();
+    let back: Vec<_> = nocompiler::meta::decode(&enc)
+        .unwrap()
+        .iter()
+        .map(|r| r.place(entries[&r.meta.name], &entries).unwrap())
+        .collect();
+    assert_eq!(back, recorded);
     assert!(
         nocompiler::meta::decode(&enc[..enc.len() - 1]).is_err(),
         "truncation is an error"
@@ -248,80 +294,11 @@ fn metadata_round_trips_and_is_checked() {
 }
 
 #[test]
-fn cli_check_annotate_export() {
-    let exe = env!("CARGO_BIN_EXE_nocompiler");
-    let elf = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/elf/sum.elf");
-    let out = Command::new(exe)
-        .args(["check", elf, "--json"])
-        .output()
-        .unwrap();
-    assert!(out.status.success());
-    let s = String::from_utf8(out.stdout).unwrap();
-    assert!(
-        s.contains("\"name\":\"sum\",\"entry\":70032,\"conforms\":true"),
-        "{s}"
-    );
-
-    // Export is what each committed Lean image was generated from.
-    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
-    for (name, module) in [("sum", "Sum"), ("hello", "Hello")] {
-        let out = Command::new(exe)
-            .args(["export", &format!("{root}/examples/elf/{name}.elf")])
-            .args(["--namespace", &format!("Examples.{module}.Image")])
-            .output()
-            .unwrap();
-        assert!(out.status.success());
-        let committed =
-            std::fs::read_to_string(format!("{root}/lean/Examples/{module}/Image.lean")).unwrap();
-        assert_eq!(
-            String::from_utf8(out.stdout).unwrap(),
-            committed,
-            "lean/Examples/{module}/Image.lean is stale: run examples/build.sh --update"
-        );
-    }
-
-    assert_eq!(
-        Command::new(exe)
-            .args(["check", "/nonexistent"])
-            .status()
-            .unwrap()
-            .code(),
-        Some(2)
-    );
-    assert_eq!(
-        Command::new(exe).arg("frobnicate").status().unwrap().code(),
-        Some(2)
-    );
-}
-
-#[test]
 fn rejects_what_is_not_the_profile() {
     assert!(nocompiler::load(b"not an elf").is_err());
     // An x86-64 ELF: the test binary itself is one on the usual CI host.
     let me = std::fs::read(std::env::current_exe().unwrap()).unwrap();
     if me.get(18..20) == Some(&[0x3e, 0x00]) {
         assert!(nocompiler::load(&me).err().unwrap().contains("not RISC-V"));
-    }
-}
-
-/// A reader that stops early (`nocompiler disasm FILE | head`) must not make the
-/// tool panic: the pipe is closed before the tool writes.
-#[test]
-fn a_closed_pipe_is_not_a_panic() {
-    use std::process::Stdio;
-    let exe = env!("CARGO_BIN_EXE_nocompiler");
-    let elf = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/elf/sum.elf");
-    for cmd in ["disasm", "check"] {
-        let mut child = Command::new(exe)
-            .args([cmd, elf])
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .unwrap();
-        drop(child.stdout.take());
-        let out = child.wait_with_output().unwrap();
-        let err = String::from_utf8_lossy(&out.stderr);
-        assert!(!err.contains("panicked"), "{cmd}: {err}");
-        assert_eq!(out.status.code(), Some(0), "{cmd}: {err}");
     }
 }

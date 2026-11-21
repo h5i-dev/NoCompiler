@@ -1,0 +1,391 @@
+{
+ "instance_id": "micropython__micropython-12158",
+ "repo": "micropython/micropython",
+ "base_commit": "c0d4c604e6a140c0f2967e1b43fd94d0b029c73f",
+ "language": "C",
+ "recipe": "micropython-unix-standard",
+ "subjects": [
+  "ports/unix/build-standard/micropython"
+ ],
+ "test_command": "(cd tests && MICROPY_CPYTHON3=python3 MICROPY_MICROPYTHON=../ports/unix/build-standard/micropython ./run-tests.py -d thread) | cat",
+ "FAIL_TO_PASS": [
+  "thread/thread_ident1.py"
+ ],
+ "PASS_TO_PASS": [
+  "thread/thread_exc1.py",
+  "thread/stress_recurse.py",
+  "thread/stress_schedule.py",
+  "thread/thread_heap_lock.py",
+  "thread/thread_gc1.py",
+  "thread/thread_exc2.py",
+  "thread/stress_create.py",
+  "thread/thread_shared1.py",
+  "thread/thread_shared2.py",
+  "thread/thread_sleep1.py",
+  "thread/thread_stacksize1.py",
+  "thread/thread_exit1.py",
+  "thread/stress_heap.py",
+  "thread/thread_exit2.py",
+  "thread/stress_aes.py",
+  "thread/thread_qstr1.py",
+  "thread/thread_start1.py",
+  "thread/thread_start2.py"
+ ],
+ "status": "kept",
+ "tests": [
+  {
+   "test": "thread/thread_ident1.py",
+   "kind": "FAIL_TO_PASS",
+   "base": "FAILED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "thread/thread_exc1.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "thread/stress_recurse.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "thread/stress_schedule.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "thread/thread_heap_lock.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "thread/thread_gc1.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "thread/thread_exc2.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "thread/stress_create.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "thread/thread_shared1.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "thread/thread_shared2.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "thread/thread_sleep1.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "thread/thread_stacksize1.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "thread/thread_exit1.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "thread/stress_heap.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "thread/thread_exit2.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "thread/stress_aes.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "thread/thread_qstr1.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "thread/thread_start1.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "thread/thread_start2.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  }
+ ],
+ "excluded_tests": {},
+ "timing_s": {
+  "base": {
+   "build": 52.7,
+   "test": 20.2
+  },
+  "gold": {
+   "build": 78.1,
+   "test": 24.1
+  }
+ },
+ "binaries": [
+  {
+   "subject": "ports/unix/build-standard/micropython",
+   "base": {
+    "path": "artifacts/micropython__micropython-12158/base.micropython.elf",
+    "sha256": "c0e9fc92530404efd90996ecc7637af160c5030700a331cb69eb2442fb6cc7ea",
+    "bytes": 3999656,
+    "functions": 2497,
+    "instructions": 158351,
+    "levels": {
+     "L2": 1534,
+     "L0": 717,
+     "below L0": 166,
+     "L1": 10
+    }
+   },
+   "gold": {
+    "path": "artifacts/micropython__micropython-12158/gold.micropython.elf",
+    "sha256": "06a477d6f8bfefc4626f4c6c524467e2e8fe16ce965e1e283027a15eb8b9b5f9",
+    "bytes": 4000024,
+    "functions": 2498,
+    "instructions": 158355
+   },
+   "gold_changes": {
+    "modified": [
+     {
+      "key": "::mod_thread_get_ident",
+      "name": "mod_thread_get_ident",
+      "base_insns": 8,
+      "gold_insns": 8,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::mod_thread_start_new_thread",
+      "name": "mod_thread_start_new_thread",
+      "base_insns": 100,
+      "gold_insns": 101,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "main_",
+      "name": "main_",
+      "base_insns": 821,
+      "gold_insns": 821,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "mp_thread_create",
+      "name": "mp_thread_create",
+      "base_insns": 79,
+      "gold_insns": 80,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "pthread_cancel",
+      "name": "pthread_cancel",
+      "base_insns": 52,
+      "gold_insns": 52,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     }
+    ],
+    "added": [
+     {
+      "key": "mp_thread_get_id",
+      "name": "mp_thread_get_id",
+      "gold_insns": 2,
+      "gold_level": "L2"
+     }
+    ],
+    "removed": [],
+    "data_modified": [
+     {
+      "key": "::mp_sys_version_obj",
+      "name": "mp_sys_version_obj",
+      "base_bytes": 32,
+      "gold_bytes": 32
+     }
+    ],
+    "data_added": [],
+    "data_removed": []
+   },
+   "anonymous_literals_changed": 2,
+   "source_changes": {
+    "base": [
+     "mod_thread_get_ident",
+     "mod_thread_start_new_thread",
+     "mp_thread_create"
+    ],
+    "gold": [
+     "mod_thread_get_ident",
+     "mod_thread_start_new_thread",
+     "mp_thread_create",
+     "mp_thread_get_id"
+    ],
+    "debug_info": true
+   },
+   "scratch": {
+    "removes": [
+     "mod_thread_get_ident",
+     "mod_thread_start_new_thread",
+     "mp_thread_create"
+    ],
+    "basis": "source lines (DWARF)",
+    "functions": [
+     {
+      "name": "mod_thread_get_ident",
+      "instructions": 8,
+      "signature": "static mp_obj_t mod_thread_get_ident(void)",
+      "callers": []
+     },
+     {
+      "name": "mod_thread_start_new_thread",
+      "instructions": 100,
+      "signature": "static mp_obj_t mod_thread_start_new_thread(size_t n_args, const mp_obj_t * args)",
+      "callers": []
+     },
+     {
+      "name": "mp_thread_create",
+      "instructions": 79,
+      "signature": "void mp_thread_create(void * (*)(...) * entry, void * arg, size_t * stack_size)",
+      "callers": [
+       "mod_thread_start_new_thread"
+      ]
+     }
+    ],
+    "instructions": 187,
+    "gold_instructions": 191,
+    "new_functions": [
+     "mp_thread_get_id"
+    ],
+    "data_to_write": [
+     "mp_sys_version_obj"
+    ]
+   }
+  }
+ ],
+ "commands": [
+  {
+   "stage": "checkout",
+   "cwd": "micropython__micropython-12158",
+   "cmd": "git clone -q /mnt/scratch/ec2-user/swe-bin/repos/micropython.git /mnt/scratch/ec2-user/swe-bin/work/micropython__micropython-12158/src"
+  },
+  {
+   "stage": "checkout",
+   "cwd": "src",
+   "cmd": "git checkout -q c0d4c604e6a140c0f2967e1b43fd94d0b029c73f"
+  },
+  {
+   "stage": "prepare",
+   "cwd": "src",
+   "cmd": "make -C ports/unix VARIANT=standard submodules"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "make -j2 -C mpy-cross"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "make -C ports/unix VARIANT=standard CROSS_COMPILE=riscv64-linux-musl- MICROPY_PY_FFI=0 LDFLAGS_EXTRA=-static CFLAGS_EXTRA='-g -Wno-error' STRIP=:  -j2"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/micropython__micropython-12158/base.micropython.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/micropython__micropython-12158/base.micropython.elf"
+  },
+  {
+   "stage": "test-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/micropython__micropython-12158/test.patch"
+  },
+  {
+   "stage": "test",
+   "cwd": "src",
+   "cmd": "cd tests && MICROPY_CPYTHON3=python3 MICROPY_MICROPYTHON=../ports/unix/build-standard/micropython ./run-tests.py -d thread ; true"
+  },
+  {
+   "stage": "test-unpatch",
+   "cwd": "src",
+   "cmd": "git apply -R --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/micropython__micropython-12158/test.patch"
+  },
+  {
+   "stage": "reset",
+   "cwd": "src",
+   "cmd": "git checkout -q -- . && git clean -fdxq -e '*.rv.elf' && git submodule foreach -q 'git clean -fdxq; git checkout -q -- .'"
+  },
+  {
+   "stage": "gold-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/micropython__micropython-12158/gold.patch"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "make -j2 -C mpy-cross"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "make -C ports/unix VARIANT=standard CROSS_COMPILE=riscv64-linux-musl- MICROPY_PY_FFI=0 LDFLAGS_EXTRA=-static CFLAGS_EXTRA='-g -Wno-error' STRIP=:  -j2"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/micropython__micropython-12158/gold.micropython.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/micropython__micropython-12158/gold.micropython.elf"
+  },
+  {
+   "stage": "test-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/micropython__micropython-12158/test.patch"
+  },
+  {
+   "stage": "test",
+   "cwd": "src",
+   "cmd": "cd tests && MICROPY_CPYTHON3=python3 MICROPY_MICROPYTHON=../ports/unix/build-standard/micropython ./run-tests.py -d thread ; true"
+  },
+  {
+   "stage": "test-unpatch",
+   "cwd": "src",
+   "cmd": "git apply -R --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/micropython__micropython-12158/test.patch"
+  }
+ ],
+ "convert_s": 232.9
+}

@@ -1,0 +1,731 @@
+{
+ "instance_id": "redis__redis-12472",
+ "repo": "redis/redis",
+ "base_commit": "6abfda54c380c07ea0d460706833929654fac25a",
+ "language": "C",
+ "recipe": "redis-libc-malloc",
+ "subjects": [
+  "src/redis-server",
+  "src/redis-cli"
+ ],
+ "test_command": "(TERM=dumb ./runtest --durable --single unit/acl --only \"/.*ACL GETUSER.*\") | cat",
+ "FAIL_TO_PASS": [
+  "ACL GETUSER provides correct results"
+ ],
+ "PASS_TO_PASS": [
+  "ACL GETUSER is able to translate back command permissions",
+  "ACL GETUSER provides reasonable results"
+ ],
+ "status": "kept",
+ "tests": [
+  {
+   "test": "ACL GETUSER provides correct results",
+   "kind": "FAIL_TO_PASS",
+   "base": "FAILED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL GETUSER is able to translate back command permissions",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL GETUSER provides reasonable results",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  }
+ ],
+ "excluded_tests": {},
+ "timing_s": {
+  "base": {
+   "build": 81.8,
+   "test": 5.0
+  },
+  "gold": {
+   "build": 15.5,
+   "test": 4.6
+  }
+ },
+ "binaries": [
+  {
+   "subject": "src/redis-server",
+   "base": {
+    "path": "artifacts/redis__redis-12472/base.redis-server.elf",
+    "sha256": "9b1e0902c07c7320d078d4a859b0e2ff809a35fa02c6da78bf57df76f8deb43d",
+    "bytes": 10435232,
+    "functions": 4798,
+    "instructions": 404968,
+    "levels": {
+     "L2": 3043,
+     "L0": 1188,
+     "below L0": 415,
+     "L1": 20
+    }
+   },
+   "gold": {
+    "path": "artifacts/redis__redis-12472/gold.redis-server.elf",
+    "sha256": "1a5b1b8204271a963fe9cdce2d8dae5db3bc6bb5b1d06dc2199ec5c1fa6e7cc0",
+    "bytes": 10435392,
+    "functions": 4798,
+    "instructions": 404972
+   },
+   "gold_changes": {
+    "modified": [
+     {
+      "key": "::__synccall",
+      "name": "__synccall",
+      "base_insns": 186,
+      "gold_insns": 186,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_redisContextConnectTcp",
+      "name": "_redisContextConnectTcp",
+      "base_insns": 371,
+      "gold_insns": 371,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::lua_cjson_new",
+      "name": "lua_cjson_new",
+      "base_insns": 201,
+      "gold_insns": 201,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "ACLDescribeSelectorCommandRules",
+      "name": "ACLDescribeSelectorCommandRules",
+      "base_insns": 231,
+      "gold_insns": 231,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "ACLLoadConfiguredUsers",
+      "name": "ACLLoadConfiguredUsers",
+      "base_insns": 364,
+      "gold_insns": 364,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "ACLRecomputeCommandBitsFromCommandRulesAllUsers",
+      "name": "ACLRecomputeCommandBitsFromCommandRulesAllUsers",
+      "base_insns": 191,
+      "gold_insns": 191,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "ACLSelectorRemoveCommandRule",
+      "name": "ACLSelectorRemoveCommandRule",
+      "base_insns": 128,
+      "gold_insns": 132,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "ACLSetUser",
+      "name": "ACLSetUser",
+      "base_insns": 436,
+      "gold_insns": 436,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "ACLStringSetUser",
+      "name": "ACLStringSetUser",
+      "base_insns": 308,
+      "gold_insns": 308,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "ACLUpdateInfoMetrics",
+      "name": "ACLUpdateInfoMetrics",
+      "base_insns": 38,
+      "gold_insns": 38,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "aclCommand",
+      "name": "aclCommand",
+      "base_insns": 1696,
+      "gold_insns": 1696,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "aclCreateSelectorFromOpSet",
+      "name": "aclCreateSelectorFromOpSet",
+      "base_insns": 179,
+      "gold_insns": 179,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "addACLLogEntry",
+      "name": "addACLLogEntry",
+      "base_insns": 235,
+      "gold_insns": 235,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "addReplyFlagsForCommand",
+      "name": "addReplyFlagsForCommand",
+      "base_insns": 96,
+      "gold_insns": 96,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "clientCommand",
+      "name": "clientCommand",
+      "base_insns": 1713,
+      "gold_insns": 1713,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "clusterCommand",
+      "name": "clusterCommand",
+      "base_insns": 1695,
+      "gold_insns": 1695,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "commandHelpCommand",
+      "name": "commandHelpCommand",
+      "base_insns": 18,
+      "gold_insns": 18,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "configHelpCommand",
+      "name": "configHelpCommand",
+      "base_insns": 18,
+      "gold_insns": 18,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "debugCommand",
+      "name": "debugCommand",
+      "base_insns": 2309,
+      "gold_insns": 2309,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "functionHelpCommand",
+      "name": "functionHelpCommand",
+      "base_insns": 18,
+      "gold_insns": 18,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "genClusterInfoString",
+      "name": "genClusterInfoString",
+      "base_insns": 288,
+      "gold_insns": 288,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "genInfoSectionDict",
+      "name": "genInfoSectionDict",
+      "base_insns": 162,
+      "gold_insns": 162,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "genericZpopCommand",
+      "name": "genericZpopCommand",
+      "base_insns": 452,
+      "gold_insns": 452,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "getAclErrorMessage",
+      "name": "getAclErrorMessage",
+      "base_insns": 64,
+      "gold_insns": 64,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "hi_sdscatfmt",
+      "name": "hi_sdscatfmt",
+      "base_insns": 875,
+      "gold_insns": 875,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "hi_sdsfromlonglong",
+      "name": "hi_sdsfromlonglong",
+      "base_insns": 44,
+      "gold_insns": 44,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "hi_sdsll2str",
+      "name": "hi_sdsll2str",
+      "base_insns": 36,
+      "gold_insns": 36,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "hi_sdsull2str",
+      "name": "hi_sdsull2str",
+      "base_insns": 31,
+      "gold_insns": 31,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "latencyCommand",
+      "name": "latencyCommand",
+      "base_insns": 345,
+      "gold_insns": 345,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "loadServerConfigFromString",
+      "name": "loadServerConfigFromString",
+      "base_insns": 580,
+      "gold_insns": 580,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "memoryCommand",
+      "name": "memoryCommand",
+      "base_insns": 649,
+      "gold_insns": 649,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "migrateGetKeys",
+      "name": "migrateGetKeys",
+      "base_insns": 209,
+      "gold_insns": 209,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "moduleCommand",
+      "name": "moduleCommand",
+      "base_insns": 203,
+      "gold_insns": 203,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "objectCommand",
+      "name": "objectCommand",
+      "base_insns": 243,
+      "gold_insns": 243,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "pfdebugCommand",
+      "name": "pfdebugCommand",
+      "base_insns": 334,
+      "gold_insns": 334,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "pthread_cancel",
+      "name": "pthread_cancel",
+      "base_insns": 52,
+      "gold_insns": 52,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "pubsubCommand",
+      "name": "pubsubCommand",
+      "base_insns": 229,
+      "gold_insns": 229,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisBuildId",
+      "name": "redisBuildId",
+      "base_insns": 6,
+      "gold_insns": 6,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisBuildIdRaw",
+      "name": "redisBuildIdRaw",
+      "base_insns": 3,
+      "gold_insns": 3,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisBuildIdString",
+      "name": "redisBuildIdString",
+      "base_insns": 28,
+      "gold_insns": 28,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisContextConnectUnix",
+      "name": "redisContextConnectUnix",
+      "base_insns": 178,
+      "gold_insns": 178,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisFormatCommandArgv",
+      "name": "redisFormatCommandArgv",
+      "base_insns": 169,
+      "gold_insns": 169,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisFormatSdsCommandArgv",
+      "name": "redisFormatSdsCommandArgv",
+      "base_insns": 225,
+      "gold_insns": 225,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisGitDirty",
+      "name": "redisGitDirty",
+      "base_insns": 3,
+      "gold_insns": 3,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisReaderGetReply",
+      "name": "redisReaderGetReply",
+      "base_insns": 1475,
+      "gold_insns": 1475,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisvFormatCommand",
+      "name": "redisvFormatCommand",
+      "base_insns": 715,
+      "gold_insns": 715,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "scriptCommand",
+      "name": "scriptCommand",
+      "base_insns": 284,
+      "gold_insns": 284,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "sentinelCommand",
+      "name": "sentinelCommand",
+      "base_insns": 1193,
+      "gold_insns": 1193,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "sentinelInfoCommand",
+      "name": "sentinelInfoCommand",
+      "base_insns": 287,
+      "gold_insns": 287,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "slowlogCommand",
+      "name": "slowlogCommand",
+      "base_insns": 321,
+      "gold_insns": 321,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "sortGetKeys",
+      "name": "sortGetKeys",
+      "base_insns": 140,
+      "gold_insns": 140,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "xgroupCommand",
+      "name": "xgroupCommand",
+      "base_insns": 722,
+      "gold_insns": 722,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "xinfoCommand",
+      "name": "xinfoCommand",
+      "base_insns": 544,
+      "gold_insns": 544,
+      "base_level": "L0",
+      "gold_level": "L0"
+     }
+    ],
+    "added": [],
+    "removed": [],
+    "data_modified": [],
+    "data_added": [],
+    "data_removed": []
+   },
+   "anonymous_literals_changed": 2,
+   "source_changes": {
+    "base": [
+     "ACLSelectorRemoveCommandRule"
+    ],
+    "gold": [],
+    "debug_info": true
+   },
+   "scratch": {
+    "removes": [
+     "ACLSelectorRemoveCommandRule"
+    ],
+    "basis": "source lines (DWARF)",
+    "functions": [
+     {
+      "name": "ACLSelectorRemoveCommandRule",
+      "instructions": 128,
+      "signature": "void ACLSelectorRemoveCommandRule(aclSelector * selector, sds new_rule)",
+      "callers": [
+       "ACLUpdateCommandRules"
+      ]
+     }
+    ],
+    "instructions": 128,
+    "gold_instructions": 132,
+    "new_functions": [],
+    "data_to_write": []
+   }
+  },
+  {
+   "subject": "src/redis-cli",
+   "base": {
+    "path": "artifacts/redis__redis-12472/base.redis-cli.elf",
+    "sha256": "68cf6580f423484ca92be31c71f93db6dab2e813ab9bad4d2bf2048ceead7bea",
+    "bytes": 1933992,
+    "functions": 894,
+    "instructions": 81431,
+    "levels": {
+     "L2": 512,
+     "L0": 244,
+     "below L0": 66,
+     "L1": 4
+    }
+   },
+   "gold": {
+    "path": "artifacts/redis__redis-12472/gold.redis-cli.elf",
+    "sha256": "23da46835ea9ea42a24a10eb246007e700f9a911c1acfd94dc95546255cdd781",
+    "bytes": 1933992,
+    "functions": 894,
+    "instructions": 81431
+   },
+   "gold_changes": {
+    "modified": [
+     {
+      "key": "redisBuildId",
+      "name": "redisBuildId",
+      "base_insns": 6,
+      "gold_insns": 6,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisBuildIdRaw",
+      "name": "redisBuildIdRaw",
+      "base_insns": 3,
+      "gold_insns": 3,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisBuildIdString",
+      "name": "redisBuildIdString",
+      "base_insns": 28,
+      "gold_insns": 28,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisGitDirty",
+      "name": "redisGitDirty",
+      "base_insns": 3,
+      "gold_insns": 3,
+      "base_level": "L2",
+      "gold_level": "L2"
+     }
+    ],
+    "added": [],
+    "removed": [],
+    "data_modified": [],
+    "data_added": [],
+    "data_removed": []
+   },
+   "anonymous_literals_changed": 2,
+   "source_changes": {
+    "base": [],
+    "gold": [],
+    "debug_info": false
+   },
+   "scratch": {
+    "removes": [
+     "redisBuildId",
+     "redisBuildIdRaw",
+     "redisBuildIdString",
+     "redisGitDirty"
+    ],
+    "basis": "bytes (no line tables)",
+    "functions": [
+     {
+      "name": "redisBuildId",
+      "instructions": 6,
+      "signature": "uint64_t redisBuildId(void)",
+      "callers": []
+     },
+     {
+      "name": "redisBuildIdRaw",
+      "instructions": 3,
+      "signature": "const char * redisBuildIdRaw(void)",
+      "callers": []
+     },
+     {
+      "name": "redisBuildIdString",
+      "instructions": 28,
+      "signature": "char * redisBuildIdString(void)",
+      "callers": []
+     },
+     {
+      "name": "redisGitDirty",
+      "instructions": 3,
+      "signature": "char * redisGitDirty(void)",
+      "callers": [
+       "cliVersion"
+      ]
+     }
+    ],
+    "instructions": 40,
+    "gold_instructions": 40,
+    "new_functions": [],
+    "data_to_write": []
+   }
+  }
+ ],
+ "commands": [
+  {
+   "stage": "checkout",
+   "cwd": "redis__redis-12472",
+   "cmd": "git clone -q /mnt/scratch/ec2-user/swe-bin/repos/redis.git /mnt/scratch/ec2-user/swe-bin/work/redis__redis-12472/src"
+  },
+  {
+   "stage": "checkout",
+   "cwd": "src",
+   "cmd": "git checkout -q 6abfda54c380c07ea0d460706833929654fac25a"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "make CC=rv-cc AR=llvm-ar RANLIB=llvm-ranlib MALLOC=libc BUILD_TLS=no USE_SYSTEMD=no uname_S=Linux uname_M=riscv64 OPTIMIZATION=-O2 CFLAGS=-g LDFLAGS=-static -j2"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-12472/base.redis-server.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-12472/base.redis-server.elf"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-12472/base.redis-cli.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-12472/base.redis-cli.elf"
+  },
+  {
+   "stage": "test-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-12472/test.patch"
+  },
+  {
+   "stage": "test",
+   "cwd": "src",
+   "cmd": "TERM=dumb ./runtest --durable --single unit/acl --only \"/.*ACL GETUSER.*\" ; true"
+  },
+  {
+   "stage": "test-unpatch",
+   "cwd": "src",
+   "cmd": "git apply -R --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-12472/test.patch"
+  },
+  {
+   "stage": "reset",
+   "cwd": "src",
+   "cmd": "git checkout -q -- . && git clean -fdq -e '*.rv.elf'"
+  },
+  {
+   "stage": "gold-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-12472/gold.patch"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "make CC=rv-cc AR=llvm-ar RANLIB=llvm-ranlib MALLOC=libc BUILD_TLS=no USE_SYSTEMD=no uname_S=Linux uname_M=riscv64 OPTIMIZATION=-O2 CFLAGS=-g LDFLAGS=-static -j2"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-12472/gold.redis-server.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-12472/gold.redis-server.elf"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-12472/gold.redis-cli.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-12472/gold.redis-cli.elf"
+  },
+  {
+   "stage": "test-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-12472/test.patch"
+  },
+  {
+   "stage": "test",
+   "cwd": "src",
+   "cmd": "TERM=dumb ./runtest --durable --single unit/acl --only \"/.*ACL GETUSER.*\" ; true"
+  },
+  {
+   "stage": "test-unpatch",
+   "cwd": "src",
+   "cmd": "git apply -R --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-12472/test.patch"
+  }
+ ],
+ "convert_s": 246.5
+}

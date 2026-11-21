@@ -1,0 +1,12 @@
+The files in this directory are Ghidra's RISC-V processor specification,
+copied without modification from
+
+  https://github.com/NationalSecurityAgency/ghidra
+  tag Ghidra_11.4_build, commit aed1cf1c4e060af395af241f0e6027be783b9591
+  path Ghidra/Processors/RISCV/data/languages/ (riscv.lp64d.slaspec and every .sinc)
+
+Ghidra is licensed under the Apache License, Version 2.0; the license text is
+in LICENSE next to this file. nocompiler embeds these files into the
+nocompiler-arch crate and parses them at run time with nocompiler-sleigh to
+decode and lift RISC-V for the toolkit (decompiler, CFG, diff). Nothing derived
+from them enters a proof.

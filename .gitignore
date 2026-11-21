@@ -7,8 +7,8 @@ workspace/
 *.pdb
 
 # Build and analysis artifacts
-/devinfra/fixtures/build/
-/devinfra/fixtures/corpus/
+/fixtures/build/
+/fixtures/corpus/
 *.o
 *.elf
 *.exe
@@ -22,7 +22,7 @@ workspace/
 /fuzz/artifacts/
 /fuzz/coverage/
 
-# Machine-local Claude Code settings (wires up scripts/deny-debug-build.py)
+# Machine-local Claude Code settings (wires up scripts/core/deny-debug-build.py)
 .claude/settings.local.json
 
 # Editors
@@ -30,7 +30,7 @@ workspace/
 .idea/
 *.swp
 
-# Release archives, built by devinfra/scripts/build-release.sh.
+# Release archives, built by scripts/toolkit/build-release.sh.
 dist/
 
 # Byte-compiled / optimized / DLL files
@@ -266,4 +266,4 @@ __marimo__/
 /lean/.lake/
 # The committed binaries the proofs are about (`*.elf` is ignored above).
 !/examples/elf/*.elf
-/demo/build/
+/examples/demo/build/

@@ -249,6 +249,7 @@ name = "nocompiler-arch"
 version = "0.1.0"
 dependencies = [
  "nocompiler-core",
+ "nocompiler-sleigh",
 ]
 
 [[package]]
@@ -265,6 +266,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "memmap2",
+ "nocompiler",
  "nocompiler-analysis",
  "nocompiler-api",
  "nocompiler-arch",
@@ -344,6 +346,7 @@ dependencies = [
  "nocompiler-arch",
  "nocompiler-core",
  "nocompiler-format",
+ "nocompiler-sleigh",
  "nocompiler-types",
  "serde",
 ]

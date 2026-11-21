@@ -1,0 +1,1019 @@
+{
+ "instance_id": "redis__redis-11734",
+ "repo": "redis/redis",
+ "base_commit": "45d3310694406fb0f338f7c639cda9754edb88f8",
+ "language": "C",
+ "recipe": "redis-libc-malloc",
+ "subjects": [
+  "src/redis-server",
+  "src/redis-cli"
+ ],
+ "test_command": "(TERM=dumb ./runtest --durable --single unit/bitops) | cat",
+ "FAIL_TO_PASS": [
+  "BITPOS will illegal arguments",
+  "BITPOS against non-integer value"
+ ],
+ "PASS_TO_PASS": [
+  "BITCOUNT against wrong type",
+  "BITCOUNT returns 0 against non existing key",
+  "BITCOUNT returns 0 with out of range indexes",
+  "BITCOUNT returns 0 with negative indexes where start > end",
+  "BITCOUNT against test vector #1",
+  "BITCOUNT against test vector #2",
+  "BITCOUNT against test vector #3",
+  "BITCOUNT against test vector #4",
+  "BITCOUNT against test vector #5",
+  "BITCOUNT fuzzing without start/end",
+  "BITCOUNT fuzzing with start/end",
+  "BITCOUNT with start, end",
+  "BITCOUNT with illegal arguments",
+  "BITCOUNT against non-integer value",
+  "BITCOUNT regression test for github issue #582",
+  "BITCOUNT misaligned prefix",
+  "BITCOUNT misaligned prefix + full words + remainder",
+  "BITOP NOT (empty string)",
+  "BITOP NOT (known string)",
+  "BITOP where dest and target are the same key",
+  "BITOP AND|OR|XOR don't change the string with single input key",
+  "BITOP missing key is considered a stream of zero",
+  "BITOP shorter keys are zero-padded to the key with max length",
+  "BITOP and fuzzing",
+  "BITOP or fuzzing",
+  "BITOP xor fuzzing",
+  "BITOP NOT fuzzing",
+  "BITOP with integer encoded source objects",
+  "BITOP with non string source key",
+  "BITOP with empty string after non empty string (issue #529)",
+  "BITPOS against wrong type",
+  "BITPOS bit=0 with empty key returns 0",
+  "BITPOS bit=1 with empty key returns -1",
+  "BITPOS bit=0 with string less than 1 word works",
+  "BITPOS bit=1 with string less than 1 word works",
+  "BITPOS bit=0 starting at unaligned address",
+  "BITPOS bit=1 starting at unaligned address",
+  "BITPOS bit=0 unaligned+full word+reminder",
+  "BITPOS bit=1 unaligned+full word+reminder",
+  "BITPOS bit=1 returns -1 if string is all 0 bits",
+  "BITPOS bit=0 works with intervals",
+  "BITPOS bit=1 works with intervals",
+  "BITPOS bit=0 changes behavior if end is given",
+  "SETBIT/BITFIELD only increase dirty when the value changed",
+  "BITPOS bit=1 fuzzy testing using SETBIT",
+  "BITPOS bit=0 fuzzy testing using SETBIT",
+  "BITPOS/BITCOUNT fuzzy testing using SETBIT"
+ ],
+ "status": "kept",
+ "tests": [
+  {
+   "test": "BITPOS will illegal arguments",
+   "kind": "FAIL_TO_PASS",
+   "base": "FAILED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITPOS against non-integer value",
+   "kind": "FAIL_TO_PASS",
+   "base": "FAILED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITCOUNT against wrong type",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITCOUNT returns 0 against non existing key",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITCOUNT returns 0 with out of range indexes",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITCOUNT returns 0 with negative indexes where start > end",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITCOUNT against test vector #1",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITCOUNT against test vector #2",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITCOUNT against test vector #3",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITCOUNT against test vector #4",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITCOUNT against test vector #5",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITCOUNT fuzzing without start/end",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITCOUNT fuzzing with start/end",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITCOUNT with start, end",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITCOUNT with illegal arguments",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITCOUNT against non-integer value",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITCOUNT regression test for github issue #582",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITCOUNT misaligned prefix",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITCOUNT misaligned prefix + full words + remainder",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITOP NOT (empty string)",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITOP NOT (known string)",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITOP where dest and target are the same key",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITOP AND|OR|XOR don't change the string with single input key",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITOP missing key is considered a stream of zero",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITOP shorter keys are zero-padded to the key with max length",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITOP and fuzzing",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITOP or fuzzing",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITOP xor fuzzing",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITOP NOT fuzzing",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITOP with integer encoded source objects",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITOP with non string source key",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITOP with empty string after non empty string (issue #529)",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITPOS against wrong type",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITPOS bit=0 with empty key returns 0",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITPOS bit=1 with empty key returns -1",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITPOS bit=0 with string less than 1 word works",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITPOS bit=1 with string less than 1 word works",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITPOS bit=0 starting at unaligned address",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITPOS bit=1 starting at unaligned address",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITPOS bit=0 unaligned+full word+reminder",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITPOS bit=1 unaligned+full word+reminder",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITPOS bit=1 returns -1 if string is all 0 bits",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITPOS bit=0 works with intervals",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITPOS bit=1 works with intervals",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITPOS bit=0 changes behavior if end is given",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "SETBIT/BITFIELD only increase dirty when the value changed",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITPOS bit=1 fuzzy testing using SETBIT",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITPOS bit=0 fuzzy testing using SETBIT",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "BITPOS/BITCOUNT fuzzy testing using SETBIT",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  }
+ ],
+ "excluded_tests": {},
+ "timing_s": {
+  "base": {
+   "build": 70.5,
+   "test": 8.6
+  },
+  "gold": {
+   "build": 11.9,
+   "test": 8.1
+  }
+ },
+ "binaries": [
+  {
+   "subject": "src/redis-server",
+   "base": {
+    "path": "artifacts/redis__redis-11734/base.redis-server.elf",
+    "sha256": "be2be1432629ebe8a0257503900df451c7846fe437953ffa0db3a5bfdcd7893a",
+    "bytes": 10439768,
+    "functions": 4801,
+    "instructions": 405155,
+    "levels": {
+     "L2": 3046,
+     "L0": 1188,
+     "below L0": 415,
+     "L1": 20
+    }
+   },
+   "gold": {
+    "path": "artifacts/redis__redis-11734/gold.redis-server.elf",
+    "sha256": "5061edbda9002bd0117b359e18508edd5ace1e2ac2d38ec17cf460195e3cc071",
+    "bytes": 10440032,
+    "functions": 4801,
+    "instructions": 405167
+   },
+   "gold_changes": {
+    "modified": [
+     {
+      "key": "::__synccall",
+      "name": "__synccall",
+      "base_insns": 186,
+      "gold_insns": 186,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_redisContextConnectTcp",
+      "name": "_redisContextConnectTcp",
+      "base_insns": 371,
+      "gold_insns": 371,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::lua_cjson_new",
+      "name": "lua_cjson_new",
+      "base_insns": 201,
+      "gold_insns": 201,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "aclCommand",
+      "name": "aclCommand",
+      "base_insns": 1696,
+      "gold_insns": 1696,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "addReplyFlagsForCommand",
+      "name": "addReplyFlagsForCommand",
+      "base_insns": 96,
+      "gold_insns": 96,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "bitcountCommand",
+      "name": "bitcountCommand",
+      "base_insns": 232,
+      "gold_insns": 223,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "bitposCommand",
+      "name": "bitposCommand",
+      "base_insns": 282,
+      "gold_insns": 303,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "clientCommand",
+      "name": "clientCommand",
+      "base_insns": 1713,
+      "gold_insns": 1713,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "clusterCommand",
+      "name": "clusterCommand",
+      "base_insns": 1695,
+      "gold_insns": 1695,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "commandHelpCommand",
+      "name": "commandHelpCommand",
+      "base_insns": 18,
+      "gold_insns": 18,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "configHelpCommand",
+      "name": "configHelpCommand",
+      "base_insns": 18,
+      "gold_insns": 18,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "debugCommand",
+      "name": "debugCommand",
+      "base_insns": 2309,
+      "gold_insns": 2309,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "functionHelpCommand",
+      "name": "functionHelpCommand",
+      "base_insns": 18,
+      "gold_insns": 18,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "genClusterInfoString",
+      "name": "genClusterInfoString",
+      "base_insns": 288,
+      "gold_insns": 288,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "genInfoSectionDict",
+      "name": "genInfoSectionDict",
+      "base_insns": 162,
+      "gold_insns": 162,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "genericZpopCommand",
+      "name": "genericZpopCommand",
+      "base_insns": 452,
+      "gold_insns": 452,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "hi_sdscatfmt",
+      "name": "hi_sdscatfmt",
+      "base_insns": 875,
+      "gold_insns": 875,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "hi_sdsfromlonglong",
+      "name": "hi_sdsfromlonglong",
+      "base_insns": 44,
+      "gold_insns": 44,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "hi_sdsll2str",
+      "name": "hi_sdsll2str",
+      "base_insns": 36,
+      "gold_insns": 36,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "hi_sdsull2str",
+      "name": "hi_sdsull2str",
+      "base_insns": 31,
+      "gold_insns": 31,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "latencyCommand",
+      "name": "latencyCommand",
+      "base_insns": 345,
+      "gold_insns": 345,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "loadServerConfigFromString",
+      "name": "loadServerConfigFromString",
+      "base_insns": 580,
+      "gold_insns": 580,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "memoryCommand",
+      "name": "memoryCommand",
+      "base_insns": 649,
+      "gold_insns": 649,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "migrateGetKeys",
+      "name": "migrateGetKeys",
+      "base_insns": 209,
+      "gold_insns": 209,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "moduleCommand",
+      "name": "moduleCommand",
+      "base_insns": 203,
+      "gold_insns": 203,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "objectCommand",
+      "name": "objectCommand",
+      "base_insns": 243,
+      "gold_insns": 243,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "pfdebugCommand",
+      "name": "pfdebugCommand",
+      "base_insns": 334,
+      "gold_insns": 334,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "pthread_cancel",
+      "name": "pthread_cancel",
+      "base_insns": 52,
+      "gold_insns": 52,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "pubsubCommand",
+      "name": "pubsubCommand",
+      "base_insns": 229,
+      "gold_insns": 229,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisBuildId",
+      "name": "redisBuildId",
+      "base_insns": 6,
+      "gold_insns": 6,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisBuildIdRaw",
+      "name": "redisBuildIdRaw",
+      "base_insns": 3,
+      "gold_insns": 3,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisBuildIdString",
+      "name": "redisBuildIdString",
+      "base_insns": 28,
+      "gold_insns": 28,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisContextConnectUnix",
+      "name": "redisContextConnectUnix",
+      "base_insns": 178,
+      "gold_insns": 178,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisFormatCommandArgv",
+      "name": "redisFormatCommandArgv",
+      "base_insns": 169,
+      "gold_insns": 169,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisFormatSdsCommandArgv",
+      "name": "redisFormatSdsCommandArgv",
+      "base_insns": 225,
+      "gold_insns": 225,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisGitDirty",
+      "name": "redisGitDirty",
+      "base_insns": 3,
+      "gold_insns": 3,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisReaderGetReply",
+      "name": "redisReaderGetReply",
+      "base_insns": 1475,
+      "gold_insns": 1475,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisvFormatCommand",
+      "name": "redisvFormatCommand",
+      "base_insns": 715,
+      "gold_insns": 715,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "scriptCommand",
+      "name": "scriptCommand",
+      "base_insns": 284,
+      "gold_insns": 284,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "sentinelCommand",
+      "name": "sentinelCommand",
+      "base_insns": 1193,
+      "gold_insns": 1193,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "sentinelInfoCommand",
+      "name": "sentinelInfoCommand",
+      "base_insns": 287,
+      "gold_insns": 287,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "slowlogCommand",
+      "name": "slowlogCommand",
+      "base_insns": 321,
+      "gold_insns": 321,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "sortGetKeys",
+      "name": "sortGetKeys",
+      "base_insns": 140,
+      "gold_insns": 140,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "xgroupCommand",
+      "name": "xgroupCommand",
+      "base_insns": 722,
+      "gold_insns": 722,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "xinfoCommand",
+      "name": "xinfoCommand",
+      "base_insns": 544,
+      "gold_insns": 544,
+      "base_level": "L0",
+      "gold_level": "L0"
+     }
+    ],
+    "added": [],
+    "removed": [],
+    "data_modified": [],
+    "data_added": [],
+    "data_removed": []
+   },
+   "anonymous_literals_changed": 2,
+   "source_changes": {
+    "base": [
+     "bitcountCommand",
+     "bitposCommand"
+    ],
+    "gold": [
+     "bitcountCommand",
+     "bitposCommand"
+    ],
+    "debug_info": true
+   },
+   "scratch": {
+    "removes": [
+     "bitcountCommand",
+     "bitposCommand"
+    ],
+    "basis": "source lines (DWARF)",
+    "functions": [
+     {
+      "name": "bitcountCommand",
+      "instructions": 232,
+      "signature": "void bitcountCommand(client * c)",
+      "callers": []
+     },
+     {
+      "name": "bitposCommand",
+      "instructions": 282,
+      "signature": "void bitposCommand(client * c)",
+      "callers": []
+     }
+    ],
+    "instructions": 514,
+    "gold_instructions": 526,
+    "new_functions": [],
+    "data_to_write": []
+   }
+  },
+  {
+   "subject": "src/redis-cli",
+   "base": {
+    "path": "artifacts/redis__redis-11734/base.redis-cli.elf",
+    "sha256": "e18a61013451eaa6a624e644be8b9c1087a51d815c69732e481e495c2f92d320",
+    "bytes": 1936048,
+    "functions": 894,
+    "instructions": 81470,
+    "levels": {
+     "L2": 512,
+     "L0": 244,
+     "below L0": 66,
+     "L1": 4
+    }
+   },
+   "gold": {
+    "path": "artifacts/redis__redis-11734/gold.redis-cli.elf",
+    "sha256": "78ece064b90e9d044017bf4e4586c28ecb16e30f48d517ac48d850e1e52ccf21",
+    "bytes": 1936056,
+    "functions": 894,
+    "instructions": 81470
+   },
+   "gold_changes": {
+    "modified": [
+     {
+      "key": "::cliInitHelp",
+      "name": "cliInitHelp",
+      "base_insns": 345,
+      "gold_insns": 345,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisBuildId",
+      "name": "redisBuildId",
+      "base_insns": 6,
+      "gold_insns": 6,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisBuildIdRaw",
+      "name": "redisBuildIdRaw",
+      "base_insns": 3,
+      "gold_insns": 3,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisBuildIdString",
+      "name": "redisBuildIdString",
+      "base_insns": 28,
+      "gold_insns": 28,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisGitDirty",
+      "name": "redisGitDirty",
+      "base_insns": 3,
+      "gold_insns": 3,
+      "base_level": "L2",
+      "gold_level": "L2"
+     }
+    ],
+    "added": [],
+    "removed": [],
+    "data_modified": [],
+    "data_added": [],
+    "data_removed": []
+   },
+   "anonymous_literals_changed": 2,
+   "source_changes": {
+    "base": [],
+    "gold": [],
+    "debug_info": false
+   },
+   "scratch": {
+    "removes": [
+     "cliInitHelp",
+     "redisBuildId",
+     "redisBuildIdRaw",
+     "redisBuildIdString",
+     "redisGitDirty"
+    ],
+    "basis": "bytes (no line tables)",
+    "functions": [
+     {
+      "name": "cliInitHelp",
+      "instructions": 345,
+      "signature": "static void cliInitHelp(void)",
+      "callers": [
+       "issueCommandRepeat",
+       "main",
+       "repl",
+       "testHint",
+       "testHintSuite"
+      ]
+     },
+     {
+      "name": "redisBuildId",
+      "instructions": 6,
+      "signature": "uint64_t redisBuildId(void)",
+      "callers": []
+     },
+     {
+      "name": "redisBuildIdRaw",
+      "instructions": 3,
+      "signature": "const char * redisBuildIdRaw(void)",
+      "callers": []
+     },
+     {
+      "name": "redisBuildIdString",
+      "instructions": 28,
+      "signature": "char * redisBuildIdString(void)",
+      "callers": []
+     },
+     {
+      "name": "redisGitDirty",
+      "instructions": 3,
+      "signature": "char * redisGitDirty(void)",
+      "callers": [
+       "cliVersion"
+      ]
+     }
+    ],
+    "instructions": 385,
+    "gold_instructions": 385,
+    "new_functions": [],
+    "data_to_write": []
+   }
+  }
+ ],
+ "commands": [
+  {
+   "stage": "checkout",
+   "cwd": "redis__redis-11734",
+   "cmd": "git clone -q /mnt/scratch/ec2-user/swe-bin/repos/redis.git /mnt/scratch/ec2-user/swe-bin/work/redis__redis-11734/src"
+  },
+  {
+   "stage": "checkout",
+   "cwd": "src",
+   "cmd": "git checkout -q 45d3310694406fb0f338f7c639cda9754edb88f8"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "make CC=rv-cc AR=llvm-ar RANLIB=llvm-ranlib MALLOC=libc BUILD_TLS=no USE_SYSTEMD=no uname_S=Linux uname_M=riscv64 OPTIMIZATION=-O2 CFLAGS=-g LDFLAGS=-static -j2"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-11734/base.redis-server.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-11734/base.redis-server.elf"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-11734/base.redis-cli.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-11734/base.redis-cli.elf"
+  },
+  {
+   "stage": "test-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-11734/test.patch"
+  },
+  {
+   "stage": "test",
+   "cwd": "src",
+   "cmd": "TERM=dumb ./runtest --durable --single unit/bitops ; true"
+  },
+  {
+   "stage": "test-unpatch",
+   "cwd": "src",
+   "cmd": "git apply -R --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-11734/test.patch"
+  },
+  {
+   "stage": "reset",
+   "cwd": "src",
+   "cmd": "git checkout -q -- . && git clean -fdq -e '*.rv.elf'"
+  },
+  {
+   "stage": "gold-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-11734/gold.patch"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "make CC=rv-cc AR=llvm-ar RANLIB=llvm-ranlib MALLOC=libc BUILD_TLS=no USE_SYSTEMD=no uname_S=Linux uname_M=riscv64 OPTIMIZATION=-O2 CFLAGS=-g LDFLAGS=-static -j2"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-11734/gold.redis-server.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-11734/gold.redis-server.elf"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-11734/gold.redis-cli.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-11734/gold.redis-cli.elf"
+  },
+  {
+   "stage": "test-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-11734/test.patch"
+  },
+  {
+   "stage": "test",
+   "cwd": "src",
+   "cmd": "TERM=dumb ./runtest --durable --single unit/bitops ; true"
+  },
+  {
+   "stage": "test-unpatch",
+   "cwd": "src",
+   "cmd": "git apply -R --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-11734/test.patch"
+  }
+ ],
+ "convert_s": 208.0
+}

@@ -7,12 +7,22 @@
 //! the Lean kernel against the bytes of the binary (see docs/isa/trust.md).
 
 pub mod cc;
+pub mod cmd;
+pub mod dwarf;
 pub mod elf;
+pub mod frame;
 pub mod isa;
 pub mod lean;
 pub mod meta;
+pub mod module;
 pub mod profile;
+pub mod rv_tools;
+pub mod rvlist;
 pub mod sha256;
+pub mod sim;
+pub mod text;
+pub mod textconv;
+pub mod treediff;
 
 use profile::{Func, FuncMeta, Violation};
 use std::collections::BTreeSet;
@@ -28,8 +38,16 @@ pub struct Binary<'a> {
     pub funcs: Vec<Func>,
     /// `.nocompiler.struct`, if the file has one.
     pub recorded: Option<Vec<FuncMeta>>,
+    /// Functions whose record declares a frame partition (version 2 tables).
+    pub declared: BTreeSet<String>,
+    /// Stack variables the DWARF debug information places in each frame.
+    pub dwarf: dwarf::FrameVars,
     /// Every allocated section that is not code, in header order.
     pub segments: Vec<DataSegment>,
+    /// Executable sections besides `.text` (e.g. `.swb`, which `swb-elf link`
+    /// adds): their functions are in `funcs`, but the binary is not one image,
+    /// so the Lean export refuses it.
+    pub extra_exec: Vec<String>,
 }
 
 /// An allocated, non-executable section: `.rodata`, `.data`, `.bss`, ...
@@ -42,6 +60,8 @@ pub struct DataSegment {
     /// NOBITS (`.bss`): exported as zeros of `bytes.len()`.
     pub zero: bool,
     pub writable: bool,
+    /// The section's alignment (sh_addralign); not part of what a proof sees.
+    pub align: u64,
 }
 
 pub fn load(bytes: &[u8]) -> Result<Binary<'_>, String> {
@@ -56,40 +76,52 @@ pub fn load(bytes: &[u8]) -> Result<Binary<'_>, String> {
         );
     }
     let text = e.section(".text").ok_or("no .text section")?;
-    for s in &e.sections {
-        if s.flags & elf::SHF_EXECINSTR != 0 && s.name != ".text" && s.size > 0 {
-            return Err(format!(
-                "executable section {} besides .text; the profile has one",
-                s.name
-            ));
-        }
-    }
-    if text.addr % 4 != 0 || text.size % 4 != 0 {
-        return Err(".text is not a whole number of aligned words".into());
-    }
-    let words: Vec<u32> = e
-        .bytes(text)
-        .chunks_exact(4)
-        .map(|c| u32::from_le_bytes(c.try_into().unwrap()))
+    // Other executable sections (as `swb-elf link` adds `.swb`): read, and their
+    // functions recovered, but the binary is not one image for the Lean export
+    // (`Binary::extra_exec`).
+    let execs: Vec<&elf::Section> = std::iter::once(text)
+        .chain(
+            e.sections
+                .iter()
+                .filter(|s| s.flags & elf::SHF_EXECINSTR != 0 && s.name != ".text" && s.size > 0),
+        )
         .collect();
+    let mut sec_words = Vec::new();
+    for s in &execs {
+        if s.addr % 4 != 0 || s.size % 4 != 0 {
+            return Err(format!("{} is not a whole number of aligned words", s.name));
+        }
+        let w: Vec<u32> = e
+            .bytes(s)
+            .chunks_exact(4)
+            .map(|c| u32::from_le_bytes(c.try_into().unwrap()))
+            .collect();
+        sec_words.push(w);
+    }
+    let words = sec_words[0].clone();
     let mut funcs = Vec::new();
     for s in e.functions() {
-        if s.value < text.addr || s.value + s.size > text.addr + text.size {
+        let Some(k) = execs
+            .iter()
+            .position(|x| s.value >= x.addr && s.value + s.size <= x.addr + x.size)
+        else {
             continue;
-        }
-        if (s.value - text.addr) % 4 != 0 || s.size % 4 != 0 {
+        };
+        let x = execs[k];
+        if (s.value - x.addr) % 4 != 0 || s.size % 4 != 0 {
             return Err(format!(
                 "function {} is not a whole number of aligned words",
                 s.name
             ));
         }
-        let i = ((s.value - text.addr) / 4) as usize;
+        let i = ((s.value - x.addr) / 4) as usize;
         funcs.push(Func {
             name: s.name.clone(),
             entry: s.value,
-            words: words[i..i + (s.size / 4) as usize].to_vec(),
+            words: sec_words[k][i..i + (s.size / 4) as usize].to_vec(),
         });
     }
+    let extra_exec: Vec<String> = execs[1..].iter().map(|s| s.name.clone()).collect();
     let segments = e
         .sections
         .iter()
@@ -109,18 +141,41 @@ pub fn load(bytes: &[u8]) -> Result<Binary<'_>, String> {
             },
             zero: s.kind == elf::SHT_NOBITS,
             writable: s.flags & elf::SHF_WRITE != 0,
+            align: s.align.max(1),
         })
         .collect();
+    let mut declared = BTreeSet::new();
     let recorded = match e.section(meta::SECTION) {
-        Some(s) => Some(meta::decode(e.bytes(s))?),
+        Some(s) => {
+            let by_name: std::collections::BTreeMap<String, u64> =
+                funcs.iter().map(|f| (f.name.clone(), f.entry)).collect();
+            let mut out = Vec::new();
+            for r in meta::decode(e.bytes(s))? {
+                let entry = *by_name.get(&r.meta.name).ok_or_else(|| {
+                    format!(
+                        "{}: {} is not a function of this file",
+                        meta::SECTION,
+                        r.meta.name
+                    )
+                })?;
+                if r.version >= 2 {
+                    declared.insert(r.meta.name.clone());
+                }
+                out.push(r.place(entry, &by_name)?);
+            }
+            Some(out)
+        }
         None => None,
     };
     Ok(Binary {
         bytes,
+        extra_exec,
         text_addr: text.addr,
         text: words,
         funcs,
         recorded,
+        declared,
+        dwarf: dwarf::frame_vars(&e),
         segments,
     })
 }
@@ -129,7 +184,14 @@ pub fn load(bytes: &[u8]) -> Result<Binary<'_>, String> {
 pub struct Report {
     pub name: String,
     pub entry: u64,
+    /// The level reached: `None` when it does not even decode (R1).
+    pub level: Option<profile::Level>,
+    /// `Ok` at L1 and above, with the metadata to record; otherwise why not.
     pub result: Result<FuncMeta, Vec<Violation>>,
+    /// At L1: why the function is not at L2 (empty at L2).
+    pub missed: Vec<Violation>,
+    /// At L2: the certificate for the Lean checker.
+    pub cert: Vec<frame::CertFact>,
 }
 
 impl Binary<'_> {
@@ -138,39 +200,82 @@ impl Binary<'_> {
     }
 
     /// Check every function: against `.nocompiler.struct` where the file has one,
-    /// otherwise against the recovered tree. A recorded entry whose frame,
-    /// callees or size disagree with the code is a violation.
+    /// otherwise against the recovered tree and an inferred frame partition.
+    /// A recorded entry whose level, frame, callees or size disagree with the
+    /// code is a violation (M1).
     pub fn check(&self) -> Vec<Report> {
         let entries = self.entries();
         self.funcs
             .iter()
             .map(|f| {
                 let recorded = self.recorded.as_ref().map(|r| r.iter().find(|m| m.entry == f.entry));
-                let result = match recorded {
-                    Some(None) => Err(vec![Violation {
-                        addr: f.entry,
-                        rule: "M1 metadata",
-                        detail: format!("{} has no entry in {}", f.name, meta::SECTION),
-                    }]),
-                    Some(Some(m)) => profile::check(f, &m.nodes, &entries).and_then(|got| {
-                        if got.frame == m.frame && got.callees == m.callees && got.size == m.size {
-                            Ok(got)
-                        } else {
-                            Err(vec![Violation {
+                let fail = |level, violations| Report {
+                    name: f.name.clone(),
+                    entry: f.entry,
+                    level,
+                    result: Err(violations),
+                    missed: vec![],
+                    cert: vec![],
+                };
+                let (nodes, part) = match recorded {
+                    Some(None) => {
+                        return fail(
+                            None,
+                            vec![Violation {
                                 addr: f.entry,
                                 rule: "M1 metadata",
-                                detail: format!(
-                                    "recorded frame {} callees {:x?} size {}, the code has {} {:x?} {}",
-                                    m.frame, m.callees, m.size, got.frame, got.callees, got.size
-                                ),
-                            }])
+                                detail: format!("{} has no entry in {}", f.name, meta::SECTION),
+                            }],
+                        )
+                    }
+                    Some(Some(m)) => {
+                        let part = self.declared.contains(&f.name).then(|| frame::Partition {
+                            slots: m.slots.clone(),
+                            ranges: m.ranges.clone(),
+                        });
+                        (m.nodes.clone(), part)
+                    }
+                    None => match profile::recover(f, &entries) {
+                        Ok(nodes) => (nodes, None),
+                        Err(e) => {
+                            let level = (e.rule != "R1 decode").then_some(profile::Level::L0);
+                            return fail(level, vec![e]);
                         }
-                    }),
-                    None => profile::recover(f, &entries)
-                        .map_err(|e| vec![e])
-                        .and_then(|nodes| profile::check(f, &nodes, &entries)),
+                    },
                 };
-                Report { name: f.name.clone(), entry: f.entry, result }
+                match profile::check_with(f, &nodes, part.as_ref(), self.dwarf.get(&f.entry), &entries) {
+                    Err(e) => fail(e.level, e.violations),
+                    Ok(c) => {
+                        let got = c.meta;
+                        if let Some(Some(m)) = recorded {
+                            if got.frame != m.frame
+                                || got.callees != m.callees
+                                || got.size != m.size
+                                || (self.declared.contains(&f.name) && got.level != m.level)
+                            {
+                                return fail(
+                                    Some(profile::Level::L0),
+                                    vec![Violation {
+                                        addr: f.entry,
+                                        rule: "M1 metadata",
+                                        detail: format!(
+                                            "recorded frame {} callees {:x?} size {} level {:?}, the code has {} {:x?} {} {:?}",
+                                            m.frame, m.callees, m.size, m.level, got.frame, got.callees, got.size, got.level
+                                        ),
+                                    }],
+                                );
+                            }
+                        }
+                        Report {
+                            name: f.name.clone(),
+                            entry: f.entry,
+                            level: Some(got.level),
+                            result: Ok(got),
+                            missed: c.missed,
+                            cert: c.cert,
+                        }
+                    }
+                }
             })
             .collect()
     }
@@ -184,7 +289,11 @@ pub fn annotate(
     out: &std::path::Path,
 ) -> Result<Result<(usize, usize), Vec<String>>, String> {
     let bytes = std::fs::read(file).map_err(|e| format!("{}: {e}", file.display()))?;
-    let bin = load(&bytes)?;
+    let mut bin = load(&bytes)?;
+    // What is recorded is replaced, so it is not what the code is checked
+    // against: the tree is recovered and the partition inferred afresh.
+    let had_section = bin.recorded.take().is_some();
+    bin.declared.clear();
     let mut metas = Vec::new();
     let mut bad = Vec::new();
     for r in bin.check() {
@@ -196,11 +305,16 @@ pub fn annotate(
     if !bad.is_empty() {
         return Ok(Err(bad));
     }
-    let data = meta::encode(&metas);
+    let names: std::collections::BTreeMap<u64, String> = bin
+        .funcs
+        .iter()
+        .map(|f| (f.entry, f.name.clone()))
+        .collect();
+    let data = meta::encode(&metas, &names)?;
     let tmp = out.with_extension("nocompiler-struct.tmp");
     std::fs::write(&tmp, &data).map_err(|e| format!("{}: {e}", tmp.display()))?;
     let objcopy = std::env::var("NOCOMPILER_OBJCOPY").unwrap_or_else(|_| "llvm-objcopy".into());
-    let verb = if bin.recorded.is_some() {
+    let verb = if had_section {
         "--update-section"
     } else {
         "--add-section"

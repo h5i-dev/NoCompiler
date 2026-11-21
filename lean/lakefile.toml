@@ -10,7 +10,7 @@ name = "NoCompiler"
 [[lean_lib]]
 name = "Examples"
 
-# The A-vs-B demo (demo/README.md).
+# The A-vs-B demo (examples/demo/README.md).
 [[lean_lib]]
 name = "Demo"
 
@@ -18,7 +18,12 @@ name = "Demo"
 name = "nocompiler-audit"
 root = "Audit"
 
-# Runs compressed code in the extension's semantics, for demo/test/rvc_exec.py.
+# Runs compressed code in the extension's semantics, for examples/demo/test/rvc_exec.py.
 [[lean_exe]]
 name = "rvc-run"
 root = "RvcRun"
+
+# Evaluates the example specifications for scripts/core/check-spec-references.py.
+[[lean_exe]]
+name = "spec-eval"
+root = "SpecEval"

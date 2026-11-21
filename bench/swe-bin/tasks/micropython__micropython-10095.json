@@ -1,0 +1,376 @@
+{
+ "instance_id": "micropython__micropython-10095",
+ "repo": "micropython/micropython",
+ "base_commit": "cc26bf7406dac7822de347d14a9935c101d7e8aa",
+ "language": "C",
+ "recipe": "micropython-unix-standard",
+ "subjects": [
+  "ports/unix/build-standard/micropython"
+ ],
+ "test_command": "(cd tests && MICROPY_CPYTHON3=python3 MICROPY_MICROPYTHON=../ports/unix/build-standard/micropython ./run-tests.py -i basics/fun) | cat",
+ "FAIL_TO_PASS": [
+  "basics/fun_calldblstar.py"
+ ],
+ "PASS_TO_PASS": [
+  "basics/fun_defargs.py",
+  "basics/fun1.py",
+  "basics/fun_defargs2.py",
+  "basics/fun2.py",
+  "basics/fun_error.py",
+  "basics/fun3.py",
+  "basics/fun_error2.py",
+  "basics/fun_annotations.py",
+  "basics/fun_globals.py",
+  "basics/fun_kwargs.py",
+  "basics/fun_calldblstar2.py",
+  "basics/fun_kwonly.py",
+  "basics/fun_calldblstar3.py",
+  "basics/fun_kwonlydef.py",
+  "basics/fun_calldblstar4.py",
+  "basics/fun_kwvarargs.py",
+  "basics/fun_callstar.py",
+  "basics/fun_largestate.py",
+  "basics/fun_callstardblstar.py",
+  "basics/fun_name.py",
+  "basics/fun_str.py",
+  "basics/fun_varargs.py"
+ ],
+ "status": "kept",
+ "tests": [
+  {
+   "test": "basics/fun_calldblstar.py",
+   "kind": "FAIL_TO_PASS",
+   "base": "FAILED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "basics/fun_defargs.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "basics/fun1.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "basics/fun_defargs2.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "basics/fun2.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "basics/fun_error.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "basics/fun3.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "basics/fun_error2.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "basics/fun_annotations.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "basics/fun_globals.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "basics/fun_kwargs.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "basics/fun_calldblstar2.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "basics/fun_kwonly.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "basics/fun_calldblstar3.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "basics/fun_kwonlydef.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "basics/fun_calldblstar4.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "basics/fun_kwvarargs.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "basics/fun_callstar.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "basics/fun_largestate.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "basics/fun_callstardblstar.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "basics/fun_name.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "basics/fun_str.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "basics/fun_varargs.py",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  }
+ ],
+ "excluded_tests": {},
+ "timing_s": {
+  "base": {
+   "build": 67.7,
+   "test": 2.4
+  },
+  "gold": {
+   "build": 71.0,
+   "test": 1.9
+  }
+ },
+ "binaries": [
+  {
+   "subject": "ports/unix/build-standard/micropython",
+   "base": {
+    "path": "artifacts/micropython__micropython-10095/base.micropython.elf",
+    "sha256": "99f7f1b3e63ea2afe32e2c8b09baf332f87a4dd00c32117aad1caacfdd70dac5",
+    "bytes": 3968224,
+    "functions": 2498,
+    "instructions": 157064,
+    "levels": {
+     "L2": 1540,
+     "L0": 710,
+     "below L0": 166,
+     "L1": 12
+    }
+   },
+   "gold": {
+    "path": "artifacts/micropython__micropython-10095/gold.micropython.elf",
+    "sha256": "16b11db9e4bd1da0fc35b6dcc24fab14623e96d63b34eec69a328df5da8f25f6",
+    "bytes": 3968288,
+    "functions": 2498,
+    "instructions": 157066
+   },
+   "gold_changes": {
+    "modified": [
+     {
+      "key": "main_",
+      "name": "main_",
+      "base_insns": 837,
+      "gold_insns": 837,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "mp_setup_code_state",
+      "name": "mp_setup_code_state",
+      "base_insns": 375,
+      "gold_insns": 377,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "pthread_cancel",
+      "name": "pthread_cancel",
+      "base_insns": 52,
+      "gold_insns": 52,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     }
+    ],
+    "added": [],
+    "removed": [],
+    "data_modified": [
+     {
+      "key": "::mp_sys_version_obj",
+      "name": "mp_sys_version_obj",
+      "base_bytes": 32,
+      "gold_bytes": 32
+     }
+    ],
+    "data_added": [],
+    "data_removed": []
+   },
+   "anonymous_literals_changed": 2,
+   "source_changes": {
+    "base": [
+     "mp_setup_code_state"
+    ],
+    "gold": [
+     "mp_setup_code_state"
+    ],
+    "debug_info": true
+   },
+   "scratch": {
+    "removes": [
+     "mp_setup_code_state"
+    ],
+    "basis": "source lines (DWARF)",
+    "functions": [
+     {
+      "name": "mp_setup_code_state",
+      "instructions": 375,
+      "signature": "void mp_setup_code_state(mp_code_state_t * code_state, size_t n_args, size_t n_kw, const mp_obj_t * args)",
+      "callers": [
+       "fun_bc_call",
+       "gen_wrap_call"
+      ]
+     }
+    ],
+    "instructions": 375,
+    "gold_instructions": 377,
+    "new_functions": [],
+    "data_to_write": [
+     "mp_sys_version_obj"
+    ]
+   }
+  }
+ ],
+ "commands": [
+  {
+   "stage": "checkout",
+   "cwd": "micropython__micropython-10095",
+   "cmd": "git clone -q /mnt/scratch/ec2-user/swe-bin/repos/micropython.git /mnt/scratch/ec2-user/swe-bin/work/micropython__micropython-10095/src"
+  },
+  {
+   "stage": "checkout",
+   "cwd": "src",
+   "cmd": "git checkout -q cc26bf7406dac7822de347d14a9935c101d7e8aa"
+  },
+  {
+   "stage": "prepare",
+   "cwd": "src",
+   "cmd": "make -C ports/unix VARIANT=standard submodules"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "make -j2 -C mpy-cross"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "make -C ports/unix VARIANT=standard CROSS_COMPILE=riscv64-linux-musl- MICROPY_PY_FFI=0 LDFLAGS_EXTRA=-static CFLAGS_EXTRA='-g -Wno-error' STRIP=:  -j2"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/micropython__micropython-10095/base.micropython.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/micropython__micropython-10095/base.micropython.elf"
+  },
+  {
+   "stage": "test-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/micropython__micropython-10095/test.patch"
+  },
+  {
+   "stage": "test",
+   "cwd": "src",
+   "cmd": "cd tests && MICROPY_CPYTHON3=python3 MICROPY_MICROPYTHON=../ports/unix/build-standard/micropython ./run-tests.py -i basics/fun ; true"
+  },
+  {
+   "stage": "test-unpatch",
+   "cwd": "src",
+   "cmd": "git apply -R --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/micropython__micropython-10095/test.patch"
+  },
+  {
+   "stage": "reset",
+   "cwd": "src",
+   "cmd": "git checkout -q -- . && git clean -fdxq -e '*.rv.elf' && git submodule foreach -q 'git clean -fdxq; git checkout -q -- .'"
+  },
+  {
+   "stage": "gold-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/micropython__micropython-10095/gold.patch"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "make -j2 -C mpy-cross"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "make -C ports/unix VARIANT=standard CROSS_COMPILE=riscv64-linux-musl- MICROPY_PY_FFI=0 LDFLAGS_EXTRA=-static CFLAGS_EXTRA='-g -Wno-error' STRIP=:  -j2"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/micropython__micropython-10095/gold.micropython.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/micropython__micropython-10095/gold.micropython.elf"
+  },
+  {
+   "stage": "test-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/micropython__micropython-10095/test.patch"
+  },
+  {
+   "stage": "test",
+   "cwd": "src",
+   "cmd": "cd tests && MICROPY_CPYTHON3=python3 MICROPY_MICROPYTHON=../ports/unix/build-standard/micropython ./run-tests.py -i basics/fun ; true"
+  },
+  {
+   "stage": "test-unpatch",
+   "cwd": "src",
+   "cmd": "git apply -R --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/micropython__micropython-10095/test.patch"
+  }
+ ],
+ "convert_s": 200.4
+}

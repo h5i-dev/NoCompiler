@@ -1,0 +1,1234 @@
+{
+ "instance_id": "redis__redis-13338",
+ "repo": "redis/redis",
+ "base_commit": "94b9072e44af0bae8cfe2de5cfa4af7b8e399759",
+ "language": "C",
+ "recipe": "redis-libc-malloc",
+ "subjects": [
+  "src/redis-server",
+  "src/redis-cli"
+ ],
+ "test_command": "(TERM=dumb ./runtest --durable --single unit/type/stream-cgroups) | cat",
+ "FAIL_TO_PASS": [
+  "Consumer Group Lag with XDELs and tombstone after the last_id of consume group"
+ ],
+ "PASS_TO_PASS": [
+  "XGROUP CREATE: creation and duplicate group name detection",
+  "XGROUP CREATE: with ENTRIESREAD parameter",
+  "XGROUP CREATE: automatic stream creation fails without MKSTREAM",
+  "XGROUP CREATE: automatic stream creation works with MKSTREAM",
+  "XREADGROUP will return only new elements",
+  "XREADGROUP can read the history of the elements we own",
+  "XPENDING is able to return pending items",
+  "XPENDING can return single consumer items",
+  "XPENDING only group",
+  "XPENDING with IDLE",
+  "XPENDING with exclusive range intervals works as expected",
+  "XACK is able to remove items from the consumer/group PEL",
+  "XACK can't remove the same item multiple times",
+  "XACK is able to accept multiple arguments",
+  "XACK should fail if got at least one invalid ID",
+  "PEL NACK reassignment after XGROUP SETID event",
+  "XREADGROUP will not report data on empty history. Bug #5577",
+  "XREADGROUP history reporting of deleted entries. Bug #5570",
+  "Blocking XREADGROUP will not reply with an empty array",
+  "Blocking XREADGROUP: key deleted",
+  "Blocking XREADGROUP: key type changed with SET",
+  "Blocking XREADGROUP: key type changed with transaction",
+  "Blocking XREADGROUP: flushed DB",
+  "Blocking XREADGROUP: swapped DB, key doesn't exist",
+  "Blocking XREADGROUP: swapped DB, key is not a stream",
+  "XREAD and XREADGROUP against wrong parameter",
+  "Blocking XREAD: key deleted",
+  "Blocking XREAD: key type changed with SET",
+  "Blocking XREADGROUP for stream that ran dry (issue #5299)",
+  "Blocking XREADGROUP will ignore BLOCK if ID is not >",
+  "Blocking XREADGROUP for stream key that has clients blocked on list",
+  "Blocking XREADGROUP for stream key that has clients blocked on stream - avoid endless loop",
+  "Blocking XREADGROUP for stream key that has clients blocked on stream - reprocessing command",
+  "XGROUP DESTROY should unblock XREADGROUP with -NOGROUP",
+  "RENAME can unblock XREADGROUP with data",
+  "RENAME can unblock XREADGROUP with -NOGROUP",
+  "XCLAIM can claim PEL items from another consumer",
+  "XCLAIM without JUSTID increments delivery count",
+  "XCLAIM same consumer",
+  "XAUTOCLAIM can claim PEL items from another consumer",
+  "XAUTOCLAIM as an iterator",
+  "XAUTOCLAIM COUNT must be > 0",
+  "XCLAIM with XDEL",
+  "XCLAIM with trimming",
+  "XAUTOCLAIM with XDEL",
+  "XAUTOCLAIM with XDEL and count",
+  "XAUTOCLAIM with out of range count",
+  "XINFO FULL output",
+  "Consumer seen-time and active-time",
+  "XGROUP CREATECONSUMER: create consumer if does not exist",
+  "XGROUP CREATECONSUMER: group must exist",
+  "XREADGROUP of multiple entries changes dirty by one",
+  "XREADGROUP from PEL does not change dirty",
+  "XREADGROUP with NOACK creates consumer",
+  "Consumer without PEL is present in AOF after AOFRW",
+  "Consumer group read counter and lag in empty streams",
+  "Consumer group read counter and lag sanity",
+  "Consumer group lag with XDELs",
+  "Loading from legacy (Redis <= v6.2.x, rdb_ver < 10) persistence",
+  "Loading from legacy (Redis <= v7.0.x, rdb_ver < 11) persistence",
+  "Consumer group last ID propagation to slave (NOACK=0)",
+  "Consumer group last ID propagation to slave (NOACK=1)",
+  "Replication tests of XCLAIM with deleted entries (autoclaim=0)",
+  "Replication tests of XCLAIM with deleted entries (autoclaim=1)",
+  "XREADGROUP ACK would propagate entries-read",
+  "XREADGROUP from PEL inside MULTI",
+  "Empty stream with no lastid can be rewrite into AOF correctly"
+ ],
+ "status": "kept",
+ "tests": [
+  {
+   "test": "Consumer Group Lag with XDELs and tombstone after the last_id of consume group",
+   "kind": "FAIL_TO_PASS",
+   "base": "FAILED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XGROUP CREATE: creation and duplicate group name detection",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XGROUP CREATE: with ENTRIESREAD parameter",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XGROUP CREATE: automatic stream creation fails without MKSTREAM",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XGROUP CREATE: automatic stream creation works with MKSTREAM",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XREADGROUP will return only new elements",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XREADGROUP can read the history of the elements we own",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XPENDING is able to return pending items",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XPENDING can return single consumer items",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XPENDING only group",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XPENDING with IDLE",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XPENDING with exclusive range intervals works as expected",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XACK is able to remove items from the consumer/group PEL",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XACK can't remove the same item multiple times",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XACK is able to accept multiple arguments",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XACK should fail if got at least one invalid ID",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "PEL NACK reassignment after XGROUP SETID event",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XREADGROUP will not report data on empty history. Bug #5577",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XREADGROUP history reporting of deleted entries. Bug #5570",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Blocking XREADGROUP will not reply with an empty array",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Blocking XREADGROUP: key deleted",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Blocking XREADGROUP: key type changed with SET",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Blocking XREADGROUP: key type changed with transaction",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Blocking XREADGROUP: flushed DB",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Blocking XREADGROUP: swapped DB, key doesn't exist",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Blocking XREADGROUP: swapped DB, key is not a stream",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XREAD and XREADGROUP against wrong parameter",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Blocking XREAD: key deleted",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Blocking XREAD: key type changed with SET",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Blocking XREADGROUP for stream that ran dry (issue #5299)",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Blocking XREADGROUP will ignore BLOCK if ID is not >",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Blocking XREADGROUP for stream key that has clients blocked on list",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Blocking XREADGROUP for stream key that has clients blocked on stream - avoid endless loop",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Blocking XREADGROUP for stream key that has clients blocked on stream - reprocessing command",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XGROUP DESTROY should unblock XREADGROUP with -NOGROUP",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "RENAME can unblock XREADGROUP with data",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "RENAME can unblock XREADGROUP with -NOGROUP",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XCLAIM can claim PEL items from another consumer",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XCLAIM without JUSTID increments delivery count",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XCLAIM same consumer",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XAUTOCLAIM can claim PEL items from another consumer",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XAUTOCLAIM as an iterator",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XAUTOCLAIM COUNT must be > 0",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XCLAIM with XDEL",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XCLAIM with trimming",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XAUTOCLAIM with XDEL",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XAUTOCLAIM with XDEL and count",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XAUTOCLAIM with out of range count",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XINFO FULL output",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Consumer seen-time and active-time",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XGROUP CREATECONSUMER: create consumer if does not exist",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XGROUP CREATECONSUMER: group must exist",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XREADGROUP of multiple entries changes dirty by one",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XREADGROUP from PEL does not change dirty",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XREADGROUP with NOACK creates consumer",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Consumer without PEL is present in AOF after AOFRW",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Consumer group read counter and lag in empty streams",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Consumer group read counter and lag sanity",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Consumer group lag with XDELs",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Loading from legacy (Redis <= v6.2.x, rdb_ver < 10) persistence",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Loading from legacy (Redis <= v7.0.x, rdb_ver < 11) persistence",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Consumer group last ID propagation to slave (NOACK=0)",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Consumer group last ID propagation to slave (NOACK=1)",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Replication tests of XCLAIM with deleted entries (autoclaim=0)",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Replication tests of XCLAIM with deleted entries (autoclaim=1)",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XREADGROUP ACK would propagate entries-read",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "XREADGROUP from PEL inside MULTI",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Empty stream with no lastid can be rewrite into AOF correctly",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  }
+ ],
+ "excluded_tests": {},
+ "timing_s": {
+  "base": {
+   "build": 58.5,
+   "test": 6.9
+  },
+  "gold": {
+   "build": 52.7,
+   "test": 22.5
+  }
+ },
+ "binaries": [
+  {
+   "subject": "src/redis-server",
+   "base": {
+    "path": "artifacts/redis__redis-13338/base.redis-server.elf",
+    "sha256": "20ba177c6dce75af33340ecc410a3f86b22d32b25a5dcc9171a0ddd5dd84c759",
+    "bytes": 11032672,
+    "functions": 5035,
+    "instructions": 423286,
+    "levels": {
+     "L2": 3200,
+     "L0": 1266,
+     "below L0": 420,
+     "L1": 17
+    }
+   },
+   "gold": {
+    "path": "artifacts/redis__redis-13338/gold.redis-server.elf",
+    "sha256": "aee888d2935d61b3f0c228e6c72a7fc79d720147fa441c708d6d3ed626830940",
+    "bytes": 11034568,
+    "functions": 5035,
+    "instructions": 423356
+   },
+   "gold_changes": {
+    "modified": [
+     {
+      "key": "::__synccall",
+      "name": "__synccall",
+      "base_insns": 186,
+      "gold_insns": 186,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_redisContextConnectTcp",
+      "name": "_redisContextConnectTcp",
+      "base_insns": 371,
+      "gold_insns": 371,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::lua_cjson_new",
+      "name": "lua_cjson_new",
+      "base_insns": 201,
+      "gold_insns": 201,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "aclCommand",
+      "name": "aclCommand",
+      "base_insns": 1681,
+      "gold_insns": 1681,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "addReplyFlagsForCommand",
+      "name": "addReplyFlagsForCommand",
+      "base_insns": 96,
+      "gold_insns": 96,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "clientCommand",
+      "name": "clientCommand",
+      "base_insns": 1732,
+      "gold_insns": 1732,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "clusterCommand",
+      "name": "clusterCommand",
+      "base_insns": 723,
+      "gold_insns": 723,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "clusterCommandHelp",
+      "name": "clusterCommandHelp",
+      "base_insns": 21,
+      "gold_insns": 21,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "commandHelpCommand",
+      "name": "commandHelpCommand",
+      "base_insns": 18,
+      "gold_insns": 18,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "configHelpCommand",
+      "name": "configHelpCommand",
+      "base_insns": 18,
+      "gold_insns": 18,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "debugCommand",
+      "name": "debugCommand",
+      "base_insns": 2368,
+      "gold_insns": 2368,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "functionHelpCommand",
+      "name": "functionHelpCommand",
+      "base_insns": 18,
+      "gold_insns": 18,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "genClusterInfoString",
+      "name": "genClusterInfoString",
+      "base_insns": 288,
+      "gold_insns": 288,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "genInfoSectionDict",
+      "name": "genInfoSectionDict",
+      "base_insns": 162,
+      "gold_insns": 162,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "genericZpopCommand",
+      "name": "genericZpopCommand",
+      "base_insns": 453,
+      "gold_insns": 453,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "hi_sdscatfmt",
+      "name": "hi_sdscatfmt",
+      "base_insns": 875,
+      "gold_insns": 875,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "hi_sdsfromlonglong",
+      "name": "hi_sdsfromlonglong",
+      "base_insns": 44,
+      "gold_insns": 44,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "hi_sdsll2str",
+      "name": "hi_sdsll2str",
+      "base_insns": 36,
+      "gold_insns": 36,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "hi_sdsull2str",
+      "name": "hi_sdsull2str",
+      "base_insns": 31,
+      "gold_insns": 31,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "hrandfieldWithCountCommand",
+      "name": "hrandfieldWithCountCommand",
+      "base_insns": 653,
+      "gold_insns": 653,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "latencyCommand",
+      "name": "latencyCommand",
+      "base_insns": 345,
+      "gold_insns": 345,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "loadServerConfigFromString",
+      "name": "loadServerConfigFromString",
+      "base_insns": 580,
+      "gold_insns": 580,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "memoryCommand",
+      "name": "memoryCommand",
+      "base_insns": 656,
+      "gold_insns": 656,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "migrateGetKeys",
+      "name": "migrateGetKeys",
+      "base_insns": 205,
+      "gold_insns": 205,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "moduleCommand",
+      "name": "moduleCommand",
+      "base_insns": 203,
+      "gold_insns": 203,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "objectCommand",
+      "name": "objectCommand",
+      "base_insns": 248,
+      "gold_insns": 248,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "pfdebugCommand",
+      "name": "pfdebugCommand",
+      "base_insns": 336,
+      "gold_insns": 336,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "pthread_cancel",
+      "name": "pthread_cancel",
+      "base_insns": 52,
+      "gold_insns": 52,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "pubsubCommand",
+      "name": "pubsubCommand",
+      "base_insns": 243,
+      "gold_insns": 243,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisBuildId",
+      "name": "redisBuildId",
+      "base_insns": 6,
+      "gold_insns": 6,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisBuildIdRaw",
+      "name": "redisBuildIdRaw",
+      "base_insns": 3,
+      "gold_insns": 3,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisBuildIdString",
+      "name": "redisBuildIdString",
+      "base_insns": 28,
+      "gold_insns": 28,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisContextConnectUnix",
+      "name": "redisContextConnectUnix",
+      "base_insns": 178,
+      "gold_insns": 178,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisFormatCommandArgv",
+      "name": "redisFormatCommandArgv",
+      "base_insns": 169,
+      "gold_insns": 169,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisFormatSdsCommandArgv",
+      "name": "redisFormatSdsCommandArgv",
+      "base_insns": 225,
+      "gold_insns": 225,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisGitDirty",
+      "name": "redisGitDirty",
+      "base_insns": 3,
+      "gold_insns": 3,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisReaderGetReply",
+      "name": "redisReaderGetReply",
+      "base_insns": 1475,
+      "gold_insns": 1475,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisvFormatCommand",
+      "name": "redisvFormatCommand",
+      "base_insns": 715,
+      "gold_insns": 715,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "scriptCommand",
+      "name": "scriptCommand",
+      "base_insns": 293,
+      "gold_insns": 293,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "sentinelCommand",
+      "name": "sentinelCommand",
+      "base_insns": 1193,
+      "gold_insns": 1193,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "sentinelInfoCommand",
+      "name": "sentinelInfoCommand",
+      "base_insns": 287,
+      "gold_insns": 287,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "slowlogCommand",
+      "name": "slowlogCommand",
+      "base_insns": 321,
+      "gold_insns": 321,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "sortGetKeys",
+      "name": "sortGetKeys",
+      "base_insns": 140,
+      "gold_insns": 140,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "streamEstimateDistanceFromFirstEverEntry",
+      "name": "streamEstimateDistanceFromFirstEverEntry",
+      "base_insns": 68,
+      "gold_insns": 86,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "streamRangeHasTombstones",
+      "name": "streamRangeHasTombstones",
+      "base_insns": 52,
+      "gold_insns": 42,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "streamReplyWithCGLag",
+      "name": "streamReplyWithCGLag",
+      "base_insns": 53,
+      "gold_insns": 47,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "streamReplyWithRange",
+      "name": "streamReplyWithRange",
+      "base_insns": 426,
+      "gold_insns": 420,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "syncWithMaster",
+      "name": "syncWithMaster",
+      "base_insns": 863,
+      "gold_insns": 863,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "xaddCommand",
+      "name": "xaddCommand",
+      "base_insns": 325,
+      "gold_insns": 325,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "xautoclaimCommand",
+      "name": "xautoclaimCommand",
+      "base_insns": 735,
+      "gold_insns": 735,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "xclaimCommand",
+      "name": "xclaimCommand",
+      "base_insns": 685,
+      "gold_insns": 685,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "xgroupCommand",
+      "name": "xgroupCommand",
+      "base_insns": 717,
+      "gold_insns": 717,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "xinfoCommand",
+      "name": "xinfoCommand",
+      "base_insns": 526,
+      "gold_insns": 555,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "xinfoReplyWithStreamInfo",
+      "name": "xinfoReplyWithStreamInfo",
+      "base_insns": 1051,
+      "gold_insns": 1096,
+      "base_level": "L0",
+      "gold_level": "L0"
+     }
+    ],
+    "added": [],
+    "removed": [],
+    "data_modified": [],
+    "data_added": [],
+    "data_removed": []
+   },
+   "anonymous_literals_changed": 2,
+   "source_changes": {
+    "base": [
+     "streamReplyWithRange"
+    ],
+    "gold": [
+     "streamEstimateDistanceFromFirstEverEntry",
+     "streamReplyWithRange"
+    ],
+    "debug_info": true
+   },
+   "scratch": {
+    "removes": [
+     "streamEstimateDistanceFromFirstEverEntry",
+     "streamReplyWithRange"
+    ],
+    "basis": "source lines (DWARF)",
+    "functions": [
+     {
+      "name": "streamEstimateDistanceFromFirstEverEntry",
+      "instructions": 68,
+      "signature": "long long streamEstimateDistanceFromFirstEverEntry(stream * s, streamID * id)",
+      "callers": [
+       "rdbLoadObject",
+       "streamReplyWithCGLag",
+       "streamReplyWithRange"
+      ]
+     },
+     {
+      "name": "streamReplyWithRange",
+      "instructions": 426,
+      "signature": "size_t streamReplyWithRange(client * c, stream * s, streamID * start, streamID * end, size_t count, int rev, streamCG * group, streamConsumer * consumer, int flags, streamPropInfo * spi, unsigned long * propCount)",
+      "callers": [
+       "streamReplyWithRangeFromConsumerPEL",
+       "xautoclaimCommand",
+       "xclaimCommand",
+       "xinfoReplyWithStreamInfo",
+       "xrangeGenericCommand",
+       "xreadCommand"
+      ]
+     }
+    ],
+    "instructions": 494,
+    "gold_instructions": 506,
+    "new_functions": [],
+    "data_to_write": []
+   }
+  },
+  {
+   "subject": "src/redis-cli",
+   "base": {
+    "path": "artifacts/redis__redis-13338/base.redis-cli.elf",
+    "sha256": "cc35264a6f4173cd1363d1fa4b2e12cdb2cd1d6581044d99c5c7779a5be2c6cd",
+    "bytes": 2114984,
+    "functions": 967,
+    "instructions": 87167,
+    "levels": {
+     "L2": 550,
+     "L0": 263,
+     "below L0": 82,
+     "L1": 4
+    }
+   },
+   "gold": {
+    "path": "artifacts/redis__redis-13338/gold.redis-cli.elf",
+    "sha256": "1e3b5e959bcce14e85e741b75333b1adcd12765f61d296852c06abd02f22e901",
+    "bytes": 2114992,
+    "functions": 967,
+    "instructions": 87167
+   },
+   "gold_changes": {
+    "modified": [
+     {
+      "key": "::cliInitHelp",
+      "name": "cliInitHelp",
+      "base_insns": 345,
+      "gold_insns": 345,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisBuildId",
+      "name": "redisBuildId",
+      "base_insns": 6,
+      "gold_insns": 6,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisBuildIdRaw",
+      "name": "redisBuildIdRaw",
+      "base_insns": 3,
+      "gold_insns": 3,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisBuildIdString",
+      "name": "redisBuildIdString",
+      "base_insns": 28,
+      "gold_insns": 28,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisGitDirty",
+      "name": "redisGitDirty",
+      "base_insns": 3,
+      "gold_insns": 3,
+      "base_level": "L2",
+      "gold_level": "L2"
+     }
+    ],
+    "added": [],
+    "removed": [],
+    "data_modified": [],
+    "data_added": [],
+    "data_removed": []
+   },
+   "anonymous_literals_changed": 2,
+   "source_changes": {
+    "base": [],
+    "gold": [],
+    "debug_info": false
+   },
+   "scratch": {
+    "removes": [
+     "cliInitHelp",
+     "redisBuildId",
+     "redisBuildIdRaw",
+     "redisBuildIdString",
+     "redisGitDirty"
+    ],
+    "basis": "bytes (no line tables)",
+    "functions": [
+     {
+      "name": "cliInitHelp",
+      "instructions": 345,
+      "signature": "static void cliInitHelp(void)",
+      "callers": [
+       "issueCommandRepeat",
+       "main",
+       "repl",
+       "testHint",
+       "testHintSuite"
+      ]
+     },
+     {
+      "name": "redisBuildId",
+      "instructions": 6,
+      "signature": "uint64_t redisBuildId(void)",
+      "callers": []
+     },
+     {
+      "name": "redisBuildIdRaw",
+      "instructions": 3,
+      "signature": "const char * redisBuildIdRaw(void)",
+      "callers": []
+     },
+     {
+      "name": "redisBuildIdString",
+      "instructions": 28,
+      "signature": "char * redisBuildIdString(void)",
+      "callers": []
+     },
+     {
+      "name": "redisGitDirty",
+      "instructions": 3,
+      "signature": "char * redisGitDirty(void)",
+      "callers": [
+       "cliVersion"
+      ]
+     }
+    ],
+    "instructions": 385,
+    "gold_instructions": 385,
+    "new_functions": [],
+    "data_to_write": []
+   }
+  }
+ ],
+ "commands": [
+  {
+   "stage": "checkout",
+   "cwd": "redis__redis-13338",
+   "cmd": "git clone -q /mnt/scratch/ec2-user/swe-bin/repos/redis.git /mnt/scratch/ec2-user/swe-bin/work/redis__redis-13338/src"
+  },
+  {
+   "stage": "checkout",
+   "cwd": "src",
+   "cmd": "git checkout -q 94b9072e44af0bae8cfe2de5cfa4af7b8e399759"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "make CC=rv-cc AR=llvm-ar RANLIB=llvm-ranlib MALLOC=libc BUILD_TLS=no USE_SYSTEMD=no uname_S=Linux uname_M=riscv64 OPTIMIZATION=-O2 CFLAGS=-g LDFLAGS=-static -j2"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-13338/base.redis-server.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-13338/base.redis-server.elf"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-13338/base.redis-cli.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-13338/base.redis-cli.elf"
+  },
+  {
+   "stage": "test-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-13338/test.patch"
+  },
+  {
+   "stage": "test",
+   "cwd": "src",
+   "cmd": "TERM=dumb ./runtest --durable --single unit/type/stream-cgroups ; true"
+  },
+  {
+   "stage": "test-unpatch",
+   "cwd": "src",
+   "cmd": "git apply -R --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-13338/test.patch"
+  },
+  {
+   "stage": "reset",
+   "cwd": "src",
+   "cmd": "git checkout -q -- . && git clean -fdq -e '*.rv.elf'"
+  },
+  {
+   "stage": "gold-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-13338/gold.patch"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "make CC=rv-cc AR=llvm-ar RANLIB=llvm-ranlib MALLOC=libc BUILD_TLS=no USE_SYSTEMD=no uname_S=Linux uname_M=riscv64 OPTIMIZATION=-O2 CFLAGS=-g LDFLAGS=-static -j2"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-13338/gold.redis-server.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-13338/gold.redis-server.elf"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-13338/gold.redis-cli.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-13338/gold.redis-cli.elf"
+  },
+  {
+   "stage": "test-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-13338/test.patch"
+  },
+  {
+   "stage": "test",
+   "cwd": "src",
+   "cmd": "TERM=dumb ./runtest --durable --single unit/type/stream-cgroups ; true"
+  },
+  {
+   "stage": "test-unpatch",
+   "cwd": "src",
+   "cmd": "git apply -R --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-13338/test.patch"
+  }
+ ],
+ "convert_s": 347.0
+}

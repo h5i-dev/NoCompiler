@@ -7,10 +7,10 @@ formal-verification-friendly profile of RISC-V, with the Lean 4 library
 proofs about it are written in and the tools that check binaries against it
 ([docs/isa/](isa/README.md)). The PTX and RV32 firmware verifiers move to
 [experiment/](../experiment/README.md) and the binary analysis toolkit with
-its decompiler to [devinfra/](../devinfra/README.md). When they compete for
+its decompiler to [docs/toolkit/](toolkit/README.md). When they compete for
 effort, the core comes first. The previous roadmap, including the toolkit's
 milestones and its "not building" list, is kept as
-[devinfra/docs/ROADMAP-toolkit.md](../devinfra/docs/ROADMAP-toolkit.md).
+[docs/toolkit/ROADMAP-toolkit.md](toolkit/ROADMAP-toolkit.md).
 
 ## Principles
 
@@ -38,12 +38,13 @@ milestones and its "not building" list, is kept as
 | `nocompiler` tool: check R1 to R5, recover structure, `.nocompiler.struct`, export, disasm | done |
 | Lean ELF reader and `nocompiler-audit`: `.text` and every data section match the binary, axioms | done |
 | Worked examples from clang `-O2`: `sum` (a loop over an array) and `sum2` (a stack frame and two calls to `sum`, proved from its specification alone) | done |
-| Negative controls: mutated binaries must break their proofs (`scripts/check-proof-controls.sh`) | done |
+| Negative controls: mutated binaries must break their proofs (`scripts/core/check-proof-controls.sh`) | done |
 | Syscall examples: `write_all` (a loop over short writes, with errors) and `hello` (writes a `.rodata` message through it, then exits) | done |
 | The structural checker in Lean (R1 to R3), `<name>_checked` theorems for every exported function, and `Struct.cfi`: a checked function only transfers control as the rules allow | done |
 | R4 and R5 (registers, stack discipline) in Lean | next |
 | `nocompiler cc`: clang and ld.lld with the flags that keep ordinary C in the profile, then annotate and check; tested on a corpus | done |
 | Loop invariants placed from `.nocompiler.struct` by the tactics instead of by hand | next |
+| Spec vocabulary (`lean/NoCompiler/Vocab/`: buffers, folds, words, frames) and spec QA: spec mutation tests, computable specs against independent references ([isa/vocab.md](isa/vocab.md)) | done |
 | Differential test against the Sail RISC-V model's C emulator (pinned release), random programs over every instruction | done |
 | Lean semantics generated from the Sail RISC-V model (its Lean backend) and proved equal to `NoCompiler.exec` | planned: needs the Sail toolchain built (OCaml 5, opam) and a generated model of tens of thousands of lines |
 

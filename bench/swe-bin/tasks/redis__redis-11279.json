@@ -1,0 +1,1300 @@
+{
+ "instance_id": "redis__redis-11279",
+ "repo": "redis/redis",
+ "base_commit": "eedb8b172474dd7776d9bbb0f2954a1394027289",
+ "language": "C",
+ "recipe": "redis-libc-malloc",
+ "subjects": [
+  "src/redis-server",
+  "src/redis-cli"
+ ],
+ "test_command": "(TERM=dumb ./runtest --durable --single unit/acl) | cat",
+ "FAIL_TO_PASS": [
+  "Validate subset of channels is prefixed with resetchannels flag",
+  "ACL SETUSER RESET reverting to default newly created user"
+ ],
+ "PASS_TO_PASS": [
+  "Connections start with the default user",
+  "It is possible to create new users",
+  "Usernames can not contain spaces or null characters",
+  "New users start disabled",
+  "Enabling the user allows the login",
+  "Only the set of correct passwords work",
+  "It is possible to remove passwords from the set of valid ones",
+  "Test password hashes can be added",
+  "Test password hashes validate input",
+  "ACL GETUSER returns the password hash instead of the actual password",
+  "Test hashed passwords removal",
+  "By default users are not able to access any command",
+  "By default users are not able to access any key",
+  "It's possible to allow the access of a subset of keys",
+  "By default, only default user is able to publish to any channel",
+  "By default, only default user is not able to publish to any shard channel",
+  "By default, only default user is able to subscribe to any channel",
+  "By default, only default user is able to subscribe to any shard channel",
+  "By default, only default user is able to subscribe to any pattern",
+  "It's possible to allow publishing to a subset of channels",
+  "It's possible to allow publishing to a subset of shard channels",
+  "In transaction queue publish/subscribe/psubscribe to unauthorized channel will fail",
+  "It's possible to allow subscribing to a subset of channels",
+  "It's possible to allow subscribing to a subset of shard channels",
+  "It's possible to allow subscribing to a subset of channel patterns",
+  "Subscribers are killed when revoked of channel permission",
+  "Subscribers are killed when revoked of pattern permission",
+  "Subscribers are pardoned if literal permissions are retained and/or gaining allchannels",
+  "Users can be configured to authenticate with any password",
+  "ACLs can exclude single commands",
+  "ACLs can include or exclude whole classes of commands",
+  "ACLs can include single subcommands",
+  "ACLs can exclude single subcommands, case 1",
+  "ACLs can exclude single subcommands, case 2",
+  "ACLs cannot include a subcommand with a specific arg",
+  "ACLs cannot exclude or include a container commands with a specific arg",
+  "ACLs cannot exclude or include a container command with two args",
+  "ACLs including of a type includes also subcommands",
+  "ACLs can block SELECT of all but a specific DB",
+  "ACLs can block all DEBUG subcommands except one",
+  "ACLs set can include subcommands, if already full command exists",
+  "ACLs set can exclude subcommands, if already full command exists",
+  "ACL GETUSER is able to translate back command permissions",
+  "ACL GETUSER provides reasonable results",
+  "ACL CAT with illegal arguments",
+  "ACL CAT without category - list all categories",
+  "ACL CAT category - list all commands/subcommands that belong to category",
+  "ACL requires explicit permission for scripting for EVAL_RO, EVALSHA_RO and FCALL_RO",
+  "ACL #5998 regression: memory leaks adding / removing subcommands",
+  "ACL LOG shows failed command executions at toplevel",
+  "ACL LOG shows failed subcommand executions at toplevel",
+  "ACL LOG is able to test similar events",
+  "ACL LOG is able to log keys access violations and key name",
+  "ACL LOG is able to log channel access violations and channel name",
+  "ACL LOG RESET is able to flush the entries in the log",
+  "ACL LOG can distinguish the transaction context (1)",
+  "ACL LOG can distinguish the transaction context (2)",
+  "ACL can log errors in the context of Lua scripting",
+  "ACL LOG can accept a numerical argument to show less entries",
+  "ACL LOG can log failed auth attempts",
+  "ACL LOG entries are limited to a maximum amount",
+  "When default user is off, new connections are not authenticated",
+  "When default user has no command permission, hello command still works for other users",
+  "ACL HELP should not have unexpected options",
+  "Delete a user that the client doesn't use",
+  "Delete a user that the client is using",
+  "ACL GENPASS command failed test",
+  "Default user can not be removed",
+  "ACL load non-existing configured ACL file",
+  "default: load from include file, can access any channels",
+  "default: with config acl-pubsub-default allchannels after reset, can access any channels",
+  "default: with config acl-pubsub-default resetchannels after reset, can not access any channels",
+  "Alice: can execute all command",
+  "Bob: just execute @set and acl command",
+  "ACL load and save",
+  "ACL load and save with restricted channels",
+  "Default user has access to all channels irrespective of flag",
+  "Update acl-pubsub-default, existing users shouldn't get affected",
+  "Single channel is valid",
+  "Single channel is not valid with allchannels",
+  "Only default user has access to all channels irrespective of flag",
+  "default: load from config file, without channel permission default user can't access any channels",
+  "default: load from config file with all channels permissions",
+  "Test loading an ACL file with duplicate users",
+  "Test loading an ACL file with duplicate default user",
+  "Test loading duplicate users in config on startup",
+  "ACL from config file and config rewrite"
+ ],
+ "status": "kept",
+ "tests": [
+  {
+   "test": "Validate subset of channels is prefixed with resetchannels flag",
+   "kind": "FAIL_TO_PASS",
+   "base": "FAILED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL SETUSER RESET reverting to default newly created user",
+   "kind": "FAIL_TO_PASS",
+   "base": "FAILED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Connections start with the default user",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "It is possible to create new users",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Usernames can not contain spaces or null characters",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "New users start disabled",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Enabling the user allows the login",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Only the set of correct passwords work",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "It is possible to remove passwords from the set of valid ones",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Test password hashes can be added",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Test password hashes validate input",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL GETUSER returns the password hash instead of the actual password",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Test hashed passwords removal",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "By default users are not able to access any command",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "By default users are not able to access any key",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "It's possible to allow the access of a subset of keys",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "By default, only default user is able to publish to any channel",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "By default, only default user is not able to publish to any shard channel",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "By default, only default user is able to subscribe to any channel",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "By default, only default user is able to subscribe to any shard channel",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "By default, only default user is able to subscribe to any pattern",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "It's possible to allow publishing to a subset of channels",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "It's possible to allow publishing to a subset of shard channels",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "In transaction queue publish/subscribe/psubscribe to unauthorized channel will fail",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "It's possible to allow subscribing to a subset of channels",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "It's possible to allow subscribing to a subset of shard channels",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "It's possible to allow subscribing to a subset of channel patterns",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Subscribers are killed when revoked of channel permission",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Subscribers are killed when revoked of pattern permission",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Subscribers are pardoned if literal permissions are retained and/or gaining allchannels",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Users can be configured to authenticate with any password",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACLs can exclude single commands",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACLs can include or exclude whole classes of commands",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACLs can include single subcommands",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACLs can exclude single subcommands, case 1",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACLs can exclude single subcommands, case 2",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACLs cannot include a subcommand with a specific arg",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACLs cannot exclude or include a container commands with a specific arg",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACLs cannot exclude or include a container command with two args",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACLs including of a type includes also subcommands",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACLs can block SELECT of all but a specific DB",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACLs can block all DEBUG subcommands except one",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACLs set can include subcommands, if already full command exists",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACLs set can exclude subcommands, if already full command exists",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL GETUSER is able to translate back command permissions",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL GETUSER provides reasonable results",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL CAT with illegal arguments",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL CAT without category - list all categories",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL CAT category - list all commands/subcommands that belong to category",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL requires explicit permission for scripting for EVAL_RO, EVALSHA_RO and FCALL_RO",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL #5998 regression: memory leaks adding / removing subcommands",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL LOG shows failed command executions at toplevel",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL LOG shows failed subcommand executions at toplevel",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL LOG is able to test similar events",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL LOG is able to log keys access violations and key name",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL LOG is able to log channel access violations and channel name",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL LOG RESET is able to flush the entries in the log",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL LOG can distinguish the transaction context (1)",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL LOG can distinguish the transaction context (2)",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL can log errors in the context of Lua scripting",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL LOG can accept a numerical argument to show less entries",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL LOG can log failed auth attempts",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL LOG entries are limited to a maximum amount",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "When default user is off, new connections are not authenticated",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "When default user has no command permission, hello command still works for other users",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL HELP should not have unexpected options",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Delete a user that the client doesn't use",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Delete a user that the client is using",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL GENPASS command failed test",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Default user can not be removed",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL load non-existing configured ACL file",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "default: load from include file, can access any channels",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "default: with config acl-pubsub-default allchannels after reset, can access any channels",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "default: with config acl-pubsub-default resetchannels after reset, can not access any channels",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Alice: can execute all command",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Bob: just execute @set and acl command",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL load and save",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL load and save with restricted channels",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Default user has access to all channels irrespective of flag",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Update acl-pubsub-default, existing users shouldn't get affected",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Single channel is valid",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Single channel is not valid with allchannels",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Only default user has access to all channels irrespective of flag",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "default: load from config file, without channel permission default user can't access any channels",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "default: load from config file with all channels permissions",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Test loading an ACL file with duplicate users",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Test loading an ACL file with duplicate default user",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "Test loading duplicate users in config on startup",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "ACL from config file and config rewrite",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  }
+ ],
+ "excluded_tests": {},
+ "timing_s": {
+  "base": {
+   "build": 87.0,
+   "test": 6.8
+  },
+  "gold": {
+   "build": 13.9,
+   "test": 6.1
+  }
+ },
+ "binaries": [
+  {
+   "subject": "src/redis-server",
+   "base": {
+    "path": "artifacts/redis__redis-11279/base.redis-server.elf",
+    "sha256": "1ac320d84a29665dc343c2eb1cc2491219b7c6fe1067618873a898bdeeba41f0",
+    "bytes": 10168424,
+    "functions": 4605,
+    "instructions": 389918,
+    "levels": {
+     "L2": 2905,
+     "L0": 1136,
+     "below L0": 414,
+     "L1": 18
+    }
+   },
+   "gold": {
+    "path": "artifacts/redis__redis-11279/gold.redis-server.elf",
+    "sha256": "918fc3ca1fad8ee1b519cc048369e82f4b11a4fc30b3d5797801b321d475528e",
+    "bytes": 10168432,
+    "functions": 4605,
+    "instructions": 389918
+   },
+   "gold_changes": {
+    "modified": [
+     {
+      "key": "::__synccall",
+      "name": "__synccall",
+      "base_insns": 186,
+      "gold_insns": 186,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_redisContextConnectTcp",
+      "name": "_redisContextConnectTcp",
+      "base_insns": 354,
+      "gold_insns": 354,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::lua_cjson_new",
+      "name": "lua_cjson_new",
+      "base_insns": 201,
+      "gold_insns": 201,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "ACLCreateUnlinkedUser",
+      "name": "ACLCreateUnlinkedUser",
+      "base_insns": 51,
+      "gold_insns": 51,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "ACLCreateUser",
+      "name": "ACLCreateUser",
+      "base_insns": 122,
+      "gold_insns": 122,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "ACLDescribeSelectorCommandRules",
+      "name": "ACLDescribeSelectorCommandRules",
+      "base_insns": 244,
+      "gold_insns": 244,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "ACLLoadConfiguredUsers",
+      "name": "ACLLoadConfiguredUsers",
+      "base_insns": 361,
+      "gold_insns": 361,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "ACLSetUser",
+      "name": "ACLSetUser",
+      "base_insns": 413,
+      "gold_insns": 413,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "aclCommand",
+      "name": "aclCommand",
+      "base_insns": 1885,
+      "gold_insns": 1885,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "aclCreateSelectorFromOpSet",
+      "name": "aclCreateSelectorFromOpSet",
+      "base_insns": 173,
+      "gold_insns": 173,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "addReplyFlagsForCommand",
+      "name": "addReplyFlagsForCommand",
+      "base_insns": 96,
+      "gold_insns": 96,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "clientCommand",
+      "name": "clientCommand",
+      "base_insns": 1668,
+      "gold_insns": 1668,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "clusterCommand",
+      "name": "clusterCommand",
+      "base_insns": 1939,
+      "gold_insns": 1939,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "commandHelpCommand",
+      "name": "commandHelpCommand",
+      "base_insns": 18,
+      "gold_insns": 18,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "configHelpCommand",
+      "name": "configHelpCommand",
+      "base_insns": 18,
+      "gold_insns": 18,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "debugCommand",
+      "name": "debugCommand",
+      "base_insns": 2157,
+      "gold_insns": 2157,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "functionHelpCommand",
+      "name": "functionHelpCommand",
+      "base_insns": 18,
+      "gold_insns": 18,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "genInfoSectionDict",
+      "name": "genInfoSectionDict",
+      "base_insns": 162,
+      "gold_insns": 162,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "genericZpopCommand",
+      "name": "genericZpopCommand",
+      "base_insns": 446,
+      "gold_insns": 446,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "hi_sdscatfmt",
+      "name": "hi_sdscatfmt",
+      "base_insns": 884,
+      "gold_insns": 884,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "hi_sdsfromlonglong",
+      "name": "hi_sdsfromlonglong",
+      "base_insns": 44,
+      "gold_insns": 44,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "hi_sdsll2str",
+      "name": "hi_sdsll2str",
+      "base_insns": 36,
+      "gold_insns": 36,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "hi_sdsull2str",
+      "name": "hi_sdsull2str",
+      "base_insns": 31,
+      "gold_insns": 31,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "latencyCommand",
+      "name": "latencyCommand",
+      "base_insns": 335,
+      "gold_insns": 335,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "loadServerConfigFromString",
+      "name": "loadServerConfigFromString",
+      "base_insns": 549,
+      "gold_insns": 549,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "memoryCommand",
+      "name": "memoryCommand",
+      "base_insns": 644,
+      "gold_insns": 644,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "moduleCommand",
+      "name": "moduleCommand",
+      "base_insns": 219,
+      "gold_insns": 219,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "objectCommand",
+      "name": "objectCommand",
+      "base_insns": 243,
+      "gold_insns": 243,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "pfdebugCommand",
+      "name": "pfdebugCommand",
+      "base_insns": 334,
+      "gold_insns": 334,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "pthread_cancel",
+      "name": "pthread_cancel",
+      "base_insns": 52,
+      "gold_insns": 52,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "pubsubCommand",
+      "name": "pubsubCommand",
+      "base_insns": 229,
+      "gold_insns": 229,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisBuildId",
+      "name": "redisBuildId",
+      "base_insns": 6,
+      "gold_insns": 6,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisBuildIdRaw",
+      "name": "redisBuildIdRaw",
+      "base_insns": 3,
+      "gold_insns": 3,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisBuildIdString",
+      "name": "redisBuildIdString",
+      "base_insns": 28,
+      "gold_insns": 28,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisContextConnectUnix",
+      "name": "redisContextConnectUnix",
+      "base_insns": 176,
+      "gold_insns": 176,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisFormatCommandArgv",
+      "name": "redisFormatCommandArgv",
+      "base_insns": 169,
+      "gold_insns": 169,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisFormatSdsCommandArgv",
+      "name": "redisFormatSdsCommandArgv",
+      "base_insns": 225,
+      "gold_insns": 225,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisGitDirty",
+      "name": "redisGitDirty",
+      "base_insns": 3,
+      "gold_insns": 3,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisReaderGetReply",
+      "name": "redisReaderGetReply",
+      "base_insns": 1463,
+      "gold_insns": 1463,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "redisvFormatCommand",
+      "name": "redisvFormatCommand",
+      "base_insns": 709,
+      "gold_insns": 709,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "scriptCommand",
+      "name": "scriptCommand",
+      "base_insns": 284,
+      "gold_insns": 284,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "sentinelCommand",
+      "name": "sentinelCommand",
+      "base_insns": 1199,
+      "gold_insns": 1199,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "sentinelInfoCommand",
+      "name": "sentinelInfoCommand",
+      "base_insns": 282,
+      "gold_insns": 282,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "slowlogCommand",
+      "name": "slowlogCommand",
+      "base_insns": 335,
+      "gold_insns": 335,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "sortGetKeys",
+      "name": "sortGetKeys",
+      "base_insns": 138,
+      "gold_insns": 138,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "syncWithMaster",
+      "name": "syncWithMaster",
+      "base_insns": 865,
+      "gold_insns": 865,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "xgroupCommand",
+      "name": "xgroupCommand",
+      "base_insns": 720,
+      "gold_insns": 720,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "xinfoCommand",
+      "name": "xinfoCommand",
+      "base_insns": 470,
+      "gold_insns": 470,
+      "base_level": "L0",
+      "gold_level": "L0"
+     }
+    ],
+    "added": [],
+    "removed": [],
+    "data_modified": [],
+    "data_added": [],
+    "data_removed": []
+   },
+   "anonymous_literals_changed": 2,
+   "source_changes": {
+    "base": [
+     "ACLCreateUser"
+    ],
+    "gold": [
+     "ACLCreateUser"
+    ],
+    "debug_info": true
+   },
+   "scratch": {
+    "removes": [
+     "ACLCreateUser"
+    ],
+    "basis": "source lines (DWARF)",
+    "functions": [
+     {
+      "name": "ACLCreateUser",
+      "instructions": 122,
+      "signature": "user * ACLCreateUser(const char * name, size_t namelen)",
+      "callers": [
+       "ACLCreateDefaultUser",
+       "ACLCreateUnlinkedUser",
+       "ACLInit",
+       "ACLLoadConfiguredUsers",
+       "ACLLoadFromFile",
+       "aclCommand"
+      ]
+     }
+    ],
+    "instructions": 122,
+    "gold_instructions": 122,
+    "new_functions": [],
+    "data_to_write": []
+   }
+  },
+  {
+   "subject": "src/redis-cli",
+   "base": {
+    "path": "artifacts/redis__redis-11279/base.redis-cli.elf",
+    "sha256": "c2d74e4d351a4e45f477565d60efb65a08adb6133d946024a2c3f7d4eef25625",
+    "bytes": 1652624,
+    "functions": 843,
+    "instructions": 76391,
+    "levels": {
+     "L2": 497,
+     "L0": 212,
+     "below L0": 62,
+     "L1": 5
+    }
+   },
+   "gold": {
+    "path": "artifacts/redis__redis-11279/gold.redis-cli.elf",
+    "sha256": "1ea0bbc1cae553cd79e5918eee7ba42996dd2fbe97adc91eaf49652755c7a8ef",
+    "bytes": 1652624,
+    "functions": 843,
+    "instructions": 76391
+   },
+   "gold_changes": {
+    "modified": [
+     {
+      "key": "redisBuildId",
+      "name": "redisBuildId",
+      "base_insns": 6,
+      "gold_insns": 6,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisBuildIdRaw",
+      "name": "redisBuildIdRaw",
+      "base_insns": 3,
+      "gold_insns": 3,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisBuildIdString",
+      "name": "redisBuildIdString",
+      "base_insns": 28,
+      "gold_insns": 28,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "redisGitDirty",
+      "name": "redisGitDirty",
+      "base_insns": 3,
+      "gold_insns": 3,
+      "base_level": "L2",
+      "gold_level": "L2"
+     }
+    ],
+    "added": [],
+    "removed": [],
+    "data_modified": [],
+    "data_added": [],
+    "data_removed": []
+   },
+   "anonymous_literals_changed": 2,
+   "source_changes": {
+    "base": [],
+    "gold": [],
+    "debug_info": false
+   },
+   "scratch": {
+    "removes": [
+     "redisBuildId",
+     "redisBuildIdRaw",
+     "redisBuildIdString",
+     "redisGitDirty"
+    ],
+    "basis": "bytes (no line tables)",
+    "functions": [
+     {
+      "name": "redisBuildId",
+      "instructions": 6,
+      "signature": "uint64_t redisBuildId(void)",
+      "callers": []
+     },
+     {
+      "name": "redisBuildIdRaw",
+      "instructions": 3,
+      "signature": "const char * redisBuildIdRaw(void)",
+      "callers": []
+     },
+     {
+      "name": "redisBuildIdString",
+      "instructions": 28,
+      "signature": "char * redisBuildIdString(void)",
+      "callers": []
+     },
+     {
+      "name": "redisGitDirty",
+      "instructions": 3,
+      "signature": "char * redisGitDirty(void)",
+      "callers": [
+       "cliVersion"
+      ]
+     }
+    ],
+    "instructions": 40,
+    "gold_instructions": 40,
+    "new_functions": [],
+    "data_to_write": []
+   }
+  }
+ ],
+ "commands": [
+  {
+   "stage": "checkout",
+   "cwd": "redis__redis-11279",
+   "cmd": "git clone -q /mnt/scratch/ec2-user/swe-bin/repos/redis.git /mnt/scratch/ec2-user/swe-bin/work/redis__redis-11279/src"
+  },
+  {
+   "stage": "checkout",
+   "cwd": "src",
+   "cmd": "git checkout -q eedb8b172474dd7776d9bbb0f2954a1394027289"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "make CC=rv-cc AR=llvm-ar RANLIB=llvm-ranlib MALLOC=libc BUILD_TLS=no USE_SYSTEMD=no uname_S=Linux uname_M=riscv64 OPTIMIZATION=-O2 CFLAGS=-g LDFLAGS=-static -j2"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-11279/base.redis-server.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-11279/base.redis-server.elf"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-11279/base.redis-cli.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-11279/base.redis-cli.elf"
+  },
+  {
+   "stage": "test-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-11279/test.patch"
+  },
+  {
+   "stage": "test",
+   "cwd": "src",
+   "cmd": "TERM=dumb ./runtest --durable --single unit/acl ; true"
+  },
+  {
+   "stage": "test-unpatch",
+   "cwd": "src",
+   "cmd": "git apply -R --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-11279/test.patch"
+  },
+  {
+   "stage": "reset",
+   "cwd": "src",
+   "cmd": "git checkout -q -- . && git clean -fdq -e '*.rv.elf'"
+  },
+  {
+   "stage": "gold-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-11279/gold.patch"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "make CC=rv-cc AR=llvm-ar RANLIB=llvm-ranlib MALLOC=libc BUILD_TLS=no USE_SYSTEMD=no uname_S=Linux uname_M=riscv64 OPTIMIZATION=-O2 CFLAGS=-g LDFLAGS=-static -j2"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-11279/gold.redis-server.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-11279/gold.redis-server.elf"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-11279/gold.redis-cli.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/redis__redis-11279/gold.redis-cli.elf"
+  },
+  {
+   "stage": "test-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-11279/test.patch"
+  },
+  {
+   "stage": "test",
+   "cwd": "src",
+   "cmd": "TERM=dumb ./runtest --durable --single unit/acl ; true"
+  },
+  {
+   "stage": "test-unpatch",
+   "cwd": "src",
+   "cmd": "git apply -R --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/redis__redis-11279/test.patch"
+  }
+ ],
+ "convert_s": 237.2
+}
