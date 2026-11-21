@@ -21,7 +21,7 @@ directory (plain file names, no paths):
 - Change the binary only through these tools. There is no compiler, no shell and no interpreter, and none is needed.
 - Keep the fix small. Change the functions the issue is about, and keep everything else as it is.
 - The reward is 1 if every hidden test of the issue passes and every existing test still passes, and 0 otherwise. A proof bonus exists in the environment (a Lean proof that your unchanged functions refine the original), but `check_proof` is not available in this run: ignore it.
-- You have 90 minutes. When the time is up, whatever binary is in place is submitted for you.
+- No one will answer questions: there is no user in this episode. Do not stop to ask; decide yourself, and work until you `submit`. The episode ends at the time limit (90 minutes). If you have not submitted by then, the episode records no submission.
 
 Start with `list_files` and `read_file ISSUE.md`. The issue follows.
 

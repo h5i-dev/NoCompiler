@@ -102,7 +102,7 @@ sub = os.path.join(ep, ".submitted")
 shas = [hashlib.sha256(open(os.path.join(sub, f), "rb").read()).hexdigest() for f in sorted(os.listdir(sub))] if os.path.isdir(sub) else []
 t = (res or {}).get("tests") or {}
 row = {"task": task, "reward": None if res is None else res["reward"],
-       "submitted": "none" if res is None else ("auto (deadline)" if res.get("auto_submitted") else "agent"),
+       "submitted": "none" if (res is None or res.get("no_submission")) else ("auto (deadline)" if res.get("auto_submitted") else "agent"),
        "f2p": f"{t.get('f2p_passed', '?')}/{t.get('f2p', '?')}", "p2p": f"{t.get('p2p_passed', '?')}/{t.get('p2p', '?')}",
        "proof_bonus": "no (check_proof not available)", "wall_s": int(e) - int(s), "tool_calls": len(calls),
        "tools_used": sorted({c["tool"] for c in calls}), "transcript": tr, "submitted_sha256": shas}

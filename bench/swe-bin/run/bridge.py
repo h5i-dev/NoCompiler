@@ -5,7 +5,7 @@ swe-bin server (WebSocket, OpenEnv's own MCPToolClient), resets it to the task, 
   * the environment's tools, unchanged (list_files, read_file, disasm, asm, link, run_tests, ...);
   * `submit`, the environment's step action, which ends the episode.
 Every call is appended to LOG_DIR/calls.jsonl. At the deadline, if nothing was submitted, the
-bridge submits the episode's current binaries itself. The outcome goes to LOG_DIR/result.json.
+episode ends with no submission. The outcome goes to LOG_DIR/result.json.
 
 The bridge holds no task data: the episode directory, the tests and the artifacts stay behind
 the server, which only answers the environment's tools.
@@ -118,11 +118,17 @@ def main():
         return [types.TextContent(type="text", text=text)]
 
     async def deadline():
+        # at the time limit an episode without a submission ends with none (lead 16:55): no
+        # submission is made for the agent, and later tool calls are refused
         while time.time() < a.deadline:
             await asyncio.sleep(10)
         async with state["lock"]:
             if not state["done"]:
-                await do_submit(None, auto=True)
+                state["done"] = True
+                with open(os.path.join(a.log_dir, "result.json"), "w") as fh:
+                    json.dump({"reward": None, "done": True, "message": "no submission at the time limit",
+                               "tests": None, "no_submission": True,
+                               "wall_s": round(time.time() - state["t0"], 1)}, fh, indent=1)
 
     async def run():
         async with stdio_server() as (r, w):
