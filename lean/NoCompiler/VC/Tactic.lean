@@ -119,14 +119,94 @@ partial def smemE (ρ μ : Expr) : SMem → MetaM Expr
       (← mkAppM ``BitVec.toNat #[← symE ρ μ v]) (mkNatLit w)
 end
 
+/-! Reading a closed symbolic value structurally. After `vc_run` a value is a
+constructor term, or a register or the memory of a literal symbolic state; it is
+read off the expression, with no evaluation (each `evalExpr` compiles a definition
+first: about 25 ms, measured, per value). Anything else is evaluated as before. -/
+
+/-- Register `r` of the literal state `S` (`SState.reg`), as the constructor term it holds. -/
+def regOfLit? (S r : Expr) : MetaM (Option Expr) := do
+  let S ← whnfR S
+  unless S.isAppOfArity ``SState.mk 3 do return none
+  let some ⟨_, v⟩ ← getFinValue? r | return none
+  if v.val = 0 then return some (mkApp (mkConst ``Sym.const) (toExpr (0 : Word)))
+  let mut l := S.getArg! 0
+  for _ in [0:v.val] do
+    unless l.isAppOfArity ``List.cons 3 do return some (mkApp (mkConst ``Sym.const) (toExpr (0 : Word)))
+    l := l.getArg! 2
+  unless l.isAppOfArity ``List.cons 3 do return some (mkApp (mkConst ``Sym.const) (toExpr (0 : Word)))
+  return some (l.getArg! 1)
+
+mutual
+/-- `symE` on the expression of a closed `Sym`, read structurally; `none` if it is not of that form. -/
+partial def symEx? (ρ μ x : Expr) : MetaM (Option Expr) := do
+  let x := x.consumeMData
+  if x.isAppOfArity ``SState.reg 2 then
+    let some y ← regOfLit? (x.getArg! 0) (x.getArg! 1) | return none
+    return ← symEx? ρ μ y
+  let args := x.getAppArgs
+  match x.getAppFn.constName? with
+  | some ``Sym.var => do
+    let some n ← getNatValue? args[0]! | return none
+    return some (← varE ρ n)
+  | some ``Sym.const => return some args[0]!
+  | some ``Sym.iop => do
+    let some a ← symEx? ρ μ args[1]! | return none
+    return some (mkApp3 (mkConst ``evalI) args[0]! a args[2]!)
+  | some ``Sym.rop => do
+    let some a ← symEx? ρ μ args[1]! | return none
+    let some b ← symEx? ρ μ args[2]! | return none
+    return some (mkApp3 (mkConst ``evalR) args[0]! a b)
+  | some ``Sym.load => do
+    let some m ← smemEx? ρ μ args[1]! | return none
+    let some a ← symEx? ρ μ args[2]! | return none
+    return some (mkApp3 (mkConst ``loadVal) args[0]! m a)
+  | some ``Sym.addiw => do
+    let some a ← symEx? ρ μ args[0]! | return none
+    return some (← mkAppM ``sext32 #[← mkAppM ``HAdd.hAdd #[a, args[1]!]])
+  | some ``Sym.sh => do
+    let some a ← symEx? ρ μ args[1]! | return none
+    return some (mkApp3 (mkConst ``evalSh) args[0]! a args[2]!)
+  | some ``Sym.shw => do
+    let some a ← symEx? ρ μ args[1]! | return none
+    return some (mkApp3 (mkConst ``evalShW) args[0]! a args[2]!)
+  | some ``Sym.rwop => do
+    let some a ← symEx? ρ μ args[1]! | return none
+    let some b ← symEx? ρ μ args[2]! | return none
+    return some (mkApp3 (mkConst ``evalRW) args[0]! a b)
+  | some ``Sym.uop => do
+    let some a ← symEx? ρ μ args[1]! | return none
+    return some (mkApp2 (mkConst ``evalU) args[0]! a)
+  | _ => return none
+
+/-- `smemE` on the expression of a closed `SMem`, read structurally. -/
+partial def smemEx? (ρ μ m : Expr) : MetaM (Option Expr) := do
+  let m := m.consumeMData
+  if m.isAppOfArity ``SState.mem 1 then
+    let S ← whnfR (m.getArg! 0)
+    unless S.isAppOfArity ``SState.mk 3 do return none
+    return ← smemEx? ρ μ (S.getArg! 1)
+  let args := m.getAppArgs
+  match m.getAppFn.constName? with
+  | some ``SMem.base => return some μ
+  | some ``SMem.write => do
+    let some m' ← smemEx? ρ μ args[0]! | return none
+    let some a ← symEx? ρ μ args[1]! | return none
+    let some v ← symEx? ρ μ args[2]! | return none
+    return some (mkApp4 (mkConst ``writeLE) m' a (← mkAppM ``BitVec.toNat #[v]) args[3]!)
+  | _ => return none
+end
+
 dsimproc symDen (Sym.den _ _ _) := fun e => do
   let_expr Sym.den ρ μ x := e | return .continue
   if x.hasFVar || x.hasMVar then return .continue
+  if let some r ← symEx? ρ μ x then return .done r
   return .done (← symE ρ μ (← evalSym x))
 
 dsimproc smemDen (SMem.den _ _ _) := fun e => do
   let_expr SMem.den ρ μ m := e | return .continue
   if m.hasFVar || m.hasMVar then return .continue
+  if let some r ← smemEx? ρ μ m then return .done r
   return .done (← smemE ρ μ (← evalSMem m))
 
 set_option hygiene false in
