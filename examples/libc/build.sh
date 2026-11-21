@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # The libc example (STATUS-A plan, lead 16:47): static musl programs proved as
 # whole processes. Builds musl 1.2.5 with the profile's flags, then slen.c and
-# flen.c against it, and compares with the committed ELFs in examples/libc/elf/.
+# flen.c against it, and compares with the committed ELFs, examples/elf/libc-{slen,flen}.elf
+# (with the other committed binaries; `*.elf` is ignored elsewhere).
 #
 #   MUSL_TARBALL=musl-1.2.5.tar.gz examples/libc/build.sh [--update]
 #
@@ -50,9 +51,9 @@ for name in slen flen; do
     done
   fi
   if [ "${1:-}" = --update ]; then
-    cp "$SCRATCH/$name.elf" "examples/libc/elf/$name.elf"
-  elif ! cmp -s "$SCRATCH/$name.elf" "examples/libc/elf/$name.elf"; then
-    echo "$name.elf: the build differs from examples/libc/elf/"; status=1
+    cp "$SCRATCH/$name.elf" "examples/elf/libc-$name.elf"
+  elif ! cmp -s "$SCRATCH/$name.elf" "examples/elf/libc-$name.elf"; then
+    echo "libc-$name.elf: the build differs from examples/elf/"; status=1
   fi
 done
 [ $status = 0 ] && echo "ok   slen, flen${qemu:+ (and their outputs under $(basename "$qemu"))}"

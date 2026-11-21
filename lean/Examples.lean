@@ -8,6 +8,8 @@ import Examples.Chunks.SumB
 import Examples.Chunks.Sum2B
 import Examples.Chunks.CobsB
 import Examples.Chunks.Hello
+import Examples.Libc.SlenImage
+import Examples.Libc.Slen
 import Examples.FrameControls
 import Examples.Link
 import Examples.LinkCalls

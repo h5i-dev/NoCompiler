@@ -42,10 +42,11 @@ fn cli_check_annotate_export() {
     }
 
     // And the images in chunk format (lean/NoCompiler/Image.lean, "Code in chunks").
-    for (elf, module) in [
-        ("examples/elf/hello.elf", "HelloImage"),
-        ("examples/demo/elf/cobs.b.elf", "CobsImage"),
-        ("examples/demo/elf/sum.b.elf", "SumBImage"),
+    for (elf, dir, module) in [
+        ("examples/elf/hello.elf", "Chunks", "HelloImage"),
+        ("examples/demo/elf/cobs.b.elf", "Chunks", "CobsImage"),
+        ("examples/demo/elf/sum.b.elf", "Chunks", "SumBImage"),
+        ("examples/elf/libc-slen.elf", "Libc", "SlenImage"),
     ] {
         let out = Command::new(exe)
             .args([
@@ -55,16 +56,16 @@ fn cli_check_annotate_export() {
                 "--format",
                 "chunks",
             ])
-            .args(["--namespace", &format!("Examples.Chunks.{module}")])
+            .args(["--namespace", &format!("Examples.{dir}.{module}")])
             .output()
             .unwrap();
         assert!(out.status.success());
         let committed =
-            std::fs::read_to_string(format!("{root}/lean/Examples/Chunks/{module}.lean")).unwrap();
+            std::fs::read_to_string(format!("{root}/lean/Examples/{dir}/{module}.lean")).unwrap();
         assert_eq!(
             String::from_utf8(out.stdout).unwrap(),
             committed,
-            "lean/Examples/Chunks/{module}.lean is stale"
+            "lean/Examples/{dir}/{module}.lean is stale"
         );
     }
 
