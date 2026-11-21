@@ -503,9 +503,7 @@ pub fn listing(bin: &crate::Binary, only: Option<&str>, out: &mut String) -> Res
             }
             let depth = marks.iter().filter(|m| m.1 && m.0 <= pc).count()
                 - marks.iter().filter(|m| !m.1 && m.0 <= pc).count();
-            let text = crate::isa::decode(w)
-                .map(|i| i.asm(pc))
-                .unwrap_or_else(|| format!(".word {w:#010x}"));
+            let text = crate::rvlist::text(w, pc);
             say!(
                 out,
                 "  {:ind$}{pc:8x}: {w:08x}  {text}",

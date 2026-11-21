@@ -70,22 +70,40 @@ pub fn print(bin: &Binary, only: Option<&str>) -> Result<String, String> {
         if only.is_some_and(|o| o != f.name) {
             continue;
         }
-        let rf = m
-            .funcs
-            .iter()
-            .find(|g| g.name == f.name)
-            .ok_or("function not in its module")?;
+        // A function below L1, or one the module could not make relocatable:
+        // its words as a flat listing, in comments, so the text still reads back.
+        let flat = |out: &mut String, why: &str, vs: &[crate::profile::Violation]| {
+            let _ = writeln!(
+                out,
+                "\n; func {} at {:#x}: {why}; the flat listing",
+                f.name, f.entry
+            );
+            for v in vs {
+                let _ = writeln!(out, ";   {v}");
+            }
+            for (i, &w) in f.words.iter().enumerate() {
+                let pc = f.entry + 4 * i as u64;
+                let _ = writeln!(out, ";   {pc:8x}: {w:08x}  {}", crate::rvlist::text(w, pc));
+            }
+        };
+        let Some(rf) = m.funcs.iter().find(|g| g.entry == f.entry) else {
+            let why = m
+                .skipped
+                .iter()
+                .find(|g| g.entry == f.entry)
+                .map(|g| format!("not relocatable ({})", g.reason))
+                .unwrap_or_else(|| "not in its module".to_string());
+            flat(
+                &mut out,
+                &why,
+                r.result.as_ref().err().map_or(&[][..], |v| &v[..]),
+            );
+            continue;
+        };
         let meta = match &r.result {
             Ok(meta) => meta,
             Err(vs) => {
-                let _ = writeln!(
-                    out,
-                    "\n; func {} at {:#x}: below L1, not listed",
-                    f.name, f.entry
-                );
-                for v in vs {
-                    let _ = writeln!(out, ";   {v}");
-                }
+                flat(&mut out, "below L1", vs);
                 continue;
             }
         };

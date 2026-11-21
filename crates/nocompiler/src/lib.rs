@@ -17,6 +17,7 @@ pub mod meta;
 pub mod module;
 pub mod profile;
 pub mod rv_tools;
+pub mod rvlist;
 pub mod sha256;
 pub mod sim;
 pub mod text;

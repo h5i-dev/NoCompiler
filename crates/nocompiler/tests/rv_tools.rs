@@ -58,3 +58,37 @@ fn xrefs_finds_calls_and_addresses() {
             .any(|x| x.kind == "branch" && x.from >= 0x11190 && x.from < 0x111b4)
     );
 }
+
+/// `disasm` on any function (lead 17:05, item 3): below L1 or not relocatable,
+/// a flat listing in comments, with F/D words decoded for reading; the rest of
+/// the binary is still listed.
+#[test]
+fn disasm_lists_every_function() {
+    let bytes = load("sum.link1.elf");
+    // sum with an `fld` (not in the profile): below L1.
+    let mut bin = nocompiler::load(&bytes).unwrap();
+    bin.funcs
+        .iter_mut()
+        .find(|f| f.name == "sum")
+        .unwrap()
+        .words[1] = 0x0084_3507;
+    let t = nocompiler::text::print(&bin, None).unwrap();
+    assert!(
+        t.contains("; func sum at 0x11190: below L1; the flat listing"),
+        "{t}"
+    );
+    assert!(t.contains(";      11194: 00843507  fld fa0, 8(s0)"), "{t}");
+    assert!(t.contains("func sum2"), "{t}");
+    // sum with an auipc nothing uses: not relocatable, still listed.
+    let mut bin = nocompiler::load(&bytes).unwrap();
+    bin.funcs
+        .iter_mut()
+        .find(|f| f.name == "sum")
+        .unwrap()
+        .words[0] = 0x0000_0797;
+    let t = nocompiler::text::print(&bin, Some("sum")).unwrap();
+    assert!(t.contains("; func sum at 0x11190: not relocatable (sum: the auipc at 0x11190 has no low part); the flat listing"), "{t}");
+    assert!(t.contains(";      11190: 00000797  auipc a5, 0"), "{t}");
+    let t = nocompiler::text::print(&bin, None).unwrap();
+    assert!(t.contains("func sum2") && t.contains("func _start"), "{t}");
+}
