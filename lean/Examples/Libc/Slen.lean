@@ -247,4 +247,44 @@ theorem __funcs_on_exit_verified : VerifiedImg code __funcs_on_exit_dom __funcs_
   rintro ⟨⟩ s he _
   nocompiler_auto __funcs_on_exit_func s he
 
+/-! ### `_start_c`, relative to `__libc_start_main`
+
+`_start_c(p)` (musl's crt1) reads `argc` at `p`, takes `argv = p + 8`, and tail-calls
+`__libc_start_main(main, argc, argv, _init, __funcs_on_exit, 0)`. Its theorem takes
+`__libc_start_main`'s as a hypothesis, for any exit property `E` (a hypothesis, not an axiom: it is
+discharged when `__libc_start_main` is proved). Both may write all of memory: what follows the start
+(the whole program) is not confined to a region a caller could list. -/
+
+/-- All of memory. -/
+def everywhere : Region := ⟨0#64, 2 ^ 64⟩
+
+/-- `__libc_start_main(main, argc, argv, _init, __funcs_on_exit, 0)` never returns; it ends as `E` says. -/
+def startMainSpec (E : Word → Word → State → Prop) : Spec (Word × Word) where
+  pre := fun ⟨argc, argv⟩ s => s.reg Reg.a0 = 0x1121c#64 ∧ s.reg Reg.a1 = argc ∧ s.reg Reg.a2 = argv ∧
+    s.reg Reg.a3 = 0x112e8#64 ∧ s.reg Reg.a4 = 0x11a50#64 ∧ s.reg Reg.a5 = 0
+  post := fun _ _ _ => False
+  onExit := fun ⟨argc, argv⟩ _ s' => E argc argv s'
+  reads := fun _ _ => [everywhere]
+  writes := fun _ _ => [everywhere]
+
+/-- `_start_c(p)`: `argc` from the 4 bytes at `p` (sign-extended), `argv = p + 8`, then as `__libc_start_main`. -/
+def startCSpec (E : Word → Word → State → Prop) : Spec Word where
+  pre := fun p s => s.reg Reg.a0 = p ∧ aligned p 4 ∧ p.toNat + 4 ≤ 2 ^ 64
+  post := fun _ _ _ => False
+  onExit := fun p s s' => E (sext32 (read32 s.mem p)) (p + 8#64) s'
+  reads := fun _ _ => [everywhere]
+  writes := fun _ _ => [everywhere]
+
+theorem _start_c_verified (E : Word → Word → State → Prop)
+    (hm : VerifiedImg code __libc_start_main_dom __libc_start_main_entry (startMainSpec E)) :
+    VerifiedImg code _start_c_dom _start_c_entry (startCSpec E) := by
+  rintro p s he ⟨ha0, hal, hp⟩
+  nocompiler_auto _start_c_func s he [hal] calls [hm]
+  case perm_entry => rw [BitVec.add_zero]; exact ha0 ▸ hal
+  case perm_entry =>
+    refine .inr ⟨everywhere, by simp [Spec.perm, startCSpec], ?_⟩
+    simp only [Region.covers, everywhere, BitVec.add_zero, BitVec.sub_zero, ha0]; omega
+  case entry_call_hm_exit =>
+    simpa [sext32, read32] using nocompiler_con_entry_call_hm
+
 end Examples.Libc.Slen
