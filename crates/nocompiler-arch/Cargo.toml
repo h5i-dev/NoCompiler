@@ -10,3 +10,4 @@ authors.workspace = true
 
 [dependencies]
 nocompiler-core = { workspace = true }
+nocompiler-sleigh = { workspace = true }

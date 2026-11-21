@@ -11,6 +11,7 @@
 pub mod aarch64;
 pub mod arm;
 pub mod insn;
+pub mod sleigh;
 pub mod x86;
 
 pub use insn::{
@@ -32,6 +33,7 @@ pub fn decode(arch: &Arch, bytes: &[u8], addr: Addr) -> Option<Insn> {
         // address at a time always is. `arm::Thumb` walks a run and carries
         // the state across it; this is the single-instruction view.
         Arch::Thumb => arm::decode_thumb(bytes, addr, arm::ItState::default()).map(|(i, _)| i),
+        Arch::Sleigh(id) => sleigh::decode(id, bytes, addr),
         _ => None,
     }
 }
@@ -42,6 +44,7 @@ pub fn format(arch: &Arch, i: &Insn, objdump: bool) -> String {
         Arch::AArch64 => aarch64::format(i, aarch64::text::Style { objdump }),
         Arch::X86_64 | Arch::X86 => x86::format(i, x86::Style::default()),
         Arch::Arm | Arch::Thumb => arm::format(i),
+        Arch::Sleigh(_) => sleigh::format(i),
         _ => i.mnemonic.to_string(),
     }
 }

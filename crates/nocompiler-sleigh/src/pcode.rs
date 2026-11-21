@@ -1071,7 +1071,22 @@ impl<'a> Lifter<'a> {
         let ptr = self.pointer_size();
         match target {
             JumpTarget::Direct { addr, .. } => {
-                let a = self.expr(node, c, addr, Some(ptr));
+                // `goto sub` where `sub` exports `*[ram]:n reloc` names the
+                // location `reloc` itself, the way RISC-V's `immUJ` and
+                // `immSB` do. A branch goes *to* a location; reading through
+                // it would turn every direct jump into an indirect one.
+                let place = match addr {
+                    Expr::Symbol(s @ SymbolRef::Operand(_)) => self.read_symbol_place(node, c, *s),
+                    _ => None,
+                };
+                let a = match place {
+                    Some(Export2::Deref {
+                        addr: a,
+                        space: Space::Ram,
+                        ..
+                    }) => Varnode { size: ptr, ..a },
+                    _ => self.expr(node, c, addr, Some(ptr)),
+                };
                 // A direct branch whose target is not a constant is an
                 // indirect branch wearing a constant's syntax, which is what
                 // `goto operand` is when the operand exported a register.
@@ -1305,6 +1320,9 @@ attach variables [ rd rs ] [ r0 r1 r2 r3 ];
 :st rd,rs  is op=2 & rd & rs { *:4 rd = rs; }
 :jz rd,imm8 is op=3 & rd & imm8 { if (rd == 0) goto inst_start; }
 :bad rd is op=4 & rd unimpl
+rel: reloc is imm8 [ reloc = inst_start + imm8; ] { export *[ram]:4 reloc; }
+:jmp rel is op=5 & rel { goto rel; }
+:cl rel is op=6 & rel { call rel; }
 "#;
 
     fn spec() -> crate::Spec {
@@ -1356,6 +1374,17 @@ attach variables [ rd rs ] [ r0 r1 r2 r3 ];
             .expect("a cbranch");
         assert_eq!(branch.ins[0], Varnode::constant(0x1000, 4), "inst_start");
         assert!(!branch.relative, "an address, not a p-code index");
+    }
+
+    #[test]
+    fn a_branch_to_an_exported_location_is_direct() {
+        let s = spec();
+        for (bytes, op) in [([0x10, 0x50], Opcode::Branch), ([0x10, 0x60], Opcode::Call)] {
+            let p = lift_bytes(&s, &bytes);
+            assert_eq!(p.ops.len(), 1, "no load through the location: {:?}", p.ops);
+            assert_eq!(p.ops[0].op, op);
+            assert_eq!(p.ops[0].ins[0], Varnode::constant(0x1010, 4));
+        }
     }
 
     #[test]
