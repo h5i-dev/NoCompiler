@@ -2106,7 +2106,9 @@ partial def vcRun (cx : Ctx) (vx : VCx) (g : MVarId) (pc : Nat) (hpcT hxT : Lean
         out := out ++ left
         for (g3, cx3) in cont do
           let some (hpcI, rpc) ← reachPc g3
-            | throwError "vc_auto: the return of the call at {hex pc'}:{indentD (← ppGoal g3)}"
+            | -- A tail call: the callee returned to this function's caller, so this function returns.
+              out := out ++ (← g3.withContext do closeRet cx3 g3 pc')
+              continue
           let cx3 := { cx3 with facts := cx.facts ++ (cx3.facts.extract (cx.facts.size + extra.size) cx3.facts.size) }
           -- `Same` for the state after the call: from the state before it and the callee's `Preserved`.
           let scT ← g3.withContext do

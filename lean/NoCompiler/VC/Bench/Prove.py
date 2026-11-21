@@ -70,8 +70,9 @@ if with_calls:
 ids = {n: k for k, n in enumerate(sorted(cands))}
 # Callees first: a callee's `_dom` is inside its caller's, so it has fewer ranges.
 order = sorted(cands, key=lambda n: len(deps[n]))
-anywhere = "[⟨0, 2 ^ 65⟩]"
 ro = "[seg_rodata.region]" if rodata else "[]"
+# "Anywhere" lists .rodata too, so that a callee proved with `safe` (reads .rodata) is within it by name.
+anywhere = "[seg_rodata.region, ⟨0, 2 ^ 65⟩]" if rodata else "[⟨0, 2 ^ 65⟩]"
 
 
 def stack(n, memo={}):
