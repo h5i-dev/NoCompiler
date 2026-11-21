@@ -1,4 +1,4 @@
-# Usage: python3 -I Prove.py WORKDIR [N] [--specs safe,anyread,anymem,alignargs] [--jobs J] [--calls]
+# Usage: python3 -I Prove.py WORKDIR [N] [--specs safe,anyread,anymem,alignargs] [--jobs J] [--calls] [--loops]
 # The whole nocompiler_auto proof (explore and the goals after it) on a binary's functions, one module
 # per function, each capped (6 GB, no swap, 900 s); cost = every profile category but import and
 # initialization, per instruction. WORKDIR is Art.py's (Art.lean, ArtImg.olean).
@@ -9,6 +9,10 @@
 #   function in their `_dom`) are such functions: callees first (a callee's `_dom` is inside its
 #   caller's), each caller with `calls [...]` of its callees' theorems; its stack bound is its frame plus
 #   its callees' largest bound, so that a callee's stack lies in its caller's.
+# With --loops, also the functions with exactly one loop (no callees): the invariant is `True` (the
+# frame is added by the tactic) and the measure is tried from the loop's back edge, a branch to its
+# head comparing rs1 and rs2: (rs2 - rs1).toNat, (rs1 - rs2).toNat. (Several loops need a measure
+# that also decreases from one loop's head to the next; not tried.)
 # Specifications, tried in order until one proves the function (--specs; a caller starts at its
 # callees' strictest, since a callee's permission must lie in its caller's):
 #   safe       any entry; returns, preserving the ABI; reads only .rodata; writes only its frame;
@@ -24,6 +28,7 @@ work = sys.argv[1]
 specs = ["safe"]
 jobs = 1
 with_calls = "--calls" in sys.argv
+with_loops = "--loops" in sys.argv
 rest = []
 i = 2
 while i < len(sys.argv):
@@ -44,8 +49,32 @@ unit = {"ns": 1e-6, "us": 1e-3, "μs": 1e-3, "ms": 1.0, "s": 1000.0}
 
 src = open(os.path.join(work, "Art.lean")).read()
 funcs = {}
+loops = {}
 for m in re.finditer(r"def (\w+)_func : Struct.Func := ⟨(0x[0-9a-f]+)#64, (\d+), (\[.*?\])⟩", src):
     funcs[m.group(1)] = (int(m.group(2), 16), int(m.group(3)), ".loop" in m.group(4))
+    loops[m.group(1)] = [(int(a, 16), int(b, 16)) for a, b in
+                         re.findall(r"⟨\.loop, (0x[0-9a-f]+)#64, (0x[0-9a-f]+)#64⟩", m.group(4))]
+text = int(re.search(r"def code : Code := Code.ofChunks (0x[0-9a-f]+)#64 chunks", src).group(1), 16)
+chunkk = dict(re.findall(r"theorem (\w+)_chunk : ∀ x, Dom.mem \[chunk_(\d+)\.range", src))
+chunkd = {a: (int(b), int(c), int(d, 0)) for a, b, c, d in
+          re.findall(r"def chunk_(\d+) : Chunk := ⟨(\d+), (\d+), (0x[0-9a-f]+|\d+)⟩", src)}
+
+
+def back_edges(n):
+    """The branches inside each loop of n that go to its head: (head, rs1, rs2)."""
+    off, ln, bits = chunkd[chunkk[n]]
+    base = text + 4 * off
+    out = []
+    for st, sp in loops[n]:
+        for pc in range(st, sp, 4):
+            w = (bits >> (32 * ((pc - base) // 4))) & 0xffffffff
+            if w & 0x7f == 0x63:
+                imm = (((w >> 31) & 1) << 12) | (((w >> 7) & 1) << 11) | (((w >> 25) & 0x3f) << 5) | (((w >> 8) & 0xf) << 1)
+                if imm & 0x1000:
+                    imm -= 0x2000
+                if pc + imm == st:
+                    out.append((st, (w >> 15) & 31, (w >> 20) & 31))
+    return out
 frame = {m[0]: int(m[1]) for m in re.findall(r"def (\w+)_frame : Struct.Frame := ⟨(\d+),", src)}
 doms = dict(re.findall(r"def (\w+)_dom : Dom := (\[.*?\])\n", src))
 byentry = {v[0]: n for n, v in funcs.items()}
@@ -67,6 +96,9 @@ if top:
 if with_calls:
     ok_callers = [n for n in caller if all(d in leaf or d in caller for d in deps[n] if d)]
     cands = cands + ok_callers
+loopers = [n for n in funcs if n in doms and funcs[n][2] and not deps[n] and len(loops[n]) == 1
+           and len(back_edges(n)) == 1] if with_loops else []
+cands = cands + loopers
 ids = {n: k for k, n in enumerate(sorted(cands))}
 # Callees first: a callee's `_dom` is inside its caller's, so it has fewer ranges.
 order = sorted(cands, key=lambda n: len(deps[n]))
@@ -89,8 +121,15 @@ def prove(n):
     start = max([specs.index(done[d][0]) for d in deps[n] if d in done] or [0])
     if any(d not in done for d in deps[n]):
         return (n, funcs[n][1], -1, 0.0, 0.0, "a callee is not proved", None)
-    for spec in specs[start:]:
-        mod = f"Q{j}_{spec}"
+    if n in loopers:
+        st, r1, r2 = back_edges(n)[0]
+        measures = [f"(u.reg {r2} - u.reg {r1}).toNat", f"(u.reg {r1} - u.reg {r2}).toNat"]
+        tries = [(sp, m) for sp in specs[start:] for m in measures]
+    else:
+        tries = [(sp, None) for sp in specs[start:]]
+    for spec, meas in tries:
+        li = (f"\n    loop_inv 0x{st:x}#64 (fun u => True) measure (fun u => {meas})" if meas else "")
+        mod = f"Q{j}_{spec}" + ("_m" + str(measures.index(meas)) if meas else "")
         path = os.path.join(work, mod + ".lean")
         reads = {"safe": ro, "anyread": anywhere, "anymem": anywhere, "alignargs": anywhere}[spec]
         writes = {"safe": "[]", "anyread": "[]", "anymem": anywhere, "alignargs": anywhere}[spec]
@@ -117,7 +156,7 @@ def specSafe : Spec Unit where
 
 theorem safe : VerifiedImg code {n}_dom {n}_entry specSafe := by
   rintro _ s he {pat}
-  nocompiler_auto {n}_func s he{facts}{calls}
+  nocompiler_auto {n}_func s he{facts}{calls}{li}
 
 end Art.Q{j}
 """)
@@ -143,7 +182,7 @@ end Art.Q{j}
         if r.returncode == 0:
             done[n] = (spec, mod)
             return (n, ln, 0, total, kern, None, spec)
-        if spec == specs[-1]:
+        if (spec, meas) == tries[-1]:
             return (n, ln, r.returncode, total, kern, err, spec)
     return (n, funcs[n][1], -1, 0.0, 0.0, "no specification left", None)
 
