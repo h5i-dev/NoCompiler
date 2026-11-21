@@ -128,4 +128,23 @@ theorem __lock_verified : VerifiedImg code __lock_dom __lock_entry lockSpec := b
     simp only [lockSpec] at h0
     simp [h0] at hb_12af8
 
+/-- `__ofl_lock()`: locks the list of open files (a no-op with one thread, `__lock_verified`) and returns
+    its head's address, `.sbss + 64` = 0x14010. -/
+def oflLockSpec : Spec Unit where
+  pre := fun _ s => s.mem 0x1419b#64 = 0 ∧ ¬ (Spec.stackRegion s 16).mem 0x1419b#64
+  post := fun _ _ s' => s'.reg Reg.a0 = 0x14010#64
+  reads := fun _ _ => [⟨0x1419b#64, 1⟩]
+  stack := 16
+
+theorem __ofl_lock_verified : VerifiedImg code __ofl_lock_dom __ofl_lock_entry oflLockSpec := by
+  rintro ⟨⟩ s he ⟨h0, hs⟩
+  nocompiler_auto __ofl_lock_func s he calls [__lock_verified]
+  case entry_call___lock_verified_pre =>
+    -- The `ra` save (8 bytes at sp - 8) is in the frame, which does not hold `need_locks`.
+    rw [writeLE_of_not_mem (r := ⟨s.reg 2 + 18446744073709551608#64, 8⟩) (by simp [Region.covers])]
+    · exact h0
+    · intro hm; apply hs
+      simp only [Region.mem, Spec.stackRegion, Reg.sp] at hm ⊢
+      bv_omega
+
 end Examples.Libc.Slen
