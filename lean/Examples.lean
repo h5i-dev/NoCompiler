@@ -11,6 +11,7 @@ import Examples.Chunks.Hello
 import Examples.Libc.SlenImage
 import Examples.Libc.Slen
 import Examples.Libc.IndirectCall
+import Examples.Libc.SlenSpec
 import Examples.FrameControls
 import Examples.Link
 import Examples.LinkCalls
