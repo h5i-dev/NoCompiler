@@ -669,7 +669,9 @@ fn rebuild(
             name: SWB_SECTION.into(),
             name_off: 0,
             sh_type: 1,
-            flags: SHF_ALLOC | SHF_WRITE | SHF_EXECINSTR,
+            // not SHF_EXECINSTR in the section header (the PT_LOAD is RWX): nocompiler loads a
+            // binary with one executable section, and refuses one with .swb beside .text
+            flags: SHF_ALLOC | SHF_WRITE,
             addr: seg_va,
             offset: seg_off,
             size: seg.len() as u64,
@@ -789,6 +791,112 @@ fn sort_loads(img: &mut [u8], phoff: usize, n: usize) -> Result<(), Error> {
         img[phoff + i * 56..phoff + i * 56 + 56].copy_from_slice(e);
     }
     Ok(())
+}
+
+// ---- listings --------------------------------------------------------------------------------
+
+/// (name, address, size, kind) of every named symbol, by address; functions only if `funcs`.
+pub fn symbol_rows(bin: &[u8], funcs: bool) -> Result<Vec<(String, u64, u64, &'static str)>, Error> {
+    let b = Elf::parse(bin.to_vec())?;
+    let mut rows: Vec<(String, u64, u64, &'static str)> = b
+        .symbols()?
+        .into_iter()
+        .filter(|s| !s.name.is_empty() && s.shndx != 0 && !s.name.starts_with(".L") && !s.name.starts_with('$'))
+        .filter(|s| !funcs || (s.is_func() && s.size > 0))
+        .map(|s| {
+            let kind = match s.info & 0xf {
+                2 => "func",
+                1 => "object",
+                6 => "tls",
+                4 => "file",
+                _ => "other",
+            };
+            (s.name, s.value, s.size, kind)
+        })
+        .collect();
+    rows.sort_by_key(|r| r.1);
+    Ok(rows)
+}
+
+/// Is `name` a function that `link` placed in the .swb section?
+pub fn in_swb(bin: &[u8], name: &str) -> bool {
+    let Ok(b) = Elf::parse(bin.to_vec()) else { return false };
+    let Some(i) = b.shdrs.iter().position(|s| s.name == SWB_SECTION) else { return false };
+    let sec = &b.shdrs[i];
+    b.symbols().map_or(false, |ss| {
+        ss.iter().any(|s| s.name == name && s.is_func() && sec.addr <= s.value && s.value < sec.addr + sec.size)
+    })
+}
+
+/// The references to symbol `name`: (function, offset in it, kind), from the --emit-relocs
+/// relocations and the call and jump instructions that carry none (same-section calls).
+pub fn refs_to(bin: &[u8], name: &str) -> Result<Vec<(String, u64, &'static str)>, Error> {
+    let b = Elf::parse(bin.to_vec())?;
+    let syms = b.symbols()?;
+    let targets: Vec<&Sym> = syms.iter().filter(|s| s.name == name && s.shndx != 0).collect();
+    if targets.is_empty() {
+        return err(format!("no symbol {name}"));
+    }
+    let hits = |t: u64| targets.iter().any(|s| s.value <= t && t < s.value + s.size.max(1));
+    let mut funcs: Vec<&Sym> = syms.iter().filter(|s| s.is_func() && s.size > 0).collect();
+    funcs.sort_by_key(|s| s.value);
+    let owner = |a: u64| -> Option<&Sym> {
+        let i = funcs.partition_point(|s| s.value <= a);
+        funcs.get(i.wrapping_sub(1)).copied().filter(|s| a < s.value + s.size)
+    };
+    let mut out: Vec<(String, u64, &'static str)> = Vec::new();
+    for (ri, rs) in b.shdrs.iter().enumerate() {
+        if rs.sh_type != SHT_RELA || b.shdrs[rs.info as usize].flags & SHF_EXECINSTR == 0 {
+            continue;
+        }
+        for (off, ty, sym, add) in b.relas(ri)? {
+            let t = (syms.get(sym).map_or(0, |s| s.value) as i64 + add) as u64;
+            if !hits(t) {
+                continue;
+            }
+            let kind = match ty {
+                18 | 19 => "call",
+                17 | 16 => "jump",
+                23 | 26 => "address",
+                _ => continue,
+            };
+            if let Some(f) = owner(off) {
+                out.push((f.name.clone(), off - f.value, kind));
+            }
+        }
+    }
+    // calls and jumps without relocations
+    for f in &funcs {
+        let Some(fo) = b.file_offset(f.value, f.size) else { continue };
+        let n = (f.size / 4) as usize;
+        for k in 0..n {
+            let a = f.value + 4 * k as u64;
+            let w = rd(&b.data, fo + 4 * k, 4)? as u32;
+            let t = if w & 0x7f == 0x6f {
+                let imm = (((w >> 31) & 1) << 20) | (((w >> 21) & 0x3ff) << 1) | (((w >> 20) & 1) << 11) | (((w >> 12) & 0xff) << 12);
+                Some((a.wrapping_add((((imm as i64) << 43) >> 43) as u64), "jump"))
+            } else if w & 0x7f == 0x17 && k + 1 < n {
+                let w2 = rd(&b.data, fo + 4 * (k + 1), 4)? as u32;
+                if w2 & 0x707f == 0x67 && (w2 >> 15) & 0x1f == (w >> 7) & 0x1f {
+                    let hi = ((w & 0xffff_f000) as i32) as i64;
+                    let lo = ((w2 as i32) >> 20) as i64;
+                    Some(((a as i64 + hi + lo) as u64, "call"))
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+            if let Some((t, kind)) = t {
+                if hits(t) && !(f.value <= t && t < f.value + f.size) && !out.iter().any(|o| o.0 == f.name && o.1 == a - f.value) {
+                    out.push((f.name.clone(), a - f.value, kind));
+                }
+            }
+        }
+    }
+    out.sort();
+    out.dedup();
+    Ok(out)
 }
 
 // ---- isolate ---------------------------------------------------------------------------------

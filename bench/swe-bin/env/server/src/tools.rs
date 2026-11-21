@@ -17,6 +17,9 @@ use swe_bin_kernel as k;
 
 use crate::{Config, TaskInfo, elf, subject_file};
 
+const FILTER: (&str, &str) = ("filter", "only lines whose name contains this substring");
+const LIMIT: (&str, &str) = ("limit", "at most this many lines (default 200)");
+
 /// Text files the agent may write: structured text, Lean, notes, patch sets.
 const WRITABLE: &[&str] = &["s", "lean", "txt", "md", "json", "patch"];
 const MAX_WRITE: usize = 4 << 20;
@@ -155,6 +158,23 @@ pub fn harness(cfg: &Config, task: &str, elfs: &[PathBuf], which: &str) -> Value
     }
 }
 
+/// At most `limit` lines (default 200), saying how many there were.
+fn limited(lines: Vec<String>, a: &Map<String, Value>) -> String {
+    let limit = a
+        .get("limit")
+        .and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|x| x.parse().ok())))
+        .unwrap_or(200) as usize;
+    let n = lines.len();
+    let mut out = lines.into_iter().take(limit).collect::<Vec<_>>().join("\n");
+    if n > limit {
+        out.push_str(&format!("\n[{limit} of {n} lines; use filter or limit]"));
+    }
+    if n == 0 {
+        out.push_str("(none)");
+    }
+    out
+}
+
 fn s(args: &Map<String, Value>, k: &str) -> Result<String, String> {
     args.get(k)
         .and_then(Value::as_str)
@@ -236,35 +256,29 @@ pub fn specs() -> Vec<(&'static str, &'static str, Value)> {
         ),
         (
             "funcs",
-            "nocompiler funcs: the recovered functions.",
-            schema(&[file], &["file"]),
+            "The functions of a binary (its symbol table): address, instructions, profile level. Filter by a substring of the name.",
+            schema(&[file, FILTER, LIMIT], &["file"]),
         ),
-        ("symbols", "nocompiler symbols.", schema(&[file], &["file"])),
+        (
+            "symbols",
+            "Every symbol of a binary (functions and data): address, size, kind. Filter by a substring of the name.",
+            schema(&[file, FILTER, LIMIT], &["file"]),
+        ),
         (
             "sections",
             "nocompiler sections.",
             schema(&[file], &["file"]),
         ),
         ("info", "nocompiler info.", schema(&[file], &["file"])),
-        ("strings", "nocompiler strings.", schema(&[file], &["file"])),
-        ("stats", "nocompiler stats.", schema(&[file], &["file"])),
+        (
+            "strings",
+            "nocompiler strings: the strings in the image. Filter by a substring.",
+            schema(&[file, FILTER, LIMIT], &["file"]),
+        ),
         (
             "xrefs",
-            "nocompiler xrefs: references to or from an address or symbol.",
-            schema(
-                &[file, ("target", "address or symbol")],
-                &["file", "target"],
-            ),
-        ),
-        (
-            "decompile",
-            "nocompiler decompile: a function as pseudo-C (read only; nothing compiles it).",
-            schema(&[file, ("target", "the function")], &["file", "target"]),
-        ),
-        (
-            "diff",
-            "nocompiler diff: which functions changed between two binaries.",
-            schema(&[file, ("other", "the other binary")], &["file", "other"]),
+            "The functions that refer to a symbol (calls, jumps, address loads), from the binary's relocations and its call instructions.",
+            schema(&[file, ("target", "a symbol name")], &["file", "target"]),
         ),
         (
             "refine",
@@ -277,11 +291,6 @@ pub fn specs() -> Vec<(&'static str, &'static str, Value)> {
                 ],
                 &["file", "other", "target"],
             ),
-        ),
-        (
-            "emulate",
-            "nocompiler emulate: run a function in the interpreter.",
-            schema(&[file, ("target", "the function")], &["file", "target"]),
         ),
         (
             "run_tests",
@@ -374,6 +383,12 @@ pub fn call(
         "disasm" => {
             let file = f("file")?;
             let target = opt(a, "target").unwrap_or_else(|| "all".into());
+            if let Ok(bin) = std::fs::read(episode_path(dir, &file)?) {
+                if elf::in_swb(&bin, &target) {
+                    return Err(format!("{target} was put in {file} by `link`: its text is the structured text you assembled \
+                                        (read your .s file); nocompiler lists the binary's own .text"));
+                }
+            }
             let r = nc(cfg, dir, vec!["disasm".into(), file.clone(), target.clone()])?;
             let listing = r["output"].as_str().is_some_and(|o| o.starts_with("; no structured text"));
             if !listing || target == "all" {
@@ -389,11 +404,52 @@ pub fn call(
             let _ = std::fs::remove_file(&tmp);
             Ok(r2)
         }
-        "check" | "funcs" | "symbols" | "sections" | "info" | "strings" | "stats" => {
+        "check" | "sections" | "info" => {
             nc(cfg, dir, vec![name.into(), f("file")?])
         }
-        "xrefs" | "decompile" | "emulate" => nc(cfg, dir, vec![name.into(), f("file")?, s(a, "target")?]),
-        "diff" => nc(cfg, dir, vec!["diff".into(), f("file")?, f("other")?]),
+        "funcs" | "symbols" => {
+            let bin = std::fs::read(episode_path(dir, &f("file")?)?).map_err(|e| e.to_string())?;
+            let mut levels = std::collections::HashMap::new();
+            if name == "funcs" {
+                // the levels nocompiler check gives (its JSON lists every function)
+                if let Ok((_, out)) = run(&cfg.nocompiler, &["check".into(), "--json".into(), f("file")?], dir, cfg.tool_timeout, 64 << 20) {
+                    if let Some(j) = out.lines().find(|l| l.starts_with('{')).and_then(|l| serde_json::from_str::<Value>(l).ok()) {
+                        for fun in j["functions"].as_array().cloned().unwrap_or_default() {
+                            if let (Some(n), Some(l)) = (fun["name"].as_str(), fun["level"].as_str()) {
+                                levels.insert(n.to_string(), l.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+            let rows = elf::symbol_rows(&bin, name == "funcs").map_err(|e| e.to_string())?;
+            let filter = opt(a, "filter").unwrap_or_default();
+            let lines: Vec<String> = rows
+                .into_iter()
+                .filter(|r| r.0.contains(&filter))
+                .map(|(n, addr, size, kind)| {
+                    if name == "funcs" {
+                        let lv = levels.get(&n).map_or("below L0", |s| s.as_str());
+                        format!("{addr:#x}  {:>6} insns  {lv:<8}  {n}", size / 4)
+                    } else {
+                        format!("{addr:#x}  {size:>8}  {kind:<6}  {n}")
+                    }
+                })
+                .collect();
+            Ok(Value::String(limited(lines, a)))
+        }
+        "strings" => {
+            let (_, out) = run(&cfg.nocompiler, &["strings".into(), f("file")?], dir, cfg.tool_timeout, 64 << 20)?;
+            let filter = opt(a, "filter").unwrap_or_default();
+            let lines: Vec<String> = out.lines().filter(|l| l.contains(&filter)).map(String::from).collect();
+            Ok(Value::String(limited(lines, a)))
+        }
+        "xrefs" => {
+            let bin = std::fs::read(episode_path(dir, &f("file")?)?).map_err(|e| e.to_string())?;
+            let refs = elf::refs_to(&bin, &s(a, "target")?).map_err(|e| e.to_string())?;
+            let lines: Vec<String> = refs.into_iter().map(|(func, off, kind)| format!("{func}+{off:#x}  {kind}")).collect();
+            Ok(Value::String(limited(lines, a)))
+        }
         "refine" => nc(cfg, dir, vec!["refine".into(), f("file")?, f("other")?, s(a, "target")?]),
         "run_tests" => {
             let names: Vec<String> = match opt(a, "files") {

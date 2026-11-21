@@ -42,7 +42,7 @@ struct Args {
     tool_timeout_secs: u64,
     #[arg(long, default_value_t = 3600)]
     test_timeout_secs: u64,
-    #[arg(long, default_value_t = 256 * 1024)]
+    #[arg(long, default_value_t = 48 * 1024)]
     max_output_bytes: usize,
 }
 
