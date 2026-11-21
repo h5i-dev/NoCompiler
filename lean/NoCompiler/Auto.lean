@@ -240,6 +240,10 @@ def writes (c : Code) (f : Struct.Func) : List Nat :=
 def loopHeads (f : Struct.Func) : List Nat :=
   f.nodes.filterMap fun n => if n.kind = .loop then some n.start.toNat else none
 
+/-- The ends of the blocks of `f`'s tree: where forward branches join (rule R3). -/
+def blockEnds (f : Struct.Func) : List Nat :=
+  (f.nodes.filterMap fun n => if n.kind = .block then some n.stop.toNat else none).eraseDups
+
 /-! ## The word normal form
 
 `W` is 2^64, written out: `omega` and the kernel take the literal as it is. -/
@@ -1847,6 +1851,14 @@ structure VCx where
   cutsT : Lean.Term
   /-- The callees' entries: where the rest of the run is due, by the callee's theorem. -/
   callsT : Lean.Term
+  /-- The callees' entries and the ECALLs, as numbers. -/
+  callNs : List Nat := []
+  /-- The block ends of the function's tree: where paths join. -/
+  joins : List Nat := []
+  /-- The join points a run of this context closes by their lemmas (`nocompiler_hj_<pc>`). -/
+  joinsActive : List Nat := []
+  /-- The prologue, as `frameOf` gives it (for the frame facts at a join). -/
+  frameList : List Nat := []
 
 /-- The hypothesis `s.pc = lit` about the state of a `Reach` goal, and the pc. -/
 def reachPc (g : MVarId) : MetaM (Option (Ident × Nat)) := g.withContext do
@@ -1859,6 +1871,40 @@ def reachPc (g : MVarId) : MetaM (Option (Ident × Nat)) := g.withContext do
       if l.isAppOfArity ``State.pc 1 && l.appArg!.consumeMData == s then
         if let some ⟨_, v⟩ ← getBitVecValue? r then return some (mkIdent d.userName, v.toNat)
   return none
+
+/-- The frame facts of state `u` (as in the invariants): sp, and every register the prologue
+    saved, still in its slot. -/
+def frameTerm (s0 u : Lean.Term) (frameList : List Nat) : TacticM Lean.Term := do
+  let mut frameT ← `(True)
+  if let n :: slots := frameList then
+    let W := 18446744073709551616
+    let pairs := (List.range (slots.length / 2)).map fun i => (slots[2 * i]!, slots[2 * i + 1]!)
+    for (k, r) in pairs.reverse do
+      frameT ← `(read64 (State.mem $u) (State.reg $s0 2 + BitVec.ofNat 64 $(natLit (W - n + k))) =
+        State.reg $s0 $(natLit r) ∧ $frameT)
+    frameT ← `(State.reg $u 2 = State.reg $s0 2 + BitVec.ofNat 64 $(natLit (W - n)) ∧ $frameT)
+  return frameT
+
+def wordLits (ns : List Nat) : TacticM Lean.Term :=
+  `([$((ns.toArray.map fun h => (⟨(Syntax.mkNumLit (toString h)).raw⟩ : Lean.Term))),*].map (BitVec.ofNat 64))
+
+/-- How many ends the run from `pc` has without join points (compiled evaluation). -/
+def countEnds (vx : VCx) (g : MVarId) (pc : Nat) : TacticM Nat := g.withContext do
+  let t := (← instantiateMVars (← g.getType)).consumeMData
+  let cesT ← wordLits (vx.callNs ++ vx.joinsActive)
+  let stx ← match vx.onChunk with
+    | some (cT, dT, _, chT, _) =>
+      `(NoCompiler.VC.M.exploreR $cT $dT ($(vx.cutsT) ++ $cesT) (NoCompiler.VC.M.Chunk.suffix $chT)
+          $(vx.fuelT) $(natLit ((pc - vx.baseN) / 4)) (BitVec.ofNat 64 $(natLit pc)) [])
+    | none =>
+      let cT ← Term.exprToSyntax (t.getArg! 0)
+      let dT ← Term.exprToSyntax (t.getArg! 2)
+      `(NoCompiler.VC.M.exploreR $cT $dT ($(vx.cutsT) ++ $cesT) (fun k => Code.words $cT |>.toList.drop k)
+          $(vx.fuelT) $(natLit ((pc - vx.baseN) / 4)) (BitVec.ofNat 64 $(natLit pc)) [])
+  let e ← instantiateMVars (← Term.elabTerm stx none)
+  match ← NoCompiler.VC.M.evalExplore e with
+  | some (ends, _) => return ends.length
+  | none => return 0
 
 set_option hygiene false
 
@@ -1888,15 +1934,54 @@ partial def vcRun (cx : Ctx) (vx : VCx) (g : MVarId) (pc : Nat) (hpcT hxT : Lean
   let he := cx.he
   let rs := cx.rs
   let s0 := cx.s0
+  -- Many paths (branches without a cut point where they join): stop at the block ends after
+  -- `pc` as well, each closed by a lemma proved by its own run (paths are merged there; what
+  -- is known at a join is the frame: exit, `Same`, sp and the saved registers).
+  let mut gMain := g
+  let mut vx := vx
+  let mut out : List MVarId := []
+  let later := ((vx.joins.filter fun j => pc < j && !vx.joinsActive.contains j && !cx.cuts.contains j
+    ).toArray.qsort (· < ·)).toList
+  if !later.isEmpty && (← countEnds vx gMain pc) > 64 then
+    let t := (← gMain.withContext do instantiateMVars (← gMain.getType)).consumeMData
+    let (cT, pT, dT, rT) ← gMain.withContext do
+      return (← Term.exprToSyntax (t.getArg! 0), ← Term.exprToSyntax (t.getArg! 1),
+        ← Term.exprToSyntax (t.getArg! 2), ← Term.exprToSyntax (t.getArg! 3))
+    let sj := mkIdent `nocompiler_sj
+    for m in later.reverse do
+      let frT ← frameTerm s0 sj vx.frameList
+      let hj := mkIdent (Name.mkSimple s!"nocompiler_hj_{(hex m).drop 2}")
+      let ty ← `(∀ ($sj : State), State.pc $sj = BitVec.ofNat 64 $(natLit m) → State.exit $sj = none →
+          Same $s0 $sj $rs → $frT → NoCompiler.Reach $cT $pT $dT $rT $sj)
+      let [gBody, gLem] ← run gMain (← `(tactic| refine (fun ($hj : $ty) => ?_) ?_))
+        | throwError "vc_auto: join at {hex m}"
+      -- The lemma: the run from the join, the joins after it already proved.
+      let [gl] ← run gLem (← `(tactic| intro $sj nocompiler_hpc nocompiler_hx nocompiler_hS nocompiler_hF))
+        | throwError "vc_auto: join at {hex m}"
+      let (gl, frameFacts) ← destructAnd gl (mkIdent `nocompiler_hF) "nocompiler_frj"
+      let gls ← run gl (← `(tactic|
+          (try have nocompiler_hra : State.reg $sj 1 = State.reg $s0 1 := nocompiler_hS 1 (by decide))))
+      let [gl] := gls | throwError "vc_auto: join at {hex m}"
+      let own : Array Lean.Term := #[mkIdent `nocompiler_hpc, mkIdent `nocompiler_hx] ++ frameFacts ++
+        (← gl.withContext do
+          return if ((← getLCtx).findFromUserName? `nocompiler_hra).isSome then #[mkIdent `nocompiler_hra] else #[])
+      let cxj := { cx with facts := cx.facts ++ own }
+      let vxj := { vx with joinsActive := vx.joinsActive ++ (later.filter (m < ·)) }
+      out := out ++ (← gl.withContext do
+        vcRun cxj vxj gl m (mkIdent `nocompiler_hpc) (mkIdent `nocompiler_hx))
+      gMain := gBody
+    vx := { vx with joinsActive := vx.joinsActive ++ later }
+  let g := gMain
+  let cesT ← wordLits (vx.callNs ++ vx.joinsActive)
   let gs ← match vx.onChunk with
     | none => run g (← `(tactic| refine NoCompiler.VC.M.Reach.of_exploreCalls (facts := []) (cuts := $(vx.cutsT))
-        (ces := $(vx.callsT)) (fuel := $(vx.fuelT)) (k := $(natLit ((pc - vx.baseN) / 4)))
+        (ces := $cesT) (fuel := $(vx.fuelT)) (k := $(natLit ((pc - vx.baseN) / 4)))
         (p := BitVec.ofNat 64 $(natLit pc))
         (fetch := fun k => Code.words _ |>.toList.drop k)
         (by decide) (fun _ => rfl) (by decide) $hpcT $hxT (by simp) ?_))
     | some (cT, dT, hagT, chT, baseT) => run g (← `(tactic|
         refine NoCompiler.VC.M.Reach.of_exploreCallsOn (c' := $cT) (D' := $dT) (facts := []) (cuts := $(vx.cutsT))
-        (ces := $(vx.callsT)) (fuel := $(vx.fuelT)) (k := $(natLit ((pc - vx.baseN) / 4)))
+        (ces := $cesT) (fuel := $(vx.fuelT)) (k := $(natLit ((pc - vx.baseN) / 4)))
         (p := BitVec.ofNat 64 $(natLit pc))
         (fetch := NoCompiler.VC.M.Chunk.suffix $chT)
         $hagT (Dom.sub_of_ranges (by decide)) (by decide) (NoCompiler.VC.M.Chunk.suffix_eq $baseT $chT)
@@ -1908,7 +1993,7 @@ partial def vcRun (cx : Ctx) (vx : VCx) (g : MVarId) (pc : Nat) (hpcT hxT : Lean
     simp only [allOb, allNext, Ob.den, symDen, smemDen, evalI, evalR, and_true];
     refine ?_;
     repeat' apply And.intro)))
-  let mut out := []
+  -- (the join lemmas' goals are in `out` already)
   for g in gs do
     if ← g.isAssigned then continue
     let t ← instantiateMVars (← g.getType)
@@ -1968,6 +2053,16 @@ partial def vcRun (cx : Ctx) (vx : VCx) (g : MVarId) (pc : Nat) (hpcT hxT : Lean
     | .cut S _ =>
       let pc' := S.pc.toNat
       let [g] ← run g (← `(tactic| intro nocompiler_vt)) | throwError "vc_auto: cut"
+      if vx.joinsActive.contains pc' then
+        -- A join point: its lemma, from the frame facts.
+        let hj := mkIdent (Name.mkSimple s!"nocompiler_hj_{(hex pc').drop 2}")
+        let gs ← run g (← `(tactic| open NoCompiler.VC.M in (
+            refine NoCompiler.VC.M.CallQ.call (by rw [nocompiler_vpc]; decide) ?_
+            refine $hj nocompiler_s' (by rw [nocompiler_vpc]) nocompiler_vx nocompiler_hS' ?_)))
+        let gs ← gs.foldlM (fun acc g => do return acc ++ (← run g (← `(tactic| (try exact True.intro))))) []
+        let gs ← gs.foldlM (fun acc g => do return acc ++ (← vc g)) []
+        out := out ++ (← tagged gs s!"{cx.origin}_join_{cx.name pc'}")
+        continue
       if cx.ecalls.contains pc' then
         -- A syscall: every outcome the environment allows (the step path's `stepSys`),
         -- each explored again from the next instruction, or the process's exit.
@@ -2074,7 +2169,8 @@ set_option hygiene true
 
 /-- `nocompiler_auto` with every path run by `explore`: a function without syscalls. -/
 def vcCore (call : Call) (heads rsList : List Nat) (entryN : Nat) (callees : Array (Nat × Lean.Term × Name))
-    (frameList : List Nat) (ecallList : List Nat := []) (chunkThm : Option Name := none) : TacticM Unit := do
+    (frameList : List Nat) (ecallList : List Nat := []) (chunkThm : Option Name := none)
+    (joins : List Nat := []) : TacticM Unit := do
   -- On a chunk image, explore over the function's chunk (VC/Chunk.lean).
   let chunkInfo ← match chunkThm with
     | none => pure none
@@ -2131,12 +2227,12 @@ def vcCore (call : Call) (heads rsList : List Nat) (entryN : Nat) (callees : Arr
     `([$((ns.toArray.map fun h => (⟨(Syntax.mkNumLit (toString h)).raw⟩ : Lean.Term))),*].map (BitVec.ofNat 64))
   let callEntries := callees.toList.map (·.1)
   let cutsT ← lits heads
-  let callsT ← lits (callEntries ++ ecallList)
+  let stopsT ← lits (callEntries ++ ecallList)
   let onChunk ← match chunkInfo, chunkThm with
     | some (cE, dm, bE, chE), some n => pure (some (← Term.exprToSyntax cE, ← Term.exprToSyntax dm,
         (← `($(mkIdent n))), ← Term.exprToSyntax chE, ← Term.exprToSyntax bE))
     | _, _ => pure none
-  let vx : VCx := { baseN, fuelT := natLit (sizeN + 2), cutsT, callsT, onChunk }
+  let vx : VCx := { baseN := baseN, fuelT := natLit (sizeN + 2), cutsT := cutsT, callsT := stopsT, onChunk := onChunk, callNs := callEntries ++ ecallList, joins := joins, frameList := frameList }
   let mkCx (fs : Array Lean.Term) (mode : Mode) (origin : String) (endsRef : IO.Ref (Std.HashMap String Nat)) : Ctx :=
     { ends := some endsRef, callees, ecalls := ecallList, cuts := heads, facts := call.userFacts ++ retFacts ++ fs, rs := rs,
       s0 := s0, he := he, spec := mkIdent call.specName, hR := hR, mode := mode, origin := origin,
@@ -2261,7 +2357,9 @@ def vcCovers (_call : Call) (_fE : Expr) : TacticM Bool := return true
   for h in given do
     unless heads.contains h do throwError "vc_auto: {hex h} is not a loop head of {f}"
   let ecallList ← evalNatList (mkApp2 (mkConst ``ecalls) ac fE)
-  vcCore call heads rsList entryN callees frameList ecallList chunkThm
+  let joins ← evalNatList (mkApp (mkConst ``blockEnds) fE)
+  withTheReader Core.Context (fun c => { c with maxRecDepth := max c.maxRecDepth 20000 }) <|
+    vcCore call heads rsList entryN callees frameList ecallList chunkThm joins
 
 end VCPath
 
@@ -2300,7 +2398,11 @@ end VCPath
     -- counts as a failure, and so does a timeout: the run starts again step by step.
     let ok ← tryCatchRuntimeEx
       (do
-        withoutRecover (vcCore call heads rsList entryN callees frameList ecallList chunkThm)
+        -- The join lemmas nest one goal per block end (20 on __adddf3), past the default
+        -- recursion limit of the elaborator.
+        let joins ← evalNatList (mkApp (mkConst ``blockEnds) fE)
+        withTheReader Core.Context (fun c => { c with maxRecDepth := max c.maxRecDepth 20000 })
+          (withoutRecover (vcCore call heads rsList entryN callees frameList ecallList chunkThm joins))
         if errors (← getThe Core.State).messages != e0 then throwError "an error was logged"
         traceLine "[nocompiler_auto] paths by explore"
         pure true)

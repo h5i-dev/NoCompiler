@@ -1,14 +1,24 @@
-# Usage: python3 -I Prove.py WORKDIR [N]
+# Usage: python3 -I Prove.py WORKDIR [N] [--specs safe,anyread,anymem]
 # The whole nocompiler_auto proof (explore and the goals after it) on a binary's N largest functions
 # (default 20) that the safety-only specification can take: a `_dom` (every callee passed the profile
 # check), no loops (an invariant and a measure would be the function's own), no callees.
-# Specification: any entry; returns, preserving the ABI; reads only .rodata; writes only its frame.
+# Specifications, tried in order until one proves the function (--specs):
+#   safe     any entry; returns, preserving the ABI; reads only .rodata; writes only its frame;
+#   anyread  the same, but reads anywhere (reads through argument pointers);
+#   anymem   the same, but reads and writes anywhere (writes through argument pointers).
+# "Anywhere" is the region ⟨0, 2^65⟩, which covers every access. Every specification still
+# requires alignment, termination and the ABI (the callee-saved registers, sp, the return).
 # WORKDIR is Art.py's (Art.lean, ArtImg.olean). One module per function, each capped (6 GB, no
 # swap, 900 s); cost = every profile category but import and initialization, per instruction.
 import os, re, subprocess, sys
 
 work = sys.argv[1]
-top = int(sys.argv[2]) if len(sys.argv) > 2 else 20
+args = [a for a in sys.argv[2:] if not a.startswith("--")]
+top = int(args[0]) if args else 20
+specs = ["safe"]
+for i, a in enumerate(sys.argv):
+    if a == "--specs":
+        specs = sys.argv[i + 1].split(",")
 here = os.path.dirname(os.path.abspath(__file__))
 lean_dir = os.path.abspath(os.path.join(here, "..", "..", ".."))
 lean_path = subprocess.run(["lake", "env", "printenv", "LEAN_PATH"], cwd=lean_dir, capture_output=True,
@@ -26,8 +36,12 @@ cands = [n for n in funcs if n in doms and not funcs[n][1] and doms[n].count("("
 cands.sort(key=lambda n: -funcs[n][0])
 rows = []
 for j, n in enumerate(cands[:top]):
-    path = os.path.join(work, f"P{j}.lean")
-    reads = "[seg_rodata.region]" if rodata else "[]"
+  for spec in specs:
+    path = os.path.join(work, f"P{j}_{spec}.lean")
+    ro = "[seg_rodata.region]" if rodata else "[]"
+    anywhere = "[⟨0, 2 ^ 65⟩]"
+    reads = {"safe": ro, "anyread": anywhere, "anymem": anywhere}[spec]
+    writes = {"safe": "[]", "anyread": "[]", "anymem": anywhere}[spec]
     open(path, "w").write(f"""import ArtImg
 import NoCompiler.Auto
 namespace Art.P{j}
@@ -37,6 +51,7 @@ def specSafe : Spec Unit where
   pre := fun _ _ => True
   post := fun _ _ _ => True
   reads := fun _ _ => {reads}
+  writes := fun _ _ => {writes}
   stack := {frame.get(n, 0)}
 
 theorem safe : VerifiedImg code {n}_dom {n}_entry specSafe := by
@@ -47,7 +62,7 @@ end Art.P{j}
 """)
     cmd = ["systemd-run", "--user", "--scope", "--quiet", "-p", "MemoryMax=6G", "-p", "MemorySwapMax=0",
            f"--setenv=PATH={os.environ['PATH']}", f"--setenv=LEAN_PATH={lean_path}", "timeout", "900",
-           "lean", "-Dprofiler=true", path]
+           "/usr/bin/time", "-f", "MAXRSS %M", "lean", "-Dprofiler=true", path]
     r = subprocess.run(cmd, cwd=lean_dir, capture_output=True, text=True)
     out = r.stdout + r.stderr
     open(path[:-5] + ".out", "w").write(out)
@@ -56,11 +71,15 @@ end Art.P{j}
         prof[m.group(1)] = float(m.group(2)) * unit[m.group(3)]
     total = sum(v for k, v in prof.items() if k not in ("import", "initialization"))
     kern = prof.get("type checking", 0.0)
+    rss = int((re.findall(r"MAXRSS (\d+)", out) or ["0"])[-1])
     err = next((l for l in out.splitlines() if "error" in l), None) if r.returncode else None
     ln = funcs[n][0]
-    rows.append((n, ln, r.returncode, total, kern, err))
-    print(f"{n[-40:]:40s} {ln:4d} instr  rc {r.returncode}  total {total:8.0f} ms {total / ln:7.2f} ms/instr  "
-          f"kernel {kern / ln:6.2f} ms/instr" + (f"  ERROR {err[:120]}" if err else ""), flush=True)
+    print(f"{n[-40:]:40s} {ln:4d} instr  {spec:8s} rc {r.returncode}  total {total:8.0f} ms {total / ln:7.2f} ms/instr  "
+          f"kernel {kern / ln:6.2f} ms/instr  peak {rss // 1024} MB" + (f"  ERROR {err[:110]}" if err else ""),
+          flush=True)
+    if r.returncode == 0 or spec == specs[-1]:
+        rows.append((n, ln, r.returncode, total, kern, err))
+        break
 ok = [r for r in rows if r[2] == 0]
 ti = sum(r[1] for r in ok)
 tt = sum(r[3] for r in ok)
