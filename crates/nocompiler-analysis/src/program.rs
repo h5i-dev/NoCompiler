@@ -550,38 +550,59 @@ pub(crate) fn refine_noreturn(
     let nothing = DataMap::default();
     let named: BTreeMap<Addr, Option<String>> =
         known.iter().map(|(a, f)| (*a, f.name.clone())).collect();
-    let graph: BTreeMap<Addr, &Cfg> = known.iter().map(|(a, f)| (*a, &f.cfg)).collect();
-    let set = noreturn::compute(&named, &graph);
-    let affected: Vec<Addr> = known
-        .iter()
-        .filter(|(a, f)| !set.contains(a) && f.cfg.calls.iter().any(|c| set.contains(c)))
-        .map(|(a, _)| *a)
-        .collect();
     let stop_at: BTreeSet<Addr> = known.keys().copied().collect();
-    let total = Some(affected.len() as u64);
+    // Rounds of compute-then-rewalk. The first walk ran with an empty set, so
+    // a call to a function that does not return fell through into whatever
+    // followed it, and the function containing that call looks as if it
+    // returns until it is walked again. One rewalk settles one level of a
+    // chain like `mp_raise_msg -> nlr_jump -> longjmp`; each further round
+    // settles the next. Rewalks only shorten a function, so the set only
+    // grows, and the loop stops when it does not.
+    let mut set: BTreeSet<Addr> = BTreeSet::new();
     let mut rebuilt_count = 0u64;
-    sink.report(Stage::NoReturn, 1, 0, total);
-    for slice in affected.chunks(WALK_BATCH) {
-        let rebuilt: Vec<(Addr, RawCfg)> = slice
-            .par_iter()
-            .map(|a| {
-                (
-                    *a,
-                    cfg::build_raw(mem, &arch, *a, &stop_at, &set, &opts.caps, &nothing),
-                )
-            })
-            .collect();
-        for (a, c) in intern_batch(interner, rebuilt) {
-            if c.blocks.is_empty() {
-                continue;
-            }
-            if let Some(f) = known.get_mut(&a) {
-                f.range = c.hull();
-                f.cfg = c;
-            }
+    for _round in 0..32 {
+        let graph: BTreeMap<Addr, &Cfg> = known.iter().map(|(a, f)| (*a, &f.cfg)).collect();
+        let next = noreturn::compute(&named, &graph);
+        let added: BTreeSet<Addr> = next.difference(&set).copied().collect();
+        if added.is_empty() {
+            break;
         }
-        rebuilt_count += slice.len() as u64;
+        set = next;
+        let affected: Vec<Addr> = known
+            .iter()
+            // Members of the set too: a function can join it in the round
+            // that also adds its callee, and its walk still runs on past the
+            // call into whatever follows, which the decompiler would print.
+            .filter(|(a, f)| f.cfg.calls.iter().any(|c| added.contains(c) && c != *a))
+            .map(|(a, _)| *a)
+            .collect();
+        let total = Some(rebuilt_count + affected.len() as u64);
         sink.report(Stage::NoReturn, 1, rebuilt_count, total);
+        for slice in affected.chunks(WALK_BATCH) {
+            let rebuilt: Vec<(Addr, RawCfg)> = slice
+                .par_iter()
+                .map(|a| {
+                    (
+                        *a,
+                        cfg::build_raw(mem, &arch, *a, &stop_at, &set, &opts.caps, &nothing),
+                    )
+                })
+                .collect();
+            for (a, c) in intern_batch(interner, rebuilt) {
+                if c.blocks.is_empty() {
+                    continue;
+                }
+                if let Some(f) = known.get_mut(&a) {
+                    f.range = c.hull();
+                    f.cfg = c;
+                }
+            }
+            rebuilt_count += slice.len() as u64;
+            sink.report(Stage::NoReturn, 1, rebuilt_count, total);
+        }
+        if affected.is_empty() {
+            break;
+        }
     }
     set
 }
