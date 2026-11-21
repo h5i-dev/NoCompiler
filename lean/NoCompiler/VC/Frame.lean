@@ -145,4 +145,58 @@ theorem PEnd.ret_intro {ρ : Nat → Word} {μ : Word → Byte} {Q : State → P
     PEnd.Next ρ μ Q (.ret S cs) :=
   fun hc s' hm hx => h hc s' hm.2.1 hm.2.2.1 hm.2.2.2 hx
 
+/-! ### Alignment of computed addresses
+
+An address computed from aligned pieces (a register aligned by a precondition or by
+sp's alignment, a shifted index, a constant) is aligned: `vc_align` takes a sum apart
+and closes the pieces. -/
+
+theorem aligned_add' {a b : Word} {n : Nat} (hn : 2 ^ 64 % n = 0) (ha : NoCompiler.aligned a n)
+    (hb : NoCompiler.aligned b n) : NoCompiler.aligned (a + b) n := by
+  unfold NoCompiler.aligned at *
+  rw [BitVec.toNat_add]
+  have h1 : n ∣ a.toNat + b.toNat := Nat.dvd_add (Nat.dvd_of_mod_eq_zero ha) (Nat.dvd_of_mod_eq_zero hb)
+  exact Nat.mod_eq_zero_of_dvd ((Nat.dvd_mod_iff (Nat.dvd_of_mod_eq_zero hn)).2 h1)
+
+theorem aligned_shl' {a : Word} {k n : Nat} (hn : 2 ^ 64 % n = 0) (hk : 2 ^ k % n = 0) :
+    NoCompiler.aligned (a <<< k) n := by
+  unfold NoCompiler.aligned
+  rw [BitVec.toNat_shiftLeft, Nat.shiftLeft_eq]
+  have h1 : n ∣ a.toNat * 2 ^ k := Nat.dvd_mul_left_of_dvd (Nat.dvd_of_mod_eq_zero hk) _
+  exact Nat.mod_eq_zero_of_dvd ((Nat.dvd_mod_iff (Nat.dvd_of_mod_eq_zero hn)).2 h1)
+
+theorem aligned_weaken {a : Word} {m n : Nat} (h : NoCompiler.aligned a m) (hd : m % n = 0) :
+    NoCompiler.aligned a n := by
+  unfold NoCompiler.aligned at *
+  exact Nat.mod_eq_zero_of_dvd (Nat.dvd_trans (Nat.dvd_of_mod_eq_zero hd) (Nat.dvd_of_mod_eq_zero h))
+
+open Lean Elab Tactic Meta in
+/-- An alignment goal over a sum of aligned pieces, taken apart by the shape of the address:
+    a sum by `aligned_add'`, a shift by `aligned_shl'`, anything else from a hypothesis (or one
+    of a larger alignment) or by `decide`. -/
+partial def vcAlign (g : MVarId) : TacticM Unit := g.withContext do
+  let t ← whnfR (← instantiateMVars (← g.getType))
+  let some (a, _) := (if t.isAppOfArity ``NoCompiler.aligned 2 then some (t.getArg! 0, t.getArg! 1) else none)
+    | throwError "vc_align: not an alignment goal"
+  let a := a.consumeMData
+  let tryTac (tac : TSyntax `tactic) : TacticM (Option (List MVarId)) := do
+    let st ← saveState
+    try return some (← evalTacticAt tac g)
+    catch _ => st.restore; return none
+  if a.isAppOfArity ``HAdd.hAdd 6 then
+    let some gs ← tryTac (← `(tactic| refine NoCompiler.VC.M.aligned_add' (by decide) ?_ ?_))
+      | throwError "vc_align: sum"
+    for g' in gs do vcAlign g'
+    return
+  if a.isAppOfArity ``HShiftLeft.hShiftLeft 6 then
+    if let some [] ← tryTac (← `(tactic| exact NoCompiler.VC.M.aligned_shl' (by decide) (by decide))) then
+      return
+  for tac in [← `(tactic| (decide; done)), ← `(tactic| assumption),
+      ← `(tactic| (refine NoCompiler.VC.M.aligned_weaken (m := 8) ?_ (by decide); assumption)),
+      ← `(tactic| (refine NoCompiler.VC.M.aligned_weaken (m := 16) ?_ (by decide); assumption))] do
+    if let some [] ← tryTac tac then return
+  throwError "vc_align: cannot show{indentExpr t}"
+
+elab "vc_align" : tactic => do vcAlign (← Lean.Elab.Tactic.getMainGoal)
+
 end NoCompiler.VC.M

@@ -1653,6 +1653,7 @@ def autoCore (fl : Flavor) (call : Call) (heads rsList : List Nat) (entryN : Nat
   let muT ← `(fun ($pcIdent : Word) ($uIdent : State) => $muChain)
   traceLine "[nocompiler_auto] alignFacts"
   evalTactic (← `(tactic| have := (show (State.reg $s0 2).toNat % 16 = 0 from ($he).sp)))
+  evalTactic (← `(tactic| have nocompiler_hsp : aligned (State.reg $s0 2) 16 := ($he).sp))
   alignFacts
   let hR := mkIdent `nocompiler_hR
   let R := mkIdent `nocompiler_R
@@ -2000,7 +2001,9 @@ partial def vcRun (cx : Ctx) (vx : VCx) (g : MVarId) (pc : Nat) (hpcT hxT : Lean
     if !t.isAppOfArity ``NoCompiler.VC.M.PEnd.Next 4 then
       -- An obligation the facts did not discharge: an access's permission or alignment.
       let r ← run g (← `(tactic| first
+        | (decide; done)
         | (nocompiler_anorm [$fs,*]; nocompiler_align; done)
+        | (vc_align; done)
         | ((try nocompiler_anorm [$fs,*]); nocompiler_perm [$sp:ident, $fs,*]; done)
         | (exact True.intro)
         | skip))
@@ -2209,6 +2212,7 @@ def vcCore (call : Call) (heads rsList : List Nat) (entryN : Nat) (callees : Arr
     State.exit $uIdent = none ∧ Same $s0 $uIdent $rs ∧ $frameT ∧ $invChain)
   let muT ← `(fun ($pcIdent : Word) ($uIdent : State) => $muChain)
   evalTactic (← `(tactic| have := (show (State.reg $s0 2).toNat % 16 = 0 from ($he).sp)))
+  evalTactic (← `(tactic| have nocompiler_hsp : aligned (State.reg $s0 2) 16 := ($he).sp))
   alignFacts
   let hR := mkIdent `nocompiler_hR
   let R := mkIdent `nocompiler_R
