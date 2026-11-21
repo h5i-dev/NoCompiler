@@ -862,6 +862,9 @@ structure Ctx where
   labels : List (String × Nat) := []
   /-- The function's entry: other points are named by their offset from it. -/
   entryN : Nat := 0
+  /-- On a chunk image, its segments: in the permission check at a call, a segment's size is
+      then a literal (`Segment.size_bytesOfNat`), not an array the kernel decodes. -/
+  segs : Array Term := #[]
 
 def hex (n : Nat) : String := "0x" ++ String.ofList (Nat.toDigits 16 n)
 
@@ -1338,13 +1341,14 @@ def closeCall (cx : Ctx) (g : MVarId) (pc : Nat) (thm : Term) (calleeSpec : Name
   if let some gd := byKind["hD"]? then
     left := left ++ (← run gd (← `(tactic| exact Dom.sub_of_ranges (by decide))))
   if let some gP := byKind["hP"]? then
+    let fsP ← simpArgs (cx.facts ++ cx.segs)
     let r ← run gP (← `(tactic| (refine Perm.le_of ?_ ?_ <;>
       simp (disch := nocompiler_disch) only [Spec.perm, Spec.stackRegion, $csp:ident, $sp:ident, Segment.region,
         List.size_toArray, List.length_cons, List.length_nil, List.cons_append, List.nil_append,
         List.append_nil, List.mem_cons, List.mem_append, List.mem_nil_iff, or_false, false_or,
         forall_eq_or_imp, forall_eq, exists_eq_or_imp, exists_eq_left, List.not_mem_nil, false_and,
         exists_false, imp_false, not_false_eq_true, true_and, and_true, false_implies, implies_true,
-        forall_const, Region.within, nocompiler_state, nocompiler_nat, Nat.reducePow, Nat.reduceAdd, Nat.reduceSub, Nat.reduceMod, $fs,*] <;>
+        forall_const, Region.within, nocompiler_state, nocompiler_nat, Nat.reducePow, Nat.reduceAdd, Nat.reduceSub, Nat.reduceMod, $fsP,*] <;>
       (try omega))))
     left := left ++ (← tagged r s!"{tag}_perm")
   let mut cont := []
@@ -2194,10 +2198,18 @@ def vcKernelCheck (g : MVarId) : TermElabM Nat := g.withContext do
   catch ex => traceLine s!"[kernel] error {(← ex.toMessageData.toString).take 300}"
   return (← IO.monoMsNow) - t0
 
+/-- The segments of the chunk image `chunkThm` belongs to (its `segments` list), as terms. -/
+def imageSegs (chunkThm : Option Name) : MetaM (Array Term) := do
+  let some n := chunkThm | return #[]
+  let some (.defnInfo d) := (← getEnv).find? (n.getPrefix ++ `segments) | return #[]
+  return (d.value.getUsedConstants.filter fun c =>
+    match c with | .str _ s => s.startsWith "seg_" | _ => false).map fun c => (⟨(mkIdent c).raw⟩ : Term)
+
 /-- `nocompiler_auto` with every path run by `explore`: a function without syscalls. -/
 def vcCore (call : Call) (heads rsList : List Nat) (entryN : Nat) (callees : Array (Nat × Lean.Term × Name))
     (frameList : List Nat) (ecallList : List Nat := []) (chunkThm : Option Name := none)
     (joins : List Nat := []) : TacticM Unit := do
+  let segs ← imageSegs chunkThm
   -- On a chunk image, explore over the function's chunk (VC/Chunk.lean).
   let chunkInfo ← match chunkThm with
     | none => pure none
@@ -2265,7 +2277,7 @@ def vcCore (call : Call) (heads rsList : List Nat) (entryN : Nat) (callees : Arr
   let log := if nocompiler.vc.kernelSteps.get (← getOptions) then some logRef else none
   let vx : VCx := { baseN := baseN, fuelT := natLit (sizeN + 2), cutsT := cutsT, callsT := stopsT, onChunk := onChunk, callNs := callEntries ++ ecallList, joins := joins, frameList := frameList, log := log }
   let mkCx (fs : Array Lean.Term) (mode : Mode) (origin : String) (endsRef : IO.Ref (Std.HashMap String Nat)) : Ctx :=
-    { ends := some endsRef, callees, ecalls := ecallList, cuts := heads, facts := call.userFacts ++ retFacts ++ fs, rs := rs,
+    { ends := some endsRef, callees, ecalls := ecallList, cuts := heads, facts := call.userFacts ++ retFacts ++ fs, rs := rs, segs := segs,
       s0 := s0, he := he, spec := mkIdent call.specName, hR := hR, mode := mode, origin := origin,
       labels := call.labels, entryN := entryN }
   let endsRef ← IO.mkRef ({} : Std.HashMap String Nat)

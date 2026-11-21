@@ -137,10 +137,8 @@ def prove(n):
                if spec == "alignargs" else "fun _ _ => True")
         pat = ("⟨" + ", ".join(f"ha{r}" for r in range(10, 18)) + "⟩") if spec == "alignargs" else "_"
         imports = "".join(f"import {done[d][1]}\n" for d in deps[n])
-        # The segments as facts: a permission check on .rodata then rewrites its size to a literal
-        # (Segment.size_bytesOfNat) instead of the kernel decoding the bytes (a 5-instruction caller
-        # took 10 s and 3.2 GB of kernel without it, 88 ms with it).
-        facts = " [seg_rodata]" if rodata else ""
+        # (The tactic gives the image's segments to the permission check at a call itself.)
+        facts = ""
         calls = (" calls [" + ", ".join(f"Art.Q{ids[d]}.safe" for d in deps[n]) + "]") if deps[n] else ""
         open(path, "w").write(f"""import ArtImg
 import NoCompiler.Auto
