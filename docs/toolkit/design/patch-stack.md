@@ -45,9 +45,13 @@ order, `asm` it and link it into the current binary; write OUT; with
 shows the `.s` changes; `textconv` of base and OUT shows them per function.
 
 Determinism (the test "rebuild == committed SHA-256" depends on it):
-- `asm`: no timestamps, no host paths, fixed section and symbol order (to be
-  checked: a test that assembles the same text twice in different directories
-  and compares bytes);
+- `asm`: no timestamps, no host paths, fixed section and symbol order.
+  Checked: crates/nocompiler-cli/tests/asm_determinism.rs assembles the same
+  text in two directories under two file names and gets the same bytes (for
+  sum.link1, sum.link2 and hello). Not the same across layouts: `disasm`
+  lists functions in address order, so the object's section order follows
+  the binary's; a stack's patches are text of the base, so this does not
+  matter for a rebuild;
 - `link`: placement a function of (binary, object) only, as above.
 - CI: rebuild every committed stack and compare with its `result`.
 
