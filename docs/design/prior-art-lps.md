@@ -845,3 +845,19 @@ model is tested against Linux itself instead.
   agree, including SEEK_DATA/SEEK_HOLE, ENXIO at the end, the lowest free
   fd reused after close, EINVAL for 1025 iovecs).
 - Not run in CI (no qemu or ld.lld on the runners); rerun by hand.
+
+### For musl's startup (lean/NoCompiler/Linux/Musl.lean; A's libc item asked)
+
+- `auxv_at`: at entry, auxv entry k's type and value are the words at
+  `auxvBase sp + 16 k` and `+ 8`, where `auxvBase` is past argc, argv and
+  its NULL, envp and its NULL; `auxv_null`: a zero type after the last, the
+  AT_NULL musl's `__init_libc` loop stops at. With `launchArgs` (Stack.lean)
+  the entries are `auxvEntries`: AT_PHDR, AT_PHENT, AT_PHNUM, AT_PAGESZ 4096,
+  AT_RANDOM (`random_at`), AT_SECURE 0, AT_HWCAP, AT_ENTRY, AT_EXECFN, ...
+- `Kern.withStdin d`: stdin is the bytes `d`, as `prog < FILE` gives: fd 0
+  open on them as a file, so `stdin_read`: `read(0, buf, n)` returns exactly
+  their first `min n MAX_RW_COUNT` bytes and moves the offset; `readv` on it
+  is exact too (FsIo.lean), and both are `Sys` steps (`fileRead_sys`), so
+  `PReach.of_reach` applies. Without it fd 0 is no file and a read may
+  return any bytes.
+- Axioms: standard.
