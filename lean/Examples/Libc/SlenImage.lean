@@ -111,7 +111,8 @@ theorem _start_c_chunk : ∀ x, Dom.mem [chunk_1.range 0x111d0#64] x → code.in
 
 /-- `_start_c`: [0x111f0, 0x1121c), frame 0 bytes. -/
 def _start_c_entry : Word := 0x111f0#64
--- no `_start_c_dom`: `_start_c` calls, transitively, a function that did not pass the profile check
+/-- `_start_c` and every function it calls. -/
+def _start_c_dom : Dom := [(0x111f0#64, 44), (0x112ec#64, 4), (0x112f0#64, 580), (0x11584#64, 100), (0x117a4#64, 684), (0x125dc#64, 1044), (0x129f0#64, 252)]
 
 /-- `main`'s block/loop structure (rules R1 to R3, checked below with R4 to R6). -/
 def main_func : Struct.Func := ⟨0x1121c#64, 51, [⟨.loop, 0x1123c#64, 0x11260#64⟩, ⟨.loop, 0x11288#64, 0x112b4#64⟩]⟩
@@ -129,7 +130,8 @@ theorem main_chunk : ∀ x, Dom.mem [chunk_2.range 0x111d0#64] x → code.instr 
 
 /-- `main`: [0x1121c, 0x112e8), frame 112 bytes. -/
 def main_entry : Word := 0x1121c#64
--- no `main_dom`: `main` calls, transitively, a function that did not pass the profile check
+/-- `main` and every function it calls. -/
+def main_dom : Dom := [(0x1121c#64, 204), (0x11af4#64, 328), (0x11c3c#64, 240), (0x11d2c#64, 92), (0x11d88#64, 148), (0x11fe8#64, 316), (0x12124#64, 204), (0x121f0#64, 84), (0x125dc#64, 1044)]
 
 /-- `_init`'s block/loop structure (rules R1 to R3, checked below with R4 to R6). -/
 def _init_func : Struct.Func := ⟨0x112e8#64, 1, []⟩
@@ -185,7 +187,8 @@ theorem __copy_tls_chunk : ∀ x, Dom.mem [chunk_10.range 0x111d0#64] x → code
 
 /-- `__copy_tls`: [0x116cc, 0x117a4), frame 64 bytes. -/
 def __copy_tls_entry : Word := 0x116cc#64
--- no `__copy_tls_dom`: `__copy_tls` calls, transitively, a function that did not pass the profile check
+/-- `__copy_tls` and every function it calls. -/
+def __copy_tls_dom : Dom := [(0x116cc#64, 216), (0x125dc#64, 1044)]
 
 /-- `__funcs_on_exit`'s block/loop structure (rules R1 to R3, checked below with R4 to R6). -/
 def __funcs_on_exit_func : Struct.Func := ⟨0x11a50#64, 1, []⟩
@@ -241,7 +244,8 @@ theorem __toread_needs_stdio_exit_chunk : ∀ x, Dom.mem [chunk_20.range 0x111d0
 
 /-- `__toread_needs_stdio_exit`: [0x11e1c, 0x11e24), frame 0 bytes. -/
 def __toread_needs_stdio_exit_entry : Word := 0x11e1c#64
--- no `__toread_needs_stdio_exit_dom`: `__toread_needs_stdio_exit` calls, transitively, a function that did not pass the profile check
+/-- `__toread_needs_stdio_exit` and every function it calls. -/
+def __toread_needs_stdio_exit_dom : Dom := [(0x11c3c#64, 240), (0x11e1c#64, 8), (0x11e24#64, 452), (0x1224c#64, 44), (0x12aec#64, 608)]
 
 /-- `__towrite`'s block/loop structure (rules R1 to R3, checked below with R4 to R6). -/
 def __towrite_func : Struct.Func := ⟨0x121f0#64, 21, [⟨.block, 0x12208#64, 0x12234#64⟩]⟩
@@ -278,7 +282,8 @@ theorem __towrite_needs_stdio_exit_chunk : ∀ x, Dom.mem [chunk_25.range 0x111d
 
 /-- `__towrite_needs_stdio_exit`: [0x12244, 0x1224c), frame 0 bytes. -/
 def __towrite_needs_stdio_exit_entry : Word := 0x12244#64
--- no `__towrite_needs_stdio_exit_dom`: `__towrite_needs_stdio_exit` calls, transitively, a function that did not pass the profile check
+/-- `__towrite_needs_stdio_exit` and every function it calls. -/
+def __towrite_needs_stdio_exit_dom : Dom := [(0x11c3c#64, 240), (0x11e24#64, 452), (0x12244#64, 8), (0x1224c#64, 44), (0x12aec#64, 608)]
 
 /-- `__ofl_lock`'s block/loop structure (rules R1 to R3, checked below with R4 to R6). -/
 def __ofl_lock_func : Struct.Func := ⟨0x1224c#64, 11, []⟩
@@ -296,7 +301,8 @@ theorem __ofl_lock_chunk : ∀ x, Dom.mem [chunk_26.range 0x111d0#64] x → code
 
 /-- `__ofl_lock`: [0x1224c, 0x12278), frame 16 bytes. -/
 def __ofl_lock_entry : Word := 0x1224c#64
--- no `__ofl_lock_dom`: `__ofl_lock` calls, transitively, a function that did not pass the profile check
+/-- `__ofl_lock` and every function it calls. -/
+def __ofl_lock_dom : Dom := [(0x1224c#64, 44), (0x12aec#64, 608)]
 
 /-- `__ofl_unlock`'s block/loop structure (rules R1 to R3, checked below with R4 to R6). -/
 def __ofl_unlock_func : Struct.Func := ⟨0x12278#64, 4, []⟩
@@ -314,7 +320,8 @@ theorem __ofl_unlock_chunk : ∀ x, Dom.mem [chunk_27.range 0x111d0#64] x → co
 
 /-- `__ofl_unlock`: [0x12278, 0x12288), frame 0 bytes. -/
 def __ofl_unlock_entry : Word := 0x12278#64
--- no `__ofl_unlock_dom`: `__ofl_unlock` calls, transitively, a function that did not pass the profile check
+/-- `__ofl_unlock` and every function it calls. -/
+def __ofl_unlock_dom : Dom := [(0x12278#64, 16), (0x12d4c#64, 120)]
 
 /-- `__aio_close`'s block/loop structure (rules R1 to R3, checked below with R4 to R6). -/
 def __aio_close_func : Struct.Func := ⟨0x12288#64, 1, []⟩
@@ -427,7 +434,8 @@ theorem __stdout_write_chunk : ∀ x, Dom.mem [chunk_34.range 0x111d0#64] x → 
 
 /-- `__stdout_write`: [0x1240c, 0x1247c), frame 16 bytes. -/
 def __stdout_write_entry : Word := 0x1240c#64
--- no `__stdout_write_dom`: `__stdout_write` calls, transitively, a function that did not pass the profile check
+/-- `__stdout_write` and every function it calls. -/
+def __stdout_write_dom : Dom := [(0x122c0#64, 60), (0x122fc#64, 12), (0x1240c#64, 112), (0x1247c#64, 352)]
 
 /-- `memset`'s block/loop structure (rules R1 to R3, checked below with R4 to R6). -/
 def memset_func : Struct.Func := ⟨0x129f0#64, 63, [⟨.block, 0x129f0#64, 0x12ae8#64⟩, ⟨.loop, 0x12acc#64, 0x12ae8#64⟩]⟩
@@ -466,5 +474,205 @@ theorem __lseek_chunk : ∀ x, Dom.mem [chunk_41.range 0x111d0#64] x → code.in
 def __lseek_entry : Word := 0x12dd0#64
 /-- `__lseek` and every function it calls. -/
 def __lseek_dom : Dom := [(0x122c0#64, 60), (0x122fc#64, 12), (0x12dd0#64, 16)]
+
+/-- `__init_libc`: [0x112f0, 0x11534). Not checked (it does not pass the profile check, `nocompiler check`): no
+    structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
+    targets, not an indirect call's. -/
+def __init_libc_func : Struct.Func := ⟨0x112f0#64, 145, []⟩
+def __init_libc_entry : Word := 0x112f0#64
+theorem __init_libc_chunk : ∀ x, Dom.mem [chunk_5.range 0x111d0#64] x → code.instr x = (chunk_5.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 5) chunks_contig (by decide +kernel) chunks_bound
+/-- `__init_libc` and every function it calls. -/
+def __init_libc_dom : Dom := [(0x112ec#64, 4), (0x112f0#64, 580), (0x117a4#64, 684), (0x125dc#64, 1044), (0x129f0#64, 252)]
+
+/-- `__libc_start_init`: [0x11534, 0x11584). Not checked (it does not pass the profile check, `nocompiler check`): no
+    structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
+    targets, not an indirect call's. -/
+def __libc_start_init_func : Struct.Func := ⟨0x11534#64, 20, []⟩
+def __libc_start_init_entry : Word := 0x11534#64
+theorem __libc_start_init_chunk : ∀ x, Dom.mem [chunk_6.range 0x111d0#64] x → code.instr x = (chunk_6.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 6) chunks_contig (by decide +kernel) chunks_bound
+/-- `__libc_start_init` and every function it calls. -/
+def __libc_start_init_dom : Dom := [(0x112e8#64, 4), (0x11534#64, 80)]
+
+/-- `__libc_start_main`: [0x11584, 0x115e8). Not checked (it does not pass the profile check, `nocompiler check`): no
+    structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
+    targets, not an indirect call's. -/
+def __libc_start_main_func : Struct.Func := ⟨0x11584#64, 25, []⟩
+def __libc_start_main_entry : Word := 0x11584#64
+theorem __libc_start_main_chunk : ∀ x, Dom.mem [chunk_7.range 0x111d0#64] x → code.instr x = (chunk_7.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 7) chunks_contig (by decide +kernel) chunks_bound
+/-- `__libc_start_main` and every function it calls. -/
+def __libc_start_main_dom : Dom := [(0x112ec#64, 4), (0x112f0#64, 580), (0x11584#64, 100), (0x117a4#64, 684), (0x125dc#64, 1044), (0x129f0#64, 252)]
+
+/-- `libc_start_main_stage2`: [0x115e8, 0x11634). Not checked (it does not pass the profile check, `nocompiler check`): no
+    structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
+    targets, not an indirect call's. -/
+def libc_start_main_stage2_func : Struct.Func := ⟨0x115e8#64, 19, []⟩
+def libc_start_main_stage2_entry : Word := 0x115e8#64
+theorem libc_start_main_stage2_chunk : ∀ x, Dom.mem [chunk_8.range 0x111d0#64] x → code.instr x = (chunk_8.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 8) chunks_contig (by decide +kernel) chunks_bound
+/-- `libc_start_main_stage2` and every function it calls. -/
+def libc_start_main_stage2_dom : Dom := [(0x112e8#64, 4), (0x11534#64, 80), (0x115e8#64, 76), (0x11a50#64, 4), (0x11a54#64, 80), (0x11aa4#64, 52), (0x11ad8#64, 28), (0x11c3c#64, 240), (0x11e24#64, 452), (0x1224c#64, 44), (0x12aec#64, 608)]
+
+/-- `__init_tp`: [0x11634, 0x116cc). Not checked (it does not pass the profile check, `nocompiler check`): no
+    structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
+    targets, not an indirect call's. -/
+def __init_tp_func : Struct.Func := ⟨0x11634#64, 38, []⟩
+def __init_tp_entry : Word := 0x11634#64
+theorem __init_tp_chunk : ∀ x, Dom.mem [chunk_9.range 0x111d0#64] x → code.instr x = (chunk_9.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 9) chunks_contig (by decide +kernel) chunks_bound
+/-- `__init_tp` and every function it calls. -/
+def __init_tp_dom : Dom := [(0x11634#64, 152)]
+
+/-- `__init_tls`: [0x117a4, 0x11a50). Not checked (it does not pass the profile check, `nocompiler check`): no
+    structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
+    targets, not an indirect call's. -/
+def __init_tls_func : Struct.Func := ⟨0x117a4#64, 171, []⟩
+def __init_tls_entry : Word := 0x117a4#64
+theorem __init_tls_chunk : ∀ x, Dom.mem [chunk_11.range 0x111d0#64] x → code.instr x = (chunk_11.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 11) chunks_contig (by decide +kernel) chunks_bound
+/-- `__init_tls` and every function it calls. -/
+def __init_tls_dom : Dom := [(0x117a4#64, 684), (0x125dc#64, 1044)]
+
+/-- `__libc_exit_fini`: [0x11a54, 0x11aa4). Not checked (it does not pass the profile check, `nocompiler check`): no
+    structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
+    targets, not an indirect call's. -/
+def __libc_exit_fini_func : Struct.Func := ⟨0x11a54#64, 20, []⟩
+def __libc_exit_fini_entry : Word := 0x11a54#64
+theorem __libc_exit_fini_chunk : ∀ x, Dom.mem [chunk_13.range 0x111d0#64] x → code.instr x = (chunk_13.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 13) chunks_contig (by decide +kernel) chunks_bound
+/-- `__libc_exit_fini` and every function it calls. -/
+def __libc_exit_fini_dom : Dom := [(0x11a50#64, 4), (0x11a54#64, 80)]
+
+/-- `exit`: [0x11aa4, 0x11ad8). Not checked (it does not pass the profile check, `nocompiler check`): no
+    structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
+    targets, not an indirect call's. -/
+def exit_func : Struct.Func := ⟨0x11aa4#64, 13, []⟩
+def exit_entry : Word := 0x11aa4#64
+theorem exit_chunk : ∀ x, Dom.mem [chunk_14.range 0x111d0#64] x → code.instr x = (chunk_14.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 14) chunks_contig (by decide +kernel) chunks_bound
+/-- `exit` and every function it calls. -/
+def exit_dom : Dom := [(0x11a50#64, 4), (0x11a54#64, 80), (0x11aa4#64, 52), (0x11ad8#64, 28), (0x11c3c#64, 240), (0x11e24#64, 452), (0x1224c#64, 44), (0x12aec#64, 608)]
+
+/-- `fread`: [0x11af4, 0x11c3c). Not checked (it does not pass the profile check, `nocompiler check`): no
+    structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
+    targets, not an indirect call's. -/
+def fread_func : Struct.Func := ⟨0x11af4#64, 82, []⟩
+def fread_entry : Word := 0x11af4#64
+theorem fread_chunk : ∀ x, Dom.mem [chunk_16.range 0x111d0#64] x → code.instr x = (chunk_16.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 16) chunks_contig (by decide +kernel) chunks_bound
+/-- `fread` and every function it calls. -/
+def fread_dom : Dom := [(0x11af4#64, 328), (0x11c3c#64, 240), (0x11d2c#64, 92), (0x11d88#64, 148), (0x125dc#64, 1044)]
+
+/-- `__lockfile`: [0x11c3c, 0x11d2c). Not checked (it does not pass the profile check, `nocompiler check`): no
+    structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
+    targets, not an indirect call's. -/
+def __lockfile_func : Struct.Func := ⟨0x11c3c#64, 60, []⟩
+def __lockfile_entry : Word := 0x11c3c#64
+theorem __lockfile_chunk : ∀ x, Dom.mem [chunk_17.range 0x111d0#64] x → code.instr x = (chunk_17.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 17) chunks_contig (by decide +kernel) chunks_bound
+/-- `__lockfile` and every function it calls. -/
+def __lockfile_dom : Dom := [(0x11c3c#64, 240)]
+
+/-- `__unlockfile`: [0x11d2c, 0x11d88). Not checked (it does not pass the profile check, `nocompiler check`): no
+    structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
+    targets, not an indirect call's. -/
+def __unlockfile_func : Struct.Func := ⟨0x11d2c#64, 23, []⟩
+def __unlockfile_entry : Word := 0x11d2c#64
+theorem __unlockfile_chunk : ∀ x, Dom.mem [chunk_18.range 0x111d0#64] x → code.instr x = (chunk_18.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 18) chunks_contig (by decide +kernel) chunks_bound
+/-- `__unlockfile` and every function it calls. -/
+def __unlockfile_dom : Dom := [(0x11d2c#64, 92)]
+
+/-- `__toread`: [0x11d88, 0x11e1c). Not checked (it does not pass the profile check, `nocompiler check`): no
+    structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
+    targets, not an indirect call's. -/
+def __toread_func : Struct.Func := ⟨0x11d88#64, 37, []⟩
+def __toread_entry : Word := 0x11d88#64
+theorem __toread_chunk : ∀ x, Dom.mem [chunk_19.range 0x111d0#64] x → code.instr x = (chunk_19.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 19) chunks_contig (by decide +kernel) chunks_bound
+/-- `__toread` and every function it calls. -/
+def __toread_dom : Dom := [(0x11d88#64, 148)]
+
+/-- `__stdio_exit`: [0x11e24, 0x11fe8). Not checked (it does not pass the profile check, `nocompiler check`): no
+    structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
+    targets, not an indirect call's. -/
+def __stdio_exit_func : Struct.Func := ⟨0x11e24#64, 113, []⟩
+def __stdio_exit_entry : Word := 0x11e24#64
+theorem __stdio_exit_chunk : ∀ x, Dom.mem [chunk_21.range 0x111d0#64] x → code.instr x = (chunk_21.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 21) chunks_contig (by decide +kernel) chunks_bound
+/-- `__stdio_exit` and every function it calls. -/
+def __stdio_exit_dom : Dom := [(0x11c3c#64, 240), (0x11e24#64, 452), (0x1224c#64, 44), (0x12aec#64, 608)]
+
+/-- `__fwritex`: [0x11fe8, 0x12124). Not checked (it does not pass the profile check, `nocompiler check`): no
+    structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
+    targets, not an indirect call's. -/
+def __fwritex_func : Struct.Func := ⟨0x11fe8#64, 79, []⟩
+def __fwritex_entry : Word := 0x11fe8#64
+theorem __fwritex_chunk : ∀ x, Dom.mem [chunk_22.range 0x111d0#64] x → code.instr x = (chunk_22.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 22) chunks_contig (by decide +kernel) chunks_bound
+/-- `__fwritex` and every function it calls. -/
+def __fwritex_dom : Dom := [(0x11fe8#64, 316), (0x121f0#64, 84), (0x125dc#64, 1044)]
+
+/-- `fwrite`: [0x12124, 0x121f0). Not checked (it does not pass the profile check, `nocompiler check`): no
+    structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
+    targets, not an indirect call's. -/
+def fwrite_func : Struct.Func := ⟨0x12124#64, 51, []⟩
+def fwrite_entry : Word := 0x12124#64
+theorem fwrite_chunk : ∀ x, Dom.mem [chunk_23.range 0x111d0#64] x → code.instr x = (chunk_23.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 23) chunks_contig (by decide +kernel) chunks_bound
+/-- `fwrite` and every function it calls. -/
+def fwrite_dom : Dom := [(0x11c3c#64, 240), (0x11d2c#64, 92), (0x11fe8#64, 316), (0x12124#64, 204), (0x121f0#64, 84), (0x125dc#64, 1044)]
+
+/-- `__stdio_read`: [0x12308, 0x12400). Not checked (it does not pass the profile check, `nocompiler check`): no
+    structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
+    targets, not an indirect call's. -/
+def __stdio_read_func : Struct.Func := ⟨0x12308#64, 62, []⟩
+def __stdio_read_entry : Word := 0x12308#64
+theorem __stdio_read_chunk : ∀ x, Dom.mem [chunk_32.range 0x111d0#64] x → code.instr x = (chunk_32.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 32) chunks_contig (by decide +kernel) chunks_bound
+/-- `__stdio_read` and every function it calls. -/
+def __stdio_read_dom : Dom := [(0x122c0#64, 60), (0x122fc#64, 12), (0x12308#64, 248)]
+
+/-- `__stdio_write`: [0x1247c, 0x125dc). Not checked (it does not pass the profile check, `nocompiler check`): no
+    structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
+    targets, not an indirect call's. -/
+def __stdio_write_func : Struct.Func := ⟨0x1247c#64, 88, []⟩
+def __stdio_write_entry : Word := 0x1247c#64
+theorem __stdio_write_chunk : ∀ x, Dom.mem [chunk_35.range 0x111d0#64] x → code.instr x = (chunk_35.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 35) chunks_contig (by decide +kernel) chunks_bound
+/-- `__stdio_write` and every function it calls. -/
+def __stdio_write_dom : Dom := [(0x122c0#64, 60), (0x122fc#64, 12), (0x1247c#64, 352)]
+
+/-- `memcpy`: [0x125dc, 0x129f0). Not checked (it does not pass the profile check, `nocompiler check`): no
+    structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
+    targets, not an indirect call's. -/
+def memcpy_func : Struct.Func := ⟨0x125dc#64, 261, []⟩
+def memcpy_entry : Word := 0x125dc#64
+theorem memcpy_chunk : ∀ x, Dom.mem [chunk_36.range 0x111d0#64] x → code.instr x = (chunk_36.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 36) chunks_contig (by decide +kernel) chunks_bound
+/-- `memcpy` and every function it calls. -/
+def memcpy_dom : Dom := [(0x125dc#64, 1044)]
+
+/-- `__lock`: [0x12aec, 0x12d4c). Not checked (it does not pass the profile check, `nocompiler check`): no
+    structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
+    targets, not an indirect call's. -/
+def __lock_func : Struct.Func := ⟨0x12aec#64, 152, []⟩
+def __lock_entry : Word := 0x12aec#64
+theorem __lock_chunk : ∀ x, Dom.mem [chunk_38.range 0x111d0#64] x → code.instr x = (chunk_38.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 38) chunks_contig (by decide +kernel) chunks_bound
+/-- `__lock` and every function it calls. -/
+def __lock_dom : Dom := [(0x12aec#64, 608)]
+
+/-- `__unlock`: [0x12d4c, 0x12dc4). Not checked (it does not pass the profile check, `nocompiler check`): no
+    structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
+    targets, not an indirect call's. -/
+def __unlock_func : Struct.Func := ⟨0x12d4c#64, 30, []⟩
+def __unlock_entry : Word := 0x12d4c#64
+theorem __unlock_chunk : ∀ x, Dom.mem [chunk_39.range 0x111d0#64] x → code.instr x = (chunk_39.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 39) chunks_contig (by decide +kernel) chunks_bound
+/-- `__unlock` and every function it calls. -/
+def __unlock_dom : Dom := [(0x12d4c#64, 120)]
 
 end Examples.Libc.SlenImage

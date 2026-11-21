@@ -357,6 +357,34 @@ fn export_as(
     for m in metas {
         *seen_ids.entry(ident(&m.name)).or_default() += 1;
     }
+    // In chunks, the functions that did not pass the profile check are written
+    // too (entry, region, `_dom`; no level), and `_dom` is over every function:
+    // a conforming one's callees, the others' direct call and tail-call targets.
+    let checked: BTreeSet<u64> = metas.iter().map(|m| m.entry).collect();
+    let others: Vec<&crate::profile::Func> = if chunked {
+        bin.funcs
+            .iter()
+            .filter(|f| {
+                !checked.contains(&f.entry) && f.entry >= bin.text_addr && !f.words.is_empty()
+            })
+            .collect()
+    } else {
+        vec![]
+    };
+    for f in &others {
+        *seen_ids.entry(ident(&f.name)).or_default() += 1;
+    }
+    let all_entries: BTreeSet<u64> = bin.funcs.iter().map(|f| f.entry).collect();
+    let mut graph: BTreeMap<u64, (u64, Vec<u64>)> = metas
+        .iter()
+        .map(|m| (m.entry, (m.size, m.callees.clone())))
+        .collect();
+    for f in &others {
+        graph.insert(
+            f.entry,
+            (4 * f.words.len() as u64, direct_targets(f, &all_entries)),
+        );
+    }
     for m in metas {
         let id = match ident(&m.name) {
             id if seen_ids[&id] > 1 => format!("{id}_{:x}", m.entry),
@@ -583,6 +611,10 @@ fn export_as(
         )
         .unwrap();
         writeln!(o, "def {id}_entry : Word := 0x{:x}#64", m.entry).unwrap();
+        if chunked {
+            write_dom(&mut o, &id, &m.name, m.entry, &graph);
+            continue;
+        }
         if !by_entry.contains_key(&m.entry) {
             writeln!(
                 o,
@@ -600,8 +632,106 @@ fn export_as(
         writeln!(o, "/-- `{}` and every function it calls. -/", m.name).unwrap();
         writeln!(o, "def {id}_dom : Dom := [{}]", ranges.join(", ")).unwrap();
     }
+    for f in &others {
+        let id = match ident(&f.name) {
+            id if seen_ids[&id] > 1 => format!("{id}_{:x}", f.entry),
+            id => id,
+        };
+        let w = ((f.entry - bin.text_addr) / 4) as usize;
+        let k = bounds
+            .iter()
+            .position(|&(a, b)| a <= w && w < b)
+            .ok_or_else(|| format!("{}: in no chunk", f.name))?;
+        let base = format!("0x{:x}#64", bin.text_addr);
+        writeln!(
+            o,
+            "\n/-- `{}`: [{:#x}, {:#x}). Not checked (it does not pass the profile check, `nocompiler check`): no\n    \
+             structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call\n    \
+             targets, not an indirect call's. -/",
+            f.name,
+            f.entry,
+            f.end()
+        )
+        .unwrap();
+        writeln!(
+            o,
+            "def {id}_func : Struct.Func := ⟨0x{:x}#64, {}, []⟩",
+            f.entry,
+            f.words.len()
+        )
+        .unwrap();
+        writeln!(o, "def {id}_entry : Word := 0x{:x}#64", f.entry).unwrap();
+        writeln!(
+            o,
+            "theorem {id}_chunk : ∀ x, Dom.mem [chunk_{k}.range {base}] x → code.instr x = (chunk_{k}.code {base}).instr x :=\n  Code.ofChunks_instr (k := {k}) chunks_contig (by decide +kernel) chunks_bound"
+        )
+        .unwrap();
+        write_dom(&mut o, &id, &f.name, f.entry, &graph);
+    }
     writeln!(o, "\nend {namespace}").unwrap();
     Ok(o)
+}
+
+/// The direct call and tail-call targets in `f`'s words that are function
+/// entries: `jal` and `auipc r, hi; jalr rd, lo(r)`. An indirect call has none.
+fn direct_targets(f: &crate::profile::Func, entries: &BTreeSet<u64>) -> Vec<u64> {
+    let mut out = BTreeSet::new();
+    for (i, &w) in f.words.iter().enumerate() {
+        let pc = f.entry + 4 * i as u64;
+        let t = match isa::decode(w) {
+            Some(isa::Instr::Jal(_, off)) => Some(pc.wrapping_add(off.signed() as u64)),
+            Some(isa::Instr::Jalr(_, rs1, off)) if i > 0 => match isa::decode(f.words[i - 1]) {
+                Some(isa::Instr::Auipc(rd, hi)) if rd == rs1 && rd.0 != 0 => Some(
+                    (pc - 4)
+                        .wrapping_add((hi.signed() << 12) as u64)
+                        .wrapping_add(off.signed() as u64)
+                        & !1,
+                ),
+                _ => None,
+            },
+            _ => None,
+        };
+        if let Some(t) = t.filter(|t| entries.contains(t) && *t != f.entry) {
+            out.insert(t);
+        }
+    }
+    out.into_iter().collect()
+}
+
+/// `<id>_dom`: the function and every function it reaches through `graph`
+/// (entry -> size, callees), or a comment when a callee is not a function.
+fn write_dom(
+    o: &mut String,
+    id: &str,
+    name: &str,
+    entry: u64,
+    graph: &BTreeMap<u64, (u64, Vec<u64>)>,
+) {
+    let mut seen = BTreeSet::new();
+    let mut work = vec![entry];
+    let mut dom = Vec::new();
+    while let Some(e) = work.pop() {
+        if !seen.insert(e) {
+            continue;
+        }
+        let Some((size, callees)) = graph.get(&e) else {
+            writeln!(
+                o,
+                "-- no `{id}_dom`: `{name}` reaches {e:#x}, which is no function's entry"
+            )
+            .unwrap();
+            return;
+        };
+        dom.push((e, *size));
+        work.extend(callees.iter().copied());
+    }
+    dom.sort();
+    let ranges: Vec<String> = dom
+        .iter()
+        .map(|(e, s)| format!("(0x{e:x}#64, {s})"))
+        .collect();
+    writeln!(o, "/-- `{name}` and every function it calls. -/").unwrap();
+    writeln!(o, "def {id}_dom : Dom := [{}]", ranges.join(", ")).unwrap();
 }
 
 #[cfg(test)]
@@ -663,7 +793,8 @@ mod tests {
 
     /// With `write_all` taken as failing the profile check, the array format
     /// drops `hello` (its `_dom` would include `write_all`); the chunk format
-    /// still checks `hello`'s level, and only leaves out its `_dom`.
+    /// still checks `hello`'s level, writes `write_all` unchecked (entry,
+    /// region, no structure, no level), and `hello`'s `_dom` over both.
     #[test]
     fn chunks_check_functions_whose_callees_failed() {
         let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
@@ -681,8 +812,18 @@ mod tests {
         let c = export_chunks(&bin, &metas, "T", "hello.elf").unwrap();
         assert!(c.contains("theorem hello_checked"));
         assert!(c.contains("def hello_entry"));
-        assert!(!c.contains("def hello_dom"));
-        assert!(c.contains("-- no `hello_dom`"));
+        let wa = bin.funcs.iter().find(|f| f.name == "write_all").unwrap();
+        let he = bin.funcs.iter().find(|f| f.name == "hello").unwrap();
+        let dom = c.lines().find(|l| l.starts_with("def hello_dom")).unwrap();
+        assert!(dom.contains(&format!("(0x{:x}#64, {})", wa.entry, 4 * wa.words.len())));
+        assert!(dom.contains(&format!("(0x{:x}#64, {})", he.entry, 4 * he.words.len())));
+        assert!(c.contains(&format!(
+            "def write_all_func : Struct.Func := ⟨0x{:x}#64, {}, []⟩",
+            wa.entry,
+            wa.words.len()
+        )));
+        assert!(c.contains("def write_all_dom"));
+        assert!(!c.contains("write_all_checked") && !c.contains("write_all_level"));
     }
 
     /// Without the level check, `<f>_level` states what `<f>_checked` proves,
