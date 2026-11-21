@@ -162,7 +162,10 @@ pub fn harness(cfg: &Config, task: &str, elfs: &[PathBuf], which: &str) -> Value
 fn limited(lines: Vec<String>, a: &Map<String, Value>) -> String {
     let limit = a
         .get("limit")
-        .and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|x| x.parse().ok())))
+        .and_then(|v| {
+            v.as_u64()
+                .or_else(|| v.as_str().and_then(|x| x.parse().ok()))
+        })
         .unwrap_or(200) as usize;
     let n = lines.len();
     let mut out = lines.into_iter().take(limit).collect::<Vec<_>>().join("\n");
@@ -383,12 +386,11 @@ pub fn call(
         "disasm" => {
             let file = f("file")?;
             let target = opt(a, "target").unwrap_or_else(|| "all".into());
-            if let Ok(bin) = std::fs::read(episode_path(dir, &file)?) {
-                if elf::in_swb(&bin, &target) {
+            if let Ok(bin) = std::fs::read(episode_path(dir, &file)?)
+                && elf::in_swb(&bin, &target) {
                     return Err(format!("{target} was put in {file} by `link`: its text is the structured text you assembled \
                                         (read your .s file); nocompiler lists the binary's own .text"));
                 }
-            }
             let r = nc(cfg, dir, vec!["disasm".into(), file.clone(), target.clone()])?;
             let listing = r["output"].as_str().is_some_and(|o| o.starts_with("; no structured text"));
             if !listing || target == "all" {
@@ -412,15 +414,14 @@ pub fn call(
             let mut levels = std::collections::HashMap::new();
             if name == "funcs" {
                 // the levels nocompiler check gives (its JSON lists every function)
-                if let Ok((_, out)) = run(&cfg.nocompiler, &["check".into(), "--json".into(), f("file")?], dir, cfg.tool_timeout, 64 << 20) {
-                    if let Some(j) = out.lines().find(|l| l.starts_with('{')).and_then(|l| serde_json::from_str::<Value>(l).ok()) {
+                if let Ok((_, out)) = run(&cfg.nocompiler, &["check".into(), "--json".into(), f("file")?], dir, cfg.tool_timeout, 64 << 20)
+                    && let Some(j) = out.lines().find(|l| l.starts_with('{')).and_then(|l| serde_json::from_str::<Value>(l).ok()) {
                         for fun in j["functions"].as_array().cloned().unwrap_or_default() {
                             if let (Some(n), Some(l)) = (fun["name"].as_str(), fun["level"].as_str()) {
                                 levels.insert(n.to_string(), l.to_string());
                             }
                         }
                     }
-                }
             }
             let rows = elf::symbol_rows(&bin, name == "funcs").map_err(|e| e.to_string())?;
             let filter = opt(a, "filter").unwrap_or_default();

@@ -796,12 +796,20 @@ fn sort_loads(img: &mut [u8], phoff: usize, n: usize) -> Result<(), Error> {
 // ---- listings --------------------------------------------------------------------------------
 
 /// (name, address, size, kind) of every named symbol, by address; functions only if `funcs`.
-pub fn symbol_rows(bin: &[u8], funcs: bool) -> Result<Vec<(String, u64, u64, &'static str)>, Error> {
+pub fn symbol_rows(
+    bin: &[u8],
+    funcs: bool,
+) -> Result<Vec<(String, u64, u64, &'static str)>, Error> {
     let b = Elf::parse(bin.to_vec())?;
     let mut rows: Vec<(String, u64, u64, &'static str)> = b
         .symbols()?
         .into_iter()
-        .filter(|s| !s.name.is_empty() && s.shndx != 0 && !s.name.starts_with(".L") && !s.name.starts_with('$'))
+        .filter(|s| {
+            !s.name.is_empty()
+                && s.shndx != 0
+                && !s.name.starts_with(".L")
+                && !s.name.starts_with('$')
+        })
         .filter(|s| !funcs || (s.is_func() && s.size > 0))
         .map(|s| {
             let kind = match s.info & 0xf {
@@ -820,11 +828,17 @@ pub fn symbol_rows(bin: &[u8], funcs: bool) -> Result<Vec<(String, u64, u64, &'s
 
 /// Is `name` a function that `link` placed in the .swb section?
 pub fn in_swb(bin: &[u8], name: &str) -> bool {
-    let Ok(b) = Elf::parse(bin.to_vec()) else { return false };
-    let Some(i) = b.shdrs.iter().position(|s| s.name == SWB_SECTION) else { return false };
+    let Ok(b) = Elf::parse(bin.to_vec()) else {
+        return false;
+    };
+    let Some(i) = b.shdrs.iter().position(|s| s.name == SWB_SECTION) else {
+        return false;
+    };
     let sec = &b.shdrs[i];
-    b.symbols().map_or(false, |ss| {
-        ss.iter().any(|s| s.name == name && s.is_func() && sec.addr <= s.value && s.value < sec.addr + sec.size)
+    b.symbols().is_ok_and(|ss| {
+        ss.iter().any(|s| {
+            s.name == name && s.is_func() && sec.addr <= s.value && s.value < sec.addr + sec.size
+        })
     })
 }
 
@@ -833,16 +847,26 @@ pub fn in_swb(bin: &[u8], name: &str) -> bool {
 pub fn refs_to(bin: &[u8], name: &str) -> Result<Vec<(String, u64, &'static str)>, Error> {
     let b = Elf::parse(bin.to_vec())?;
     let syms = b.symbols()?;
-    let targets: Vec<&Sym> = syms.iter().filter(|s| s.name == name && s.shndx != 0).collect();
+    let targets: Vec<&Sym> = syms
+        .iter()
+        .filter(|s| s.name == name && s.shndx != 0)
+        .collect();
     if targets.is_empty() {
         return err(format!("no symbol {name}"));
     }
-    let hits = |t: u64| targets.iter().any(|s| s.value <= t && t < s.value + s.size.max(1));
+    let hits = |t: u64| {
+        targets
+            .iter()
+            .any(|s| s.value <= t && t < s.value + s.size.max(1))
+    };
     let mut funcs: Vec<&Sym> = syms.iter().filter(|s| s.is_func() && s.size > 0).collect();
     funcs.sort_by_key(|s| s.value);
     let owner = |a: u64| -> Option<&Sym> {
         let i = funcs.partition_point(|s| s.value <= a);
-        funcs.get(i.wrapping_sub(1)).copied().filter(|s| a < s.value + s.size)
+        funcs
+            .get(i.wrapping_sub(1))
+            .copied()
+            .filter(|s| a < s.value + s.size)
     };
     let mut out: Vec<(String, u64, &'static str)> = Vec::new();
     for (ri, rs) in b.shdrs.iter().enumerate() {
@@ -867,13 +891,18 @@ pub fn refs_to(bin: &[u8], name: &str) -> Result<Vec<(String, u64, &'static str)
     }
     // calls and jumps without relocations
     for f in &funcs {
-        let Some(fo) = b.file_offset(f.value, f.size) else { continue };
+        let Some(fo) = b.file_offset(f.value, f.size) else {
+            continue;
+        };
         let n = (f.size / 4) as usize;
         for k in 0..n {
             let a = f.value + 4 * k as u64;
             let w = rd(&b.data, fo + 4 * k, 4)? as u32;
             let t = if w & 0x7f == 0x6f {
-                let imm = (((w >> 31) & 1) << 20) | (((w >> 21) & 0x3ff) << 1) | (((w >> 20) & 1) << 11) | (((w >> 12) & 0xff) << 12);
+                let imm = (((w >> 31) & 1) << 20)
+                    | (((w >> 21) & 0x3ff) << 1)
+                    | (((w >> 20) & 1) << 11)
+                    | (((w >> 12) & 0xff) << 12);
                 Some((a.wrapping_add((((imm as i64) << 43) >> 43) as u64), "jump"))
             } else if w & 0x7f == 0x17 && k + 1 < n {
                 let w2 = rd(&b.data, fo + 4 * (k + 1), 4)? as u32;
@@ -887,10 +916,12 @@ pub fn refs_to(bin: &[u8], name: &str) -> Result<Vec<(String, u64, &'static str)
             } else {
                 None
             };
-            if let Some((t, kind)) = t {
-                if hits(t) && !(f.value <= t && t < f.value + f.size) && !out.iter().any(|o| o.0 == f.name && o.1 == a - f.value) {
-                    out.push((f.name.clone(), a - f.value, kind));
-                }
+            if let Some((t, kind)) = t
+                && hits(t)
+                && !(f.value <= t && t < f.value + f.size)
+                && !out.iter().any(|o| o.0 == f.name && o.1 == a - f.value)
+            {
+                out.push((f.name.clone(), a - f.value, kind));
             }
         }
     }
