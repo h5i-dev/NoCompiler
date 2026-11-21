@@ -104,4 +104,28 @@ theorem __towrite_verified : VerifiedImg code __towrite_dom __towrite_entry towr
       BitVec.setWidth_eq]
     simp
 
+/-! ### `__lock` while the process has one thread: no atomic instruction is fetched
+
+`__lock` (src/thread/__lock.c) begins `if (!libc.need_locks) return;`: a load of the byte
+`__libc.need_locks` (0x1419b: `__libc` at 0x14198 in `.bss`, offset 3) and a branch to its `ret` at
+0x12cc0. Its later words are A-extension `lr.w`/`sc.w`, which have no semantics here (`decode` gives
+none). `__lock_verified` proves that from `need_locks = 0` the run returns without reaching them: a
+step needs a decoded instruction, so a proof that went past the branch could not be built. -/
+
+/-- `__lock(l)` with `__libc.need_locks = 0`: returns, writing nothing. -/
+def lockSpec : Spec Unit where
+  pre := fun _ s => s.mem 0x1419b#64 = 0
+  post := fun _ _ _ => True
+  reads := fun _ _ => [⟨0x1419b#64, 1⟩]
+
+theorem __lock_verified : VerifiedImg code __lock_dom __lock_entry lockSpec := by
+  rintro ⟨⟩ s he h0
+  nocompiler_auto __lock_func s he [h0]
+    loop_inv 0x12afc#64 (fun _ => False) measure (fun _ => 0)
+  -- The fall-through into the atomics: excluded by need_locks = 0 (the cut at 0x12afc has invariant False,
+  -- so nothing past the branch is ever explored).
+  case entry_to_x10 =>
+    simp only [lockSpec] at h0
+    simp [h0] at hb_12af8
+
 end Examples.Libc.Slen
