@@ -553,3 +553,12 @@ pub fn xrefs(
     }
     Ok(0)
 }
+
+/// `nocompiler textconv FILE`: the binary as text for `git diff`
+/// (crate::textconv, docs/toolkit/git-diff.md).
+pub fn textconv(file: &Path, out: &mut String) -> Result<u8, String> {
+    let bytes = read(file)?;
+    let bin = crate::load(&bytes)?;
+    out.push_str(&crate::textconv::textconv(&bin));
+    Ok(0)
+}

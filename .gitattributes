@@ -1,2 +1,3 @@
 *.nocompiler-patch merge=union
 *.nocompiler-proj  merge=union
+*.elf diff=nocompiler

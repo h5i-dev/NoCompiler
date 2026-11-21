@@ -253,6 +253,12 @@ pub enum Command {
         #[arg(short = 'o', value_name = "OUT.o")]
         out: PathBuf,
     },
+    /// A RISC-V binary as text for `git diff`: per function, by name, addresses masked
+    /// (docs/toolkit/git-diff.md).
+    Textconv {
+        /// The RISC-V ELF.
+        file: PathBuf,
+    },
     /// The ledger entries of a linked RISC-V binary's functions (docs/isa/ledger.md).
     Ledger {
         /// The linked RISC-V ELF.
@@ -766,6 +772,7 @@ impl Command {
             | Command::Export { .. }
             | Command::Module { .. }
             | Command::Ledger { .. }
+            | Command::Textconv { .. }
             | Command::Asm { .. }
             | Command::Sim { .. }
             | Command::Refine { .. } => None,
@@ -802,6 +809,7 @@ impl Command {
             | Command::Export { .. }
             | Command::Module { .. }
             | Command::Ledger { .. }
+            | Command::Textconv { .. }
             | Command::Asm { .. }
             | Command::Sim { .. }
             | Command::Refine { .. } => {
@@ -880,6 +888,7 @@ fn core(cli: &Cli, w: &mut out::Out) -> Option<Result<u8, String>> {
             &mut text,
         ),
         Command::Ledger { file, proofs } => cmd::ledger(file, proofs.as_deref(), &mut text),
+        Command::Textconv { file } => cmd::textconv(file, &mut text),
         Command::Asm { file, out } => cmd::asm(file, out, &mut text),
         Command::Refine {
             a,

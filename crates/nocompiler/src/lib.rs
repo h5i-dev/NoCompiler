@@ -21,6 +21,7 @@ pub mod rvlist;
 pub mod sha256;
 pub mod sim;
 pub mod text;
+pub mod textconv;
 pub mod treediff;
 
 use profile::{Func, FuncMeta, Violation};
