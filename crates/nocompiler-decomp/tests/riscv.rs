@@ -143,6 +143,8 @@ fn coverage() {
     let all: Vec<&Function> = p.functions_by_address().collect();
     let mut outcome: BTreeMap<Outcome, Vec<String>> = BTreeMap::new();
     let mut gotos = 0usize;
+    let mut callind = 0usize;
+    let mut clobbered = 0usize;
     let mut with_goto = 0usize;
     let mut incomplete_cfg = 0usize;
     let start = Instant::now();
@@ -190,6 +192,8 @@ fn coverage() {
             if let Some(d) = &d {
                 gotos += d.gotos;
                 with_goto += usize::from(d.gotos > 0);
+                callind += usize::from(d.text.contains("__callind("));
+                clobbered += usize::from(d.text.contains("__clobbered()"));
             }
             outcome.entry(o).or_default().push(name);
         }
@@ -212,5 +216,7 @@ fn coverage() {
         eprintln!("  {o:?}: {} {sample:?}", names.len());
     }
     eprintln!("  functions with a goto: {with_goto} ({gotos} gotos)");
+    eprintln!("  functions with an unresolved indirect call (__callind): {callind}");
+    eprintln!("  functions reading a register a call clobbered (__clobbered): {clobbered}");
     eprintln!("  functions whose CFG is incomplete (unresolved indirect jump): {incomplete_cfg}");
 }

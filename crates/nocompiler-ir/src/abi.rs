@@ -169,7 +169,6 @@ impl Abi {
         None
     }
 
-    /// True when the convention passes an argument in this register.
     /// The assembler's name for a register, where this module knows the
     /// architecture's names. Only RISC-V today, whose register file offsets
     /// come from a SLEIGH specification rather than a decoder that names them.
@@ -193,6 +192,7 @@ impl Abi {
         })
     }
 
+    /// True when the convention passes an argument in this register.
     pub fn passes_arguments_in(&self, offset: u64) -> bool {
         self.slot(offset).is_some()
     }

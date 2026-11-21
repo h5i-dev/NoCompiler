@@ -764,9 +764,13 @@ pub(crate) fn returned(
                     (0, newest)
                 }
             };
-            if is_entry_value(f, definitions, value, location, 0)
-                || is_entry_or_clobber(f, definitions, value, location, 0)
-            {
+            // A load counts as a restore of a result register only when the
+            // function spilled it: a result read back out of memory (`*out`
+            // after `get(x, &out)`) is a value the function computed, and
+            // calling it a restore makes the function void.
+            let restored = is_entry_value(f, definitions, value, location, 0)
+                && (spills_entry_value(f, location) || !loaded(f, definitions, value));
+            if restored || is_entry_or_clobber(f, definitions, value, location, 0) {
                 continue;
             }
             if best.is_none_or(|(at, _)| rank > at) {
@@ -808,6 +812,31 @@ pub(crate) fn is_entry_or_clobber(
     }
 }
 
+/// True when a value comes out of a load, through copies and phis.
+fn loaded(f: &SsaFunction, definitions: &Definitions, value: crate::ssa::Value) -> bool {
+    let mut work = vec![value];
+    let mut seen = BTreeSet::new();
+    while let Some(v) = work.pop() {
+        if !seen.insert(v) || seen.len() > 64 {
+            continue;
+        }
+        let Some(op) = definitions
+            .get(&v)
+            .and_then(|(b, i)| f.blocks.get(b).and_then(|b| b.ops.get(*i)))
+        else {
+            continue;
+        };
+        match op.kind {
+            SsaKind::Op(Op::Load) => return true,
+            SsaKind::Phi | SsaKind::Op(Op::Copy) => {
+                work.extend(op.inputs.iter().filter_map(|i| i.as_value()))
+            }
+            _ => {}
+        }
+    }
+    false
+}
+
 /// True when the function stores the value `location` was entered with.
 fn spills_entry_value(f: &SsaFunction, location: Location) -> bool {
     f.blocks.values().flat_map(|b| b.ops.iter()).any(|op| {
@@ -843,11 +872,8 @@ pub(crate) fn is_entry_value(
     // reload of the same location counts as a restore only when the function
     // spilled it first. Treating a load as a restore is the assumption a
     // prologue and epilogue actually satisfy.
-    // Only for a location the function did spill, though: a result read
-    // back out of memory (`*out` after `get(x, &out)`) is a value the
-    // function computed, and calling it a restore makes the function void.
     if op.kind == SsaKind::Op(Op::Load) {
-        return spills_entry_value(f, location);
+        return true;
     }
     inputs.iter().all(|i| match i {
         Operand::Undefined(l) => *l == location,
