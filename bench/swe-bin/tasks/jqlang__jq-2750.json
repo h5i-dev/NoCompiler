@@ -1,0 +1,780 @@
+{
+ "instance_id": "jqlang__jq-2750",
+ "repo": "jqlang/jq",
+ "base_commit": "98f709d0c1fd87a8b6a3e10c679442667712b264",
+ "language": "C",
+ "recipe": "jq",
+ "subjects": [
+  "jq"
+ ],
+ "test_command": "(make check) | cat",
+ "FAIL_TO_PASS": [
+  "tests/jqtest"
+ ],
+ "PASS_TO_PASS": [
+  "test_utf8",
+  "test_syntax",
+  "test_options",
+  "testc",
+  "testcu",
+  "test_regset",
+  "test_back",
+  "encode",
+  "listcap",
+  "names",
+  "simple",
+  "sql",
+  "syntax",
+  "user_property",
+  "callout",
+  "echo",
+  "count",
+  "bug_fix",
+  "regset",
+  "scan",
+  "callback_each_match",
+  "tests/optionaltest",
+  "tests/mantest",
+  "tests/shtest",
+  "tests/utf8test",
+  "tests/base64test",
+  "tests/onigtest",
+  "tests/manonigtest"
+ ],
+ "status": "kept",
+ "tests": [
+  {
+   "test": "tests/jqtest",
+   "kind": "FAIL_TO_PASS",
+   "base": "FAILED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "tests/optionaltest",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "tests/mantest",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "tests/shtest",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "tests/utf8test",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "tests/base64test",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "tests/onigtest",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "tests/manonigtest",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  }
+ ],
+ "excluded_tests": {
+  "test_utf8": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "test_syntax": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "test_options": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "testc": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "testcu": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "test_regset": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "test_back": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "encode": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "listcap": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "names": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "simple": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "sql": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "syntax": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "user_property": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "callout": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "echo": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "count": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "bug_fix": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "regset": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "scan": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "callback_each_match": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq"
+ },
+ "timing_s": {
+  "base": {
+   "build": 108.8,
+   "test": 75.6
+  },
+  "gold": {
+   "build": 114.8,
+   "test": 99.4
+  }
+ },
+ "binaries": [
+  {
+   "subject": "jq",
+   "base": {
+    "path": "artifacts/jqlang__jq-2750/base.jq.elf",
+    "sha256": "2f033a4d1401c0f9986b98367913153e631e5aba79172c04f7c2c1e9e9c9cd05",
+    "bytes": 3663344,
+    "functions": 1404,
+    "instructions": 146747,
+    "levels": {
+     "L2": 749,
+     "L0": 404,
+     "below L0": 167,
+     "L1": 4
+    }
+   },
+   "gold": {
+    "path": "artifacts/jqlang__jq-2750/gold.jq.elf",
+    "sha256": "21eb0a032359f84a7c68170f885144fe5df211c7178eb74f6de12cc94e6ca280",
+    "bytes": 3657696,
+    "functions": 1403,
+    "instructions": 146528
+   },
+   "gold_changes": {
+    "modified": [
+     {
+      "key": "::bind_alternation_matchers",
+      "name": "bind_alternation_matchers",
+      "base_insns": 445,
+      "gold_insns": 445,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::bind_matcher",
+      "name": "bind_matcher",
+      "base_insns": 72,
+      "gold_insns": 75,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::block_get_unbound_vars",
+      "name": "block_get_unbound_vars",
+      "base_insns": 77,
+      "gold_insns": 80,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::block_mark_referenced",
+      "name": "block_mark_referenced",
+      "base_insns": 51,
+      "gold_insns": 51,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::compile",
+      "name": "compile",
+      "base_insns": 722,
+      "gold_insns": 722,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::count_cfunctions",
+      "name": "count_cfunctions",
+      "base_insns": 24,
+      "gold_insns": 24,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::expand_call_arglist",
+      "name": "expand_call_arglist",
+      "base_insns": 538,
+      "gold_insns": 538,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::gen_slice_index",
+      "name": "gen_slice_index",
+      "base_insns": 128,
+      "gold_insns": 128,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::optimize",
+      "name": "optimize",
+      "base_insns": 75,
+      "gold_insns": 75,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "block_bind_library",
+      "name": "block_bind_library",
+      "base_insns": 129,
+      "gold_insns": 129,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "block_bind_referenced",
+      "name": "block_bind_referenced",
+      "base_insns": 107,
+      "gold_insns": 107,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "block_bind_self",
+      "name": "block_bind_self",
+      "base_insns": 97,
+      "gold_insns": 97,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "block_compile",
+      "name": "block_compile",
+      "base_insns": 125,
+      "gold_insns": 125,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "block_has_main",
+      "name": "block_has_main",
+      "base_insns": 12,
+      "gold_insns": 12,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "block_has_only_binders",
+      "name": "block_has_only_binders",
+      "base_insns": 35,
+      "gold_insns": 35,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "block_has_only_binders_and_imports",
+      "name": "block_has_only_binders_and_imports",
+      "base_insns": 33,
+      "gold_insns": 30,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "block_is_funcdef",
+      "name": "block_is_funcdef",
+      "base_insns": 7,
+      "gold_insns": 7,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "block_list_funcs",
+      "name": "block_list_funcs",
+      "base_insns": 65,
+      "gold_insns": 65,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "block_module_meta",
+      "name": "block_module_meta",
+      "base_insns": 11,
+      "gold_insns": 11,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "block_take_imports",
+      "name": "block_take_imports",
+      "base_insns": 72,
+      "gold_insns": 72,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "builtins_bind",
+      "name": "builtins_bind",
+      "base_insns": 379,
+      "gold_insns": 379,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "bytecode_operation_length",
+      "name": "bytecode_operation_length",
+      "base_insns": 20,
+      "gold_insns": 19,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "dump_disassembly",
+      "name": "dump_disassembly",
+      "base_insns": 215,
+      "gold_insns": 214,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "dump_operation",
+      "name": "dump_operation",
+      "base_insns": 312,
+      "gold_insns": 312,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "gen_array_matcher",
+      "name": "gen_array_matcher",
+      "base_insns": 243,
+      "gold_insns": 243,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "gen_both",
+      "name": "gen_both",
+      "base_insns": 164,
+      "gold_insns": 164,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "gen_call",
+      "name": "gen_call",
+      "base_insns": 84,
+      "gold_insns": 84,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "gen_cbinding",
+      "name": "gen_cbinding",
+      "base_insns": 78,
+      "gold_insns": 78,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "gen_collect",
+      "name": "gen_collect",
+      "base_insns": 369,
+      "gold_insns": 369,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "gen_condbranch",
+      "name": "gen_condbranch",
+      "base_insns": 133,
+      "gold_insns": 133,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "gen_const_object",
+      "name": "gen_const_object",
+      "base_insns": 185,
+      "gold_insns": 185,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "gen_definedor",
+      "name": "gen_definedor",
+      "base_insns": 531,
+      "gold_insns": 531,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "gen_destructure",
+      "name": "gen_destructure",
+      "base_insns": 209,
+      "gold_insns": 209,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "gen_destructure_alt",
+      "name": "gen_destructure_alt",
+      "base_insns": 40,
+      "gold_insns": 40,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "gen_dictpair",
+      "name": "gen_dictpair",
+      "base_insns": 95,
+      "gold_insns": 95,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "gen_foreach",
+      "name": "gen_foreach",
+      "base_insns": 396,
+      "gold_insns": 396,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "gen_function",
+      "name": "gen_function",
+      "base_insns": 151,
+      "gold_insns": 151,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "gen_import",
+      "name": "gen_import",
+      "base_insns": 111,
+      "gold_insns": 111,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "gen_import_meta",
+      "name": "gen_import_meta",
+      "base_insns": 86,
+      "gold_insns": 86,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "gen_label",
+      "name": "gen_label",
+      "base_insns": 432,
+      "gold_insns": 432,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "gen_lambda",
+      "name": "gen_lambda",
+      "base_insns": 53,
+      "gold_insns": 53,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "gen_module",
+      "name": "gen_module",
+      "base_insns": 105,
+      "gold_insns": 105,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "gen_param",
+      "name": "gen_param",
+      "base_insns": 55,
+      "gold_insns": 55,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "gen_param_regular",
+      "name": "gen_param_regular",
+      "base_insns": 55,
+      "gold_insns": 55,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "gen_reduce",
+      "name": "gen_reduce",
+      "base_insns": 301,
+      "gold_insns": 301,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "gen_subexp",
+      "name": "gen_subexp",
+      "base_insns": 193,
+      "gold_insns": 193,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "gen_try",
+      "name": "gen_try",
+      "base_insns": 198,
+      "gold_insns": 235,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "jq_compile_args",
+      "name": "jq_compile_args",
+      "base_insns": 259,
+      "gold_insns": 259,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "jq_halt",
+      "name": "jq_halt",
+      "base_insns": 22,
+      "gold_insns": 22,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "jq_next",
+      "name": "jq_next",
+      "base_insns": 3271,
+      "gold_insns": 3347,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "jq_parse_library",
+      "name": "jq_parse_library",
+      "base_insns": 44,
+      "gold_insns": 44,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "jq_set_attrs",
+      "name": "jq_set_attrs",
+      "base_insns": 35,
+      "gold_insns": 35,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "opcode_describe",
+      "name": "opcode_describe",
+      "base_insns": 10,
+      "gold_insns": 10,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "yyparse",
+      "name": "yyparse",
+      "base_insns": 2743,
+      "gold_insns": 2743,
+      "base_level": "L0",
+      "gold_level": "L0"
+     }
+    ],
+    "added": [],
+    "removed": [
+     {
+      "key": "gen_try_handler",
+      "name": "gen_try_handler",
+      "base_insns": 333
+     }
+    ],
+    "data_modified": [
+     {
+      "key": "::opcode_descriptions",
+      "name": "opcode_descriptions",
+      "base_bytes": 1312,
+      "gold_bytes": 1344
+     }
+    ],
+    "data_added": [],
+    "data_removed": []
+   },
+   "anonymous_literals_changed": 217,
+   "source_changes": {
+    "base": [
+     "gen_try",
+     "gen_try_handler",
+     "yyparse"
+    ],
+    "gold": [
+     "gen_try",
+     "jq_next",
+     "yyparse"
+    ],
+    "debug_info": true
+   },
+   "scratch": {
+    "removes": [
+     "gen_try",
+     "gen_try_handler",
+     "jq_next",
+     "yyparse"
+    ],
+    "basis": "source lines (DWARF)",
+    "functions": [
+     {
+      "name": "gen_try",
+      "instructions": 198,
+      "signature": "block gen_try(block exp, block handler)",
+      "callers": [
+       "gen_label",
+       "yyparse"
+      ]
+     },
+     {
+      "name": "gen_try_handler",
+      "instructions": 333,
+      "signature": "block gen_try_handler(block handler)",
+      "callers": [
+       "yyparse"
+      ]
+     },
+     {
+      "name": "jq_next",
+      "instructions": 3271,
+      "signature": "jv jq_next(jq_state * jq)",
+      "callers": [
+       "jq_testsuite",
+       "process"
+      ]
+     },
+     {
+      "name": "yyparse",
+      "instructions": 2743,
+      "signature": "int yyparse(block * answer, int * errors, struct locfile * locations, struct lexer_param * lexer_param_ptr)",
+      "callers": [
+       "jq_parse"
+      ]
+     }
+    ],
+    "instructions": 6545,
+    "gold_instructions": 6325,
+    "new_functions": [],
+    "data_to_write": [
+     "opcode_descriptions"
+    ]
+   }
+  }
+ ],
+ "commands": [
+  {
+   "stage": "checkout",
+   "cwd": "jqlang__jq-2750",
+   "cmd": "git clone -q /mnt/scratch/ec2-user/swe-bin/repos/jq.git /mnt/scratch/ec2-user/swe-bin/work/jqlang__jq-2750/src"
+  },
+  {
+   "stage": "checkout",
+   "cwd": "src",
+   "cmd": "git checkout -q 98f709d0c1fd87a8b6a3e10c679442667712b264"
+  },
+  {
+   "stage": "prepare",
+   "cwd": "src",
+   "cmd": "git submodule update --init -q"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "autoreconf -fi"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "./configure --host=riscv64-linux-musl CC=rv-cc CFLAGS='-O2 -g' --with-oniguruma=builtin --disable-docs --disable-shared --enable-static --enable-all-static"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "touch src/parser.y src/lexer.l"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "make -j2"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/jqlang__jq-2750/base.jq.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/jqlang__jq-2750/base.jq.elf"
+  },
+  {
+   "stage": "test-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/jqlang__jq-2750/test.patch"
+  },
+  {
+   "stage": "test",
+   "cwd": "src",
+   "cmd": "make -o jq check SUBDIRS= ; true"
+  },
+  {
+   "stage": "test-unpatch",
+   "cwd": "src",
+   "cmd": "git apply -R --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/jqlang__jq-2750/test.patch"
+  },
+  {
+   "stage": "reset",
+   "cwd": "src",
+   "cmd": "git checkout -q -- . && git clean -fdxq -e '*.rv.elf' && git submodule foreach -q git clean -fdxq"
+  },
+  {
+   "stage": "gold-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/jqlang__jq-2750/gold.patch"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "autoreconf -fi"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "./configure --host=riscv64-linux-musl CC=rv-cc CFLAGS='-O2 -g' --with-oniguruma=builtin --disable-docs --disable-shared --enable-static --enable-all-static"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "touch src/parser.y src/lexer.l"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "make -j2"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/jqlang__jq-2750/gold.jq.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/jqlang__jq-2750/gold.jq.elf"
+  },
+  {
+   "stage": "test-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/jqlang__jq-2750/test.patch"
+  },
+  {
+   "stage": "test",
+   "cwd": "src",
+   "cmd": "make -o jq check SUBDIRS= ; true"
+  },
+  {
+   "stage": "test-unpatch",
+   "cwd": "src",
+   "cmd": "git apply -R --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/jqlang__jq-2750/test.patch"
+  }
+ ],
+ "convert_s": 443.5
+}

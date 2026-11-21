@@ -1,0 +1,2755 @@
+{
+ "instance_id": "tokio-rs__tokio-6752",
+ "repo": "tokio-rs/tokio",
+ "base_commit": "ab53bf0c4727ae63c6a3a3d772b7bd837d2f49c3",
+ "language": "Rust",
+ "recipe": "tokio",
+ "subjects": [
+  "rv-tests/time_delay_queue"
+ ],
+ "test_command": "(cargo test --test time_delay_queue --no-fail-fast) | cat",
+ "FAIL_TO_PASS": [
+  "wake_after_remove_last"
+ ],
+ "PASS_TO_PASS": [
+  "expire_second_key_when_reset_to_expire_earlier",
+  "compact_expire_empty",
+  "expire_first_key_when_reset_to_expire_earlier",
+  "delay_queue_poll_expired_when_empty",
+  "compact_change_deadline",
+  "compact_remove_empty",
+  "compact_remove_remapped_keys",
+  "insert_in_past_fires_immediately",
+  "item_expiry_greater_than_wheel",
+  "insert_after_ready_poll",
+  "insert_before_first_after_poll",
+  "insert_in_past_after_poll_fires_immediately",
+  "multi_reset",
+  "remove_after_compact_poll",
+  "remove_after_compact",
+  "multi_immediate_delays",
+  "peek",
+  "expires_before_last_insert",
+  "remove_at_timer_wheel_threshold",
+  "remove_entry",
+  "reset_entry",
+  "reset_earlier_after_slot_starts",
+  "repeatedly_reset_entry_inserted_as_expired",
+  "reset_first_expiring_item_to_expire_later",
+  "remove_expired_item",
+  "reset_inserted_expired",
+  "single_immediate_delay",
+  "reset_twice",
+  "reset_much_later",
+  "single_short_delay",
+  "reset_later_after_slot_starts",
+  "multi_delay_at_start"
+ ],
+ "status": "kept",
+ "deviation": "class B: the FAIL_TO_PASS tests are compiled into the submitted test ELF, so they are visible in it (in SWE-bench they are hidden); functions outside the crates under test must stay byte-identical to base",
+ "editable_crates": [
+  "tests_build",
+  "tests_integration",
+  "tokio",
+  "tokio_macros",
+  "tokio_stream",
+  "tokio_test",
+  "tokio_util"
+ ],
+ "tests": [
+  {
+   "test": "wake_after_remove_last",
+   "kind": "FAIL_TO_PASS",
+   "base": "FAILED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "expire_second_key_when_reset_to_expire_earlier",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "compact_expire_empty",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "expire_first_key_when_reset_to_expire_earlier",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "delay_queue_poll_expired_when_empty",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "compact_change_deadline",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "compact_remove_empty",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "compact_remove_remapped_keys",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "insert_in_past_fires_immediately",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "item_expiry_greater_than_wheel",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "insert_after_ready_poll",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "insert_before_first_after_poll",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "insert_in_past_after_poll_fires_immediately",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "multi_reset",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "remove_after_compact_poll",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "remove_after_compact",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "multi_immediate_delays",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "peek",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "expires_before_last_insert",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "remove_at_timer_wheel_threshold",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "remove_entry",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "reset_entry",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "reset_earlier_after_slot_starts",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "repeatedly_reset_entry_inserted_as_expired",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "reset_first_expiring_item_to_expire_later",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "remove_expired_item",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "reset_inserted_expired",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "single_immediate_delay",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "reset_twice",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "reset_much_later",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "single_short_delay",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "reset_later_after_slot_starts",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "multi_delay_at_start",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  }
+ ],
+ "excluded_tests": {},
+ "timing_s": {
+  "base": {
+   "build": 39.8,
+   "test": 0.7
+  },
+  "gold": {
+   "build": 4.8,
+   "test": 0.3
+  }
+ },
+ "binaries": [
+  {
+   "subject": "rv-tests/time_delay_queue",
+   "base": {
+    "path": "artifacts/tokio-rs__tokio-6752/base.time_delay_queue.elf",
+    "sha256": "d69f2c14e8edb581b641e7e413811f88e66575a8f84d77324d7f504b329a8bd1",
+    "bytes": 5398024,
+    "functions": 3036,
+    "instructions": 289972,
+    "levels": {
+     "L2": 743,
+     "L0": 1234,
+     "below L0": 767,
+     "L1": 7
+    }
+   },
+   "gold": {
+    "path": "artifacts/tokio-rs__tokio-6752/gold.time_delay_queue.elf",
+    "sha256": "966418d4a5265713d6671e5a4818c1d1a7234eb98f809562446d816589f8f311",
+    "bytes": 5398504,
+    "functions": 3036,
+    "instructions": 289996
+   },
+   "gold_changes": {
+    "modified": [
+     {
+      "key": "::_RINvMNtNtCsbExOLNirMov_3std4sync9once_lockINtB3_8OnceLockINtNtB5_14reentrant_lock13ReentrantLockINtNtCs09rNiPxLfqU_4core4cell7RefCellINtNtNtNtCsfLhUnpABn5n_5alloc2io8buffered10linewriter10LineWriterNtNtNtB7_2io5stdio9StdoutRawEEEE10initializeNCINvB2_11get_or_initNCNvB3c_6stdout0E0zEB7_",
+      "name": "_RINvMNtNtCsbExOLNirMov_3std4sync9once_lockINtB3_8OnceLockINtNtB5_14reentrant_lock13ReentrantLockINtNtCs09rNiPxLfqU_4core4cell7RefCellINtNtNtNtCsfLhUnpABn5n_5alloc2io8buffered10linewriter10LineWriterNtNtNtB7_2io5stdio9StdoutRawEEEE10initializeNCINvB2_11get_or_initNCNvB3c_6stdout0E0zEB7_",
+      "base_insns": 23,
+      "gold_insns": 23,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvMNtNtCsbExOLNirMov_3std4sync9once_lockINtB3_8OnceLockINtNtB5_14reentrant_lock13ReentrantLockINtNtCs09rNiPxLfqU_4core4cell7RefCellINtNtNtNtCsfLhUnpABn5n_5alloc2io8buffered10linewriter10LineWriterNtNtNtB7_2io5stdio9StdoutRawEEEE10initializeNCINvB2_11get_or_initNCNvB3c_7cleanup0E0zEB7_",
+      "name": "_RINvMNtNtCsbExOLNirMov_3std4sync9once_lockINtB3_8OnceLockINtNtB5_14reentrant_lock13ReentrantLockINtNtCs09rNiPxLfqU_4core4cell7RefCellINtNtNtNtCsfLhUnpABn5n_5alloc2io8buffered10linewriter10LineWriterNtNtNtB7_2io5stdio9StdoutRawEEEE10initializeNCINvB2_11get_or_initNCNvB3c_7cleanup0E0zEB7_",
+      "base_insns": 21,
+      "gold_insns": 21,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvMNtNtCsbExOLNirMov_3std4sync9once_lockINtB3_8OnceLockNtNtB7_2fs4FileE10initializeNCNvNtNtNtB7_3sys6random5linux9getrandom0NtNtNtCs09rNiPxLfqU_4core2io5error5ErrorEB7_",
+      "name": "_RINvMNtNtCsbExOLNirMov_3std4sync9once_lockINtB3_8OnceLockNtNtB7_2fs4FileE10initializeNCNvNtNtNtB7_3sys6random5linux9getrandom0NtNtNtCs09rNiPxLfqU_4core2io5error5ErrorEB7_",
+      "base_insns": 37,
+      "gold_insns": 37,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvMNtNtCsbExOLNirMov_3std4sync9once_lockINtB3_8OnceLockyE10initializeNCINvB2_11get_or_initNCNvB2_10try_insert0E0zEB7_",
+      "name": "_RINvMNtNtCsbExOLNirMov_3std4sync9once_lockINtB3_8OnceLockyE10initializeNCINvB2_11get_or_initNCNvB2_10try_insert0E0zEB7_",
+      "base_insns": 21,
+      "gold_insns": 21,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvMNtNtNtCs1N99vFv2Ys6_5tokio7runtime7context8blockingNtB3_19BlockingRegionGuard16block_on_timeoutQINtNtNtB9_4sync7oneshot8ReceiveruEEB9_",
+      "name": "_RINvMNtNtNtCs1N99vFv2Ys6_5tokio7runtime7context8blockingNtB3_19BlockingRegionGuard16block_on_timeoutQINtNtNtB9_4sync7oneshot8ReceiveruEEB9_",
+      "base_insns": 180,
+      "gold_insns": 180,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvMs0_NtNtCs1N99vFv2Ys6_5tokio4util9once_cellINtB6_8OnceCellNtNtNtBa_6signal8registry7GlobalsE7do_initNvB10_12globals_initEBa_",
+      "name": "_RINvMs0_NtNtCs1N99vFv2Ys6_5tokio4util9once_cellINtB6_8OnceCellNtNtNtBa_6signal8registry7GlobalsE7do_initNvB10_12globals_initEBa_",
+      "base_insns": 23,
+      "gold_insns": 23,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvMs2_NtNtCs1N99vFv2Ys6_5tokio7runtime4parkNtB6_16CachedParkThread8block_onQINtNtNtBa_4sync7oneshot8ReceiveruEEBa_",
+      "name": "_RINvMs2_NtNtCs1N99vFv2Ys6_5tokio7runtime4parkNtB6_16CachedParkThread8block_onQINtNtNtBa_4sync7oneshot8ReceiveruEEBa_",
+      "base_insns": 142,
+      "gold_insns": 142,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvMs2_NtNtCsbExOLNirMov_3std6thread5localINtB6_8LocalKeyINtNtCs09rNiPxLfqU_4core4cell4CellNtNtB8_9spawnhook10SpawnHooksEE4withNCINvB1u_14add_spawn_hookNCNvCs0GlaqxNCqMS_4test15test_main_inners_0NCNCB2t_s_00E0uEB2v_",
+      "name": "_RINvMs2_NtNtCsbExOLNirMov_3std6thread5localINtB6_8LocalKeyINtNtCs09rNiPxLfqU_4core4cell4CellNtNtB8_9spawnhook10SpawnHooksEE4withNCINvB1u_14add_spawn_hookNCNvCs0GlaqxNCqMS_4test15test_main_inners_0NCNCB2t_s_00E0uEB2v_",
+      "base_insns": 139,
+      "gold_insns": 139,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvMs6_NtCsdPwHZjF0L7u_9hashbrown3rawINtB6_8RawTableTNtNtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queue3KeyNtBS_11KeyInternalEE14reserve_rehashNCINvNtB8_3map11make_hasherBQ_B1I_NtNtNtCsbExOLNirMov_3std4hash6random11RandomStateE0ECs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RINvMs6_NtCsdPwHZjF0L7u_9hashbrown3rawINtB6_8RawTableTNtNtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queue3KeyNtBS_11KeyInternalEE14reserve_rehashNCINvNtB8_3map11make_hasherBQ_B1I_NtNtNtCsbExOLNirMov_3std4hash6random11RandomStateE0ECs9mNdW91B5RX_16time_delay_queue.llvm.1003543980757153058",
+      "base_insns": 287,
+      "gold_insns": 287,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvMs6_NtCsdPwHZjF0L7u_9hashbrown3rawINtB6_8RawTableTjjEE14reserve_rehashNCINvNtB8_3map11make_hasherjjNtNtNtCsbExOLNirMov_3std4hash6random11RandomStateE0ECs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RINvMs6_NtCsdPwHZjF0L7u_9hashbrown3rawINtB6_8RawTableTjjEE14reserve_rehashNCINvNtB8_3map11make_hasherjjNtNtNtCsbExOLNirMov_3std4hash6random11RandomStateE0ECs9mNdW91B5RX_16time_delay_queue.llvm.1003543980757153058",
+      "base_insns": 287,
+      "gold_insns": 287,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvMs6_NtNtNtCs1N99vFv2Ys6_5tokio7runtime9scheduler14current_threadNtB6_9CoreGuard5enterNCNvMB6_NtB6_13CurrentThread8shutdowns_0uEBc_",
+      "name": "_RINvMs6_NtNtNtCs1N99vFv2Ys6_5tokio7runtime9scheduler14current_threadNtB6_9CoreGuard5enterNCNvMB6_NtB6_13CurrentThread8shutdowns_0uEBc_",
+      "base_insns": 130,
+      "gold_insns": 130,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvMs6_NtNtNtCs1N99vFv2Ys6_5tokio7runtime9scheduler14current_threadNtB6_9CoreGuard8block_onINtNtCs09rNiPxLfqU_4core3pin3PinQIB1t_QDNtNtNtB1x_6future6future6Futurep6OutputuEL_EEECs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RINvMs6_NtNtNtCs1N99vFv2Ys6_5tokio7runtime9scheduler14current_threadNtB6_9CoreGuard8block_onINtNtCs09rNiPxLfqU_4core3pin3PinQIB1t_QDNtNtNtB1x_6future6future6Futurep6OutputuEL_EEECs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 135,
+      "gold_insns": 135,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core3ptr9drop_glueNtNtNtNtCs1N99vFv2Ys6_5tokio7runtime7context7current15SetCurrentGuardEBJ_",
+      "name": "_RINvNtCs09rNiPxLfqU_4core3ptr9drop_glueNtNtNtNtCs1N99vFv2Ys6_5tokio7runtime7context7current15SetCurrentGuardEBJ_",
+      "base_insns": 54,
+      "gold_insns": 54,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedINtNtNtCsbExOLNirMov_3std4sync4mpsc9SendErrorNtNtCs0GlaqxNCqMS_4test5event13CompletedTestEEB1w_",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedINtNtNtCsbExOLNirMov_3std4sync4mpsc9SendErrorNtNtCs0GlaqxNCqMS_4test5event13CompletedTestEEB1w_",
+      "base_insns": 52,
+      "gold_insns": 52,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedINtNtNtCsbExOLNirMov_3std4sync6poison11PoisonErrorINtNtBM_5mutex10MutexGuardINtNtB4_6option6OptionNCNvCs0GlaqxNCqMS_4test8run_test0EEEEB2n_",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedINtNtNtCsbExOLNirMov_3std4sync6poison11PoisonErrorINtNtBM_5mutex10MutexGuardINtNtB4_6option6OptionNCNvCs0GlaqxNCqMS_4test8run_test0EEEEB2n_",
+      "base_insns": 43,
+      "gold_insns": 43,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedINtNtNtCsbExOLNirMov_3std4sync6poison11PoisonErrorINtNtBM_5mutex10MutexGuardINtNtCsfLhUnpABn5n_5alloc3vec3VechEEEECs0GlaqxNCqMS_4test",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedINtNtNtCsbExOLNirMov_3std4sync6poison11PoisonErrorINtNtBM_5mutex10MutexGuardINtNtCsfLhUnpABn5n_5alloc3vec3VechEEEECs0GlaqxNCqMS_4test",
+      "base_insns": 38,
+      "gold_insns": 38,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedINtNtNtCsbExOLNirMov_3std4sync6poison11PoisonErrorINtNtBM_5mutex10MutexGuardNtNtNtBO_4mpmc4zero5InnerEEECs0GlaqxNCqMS_4test",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedINtNtNtCsbExOLNirMov_3std4sync6poison11PoisonErrorINtNtBM_5mutex10MutexGuardNtNtNtBO_4mpmc4zero5InnerEEECs0GlaqxNCqMS_4test",
+      "base_insns": 38,
+      "gold_insns": 38,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedINtNtNtCsbExOLNirMov_3std4sync6poison11PoisonErrorINtNtBM_5mutex10MutexGuardNtNtNtBO_4mpmc5waker5WakerEEECs0GlaqxNCqMS_4test",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedINtNtNtCsbExOLNirMov_3std4sync6poison11PoisonErrorINtNtBM_5mutex10MutexGuardNtNtNtBO_4mpmc5waker5WakerEEECs0GlaqxNCqMS_4test",
+      "base_insns": 38,
+      "gold_insns": 38,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedINtNtNtCsbExOLNirMov_3std4sync6poison11PoisonErrorINtNtBM_5mutex10MutexGuardNtNtNtCs1N99vFv2Ys6_5tokio4util4rand8FastRandEEEB23_",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedINtNtNtCsbExOLNirMov_3std4sync6poison11PoisonErrorINtNtBM_5mutex10MutexGuardNtNtNtCs1N99vFv2Ys6_5tokio4util4rand8FastRandEEEB23_",
+      "base_insns": 38,
+      "gold_insns": 38,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedINtNtNtCsbExOLNirMov_3std4sync6poison11PoisonErrorINtNtBM_5mutex10MutexGuardjEEECs0hRCjaSu4uB_10tokio_test",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedINtNtNtCsbExOLNirMov_3std4sync6poison11PoisonErrorINtNtBM_5mutex10MutexGuardjEEECs0hRCjaSu4uB_10tokio_test",
+      "base_insns": 38,
+      "gold_insns": 38,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedINtNtNtCsbExOLNirMov_3std4sync6poison11PoisonErrorQINtNtB4_6option6OptionNCNvCs0GlaqxNCqMS_4test8run_test0EEEB1Y_",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedINtNtNtCsbExOLNirMov_3std4sync6poison11PoisonErrorQINtNtB4_6option6OptionNCNvCs0GlaqxNCqMS_4test8run_test0EEEB1Y_",
+      "base_insns": 9,
+      "gold_insns": 9,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtCsc99LcliVCGa_14rustc_demangle18SizeLimitExhaustedEBL_",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtCsc99LcliVCGa_14rustc_demangle18SizeLimitExhaustedEBL_",
+      "base_insns": 12,
+      "gold_insns": 12,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtB4_3fmt5ErrorECs0GlaqxNCqMS_4test",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtB4_3fmt5ErrorECs0GlaqxNCqMS_4test",
+      "base_insns": 8,
+      "gold_insns": 8,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtB4_3fmt5ErrorECsc99LcliVCGa_14rustc_demangle",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtB4_3fmt5ErrorECsc99LcliVCGa_14rustc_demangle",
+      "base_insns": 8,
+      "gold_insns": 8,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtB4_3fmt5ErrorECsfLhUnpABn5n_5alloc",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtB4_3fmt5ErrorECsfLhUnpABn5n_5alloc",
+      "base_insns": 12,
+      "gold_insns": 12,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtCsbExOLNirMov_3std4path16StripPrefixErrorEBN_",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtCsbExOLNirMov_3std4path16StripPrefixErrorEBN_",
+      "base_insns": 12,
+      "gold_insns": 12,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtCsbExOLNirMov_3std4time15SystemTimeErrorECs0GlaqxNCqMS_4test",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtCsbExOLNirMov_3std4time15SystemTimeErrorECs0GlaqxNCqMS_4test",
+      "base_insns": 9,
+      "gold_insns": 9,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtB4_2io5error5ErrorECs0GlaqxNCqMS_4test",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtB4_2io5error5ErrorECs0GlaqxNCqMS_4test",
+      "base_insns": 31,
+      "gold_insns": 31,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtB4_2io5error5ErrorECs1N99vFv2Ys6_5tokio",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtB4_2io5error5ErrorECs1N99vFv2Ys6_5tokio",
+      "base_insns": 51,
+      "gold_insns": 51,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtB4_2io5error5ErrorECs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtB4_2io5error5ErrorECs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 51,
+      "gold_insns": 51,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtB4_2io5error5ErrorECsbExOLNirMov_3std",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtB4_2io5error5ErrorECsbExOLNirMov_3std",
+      "base_insns": 31,
+      "gold_insns": 31,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtB4_3num5error13ParseIntErrorECsc99LcliVCGa_14rustc_demangle",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtB4_3num5error13ParseIntErrorECsc99LcliVCGa_14rustc_demangle",
+      "base_insns": 13,
+      "gold_insns": 13,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtCsbExOLNirMov_3std3ffi6os_str8OsStringEBP_",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtCsbExOLNirMov_3std3ffi6os_str8OsStringEBP_",
+      "base_insns": 21,
+      "gold_insns": 21,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtCsbExOLNirMov_3std4sync4mpsc16RecvTimeoutErrorECs0GlaqxNCqMS_4test",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtCsbExOLNirMov_3std4sync4mpsc16RecvTimeoutErrorECs0GlaqxNCqMS_4test",
+      "base_insns": 9,
+      "gold_insns": 9,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtCsbExOLNirMov_3std4sync4mpsc9RecvErrorECs0GlaqxNCqMS_4test",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtCsbExOLNirMov_3std4sync4mpsc9RecvErrorECs0GlaqxNCqMS_4test",
+      "base_insns": 8,
+      "gold_insns": 8,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtCsbExOLNirMov_3std6thread5local11AccessErrorEBP_",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtCsbExOLNirMov_3std6thread5local11AccessErrorEBP_",
+      "base_insns": 8,
+      "gold_insns": 8,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtCsbExOLNirMov_3std6thread5local11AccessErrorECs1N99vFv2Ys6_5tokio",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtCsbExOLNirMov_3std6thread5local11AccessErrorECs1N99vFv2Ys6_5tokio",
+      "base_insns": 8,
+      "gold_insns": 8,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtCsbExOLNirMov_3std6thread5local11AccessErrorECs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtCsbExOLNirMov_3std6thread5local11AccessErrorECs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 8,
+      "gold_insns": 8,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtCsfLhUnpABn5n_5alloc3ffi5c_str8NulErrorECsbExOLNirMov_3std",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_failedNtNtNtCsfLhUnpABn5n_5alloc3ffi5c_str8NulErrorECsbExOLNirMov_3std",
+      "base_insns": 21,
+      "gold_insns": 21,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core6result13unwrap_faileduECsc99LcliVCGa_14rustc_demangle",
+      "name": "_RINvNtCs09rNiPxLfqU_4core6result13unwrap_faileduECsc99LcliVCGa_14rustc_demangle",
+      "base_insns": 8,
+      "gold_insns": 8,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedNtNtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queue3KeyBM_ECs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedNtNtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queue3KeyBM_ECs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 11,
+      "gold_insns": 11,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtCsbExOLNirMov_3std2fs12canonicalizeRNtNtB4_4path4PathEB4_",
+      "name": "_RINvNtCsbExOLNirMov_3std2fs12canonicalizeRNtNtB4_4path4PathEB4_",
+      "base_insns": 59,
+      "gold_insns": 59,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RINvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmtINtNtCsfLhUnpABn5n_5alloc3vec3VechEECs0GlaqxNCqMS_4test",
+      "name": "_RINvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmtINtNtCsfLhUnpABn5n_5alloc3vec3VechEECs0GlaqxNCqMS_4test",
+      "base_insns": 55,
+      "gold_insns": 55,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmtINtNtCsfLhUnpABn5n_5alloc3vec3VechEECsbExOLNirMov_3std",
+      "name": "_RINvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmtINtNtCsfLhUnpABn5n_5alloc3vec3VechEECsbExOLNirMov_3std",
+      "base_insns": 55,
+      "gold_insns": 55,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmtINtNtNtCs0GlaqxNCqMS_4test4term8terminfo16TerminfoTerminalNtNtNtCsbExOLNirMov_3std2io5stdio6StdoutEEBY_",
+      "name": "_RINvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmtINtNtNtCs0GlaqxNCqMS_4test4term8terminfo16TerminfoTerminalNtNtNtCsbExOLNirMov_3std2io5stdio6StdoutEEBY_",
+      "base_insns": 55,
+      "gold_insns": 55,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmtNtNtNtCsbExOLNirMov_3std2io5stdio10StderrLockEBX_",
+      "name": "_RINvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmtNtNtNtCsbExOLNirMov_3std2io5stdio10StderrLockEBX_",
+      "base_insns": 55,
+      "gold_insns": 55,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmtNtNtNtCsbExOLNirMov_3std2io5stdio10StdoutLockEBX_",
+      "name": "_RINvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmtNtNtNtCsbExOLNirMov_3std2io5stdio10StdoutLockEBX_",
+      "base_insns": 55,
+      "gold_insns": 55,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmtNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrEBZ_",
+      "name": "_RINvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmtNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrEBZ_",
+      "base_insns": 55,
+      "gold_insns": 55,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmtNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrECs1N99vFv2Ys6_5tokio",
+      "name": "_RINvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmtNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrECs1N99vFv2Ys6_5tokio",
+      "base_insns": 71,
+      "gold_insns": 71,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmtNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrECs6GlFCRZXWww_3mio",
+      "name": "_RINvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmtNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrECs6GlFCRZXWww_3mio",
+      "base_insns": 71,
+      "gold_insns": 71,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtNtCs1N99vFv2Ys6_5tokio4util4wake13clone_arc_rawNtNtNtNtB6_7runtime9scheduler14current_thread6HandleEB6_",
+      "name": "_RINvNtNtCs1N99vFv2Ys6_5tokio4util4wake13clone_arc_rawNtNtNtNtB6_7runtime9scheduler14current_thread6HandleEB6_.llvm.18260915287961161553",
+      "base_insns": 9,
+      "gold_insns": 9,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtNtCsbExOLNirMov_3std6thread9lifecycle15spawn_uncheckedNCNvCs0GlaqxNCqMS_4test8run_tests_0uEB10_",
+      "name": "_RINvNtNtCsbExOLNirMov_3std6thread9lifecycle15spawn_uncheckedNCNvCs0GlaqxNCqMS_4test8run_tests_0uEB10_",
+      "base_insns": 380,
+      "gold_insns": 380,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtNtCsbExOLNirMov_3std6thread9lifecycle15spawn_uncheckedNCNvMs4_NtNtNtCs1N99vFv2Ys6_5tokio7runtime8blocking4poolNtB14_7Spawner12spawn_thread0uEB1a_",
+      "name": "_RINvNtNtCsbExOLNirMov_3std6thread9lifecycle15spawn_uncheckedNCNvMs4_NtNtNtCs1N99vFv2Ys6_5tokio7runtime8blocking4poolNtB14_7Spawner12spawn_thread0uEB1a_",
+      "base_insns": 378,
+      "gold_insns": 378,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtNtCsfLhUnpABn5n_5alloc2io4read18default_read_exactRNtNtCsbExOLNirMov_3std2fs4FileEBX_",
+      "name": "_RINvNtNtCsfLhUnpABn5n_5alloc2io4read18default_read_exactRNtNtCsbExOLNirMov_3std2fs4FileEBX_",
+      "base_insns": 81,
+      "gold_insns": 81,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtNtCsfLhUnpABn5n_5alloc2io4read19default_read_to_endRNtNtCsbExOLNirMov_3std2fs4FileEBY_",
+      "name": "_RINvNtNtCsfLhUnpABn5n_5alloc2io4read19default_read_to_endRNtNtCsbExOLNirMov_3std2fs4FileEBY_.llvm.12431094243575792721",
+      "base_insns": 236,
+      "gold_insns": 236,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtNtCsfLhUnpABn5n_5alloc2io4read19default_read_to_endRNtNtNtNtCsbExOLNirMov_3std3sys2fd4unix8FileDescEB12_",
+      "name": "_RINvNtNtCsfLhUnpABn5n_5alloc2io4read19default_read_to_endRNtNtNtNtCsbExOLNirMov_3std3sys2fd4unix8FileDescEB12_",
+      "base_insns": 238,
+      "gold_insns": 238,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtNtCsfLhUnpABn5n_5alloc2io8buf_read18default_read_untilINtNtNtB4_8buffered9bufreader9BufReaderNtNtCsbExOLNirMov_3std2fs4FileEEB1D_",
+      "name": "_RINvNtNtCsfLhUnpABn5n_5alloc2io8buf_read18default_read_untilINtNtNtB4_8buffered9bufreader9BufReaderNtNtCsbExOLNirMov_3std2fs4FileEEB1D_",
+      "base_insns": 194,
+      "gold_insns": 194,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtNtNtCs1N99vFv2Ys6_5tokio7runtime7context7runtime13enter_runtimeNCINvMNtNtB6_9scheduler12multi_threadNtB1b_11MultiThread8block_onINtNtCs09rNiPxLfqU_4core3pin3PinQDNtNtNtB2d_6future6future6Futurep6OutputuEL_EE0uECs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RINvNtNtNtCs1N99vFv2Ys6_5tokio7runtime7context7runtime13enter_runtimeNCINvMNtNtB6_9scheduler12multi_threadNtB1b_11MultiThread8block_onINtNtCs09rNiPxLfqU_4core3pin3PinQDNtNtNtB2d_6future6future6Futurep6OutputuEL_EE0uECs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 77,
+      "gold_insns": 77,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtNtNtCs1N99vFv2Ys6_5tokio7runtime7context7runtime13enter_runtimeNCINvMNtNtB6_9scheduler14current_threadNtB1b_13CurrentThread8block_onINtNtCs09rNiPxLfqU_4core3pin3PinQDNtNtNtB2h_6future6future6Futurep6OutputuEL_EE0uECs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RINvNtNtNtCs1N99vFv2Ys6_5tokio7runtime7context7runtime13enter_runtimeNCINvMNtNtB6_9scheduler14current_threadNtB1b_13CurrentThread8block_onINtNtCs09rNiPxLfqU_4core3pin3PinQDNtNtNtB2h_6future6future6Futurep6OutputuEL_EE0uECs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 214,
+      "gold_insns": 214,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtNtNtCs1N99vFv2Ys6_5tokio7runtime7context7runtime13enter_runtimeNCNvNtNtNtB6_9scheduler12multi_thread6worker3run0uEB8_",
+      "name": "_RINvNtNtNtCs1N99vFv2Ys6_5tokio7runtime7context7runtime13enter_runtimeNCNvNtNtNtB6_9scheduler12multi_thread6worker3run0uEB8_",
+      "base_insns": 118,
+      "gold_insns": 118,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RINvNtNtNtCsbExOLNirMov_3std3sys3pal4unix3cvtlEB8_",
+      "name": "_RINvNtNtNtCsbExOLNirMov_3std3sys3pal4unix3cvtlEB8_",
+      "base_insns": 37,
+      "gold_insns": 37,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtNtNtCsbExOLNirMov_3std3sys3pal4unix5cvt_rlNCNvMNtNtNtB6_2fs4unix3dirNtBP_3Dir11open_with_c0EB8_",
+      "name": "_RINvNtNtNtCsbExOLNirMov_3std3sys3pal4unix5cvt_rlNCNvMNtNtNtB6_2fs4unix3dirNtBP_3Dir11open_with_c0EB8_",
+      "base_insns": 82,
+      "gold_insns": 82,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtNtNtCsbExOLNirMov_3std3sys3pal4unix5cvt_rlNCNvMNtNtNtB6_7process4unix5pidfdNtBP_5PidFd6waitid0EB8_",
+      "name": "_RINvNtNtNtCsbExOLNirMov_3std3sys3pal4unix5cvt_rlNCNvMNtNtNtB6_7process4unix5pidfdNtBP_5PidFd6waitid0EB8_",
+      "base_insns": 84,
+      "gold_insns": 84,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtNtNtCsbExOLNirMov_3std3sys3pal4unix5cvt_rlNCNvMs_NtNtNtB6_7process4unix4unixNtBR_7Process4wait0EB8_",
+      "name": "_RINvNtNtNtCsbExOLNirMov_3std3sys3pal4unix5cvt_rlNCNvMs_NtNtNtB6_7process4unix4unixNtBR_7Process4wait0EB8_",
+      "base_insns": 79,
+      "gold_insns": 79,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNtNtNtCsbExOLNirMov_3std3sys3pal4unix5cvt_rlNCNvMsj_NtNtB6_2fs4unixNtBS_4File6open_c0EB8_",
+      "name": "_RINvNtNtNtCsbExOLNirMov_3std3sys3pal4unix5cvt_rlNCNvMsj_NtNtB6_2fs4unixNtBS_4File6open_c0EB8_",
+      "base_insns": 82,
+      "gold_insns": 82,
+      "base_level": null,
+      "gold_level": null
+     },
+     {
+      "key": "::_RINvNvNtNtCsfLhUnpABn5n_5alloc2io4read19default_read_to_end16small_probe_readRNtNtCsbExOLNirMov_3std2fs4FileEB1i_",
+      "name": "_RINvNvNtNtCsfLhUnpABn5n_5alloc2io4read19default_read_to_end16small_probe_readRNtNtCsbExOLNirMov_3std2fs4FileEB1i_",
+      "base_insns": 99,
+      "gold_insns": 99,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RINvNvNtNtCsfLhUnpABn5n_5alloc2io4read19default_read_to_end16small_probe_readRNtNtNtNtCsbExOLNirMov_3std3sys2fd4unix8FileDescEB1m_",
+      "name": "_RINvNvNtNtCsfLhUnpABn5n_5alloc2io4read19default_read_to_end16small_probe_readRNtNtNtNtCsbExOLNirMov_3std3sys2fd4unix8FileDescEB1m_",
+      "base_insns": 99,
+      "gold_insns": 99,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNCINvMs0_NtNtCsbExOLNirMov_3std4sync4onceNtB8_4Once9call_onceNCNvNtNtCs1N99vFv2Ys6_5tokio6signal4unix13signal_enable0E0B16_",
+      "name": "_RNCINvMs0_NtNtCsbExOLNirMov_3std4sync4onceNtB8_4Once9call_onceNCNvNtNtCs1N99vFv2Ys6_5tokio6signal4unix13signal_enable0E0B16_",
+      "base_insns": 95,
+      "gold_insns": 95,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNCNCINvNtNtCsbExOLNirMov_3std6thread9spawnhook14add_spawn_hookNCNvCs0GlaqxNCqMS_4test15test_main_inners_0NCNCB11_s_00E00B13_",
+      "name": "_RNCNCINvNtNtCsbExOLNirMov_3std6thread9spawnhook14add_spawn_hookNCNvCs0GlaqxNCqMS_4test15test_main_inners_0NCNCB11_s_00E00B13_.llvm.14429557772950094919",
+      "base_insns": 77,
+      "gold_insns": 77,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNCNvNtCsbExOLNirMov_3std9panicking13panic_handler0B5_",
+      "name": "_RNCNvNtCsbExOLNirMov_3std9panicking13panic_handler0B5_",
+      "base_insns": 45,
+      "gold_insns": 45,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNCNvNtNtCsbExOLNirMov_3std3sys9backtrace10__print_fmts_0B7_",
+      "name": "_RNCNvNtNtCsbExOLNirMov_3std3sys9backtrace10__print_fmts_0B7_",
+      "base_insns": 90,
+      "gold_insns": 90,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNCNvNtNtNtNtCsbExOLNirMov_3std3sys6thread4unix7cgroups8quota_v1s0_0Bb_",
+      "name": "_RNCNvNtNtNtNtCsbExOLNirMov_3std3sys6thread4unix7cgroups8quota_v1s0_0Bb_",
+      "base_insns": 210,
+      "gold_insns": 210,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNSNvYNCINvMs0_NtNtCsbExOLNirMov_3std4sync4onceNtBd_4Once9call_onceNCNvNtNtCs1N99vFv2Ys6_5tokio6signal4unix13signal_enable0E0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceTRNtBd_9OnceStateEE9call_once6vtableB1b_",
+      "name": "_RNSNvYNCINvMs0_NtNtCsbExOLNirMov_3std4sync4onceNtBd_4Once9call_onceNCNvNtNtCs1N99vFv2Ys6_5tokio6signal4unix13signal_enable0E0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceTRNtBd_9OnceStateEE9call_once6vtableB1b_",
+      "base_insns": 95,
+      "gold_insns": 95,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNSNvYNvNtNtNtCsbExOLNirMov_3std3sys2fs4unix4statINtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceTRNtNtNtBS_3ffi5c_str4CStrEE9call_once6vtableBc_",
+      "name": "_RNSNvYNvNtNtNtCsbExOLNirMov_3std3sys2fs4unix4statINtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceTRNtNtNtBS_3ffi5c_str4CStrEE9call_once6vtableBc_.llvm.15092089992500286289",
+      "base_insns": 51,
+      "gold_insns": 51,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvCs0GlaqxNCqMS_4test15test_main_inner",
+      "name": "_RNvCs0GlaqxNCqMS_4test15test_main_inner",
+      "base_insns": 247,
+      "gold_insns": 247,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvCs0GlaqxNCqMS_4test19run_test_in_process",
+      "name": "_RNvCs0GlaqxNCqMS_4test19run_test_in_process",
+      "base_insns": 448,
+      "gold_insns": 448,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvMNtNtCs0GlaqxNCqMS_4test10formatters6prettyINtB2_15PrettyFormatterNtNtNtCsbExOLNirMov_3std2io5stdio10StdoutLockE13write_resultsB6_",
+      "name": "_RNvMNtNtCs0GlaqxNCqMS_4test10formatters6prettyINtB2_15PrettyFormatterNtNtNtCsbExOLNirMov_3std2io5stdio10StdoutLockE13write_resultsB6_",
+      "base_insns": 490,
+      "gold_insns": 490,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMNtNtCs0GlaqxNCqMS_4test10formatters6prettyINtB2_15PrettyFormatterNtNtNtCsbExOLNirMov_3std2io5stdio6StdoutE13write_resultsB6_",
+      "name": "_RNvMNtNtCs0GlaqxNCqMS_4test10formatters6prettyINtB2_15PrettyFormatterNtNtNtCsbExOLNirMov_3std2io5stdio6StdoutE13write_resultsB6_",
+      "base_insns": 490,
+      "gold_insns": 490,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMNtNtCs1N99vFv2Ys6_5tokio7runtime7builderNtB2_7Builder3new",
+      "name": "_RNvMNtNtCs1N99vFv2Ys6_5tokio7runtime7builderNtB2_7Builder3new.llvm.8233575314700293790",
+      "base_insns": 82,
+      "gold_insns": 82,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvMNtNtCsiYP9xZGBy8N_10tokio_util4time5wheelINtB2_5WheelINtNtB4_11delay_queue5StackReEE4pollCs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RNvMNtNtCsiYP9xZGBy8N_10tokio_util4time5wheelINtB2_5WheelINtNtB4_11delay_queue5StackReEE4pollCs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 236,
+      "gold_insns": 236,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMNtNtCsiYP9xZGBy8N_10tokio_util4time5wheelINtB2_5WheelINtNtB4_11delay_queue5StackReEE6removeCs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RNvMNtNtCsiYP9xZGBy8N_10tokio_util4time5wheelINtB2_5WheelINtNtB4_11delay_queue5StackReEE6removeCs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 89,
+      "gold_insns": 89,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMNtNtCsiYP9xZGBy8N_10tokio_util4time5wheelINtB2_5WheelINtNtB4_11delay_queue5StacklEE4pollCs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RNvMNtNtCsiYP9xZGBy8N_10tokio_util4time5wheelINtB2_5WheelINtNtB4_11delay_queue5StacklEE4pollCs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 238,
+      "gold_insns": 238,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMNtNtCsiYP9xZGBy8N_10tokio_util4time5wheelINtB2_5WheelINtNtB4_11delay_queue5StacklEE6removeCs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RNvMNtNtCsiYP9xZGBy8N_10tokio_util4time5wheelINtB2_5WheelINtNtB4_11delay_queue5StacklEE6removeCs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 90,
+      "gold_insns": 90,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMNtNtCsiYP9xZGBy8N_10tokio_util4time5wheelINtB2_5WheelINtNtB4_11delay_queue5StackyEE4pollCs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RNvMNtNtCsiYP9xZGBy8N_10tokio_util4time5wheelINtB2_5WheelINtNtB4_11delay_queue5StackyEE4pollCs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 238,
+      "gold_insns": 238,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMNtNtNtCs6GlFCRZXWww_3mio3sys4unix5wakerNtB2_5Waker3new",
+      "name": "_RNvMNtNtNtCs6GlFCRZXWww_3mio3sys4unix5wakerNtB2_5Waker3new",
+      "base_insns": 109,
+      "gold_insns": 109,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMNtNtNtCsbExOLNirMov_3std3sys4time4unixNtB2_10SystemTime3now",
+      "name": "_RNvMNtNtNtCsbExOLNirMov_3std3sys4time4unixNtB2_10SystemTime3now",
+      "base_insns": 49,
+      "gold_insns": 49,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMNtNtNtNtCsbExOLNirMov_3std3sys4sync14thread_parking5futexNtB2_6Parker12park_timeout",
+      "name": "_RNvMNtNtNtNtCsbExOLNirMov_3std3sys4sync14thread_parking5futexNtB2_6Parker12park_timeout",
+      "base_insns": 104,
+      "gold_insns": 104,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvMNtNtNtNtCsbExOLNirMov_3std3sys7process4unix4unixNtNtB4_6common7Command10send_pidfd",
+      "name": "_RNvMNtNtNtNtCsbExOLNirMov_3std3sys7process4unix4unixNtNtB4_6common7Command10send_pidfd",
+      "base_insns": 120,
+      "gold_insns": 120,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMNtNtNtNtCsbExOLNirMov_3std3sys7process4unix4unixNtNtB4_6common7Command5spawn",
+      "name": "_RNvMNtNtNtNtCsbExOLNirMov_3std3sys7process4unix4unixNtNtB4_6common7Command5spawn",
+      "base_insns": 1264,
+      "gold_insns": 1264,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvMNtNtNtNtCsbExOLNirMov_3std3sys7process4unix4unixNtNtB4_6common7Command7do_exec",
+      "name": "_RNvMNtNtNtNtCsbExOLNirMov_3std3sys7process4unix4unixNtNtB4_6common7Command7do_exec.llvm.15067678032410341494",
+      "base_insns": 429,
+      "gold_insns": 429,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMNtNtNtNtCsbExOLNirMov_3std3sys7process4unix5pidfdNtB2_5PidFd15current_process",
+      "name": "_RNvMNtNtNtNtCsbExOLNirMov_3std3sys7process4unix5pidfdNtB2_5PidFd15current_process",
+      "base_insns": 53,
+      "gold_insns": 53,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMNtNtNtNtCsbExOLNirMov_3std3sys7process4unix5pidfdNtB2_5PidFd3pid",
+      "name": "_RNvMNtNtNtNtCsbExOLNirMov_3std3sys7process4unix5pidfdNtB2_5PidFd3pid",
+      "base_insns": 101,
+      "gold_insns": 101,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMNtNtNtNtCsbExOLNirMov_3std3sys7process4unix5pidfdNtB2_5PidFd6waitid",
+      "name": "_RNvMNtNtNtNtCsbExOLNirMov_3std3sys7process4unix5pidfdNtB2_5PidFd6waitid.llvm.16757670143703034197",
+      "base_insns": 127,
+      "gold_insns": 127,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMNtNtNtNtNtCsbExOLNirMov_3std3sys3net10connection6socket4unixNtB2_6Socket5write",
+      "name": "_RNvMNtNtNtNtNtCsbExOLNirMov_3std3sys3net10connection6socket4unixNtB2_6Socket5write",
+      "base_insns": 33,
+      "gold_insns": 33,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMNtNtNtNtNtCsbExOLNirMov_3std3sys3net10connection6socket4unixNtB2_6Socket8new_pair",
+      "name": "_RNvMNtNtNtNtNtCsbExOLNirMov_3std3sys3net10connection6socket4unixNtB2_6Socket8new_pair",
+      "base_insns": 75,
+      "gold_insns": 75,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvMs0_NtNtNtCs1N99vFv2Ys6_5tokio7runtime4task4coreINtB5_4CellINtNtNtB9_8blocking4task12BlockingTaskNCNvMNtNtNtB9_9scheduler12multi_thread6workerNtB1F_6Launch6launch0ENtNtB13_8schedule16BlockingScheduleE3newBb_",
+      "name": "_RNvMs0_NtNtNtCs1N99vFv2Ys6_5tokio7runtime4task4coreINtB5_4CellINtNtNtB9_8blocking4task12BlockingTaskNCNvMNtNtNtB9_9scheduler12multi_thread6workerNtB1F_6Launch6launch0ENtNtB13_8schedule16BlockingScheduleE3newBb_",
+      "base_insns": 67,
+      "gold_insns": 67,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvMs0_NtNtNtCsbExOLNirMov_3std3sys4time4unixNtB5_7Instant3now",
+      "name": "_RNvMs0_NtNtNtCsbExOLNirMov_3std3sys4time4unixNtB5_7Instant3now",
+      "base_insns": 49,
+      "gold_insns": 49,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMs0_NtNtNtNtCsbExOLNirMov_3std3sys7process4unix6commonNtB5_5Stdio14to_child_stdio",
+      "name": "_RNvMs0_NtNtNtNtCsbExOLNirMov_3std3sys7process4unix6commonNtB5_5Stdio14to_child_stdio",
+      "base_insns": 137,
+      "gold_insns": 137,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMs2_NtNtCs0GlaqxNCqMS_4test4term8terminfoINtB5_16TerminfoTerminalNtNtNtCsbExOLNirMov_3std2io5stdio6StdoutE3newB9_",
+      "name": "_RNvMs2_NtNtCs0GlaqxNCqMS_4test4term8terminfoINtB5_16TerminfoTerminalNtNtNtCsbExOLNirMov_3std2io5stdio6StdoutE3newB9_",
+      "base_insns": 436,
+      "gold_insns": 436,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMs2_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_10DelayQueueReE12poll_expiredCs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RNvMs2_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_10DelayQueueReE12poll_expiredCs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 312,
+      "gold_insns": 312,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMs2_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_10DelayQueueReE6removeCs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RNvMs2_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_10DelayQueueReE6removeCs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 257,
+      "gold_insns": 269,
+      "base_level": "below L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMs2_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_10DelayQueuelE12poll_expiredCs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RNvMs2_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_10DelayQueuelE12poll_expiredCs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 318,
+      "gold_insns": 318,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMs2_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_10DelayQueuelE6removeCs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RNvMs2_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_10DelayQueuelE6removeCs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 302,
+      "gold_insns": 314,
+      "base_level": "below L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMs2_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_10DelayQueueyE12poll_expiredCs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RNvMs2_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_10DelayQueueyE12poll_expiredCs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 311,
+      "gold_insns": 311,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMs3_NtNtNtNtCsbExOLNirMov_3std3sys3net10connection6socketNtB5_9TcpStream13read_vectored",
+      "name": "_RNvMs3_NtNtNtNtCsbExOLNirMov_3std3sys3net10connection6socketNtB5_9TcpStream13read_vectored",
+      "base_insns": 35,
+      "gold_insns": 35,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMs_NtNtNtCsfLhUnpABn5n_5alloc2io8buffered9bufwriterINtB4_9BufWriterNtNtNtCsbExOLNirMov_3std2io5stdio9StdoutRawE9flush_bufB1c_",
+      "name": "_RNvMs_NtNtNtCsfLhUnpABn5n_5alloc2io8buffered9bufwriterINtB4_9BufWriterNtNtNtCsbExOLNirMov_3std2io5stdio9StdoutRawE9flush_bufB1c_",
+      "base_insns": 107,
+      "gold_insns": 107,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvMs_NtNtNtNtCsbExOLNirMov_3std3sys7process4unix4unixNtB4_7Process8try_wait",
+      "name": "_RNvMs_NtNtNtNtCsbExOLNirMov_3std3sys7process4unix4unixNtB4_7Process8try_wait",
+      "base_insns": 95,
+      "gold_insns": 95,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvNtCs0GlaqxNCqMS_4test4term6stdout",
+      "name": "_RNvNtCs0GlaqxNCqMS_4test4term6stdout",
+      "base_insns": 47,
+      "gold_insns": 47,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvNtCs0GlaqxNCqMS_4test5bench17fmt_thousands_sep",
+      "name": "_RNvNtCs0GlaqxNCqMS_4test5bench17fmt_thousands_sep.llvm.13693641846671470428",
+      "base_insns": 235,
+      "gold_insns": 235,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvNtCs0GlaqxNCqMS_4test7console13get_formatter",
+      "name": "_RNvNtCs0GlaqxNCqMS_4test7console13get_formatter",
+      "base_insns": 251,
+      "gold_insns": 251,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvNtCs0GlaqxNCqMS_4test7console18list_tests_console",
+      "name": "_RNvNtCs0GlaqxNCqMS_4test7console18list_tests_console",
+      "base_insns": 486,
+      "gold_insns": 486,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvNtCsbExOLNirMov_3std2fs24buffer_capacity_required",
+      "name": "_RNvNtCsbExOLNirMov_3std2fs24buffer_capacity_required.llvm.12431094243575792721",
+      "base_insns": 58,
+      "gold_insns": 58,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvNtCsbExOLNirMov_3std9panicking13resume_unwind",
+      "name": "_RNvNtCsbExOLNirMov_3std9panicking13resume_unwind",
+      "base_insns": 106,
+      "gold_insns": 106,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvNtNtCs1N99vFv2Ys6_5tokio6signal4unix18signal_with_handle",
+      "name": "_RNvNtNtCs1N99vFv2Ys6_5tokio6signal4unix18signal_with_handle",
+      "base_insns": 143,
+      "gold_insns": 143,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvNtNtCs1N99vFv2Ys6_5tokio7runtime4park5clone",
+      "name": "_RNvNtNtCs1N99vFv2Ys6_5tokio7runtime4park5clone.llvm.912382483754360853",
+      "base_insns": 9,
+      "gold_insns": 9,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvNtNtNtCsbExOLNirMov_3std12backtrace_rs9symbolize5gimli4mmap",
+      "name": "_RNvNtNtNtCsbExOLNirMov_3std12backtrace_rs9symbolize5gimli4mmap",
+      "base_insns": 132,
+      "gold_insns": 132,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvNtNtNtCsbExOLNirMov_3std3sys2fs4unix12canonicalize",
+      "name": "_RNvNtNtNtCsbExOLNirMov_3std3sys2fs4unix12canonicalize",
+      "base_insns": 67,
+      "gold_insns": 67,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvNtNtNtCsbExOLNirMov_3std3sys2fs4unix8readlink",
+      "name": "_RNvNtNtNtCsbExOLNirMov_3std3sys2fs4unix8readlink",
+      "base_insns": 137,
+      "gold_insns": 137,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvNtNtNtCsbExOLNirMov_3std3sys5paths4unix6getcwd",
+      "name": "_RNvNtNtNtCsbExOLNirMov_3std3sys5paths4unix6getcwd",
+      "base_insns": 131,
+      "gold_insns": 131,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvNtNtNtCsbExOLNirMov_3std3sys6thread4unix21available_parallelism",
+      "name": "_RNvNtNtNtCsbExOLNirMov_3std3sys6thread4unix21available_parallelism",
+      "base_insns": 109,
+      "gold_insns": 109,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvNtNtNtNtCs0GlaqxNCqMS_4test4term8terminfo6parser8compiled5parse",
+      "name": "_RNvNtNtNtNtCs0GlaqxNCqMS_4test4term8terminfo6parser8compiled5parse",
+      "base_insns": 1019,
+      "gold_insns": 1019,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvNtNtNtNtCs6GlFCRZXWww_3mio3sys4unix3uds6stream4pair",
+      "name": "_RNvNtNtNtNtCs6GlFCRZXWww_3mio3sys4unix3uds6stream4pair",
+      "base_insns": 72,
+      "gold_insns": 72,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvNtNtNtNtCsbExOLNirMov_3std3sys6thread4unix7cgroups5quota",
+      "name": "_RNvNtNtNtNtCsbExOLNirMov_3std3sys6thread4unix7cgroups5quota",
+      "base_insns": 1155,
+      "gold_insns": 1155,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvNtNtNtNtCsbExOLNirMov_3std3sys7process4unix6common11read_output",
+      "name": "_RNvNtNtNtNtCsbExOLNirMov_3std3sys7process4unix6common11read_output",
+      "base_insns": 241,
+      "gold_insns": 241,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvNtNtNtNtNtCsbExOLNirMov_3std3sys3pal4unix14stack_overflow14handler_signal12make_handler",
+      "name": "_RNvNtNtNtNtNtCsbExOLNirMov_3std3sys3pal4unix14stack_overflow14handler_signal12make_handler",
+      "base_insns": 207,
+      "gold_insns": 207,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvXs1_NvNtCsbExOLNirMov_3std9panicking13panic_handlerNtB5_16StaticStrPayloadNtNtCsfLhUnpABn5n_5alloc9panicking12PanicPayload3get",
+      "name": "_RNvXs1_NvNtCsbExOLNirMov_3std9panicking13panic_handlerNtB5_16StaticStrPayloadNtNtCsfLhUnpABn5n_5alloc9panicking12PanicPayload3get",
+      "base_insns": 3,
+      "gold_insns": 3,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRAhj4_NtB6_5Debug3fmtCsbExOLNirMov_3std",
+      "name": "_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRAhj4_NtB6_5Debug3fmtCsbExOLNirMov_3std",
+      "base_insns": 45,
+      "gold_insns": 45,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRINtNtB8_6option6OptionINtNtNtB8_3num7nonzero7NonZeroyEENtB6_5Debug3fmtCs1N99vFv2Ys6_5tokio",
+      "name": "_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRINtNtB8_6option6OptionINtNtNtB8_3num7nonzero7NonZeroyEENtB6_5Debug3fmtCs1N99vFv2Ys6_5tokio",
+      "base_insns": 23,
+      "gold_insns": 23,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRINtNtB8_6option6OptionINtNtNtB8_3ptr8non_null7NonNullNtNtNtCs1N99vFv2Ys6_5tokio4sync6notify6WaiterEENtB6_5Debug3fmtB1t_",
+      "name": "_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRINtNtB8_6option6OptionINtNtNtB8_3ptr8non_null7NonNullNtNtNtCs1N99vFv2Ys6_5tokio4sync6notify6WaiterEENtB6_5Debug3fmtB1t_",
+      "base_insns": 23,
+      "gold_insns": 23,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRINtNtB8_6option6OptionINtNtNtB8_3ptr8non_null7NonNullNtNtNtNtCs1N99vFv2Ys6_5tokio7runtime2io12scheduled_io11ScheduledIoEENtB6_5Debug3fmtB1v_",
+      "name": "_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRINtNtB8_6option6OptionINtNtNtB8_3ptr8non_null7NonNullNtNtNtNtCs1N99vFv2Ys6_5tokio7runtime2io12scheduled_io11ScheduledIoEENtB6_5Debug3fmtB1v_",
+      "base_insns": 23,
+      "gold_insns": 23,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRINtNtB8_6option6OptionINtNtNtB8_3ptr8non_null7NonNullNtNtNtNtCs1N99vFv2Ys6_5tokio7runtime2io12scheduled_io6WaiterEENtB6_5Debug3fmtB1v_",
+      "name": "_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRINtNtB8_6option6OptionINtNtNtB8_3ptr8non_null7NonNullNtNtNtNtCs1N99vFv2Ys6_5tokio7runtime2io12scheduled_io6WaiterEENtB6_5Debug3fmtB1v_",
+      "base_insns": 23,
+      "gold_insns": 23,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRINtNtB8_6option6OptionINtNtNtB8_3ptr8non_null7NonNullNtNtNtNtCs1N99vFv2Ys6_5tokio7runtime4time5entry11TimerSharedEENtB6_5Debug3fmtB1v_",
+      "name": "_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRINtNtB8_6option6OptionINtNtNtB8_3ptr8non_null7NonNullNtNtNtNtCs1N99vFv2Ys6_5tokio7runtime4time5entry11TimerSharedEENtB6_5Debug3fmtB1v_",
+      "base_insns": 23,
+      "gold_insns": 23,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRINtNtB8_6option6OptionNtNtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queue3KeyENtB6_5Debug3fmtCs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRINtNtB8_6option6OptionNtNtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queue3KeyENtB6_5Debug3fmtCs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 24,
+      "gold_insns": 24,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRINtNtB8_6option6OptioncENtB6_5Debug3fmtCs0GlaqxNCqMS_4test",
+      "name": "_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRINtNtB8_6option6OptioncENtB6_5Debug3fmtCs0GlaqxNCqMS_4test",
+      "base_insns": 24,
+      "gold_insns": 24,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRINtNtCsfLhUnpABn5n_5alloc3vec3VechENtB6_5Debug3fmtCsbExOLNirMov_3std",
+      "name": "_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRINtNtCsfLhUnpABn5n_5alloc3vec3VechENtB6_5Debug3fmtCsbExOLNirMov_3std",
+      "base_insns": 35,
+      "gold_insns": 35,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRINtNtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queue7ExpiredReENtB6_5Debug3fmtCs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRINtNtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queue7ExpiredReENtB6_5Debug3fmtCs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 24,
+      "gold_insns": 24,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRINtNtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queue7ExpiredlENtB6_5Debug3fmtCs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRINtNtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queue7ExpiredlENtB6_5Debug3fmtCs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 24,
+      "gold_insns": 24,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRINtNtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queue7ExpiredyENtB6_5Debug3fmtCs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRINtNtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queue7ExpiredyENtB6_5Debug3fmtCs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 24,
+      "gold_insns": 24,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRRShNtB6_5Debug3fmtCsbExOLNirMov_3std",
+      "name": "_RNvXs1g_NtCs09rNiPxLfqU_4core3fmtRRShNtB6_5Debug3fmtCsbExOLNirMov_3std",
+      "base_insns": 35,
+      "gold_insns": 35,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvXs1h_NtCs09rNiPxLfqU_4core3fmtQShNtB6_5Debug3fmtCsc99LcliVCGa_14rustc_demangle",
+      "name": "_RNvXs1h_NtCs09rNiPxLfqU_4core3fmtQShNtB6_5Debug3fmtCsc99LcliVCGa_14rustc_demangle",
+      "base_insns": 34,
+      "gold_insns": 34,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvXs2a_NtCsbExOLNirMov_3std4pathNtB6_16StripPrefixErrorNtNtCs09rNiPxLfqU_4core3fmt5Debug3fmt",
+      "name": "_RNvXs2a_NtCsbExOLNirMov_3std4pathNtB6_16StripPrefixErrorNtNtCs09rNiPxLfqU_4core3fmt5Debug3fmt",
+      "base_insns": 16,
+      "gold_insns": 16,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvXs6_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_5StackReENtNtNtB7_5wheel5stack5Stack3popCs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RNvXs6_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_5StackReENtNtNtB7_5wheel5stack5Stack3popCs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 169,
+      "gold_insns": 169,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvXs6_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_5StackReENtNtNtB7_5wheel5stack5Stack4pushCs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RNvXs6_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_5StackReENtNtNtB7_5wheel5stack5Stack4pushCs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 183,
+      "gold_insns": 183,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvXs6_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_5StacklENtNtNtB7_5wheel5stack5Stack3popCs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RNvXs6_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_5StacklENtNtNtB7_5wheel5stack5Stack3popCs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 173,
+      "gold_insns": 173,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvXs6_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_5StacklENtNtNtB7_5wheel5stack5Stack4pushCs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RNvXs6_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_5StacklENtNtNtB7_5wheel5stack5Stack4pushCs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 187,
+      "gold_insns": 187,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvXs6_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_5StackyENtNtNtB7_5wheel5stack5Stack3popCs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RNvXs6_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_5StackyENtNtNtB7_5wheel5stack5Stack3popCs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 173,
+      "gold_insns": 173,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvXs6_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_5StackyENtNtNtB7_5wheel5stack5Stack4pushCs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RNvXs6_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_5StackyENtNtNtB7_5wheel5stack5Stack4pushCs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 187,
+      "gold_insns": 187,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvXsG_NtCsfLhUnpABn5n_5alloc6stringNtNtNtCs09rNiPxLfqU_4core2io5error5ErrorNtB5_12SpecToString14spec_to_stringCs0GlaqxNCqMS_4test",
+      "name": "_RNvXsG_NtCsfLhUnpABn5n_5alloc6stringNtNtNtCs09rNiPxLfqU_4core2io5error5ErrorNtB5_12SpecToString14spec_to_stringCs0GlaqxNCqMS_4test",
+      "base_insns": 51,
+      "gold_insns": 51,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvXsR_NtCs09rNiPxLfqU_4core6optionINtB5_6OptionINtNtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queue7ExpiredReEENtNtB7_3fmt5Debug3fmtCs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RNvXsR_NtCs09rNiPxLfqU_4core6optionINtB5_6OptionINtNtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queue7ExpiredReEENtNtB7_3fmt5Debug3fmtCs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 24,
+      "gold_insns": 24,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvXsR_NtCs09rNiPxLfqU_4core6optionINtB5_6OptionINtNtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queue7ExpiredlEENtNtB7_3fmt5Debug3fmtCs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RNvXsR_NtCs09rNiPxLfqU_4core6optionINtB5_6OptionINtNtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queue7ExpiredlEENtNtB7_3fmt5Debug3fmtCs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 24,
+      "gold_insns": 24,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvXsR_NtCs09rNiPxLfqU_4core6optionINtB5_6OptionINtNtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queue7ExpiredyEENtNtB7_3fmt5Debug3fmtCs9mNdW91B5RX_16time_delay_queue",
+      "name": "_RNvXsR_NtCs09rNiPxLfqU_4core6optionINtB5_6OptionINtNtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queue7ExpiredyEENtNtB7_3fmt5Debug3fmtCs9mNdW91B5RX_16time_delay_queue",
+      "base_insns": 24,
+      "gold_insns": 24,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvXsX_NtNtCsfLhUnpABn5n_5alloc3ffi5c_strNtB5_8NulErrorNtNtCs09rNiPxLfqU_4core3fmt5Debug3fmt",
+      "name": "_RNvXsX_NtNtCsfLhUnpABn5n_5alloc3ffi5c_strNtB5_8NulErrorNtNtCs09rNiPxLfqU_4core3fmt5Debug3fmt.llvm.10496366832696630337",
+      "base_insns": 19,
+      "gold_insns": 19,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvXs_NtNtCs0GlaqxNCqMS_4test10formatters5terseINtB4_14TerseFormatterNtNtNtCsbExOLNirMov_3std2io5stdio10StdoutLockENtB6_15OutputFormatter16write_run_finishB8_",
+      "name": "_RNvXs_NtNtCs0GlaqxNCqMS_4test10formatters5terseINtB4_14TerseFormatterNtNtNtCsbExOLNirMov_3std2io5stdio10StdoutLockENtB6_15OutputFormatter16write_run_finishB8_",
+      "base_insns": 1116,
+      "gold_insns": 1116,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvXs_NtNtCs0GlaqxNCqMS_4test10formatters5terseINtB4_14TerseFormatterNtNtNtCsbExOLNirMov_3std2io5stdio6StdoutENtB6_15OutputFormatter16write_run_finishB8_",
+      "name": "_RNvXs_NtNtCs0GlaqxNCqMS_4test10formatters5terseINtB4_14TerseFormatterNtNtNtCsbExOLNirMov_3std2io5stdio6StdoutENtB6_15OutputFormatter16write_run_finishB8_",
+      "base_insns": 1116,
+      "gold_insns": 1116,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvXs_NtNtNtCsfLhUnpABn5n_5alloc2io8buffered14linewritershimINtB4_14LineWriterShimNtNtNtCsbExOLNirMov_3std2io5stdio9StdoutRawENtNtNtCs09rNiPxLfqU_4core2io5write5Write5writeB1o_",
+      "name": "_RNvXs_NtNtNtCsfLhUnpABn5n_5alloc2io8buffered14linewritershimINtB4_14LineWriterShimNtNtNtCsbExOLNirMov_3std2io5stdio9StdoutRawENtNtNtCs09rNiPxLfqU_4core2io5write5Write5writeB1o_",
+      "base_insns": 151,
+      "gold_insns": 151,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvXsa_NtCs09rNiPxLfqU_4core5arrayAhj8_NtNtB7_3fmt5Debug3fmtCsbExOLNirMov_3std",
+      "name": "_RNvXsa_NtCs09rNiPxLfqU_4core5arrayAhj8_NtNtB7_3fmt5Debug3fmtCsbExOLNirMov_3std",
+      "base_insns": 73,
+      "gold_insns": 73,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvXsc_NtNtCs09rNiPxLfqU_4core3num5errorNtB5_13ParseIntErrorNtNtB9_3fmt5Debug3fmt",
+      "name": "_RNvXsc_NtNtCs09rNiPxLfqU_4core3num5errorNtB5_13ParseIntErrorNtNtB9_3fmt5Debug3fmt",
+      "base_insns": 16,
+      "gold_insns": 16,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvXst_NtCs09rNiPxLfqU_4core6resultINtB5_6ResultiNtNtNtB7_2io5error5ErrorENtNtB7_3fmt5Debug3fmtCsbExOLNirMov_3std",
+      "name": "_RNvXst_NtCs09rNiPxLfqU_4core6resultINtB5_6ResultiNtNtNtB7_2io5error5ErrorENtNtB7_3fmt5Debug3fmtCsbExOLNirMov_3std",
+      "base_insns": 32,
+      "gold_insns": 32,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvXsz_NtCsbExOLNirMov_3std4timeNtB5_15SystemTimeErrorNtNtCs09rNiPxLfqU_4core3fmt5Debug3fmt",
+      "name": "_RNvXsz_NtCsbExOLNirMov_3std4timeNtB5_15SystemTimeErrorNtNtCs09rNiPxLfqU_4core3fmt5Debug3fmt.llvm.5545174629516075113",
+      "base_insns": 16,
+      "gold_insns": 16,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvYINtCsc99LcliVCGa_14rustc_demangle21SizeLimitedFmtAdapterQNtNtCs09rNiPxLfqU_4core3fmt9FormatterENtBZ_5Write9write_fmtB5_",
+      "name": "_RNvYINtCsc99LcliVCGa_14rustc_demangle21SizeLimitedFmtAdapterQNtNtCs09rNiPxLfqU_4core3fmt9FormatterENtBZ_5Write9write_fmtB5_",
+      "base_insns": 24,
+      "gold_insns": 24,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvYINtNtNtCs09rNiPxLfqU_4core2io6cursor6CursorQShENtNtB7_5write5Write9write_fmtCsbExOLNirMov_3std",
+      "name": "_RNvYINtNtNtCs09rNiPxLfqU_4core2io6cursor6CursorQShENtNtB7_5write5Write9write_fmtCsbExOLNirMov_3std",
+      "base_insns": 83,
+      "gold_insns": 83,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYINtNvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmt7AdapterINtNtB9_6cursor6CursorQShEENtNtBb_3fmt5Write9write_fmtCsbExOLNirMov_3std",
+      "name": "_RNvYINtNvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmt7AdapterINtNtB9_6cursor6CursorQShEENtNtBb_3fmt5Write9write_fmtCsbExOLNirMov_3std.llvm.16757670143703034197",
+      "base_insns": 77,
+      "gold_insns": 77,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvYINtNvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmt7AdapterINtNtCsfLhUnpABn5n_5alloc3vec3VechEENtNtBb_3fmt5Write9write_fmtCs0GlaqxNCqMS_4test",
+      "name": "_RNvYINtNvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmt7AdapterINtNtCsfLhUnpABn5n_5alloc3vec3VechEENtNtBb_3fmt5Write9write_fmtCs0GlaqxNCqMS_4test.llvm.5545174629516075113",
+      "base_insns": 53,
+      "gold_insns": 53,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvYINtNvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmt7AdapterINtNtCsfLhUnpABn5n_5alloc3vec3VechEENtNtBb_3fmt5Write9write_fmtCsbExOLNirMov_3std",
+      "name": "_RNvYINtNvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmt7AdapterINtNtCsfLhUnpABn5n_5alloc3vec3VechEENtNtBb_3fmt5Write9write_fmtCsbExOLNirMov_3std.llvm.16757670143703034197",
+      "base_insns": 53,
+      "gold_insns": 53,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvYINtNvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmt7AdapterINtNtNtCs0GlaqxNCqMS_4test4term8terminfo16TerminfoTerminalNtNtNtCsbExOLNirMov_3std2io5stdio6StdoutEENtNtBb_3fmt5Write9write_fmtB1b_",
+      "name": "_RNvYINtNvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmt7AdapterINtNtNtCs0GlaqxNCqMS_4test4term8terminfo16TerminfoTerminalNtNtNtCsbExOLNirMov_3std2io5stdio6StdoutEENtNtBb_3fmt5Write9write_fmtB1b_.llvm.5545174629516075113",
+      "base_insns": 50,
+      "gold_insns": 50,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvYINtNvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmt7AdapterNtNtNtCsbExOLNirMov_3std2io5stdio10StderrLockENtNtBb_3fmt5Write9write_fmtB1a_",
+      "name": "_RNvYINtNvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmt7AdapterNtNtNtCsbExOLNirMov_3std2io5stdio10StderrLockENtNtBb_3fmt5Write9write_fmtB1a_.llvm.16757670143703034197",
+      "base_insns": 85,
+      "gold_insns": 85,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvYINtNvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmt7AdapterNtNtNtCsbExOLNirMov_3std2io5stdio10StdoutLockENtNtBb_3fmt5Write9write_fmtB1a_",
+      "name": "_RNvYINtNvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmt7AdapterNtNtNtCsbExOLNirMov_3std2io5stdio10StdoutLockENtNtBb_3fmt5Write9write_fmtB1a_.llvm.16757670143703034197",
+      "base_insns": 80,
+      "gold_insns": 80,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvYINtNvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmt7AdapterNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrENtNtBb_3fmt5Write9write_fmtB1c_",
+      "name": "_RNvYINtNvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmt7AdapterNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrENtNtBb_3fmt5Write9write_fmtB1c_.llvm.16757670143703034197",
+      "base_insns": 50,
+      "gold_insns": 50,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvYINtNvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmt7AdapterNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrENtNtBb_3fmt5Write9write_fmtCs0GlaqxNCqMS_4test",
+      "name": "_RNvYINtNvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmt7AdapterNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrENtNtBb_3fmt5Write9write_fmtCs0GlaqxNCqMS_4test.llvm.5545174629516075113",
+      "base_insns": 50,
+      "gold_insns": 50,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvYINtNvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmt7AdapterNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrENtNtBb_3fmt5Write9write_fmtCs1N99vFv2Ys6_5tokio",
+      "name": "_RNvYINtNvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmt7AdapterNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrENtNtBb_3fmt5Write9write_fmtCs1N99vFv2Ys6_5tokio.llvm.6438445909302699316",
+      "base_insns": 70,
+      "gold_insns": 70,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvYINtNvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmt7AdapterNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrENtNtBb_3fmt5Write9write_fmtCs4kfZMJEf0jv_11parking_lot",
+      "name": "_RNvYINtNvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmt7AdapterNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrENtNtBb_3fmt5Write9write_fmtCs4kfZMJEf0jv_11parking_lot.llvm.6129410504944598480",
+      "base_insns": 13,
+      "gold_insns": 13,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvYINtNvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmt7AdapterNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrENtNtBb_3fmt5Write9write_fmtCs6GlFCRZXWww_3mio",
+      "name": "_RNvYINtNvNtNtCs09rNiPxLfqU_4core2io5write17default_write_fmt7AdapterNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrENtNtBb_3fmt5Write9write_fmtCs6GlFCRZXWww_3mio.llvm.5139211327025474049",
+      "base_insns": 13,
+      "gold_insns": 13,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue11multi_reset0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue11multi_reset0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 74,
+      "gold_insns": 74,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue11reset_entry0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue11reset_entry0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 74,
+      "gold_insns": 74,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue11reset_twice0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue11reset_twice0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 74,
+      "gold_insns": 74,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue12remove_entry0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue12remove_entry0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 87,
+      "gold_insns": 87,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue16reset_much_later0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue16reset_much_later0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 74,
+      "gold_insns": 74,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue18single_short_delay0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue18single_short_delay0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 94,
+      "gold_insns": 94,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue19remove_expired_item0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue19remove_expired_item0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 87,
+      "gold_insns": 87,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue20compact_expire_empty0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue20compact_expire_empty0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 90,
+      "gold_insns": 90,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue20compact_remove_empty0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue20compact_remove_empty0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 69,
+      "gold_insns": 69,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue20multi_delay_at_start0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue20multi_delay_at_start0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 87,
+      "gold_insns": 87,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue20remove_after_compact0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue20remove_after_compact0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 69,
+      "gold_insns": 69,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue22multi_immediate_delays0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue22multi_immediate_delays0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 87,
+      "gold_insns": 87,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue22reset_inserted_expired0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue22reset_inserted_expired0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 93,
+      "gold_insns": 93,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue22single_immediate_delay0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue22single_immediate_delay0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 87,
+      "gold_insns": 87,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue22wake_after_remove_last0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue22wake_after_remove_last0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 69,
+      "gold_insns": 69,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue23compact_change_deadline0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue23compact_change_deadline0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 77,
+      "gold_insns": 77,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue23insert_after_ready_poll0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue23insert_after_ready_poll0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 87,
+      "gold_insns": 87,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue25remove_after_compact_poll0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue25remove_after_compact_poll0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 90,
+      "gold_insns": 90,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue26expires_before_last_insert0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue26expires_before_last_insert0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 87,
+      "gold_insns": 87,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue28compact_remove_remapped_keys0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue28compact_remove_remapped_keys0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 90,
+      "gold_insns": 90,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue29reset_later_after_slot_starts0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue29reset_later_after_slot_starts0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 74,
+      "gold_insns": 74,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue30insert_before_first_after_poll0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue30insert_before_first_after_poll0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 94,
+      "gold_insns": 94,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue30item_expiry_greater_than_wheel0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue30item_expiry_greater_than_wheel0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 83,
+      "gold_insns": 83,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue31remove_at_timer_wheel_threshold0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue31remove_at_timer_wheel_threshold0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 87,
+      "gold_insns": 87,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue31reset_earlier_after_slot_starts0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue31reset_earlier_after_slot_starts0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 74,
+      "gold_insns": 74,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue32insert_in_past_fires_immediately0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue32insert_in_past_fires_immediately0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 87,
+      "gold_insns": 87,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue35delay_queue_poll_expired_when_empty0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue35delay_queue_poll_expired_when_empty0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 66,
+      "gold_insns": 66,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue41reset_first_expiring_item_to_expire_later0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue41reset_first_expiring_item_to_expire_later0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 87,
+      "gold_insns": 87,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue42repeatedly_reset_entry_inserted_as_expired0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue42repeatedly_reset_entry_inserted_as_expired0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 93,
+      "gold_insns": 93,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue43insert_in_past_after_poll_fires_immediately0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue43insert_in_past_after_poll_fires_immediately0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 87,
+      "gold_insns": 87,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue45expire_first_key_when_reset_to_expire_earlier0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue45expire_first_key_when_reset_to_expire_earlier0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 87,
+      "gold_insns": 87,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue46expire_second_key_when_reset_to_expire_earlier0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue46expire_second_key_when_reset_to_expire_earlier0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 87,
+      "gold_insns": 87,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue4peek0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "name": "_RNvYNCNvCs9mNdW91B5RX_16time_delay_queue4peek0INtNtNtCs09rNiPxLfqU_4core3ops8function6FnOnceuE9call_onceB6_",
+      "base_insns": 97,
+      "gold_insns": 97,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNtNtCsfLhUnpABn5n_5alloc6string6StringNtNtCs09rNiPxLfqU_4core3fmt5Write9write_fmtB6_",
+      "name": "_RNvYNtNtCsfLhUnpABn5n_5alloc6string6StringNtNtCs09rNiPxLfqU_4core3fmt5Write9write_fmtB6_",
+      "base_insns": 54,
+      "gold_insns": 54,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvYNtNtCsfLhUnpABn5n_5alloc6string6StringNtNtCs09rNiPxLfqU_4core3fmt5Write9write_fmtCs0GlaqxNCqMS_4test",
+      "name": "_RNvYNtNtCsfLhUnpABn5n_5alloc6string6StringNtNtCs09rNiPxLfqU_4core3fmt5Write9write_fmtCs0GlaqxNCqMS_4test",
+      "base_insns": 54,
+      "gold_insns": 54,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvYNtNtCsfLhUnpABn5n_5alloc6string6StringNtNtCs09rNiPxLfqU_4core3fmt5Write9write_fmtCsbExOLNirMov_3std",
+      "name": "_RNvYNtNtCsfLhUnpABn5n_5alloc6string6StringNtNtCs09rNiPxLfqU_4core3fmt5Write9write_fmtCsbExOLNirMov_3std",
+      "base_insns": 54,
+      "gold_insns": 54,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvYNtNtNtCs09rNiPxLfqU_4core3fmt8builders10PadAdapterNtB6_5Write9write_fmtB8_",
+      "name": "_RNvYNtNtNtCs09rNiPxLfqU_4core3fmt8builders10PadAdapterNtB6_5Write9write_fmtB8_.llvm.9365909328427317992",
+      "base_insns": 13,
+      "gold_insns": 13,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "::_RNvYNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrNtNtNtCs09rNiPxLfqU_4core2io5write5Write18write_all_vectoredBa_",
+      "name": "_RNvYNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrNtNtNtCs09rNiPxLfqU_4core2io5write5Write18write_all_vectoredBa_",
+      "base_insns": 140,
+      "gold_insns": 140,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvYNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrNtNtNtCs09rNiPxLfqU_4core2io5write5Write9write_allBa_",
+      "name": "_RNvYNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrNtNtNtCs09rNiPxLfqU_4core2io5write5Write9write_allBa_",
+      "base_insns": 78,
+      "gold_insns": 78,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvYNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrNtNtNtCs09rNiPxLfqU_4core2io5write5Write9write_fmtCs0GlaqxNCqMS_4test",
+      "name": "_RNvYNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrNtNtNtCs09rNiPxLfqU_4core2io5write5Write9write_fmtCs0GlaqxNCqMS_4test",
+      "base_insns": 65,
+      "gold_insns": 65,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrNtNtNtCs09rNiPxLfqU_4core2io5write5Write9write_fmtCs4kfZMJEf0jv_11parking_lot",
+      "name": "_RNvYNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StderrNtNtNtCs09rNiPxLfqU_4core2io5write5Write9write_fmtCs4kfZMJEf0jv_11parking_lot.llvm.6129410504944598480",
+      "base_insns": 81,
+      "gold_insns": 81,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "::_RNvYNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StdoutNtNtNtCs09rNiPxLfqU_4core2io5write5Write9write_allBa_",
+      "name": "_RNvYNtNtNtNtCsbExOLNirMov_3std3sys5stdio4unix6StdoutNtNtNtCs09rNiPxLfqU_4core2io5write5Write9write_allBa_",
+      "base_insns": 78,
+      "gold_insns": 78,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvYNvNtNtNtCsbExOLNirMov_3std3sys2fs4unix4statINtNtNtCs09rNiPxLfqU_4core3ops8function2FnTRNtNtNtBQ_3ffi5c_str4CStrEE4callBa_",
+      "name": "_RNvYNvNtNtNtCsbExOLNirMov_3std3sys2fs4unix4statINtNtNtCs09rNiPxLfqU_4core3ops8function2FnTRNtNtNtBQ_3ffi5c_str4CStrEE4callBa_.llvm.15092089992500286289",
+      "base_insns": 51,
+      "gold_insns": 51,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::_RNvYNvNtNtNtCsbExOLNirMov_3std3sys2fs4unix4statINtNtNtCs09rNiPxLfqU_4core3ops8function5FnMutTRNtNtNtBQ_3ffi5c_str4CStrEE8call_mutBa_",
+      "name": "_RNvYNvNtNtNtCsbExOLNirMov_3std3sys2fs4unix4statINtNtNtCs09rNiPxLfqU_4core3ops8function5FnMutTRNtNtNtBQ_3ffi5c_str4CStrEE8call_mutBa_.llvm.15092089992500286289",
+      "base_insns": 51,
+      "gold_insns": 51,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "::__synccall",
+      "name": "__synccall",
+      "base_insns": 186,
+      "gold_insns": 186,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RINvMNtNtCsfLhUnpABn5n_5alloc2io5errorNtNtNtCs09rNiPxLfqU_4core2io5error5Error3newNtNtB7_6string6StringECs0GlaqxNCqMS_4test",
+      "name": "_RINvMNtNtCsfLhUnpABn5n_5alloc2io5errorNtNtNtCs09rNiPxLfqU_4core2io5error5Error3newNtNtB7_6string6StringECs0GlaqxNCqMS_4test",
+      "base_insns": 52,
+      "gold_insns": 52,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "_RINvMNtNtCsfLhUnpABn5n_5alloc2io5errorNtNtNtCs09rNiPxLfqU_4core2io5error5Error3newNtNtB7_6string6StringECs1N99vFv2Ys6_5tokio",
+      "name": "_RINvMNtNtCsfLhUnpABn5n_5alloc2io5errorNtNtNtCs09rNiPxLfqU_4core2io5error5Error3newNtNtB7_6string6StringECs1N99vFv2Ys6_5tokio",
+      "base_insns": 52,
+      "gold_insns": 52,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "_RINvMNtNtCsfLhUnpABn5n_5alloc2io5errorNtNtNtCs09rNiPxLfqU_4core2io5error5Error3newReECsbExOLNirMov_3std",
+      "name": "_RINvMNtNtCsfLhUnpABn5n_5alloc2io5errorNtNtNtCs09rNiPxLfqU_4core2io5error5Error3newReECsbExOLNirMov_3std",
+      "base_insns": 78,
+      "gold_insns": 78,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedAhj4_RShECsbExOLNirMov_3std",
+      "name": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedAhj4_RShECsbExOLNirMov_3std",
+      "base_insns": 12,
+      "gold_insns": 12,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedINtNtB4_6option6OptionINtNtNtB4_3num7nonzero7NonZeroyEEBM_ECs1N99vFv2Ys6_5tokio",
+      "name": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedINtNtB4_6option6OptionINtNtNtB4_3num7nonzero7NonZeroyEEBM_ECs1N99vFv2Ys6_5tokio",
+      "base_insns": 11,
+      "gold_insns": 11,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedINtNtB4_6option6OptionINtNtNtB4_3ptr8non_null7NonNullNtNtNtCs1N99vFv2Ys6_5tokio4sync6notify6WaiterEEBM_EB1J_",
+      "name": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedINtNtB4_6option6OptionINtNtNtB4_3ptr8non_null7NonNullNtNtNtCs1N99vFv2Ys6_5tokio4sync6notify6WaiterEEBM_EB1J_",
+      "base_insns": 11,
+      "gold_insns": 11,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedINtNtB4_6option6OptionINtNtNtB4_3ptr8non_null7NonNullNtNtNtNtCs1N99vFv2Ys6_5tokio7runtime2io12scheduled_io11ScheduledIoEEBM_EB1L_",
+      "name": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedINtNtB4_6option6OptionINtNtNtB4_3ptr8non_null7NonNullNtNtNtNtCs1N99vFv2Ys6_5tokio7runtime2io12scheduled_io11ScheduledIoEEBM_EB1L_",
+      "base_insns": 11,
+      "gold_insns": 11,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedINtNtB4_6option6OptionINtNtNtB4_3ptr8non_null7NonNullNtNtNtNtCs1N99vFv2Ys6_5tokio7runtime2io12scheduled_io6WaiterEEBM_EB1L_",
+      "name": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedINtNtB4_6option6OptionINtNtNtB4_3ptr8non_null7NonNullNtNtNtNtCs1N99vFv2Ys6_5tokio7runtime2io12scheduled_io6WaiterEEBM_EB1L_",
+      "base_insns": 11,
+      "gold_insns": 11,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedINtNtB4_6option6OptionINtNtNtB4_3ptr8non_null7NonNullNtNtNtNtCs1N99vFv2Ys6_5tokio7runtime4time5entry11TimerSharedEEBM_EB1L_",
+      "name": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedINtNtB4_6option6OptionINtNtNtB4_3ptr8non_null7NonNullNtNtNtNtCs1N99vFv2Ys6_5tokio7runtime4time5entry11TimerSharedEEBM_EB1L_",
+      "base_insns": 11,
+      "gold_insns": 11,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedINtNtB4_6option6OptioncEBM_ECs0GlaqxNCqMS_4test",
+      "name": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedINtNtB4_6option6OptioncEBM_ECs0GlaqxNCqMS_4test",
+      "base_insns": 14,
+      "gold_insns": 14,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedbbECs1N99vFv2Ys6_5tokio",
+      "name": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedbbECs1N99vFv2Ys6_5tokio",
+      "base_insns": 11,
+      "gold_insns": 11,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedjjECs1pTMJBksIla_5bytes",
+      "name": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedjjECs1pTMJBksIla_5bytes",
+      "base_insns": 14,
+      "gold_insns": 14,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedjjECs4kfZMJEf0jv_11parking_lot",
+      "name": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedjjECs4kfZMJEf0jv_11parking_lot",
+      "base_insns": 14,
+      "gold_insns": 14,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedllECsbExOLNirMov_3std",
+      "name": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedllECsbExOLNirMov_3std",
+      "base_insns": 11,
+      "gold_insns": 11,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedmmECsbExOLNirMov_3std",
+      "name": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedmmECsbExOLNirMov_3std",
+      "base_insns": 11,
+      "gold_insns": 11,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedssECsbExOLNirMov_3std",
+      "name": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedssECsbExOLNirMov_3std",
+      "base_insns": 11,
+      "gold_insns": 11,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedyyEB4_",
+      "name": "_RINvNtCs09rNiPxLfqU_4core9panicking13assert_failedyyEB4_",
+      "base_insns": 14,
+      "gold_insns": 14,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvCsafYddM34jap_20signal_hook_registry23register_unchecked_impl",
+      "name": "_RNvCsafYddM34jap_20signal_hook_registry23register_unchecked_impl",
+      "base_insns": 644,
+      "gold_insns": 644,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "_RNvMNtCs6GlFCRZXWww_3mio4pollNtB2_4Poll3new",
+      "name": "_RNvMNtCs6GlFCRZXWww_3mio4pollNtB2_4Poll3new",
+      "base_insns": 71,
+      "gold_insns": 71,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "_RNvMNtCs6GlFCRZXWww_3mio4pollNtB2_4Poll4poll",
+      "name": "_RNvMNtCs6GlFCRZXWww_3mio4pollNtB2_4Poll4poll",
+      "base_insns": 90,
+      "gold_insns": 90,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvMs0_Cs3ny7wVqgMyZ_7getoptsNtB5_7Options11usage_items",
+      "name": "_RNvMs0_Cs3ny7wVqgMyZ_7getoptsNtB5_7Options11usage_items",
+      "base_insns": 136,
+      "gold_insns": 136,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "_RNvMs0_Cs3ny7wVqgMyZ_7getoptsNtB5_7Options5usage",
+      "name": "_RNvMs0_Cs3ny7wVqgMyZ_7getoptsNtB5_7Options5usage",
+      "base_insns": 131,
+      "gold_insns": 131,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvMs0_NtNtNtCsbExOLNirMov_3std3sys6thread4unixNtB5_6Thread3new",
+      "name": "_RNvMs0_NtNtNtCsbExOLNirMov_3std3sys6thread4unixNtB5_6Thread3new",
+      "base_insns": 149,
+      "gold_insns": 149,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "_RNvMs0_NtNtNtCsbExOLNirMov_3std3sys6thread4unixNtB5_6Thread4join",
+      "name": "_RNvMs0_NtNtNtCsbExOLNirMov_3std3sys6thread4unixNtB5_6Thread4join",
+      "base_insns": 50,
+      "gold_insns": 50,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "_RNvMs16_NtCsbExOLNirMov_3std4pathNtB6_4Path6is_dir",
+      "name": "_RNvMs16_NtCsbExOLNirMov_3std4pathNtB6_4Path6is_dir",
+      "base_insns": 77,
+      "gold_insns": 77,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvMs16_NtCsbExOLNirMov_3std4pathNtB6_4Path7is_file",
+      "name": "_RNvMs16_NtCsbExOLNirMov_3std4pathNtB6_4Path7is_file",
+      "base_insns": 77,
+      "gold_insns": 77,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvMs2_NtNtCs09rNiPxLfqU_4core3fmt8buildersNtB5_11DebugStruct5field",
+      "name": "_RNvMs2_NtNtCs09rNiPxLfqU_4core3fmt8buildersNtB5_11DebugStruct5field",
+      "base_insns": 130,
+      "gold_insns": 130,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvMs2_NtNtCs1N99vFv2Ys6_5tokio7runtime4parkNtB5_16CachedParkThread5waker",
+      "name": "_RNvMs2_NtNtCs1N99vFv2Ys6_5tokio7runtime4parkNtB5_16CachedParkThread5waker",
+      "base_insns": 29,
+      "gold_insns": 29,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "_RNvMs2_NtNtNtCs1N99vFv2Ys6_5tokio7runtime9scheduler14current_threadNtB5_6Handle9waker_ref",
+      "name": "_RNvMs2_NtNtNtCs1N99vFv2Ys6_5tokio7runtime9scheduler14current_threadNtB5_6Handle9waker_ref",
+      "base_insns": 8,
+      "gold_insns": 8,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "_RNvMs5_NtNtCs09rNiPxLfqU_4core3fmt8buildersNtB5_8DebugSet5entry",
+      "name": "_RNvMs5_NtNtCs09rNiPxLfqU_4core3fmt8buildersNtB5_8DebugSet5entry",
+      "base_insns": 92,
+      "gold_insns": 92,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvMs6_NtNtCs09rNiPxLfqU_4core3fmt8buildersNtB5_9DebugList5entry",
+      "name": "_RNvMs6_NtNtCs09rNiPxLfqU_4core3fmt8buildersNtB5_9DebugList5entry",
+      "base_insns": 92,
+      "gold_insns": 92,
+      "base_level": null,
+      "gold_level": null
+     },
+     {
+      "key": "_RNvMs_NtNtNtCsbExOLNirMov_3std2os2fd5ownedNtB4_7OwnedFd9try_clone",
+      "name": "_RNvMs_NtNtNtCsbExOLNirMov_3std2os2fd5ownedNtB4_7OwnedFd9try_clone",
+      "base_insns": 43,
+      "gold_insns": 43,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvMs_NtNtNtCsfLhUnpABn5n_5alloc2io8buffered9bufwriterINtB4_9BufWriterNtNtNtCsbExOLNirMov_3std2io5stdio9StdoutRawE10write_coldB1c_",
+      "name": "_RNvMs_NtNtNtCsfLhUnpABn5n_5alloc2io8buffered9bufwriterINtB4_9BufWriterNtNtNtCsbExOLNirMov_3std2io5stdio9StdoutRawE10write_coldB1c_",
+      "base_insns": 77,
+      "gold_insns": 77,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvMs_NtNtNtNtCsbExOLNirMov_3std2os4unix3net6streamNtB4_10UnixStream9try_clone",
+      "name": "_RNvMs_NtNtNtNtCsbExOLNirMov_3std2os4unix3net6streamNtB4_10UnixStream9try_clone",
+      "base_insns": 43,
+      "gold_insns": 43,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvMsa_NtCs09rNiPxLfqU_4core3fmtNtB5_9Formatter25debug_tuple_field1_finish",
+      "name": "_RNvMsa_NtCs09rNiPxLfqU_4core3fmtNtB5_9Formatter25debug_tuple_field1_finish",
+      "base_insns": 103,
+      "gold_insns": 103,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvMsa_NtCs09rNiPxLfqU_4core3fmtNtB5_9Formatter25debug_tuple_field2_finish",
+      "name": "_RNvMsa_NtCs09rNiPxLfqU_4core3fmtNtB5_9Formatter25debug_tuple_field2_finish",
+      "base_insns": 137,
+      "gold_insns": 137,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvMsj_NtCsbExOLNirMov_3std2fsNtB5_11OpenOptions5__open",
+      "name": "_RNvMsj_NtCsbExOLNirMov_3std2fsNtB5_11OpenOptions5__open",
+      "base_insns": 64,
+      "gold_insns": 64,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvMsj_NtNtNtCsbExOLNirMov_3std3sys2fs4unixNtB5_4File4read",
+      "name": "_RNvMsj_NtNtNtCsbExOLNirMov_3std3sys2fs4unixNtB5_4File4read",
+      "base_insns": 33,
+      "gold_insns": 33,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvNtCs0GlaqxNCqMS_4test3cli10parse_opts",
+      "name": "_RNvNtCs0GlaqxNCqMS_4test3cli10parse_opts",
+      "base_insns": 2485,
+      "gold_insns": 2485,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "_RNvNtCs0GlaqxNCqMS_4test5bench17fmt_bench_samples",
+      "name": "_RNvNtCs0GlaqxNCqMS_4test5bench17fmt_bench_samples",
+      "base_insns": 124,
+      "gold_insns": 124,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "_RNvNtCsbExOLNirMov_3std2rt19lang_start_internal",
+      "name": "_RNvNtCsbExOLNirMov_3std2rt19lang_start_internal",
+      "base_insns": 119,
+      "gold_insns": 119,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "_RNvNtCsbExOLNirMov_3std5alloc24default_alloc_error_hook",
+      "name": "_RNvNtCsbExOLNirMov_3std5alloc24default_alloc_error_hook",
+      "base_insns": 92,
+      "gold_insns": 92,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "_RNvNtCsbExOLNirMov_3std9panicking12default_hook",
+      "name": "_RNvNtCsbExOLNirMov_3std9panicking12default_hook",
+      "base_insns": 107,
+      "gold_insns": 107,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "_RNvNtCsbExOLNirMov_3std9panicking9take_hook",
+      "name": "_RNvNtCsbExOLNirMov_3std9panicking9take_hook",
+      "base_insns": 65,
+      "gold_insns": 65,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "_RNvNtNtCsbExOLNirMov_3std3sys2fs8metadata",
+      "name": "_RNvNtNtCsbExOLNirMov_3std3sys2fs8metadata",
+      "base_insns": 83,
+      "gold_insns": 83,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvNtNtNtCsbExOLNirMov_3std3sys3env4unix6getenv",
+      "name": "_RNvNtNtNtCsbExOLNirMov_3std3sys3env4unix6getenv",
+      "base_insns": 76,
+      "gold_insns": 76,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvNtNtNtCsbExOLNirMov_3std3sys4pipe4unix4pipe",
+      "name": "_RNvNtNtNtCsbExOLNirMov_3std3sys4pipe4unix4pipe",
+      "base_insns": 70,
+      "gold_insns": 70,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "_RNvNvNtCsfLhUnpABn5n_5alloc3fmt6format12format_inner",
+      "name": "_RNvNvNtCsfLhUnpABn5n_5alloc3fmt6format12format_inner",
+      "base_insns": 149,
+      "gold_insns": 149,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "_RNvXNvMNtNtCsbExOLNirMov_3std3sys9backtraceNtB5_13BacktraceLock5printNtB2_16DisplayBacktraceNtNtCs09rNiPxLfqU_4core3fmt7Display3fmt",
+      "name": "_RNvXNvMNtNtCsbExOLNirMov_3std3sys9backtraceNtB5_13BacktraceLock5printNtB2_16DisplayBacktraceNtNtCs09rNiPxLfqU_4core3fmt7Display3fmt",
+      "base_insns": 130,
+      "gold_insns": 130,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvXNvNtCsbExOLNirMov_3std9panicking13resume_unwindNtB2_9RewrapBoxNtNtCsfLhUnpABn5n_5alloc9panicking12PanicPayload8take_box",
+      "name": "_RNvXNvNtCsbExOLNirMov_3std9panicking13resume_unwindNtB2_9RewrapBoxNtNtCsfLhUnpABn5n_5alloc9panicking12PanicPayload8take_box",
+      "base_insns": 9,
+      "gold_insns": 9,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "_RNvXs0_NtNtNtCs1N99vFv2Ys6_5tokio7runtime7context7currentNtB5_15SetCurrentGuardNtNtNtCs09rNiPxLfqU_4core3ops4drop4Drop4drop",
+      "name": "_RNvXs0_NtNtNtCs1N99vFv2Ys6_5tokio7runtime7context7currentNtB5_15SetCurrentGuardNtNtNtCs09rNiPxLfqU_4core3ops4drop4Drop4drop",
+      "base_insns": 6,
+      "gold_insns": 6,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "_RNvXs1_Csc99LcliVCGa_14rustc_demangleNtB5_8DemangleNtNtCs09rNiPxLfqU_4core3fmt7Display3fmt",
+      "name": "_RNvXs1_Csc99LcliVCGa_14rustc_demangleNtB5_8DemangleNtNtCs09rNiPxLfqU_4core3fmt7Display3fmt",
+      "base_insns": 89,
+      "gold_insns": 89,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvXs1_NtNtNtNtCsbExOLNirMov_3std2os4unix3net6streamRNtB5_10UnixStreamNtNtNtCsfLhUnpABn5n_5alloc2io4read4Read4read",
+      "name": "_RNvXs1_NtNtNtNtCsbExOLNirMov_3std2os4unix3net6streamRNtB5_10UnixStreamNtNtNtCsfLhUnpABn5n_5alloc2io4read4Read4read",
+      "base_insns": 37,
+      "gold_insns": 37,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvXs1_NvNtCsbExOLNirMov_3std9panicking13panic_handlerNtB5_16StaticStrPayloadNtNtCsfLhUnpABn5n_5alloc9panicking12PanicPayload8take_box",
+      "name": "_RNvXs1_NvNtCsbExOLNirMov_3std9panicking13panic_handlerNtB5_16StaticStrPayloadNtNtCsfLhUnpABn5n_5alloc9panicking12PanicPayload8take_box",
+      "base_insns": 26,
+      "gold_insns": 26,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvXs2_NtNtCs09rNiPxLfqU_4core2io5errorNtNtB5_4repr4ReprNtNtB9_3fmt5Debug3fmt",
+      "name": "_RNvXs2_NtNtCs09rNiPxLfqU_4core2io5errorNtNtB5_4repr4ReprNtNtB9_3fmt5Debug3fmt",
+      "base_insns": 235,
+      "gold_insns": 235,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvXs3_NtNtNtCs6GlFCRZXWww_3mio3net3tcp6streamNtB5_9TcpStreamNtNtNtBb_5event6source6Source8register",
+      "name": "_RNvXs3_NtNtNtCs6GlFCRZXWww_3mio3net3tcp6streamNtB5_9TcpStreamNtNtNtBb_5event6source6Source8register",
+      "base_insns": 54,
+      "gold_insns": 54,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "_RNvXs3_NtNtNtCs6GlFCRZXWww_3mio3net3uds6streamNtB5_10UnixStreamNtNtNtBb_5event6source6Source8register",
+      "name": "_RNvXs3_NtNtNtCs6GlFCRZXWww_3mio3net3uds6streamNtB5_10UnixStreamNtNtNtBb_5event6source6Source8register",
+      "base_insns": 54,
+      "gold_insns": 54,
+      "base_level": null,
+      "gold_level": null
+     },
+     {
+      "key": "_RNvXs3_NtNtNtCsbExOLNirMov_3std3sys5stdio4unixNtB5_6StderrNtNtNtCs09rNiPxLfqU_4core2io5write5Write14write_vectored",
+      "name": "_RNvXs3_NtNtNtCsbExOLNirMov_3std3sys5stdio4unixNtB5_6StderrNtNtNtCs09rNiPxLfqU_4core2io5write5Write14write_vectored",
+      "base_insns": 35,
+      "gold_insns": 35,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvXs3_NtNtNtCsbExOLNirMov_3std3sys5stdio4unixNtB5_6StderrNtNtNtCs09rNiPxLfqU_4core2io5write5Write5write",
+      "name": "_RNvXs3_NtNtNtCsbExOLNirMov_3std3sys5stdio4unixNtB5_6StderrNtNtNtCs09rNiPxLfqU_4core2io5write5Write5write",
+      "base_insns": 33,
+      "gold_insns": 33,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvXs3_NtNtNtNtCsbExOLNirMov_3std2os4unix3net6streamRNtB5_10UnixStreamNtNtNtCs09rNiPxLfqU_4core2io5write5Write5write",
+      "name": "_RNvXs3_NtNtNtNtCsbExOLNirMov_3std2os4unix3net6streamRNtB5_10UnixStreamNtNtNtCs09rNiPxLfqU_4core2io5write5Write5write",
+      "base_insns": 36,
+      "gold_insns": 36,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvXs4_NtCsbExOLNirMov_3std4timeNtB5_7InstantNtNtCs09rNiPxLfqU_4core3fmt5Debug3fmt",
+      "name": "_RNvXs4_NtCsbExOLNirMov_3std4timeNtB5_7InstantNtNtCs09rNiPxLfqU_4core3fmt5Debug3fmt",
+      "base_insns": 33,
+      "gold_insns": 33,
+      "base_level": "L2",
+      "gold_level": "L2"
+     },
+     {
+      "key": "_RNvXs8_NtCsbExOLNirMov_3std2fsRNtB5_4FileNtNtNtCs09rNiPxLfqU_4core2io5write5Write5write",
+      "name": "_RNvXs8_NtCsbExOLNirMov_3std2fsRNtB5_4FileNtNtNtCs09rNiPxLfqU_4core2io5write5Write5write",
+      "base_insns": 34,
+      "gold_insns": 34,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvXs8_NtNtCs09rNiPxLfqU_4core2io5errorNtB5_6CustomNtNtB9_3fmt5Debug3fmt",
+      "name": "_RNvXs8_NtNtCs09rNiPxLfqU_4core2io5errorNtB5_6CustomNtNtB9_3fmt5Debug3fmt",
+      "base_insns": 70,
+      "gold_insns": 70,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvXs_NtNtNtCs6GlFCRZXWww_3mio3net3uds8listenerNtB4_12UnixListenerNtNtNtBa_5event6source6Source8register",
+      "name": "_RNvXs_NtNtNtCs6GlFCRZXWww_3mio3net3uds8listenerNtB4_12UnixListenerNtNtNtBa_5event6source6Source8register",
+      "base_insns": 54,
+      "gold_insns": 54,
+      "base_level": null,
+      "gold_level": null
+     },
+     {
+      "key": "_RNvXs_NvNtCsbExOLNirMov_3std9panicking13panic_handlerNtB4_19FormatStringPayloadNtNtCsfLhUnpABn5n_5alloc9panicking12PanicPayload3get",
+      "name": "_RNvXs_NvNtCsbExOLNirMov_3std9panicking13panic_handlerNtB4_19FormatStringPayloadNtNtCsfLhUnpABn5n_5alloc9panicking12PanicPayload3get",
+      "base_insns": 77,
+      "gold_insns": 77,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvXs_NvNtCsbExOLNirMov_3std9panicking13panic_handlerNtB4_19FormatStringPayloadNtNtCsfLhUnpABn5n_5alloc9panicking12PanicPayload8take_box",
+      "name": "_RNvXs_NvNtCsbExOLNirMov_3std9panicking13panic_handlerNtB4_19FormatStringPayloadNtNtCsfLhUnpABn5n_5alloc9panicking12PanicPayload8take_box",
+      "base_insns": 103,
+      "gold_insns": 103,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     },
+     {
+      "key": "_RNvXsa_NtCsbExOLNirMov_3std2fsNtB5_4FileNtNtNtCsfLhUnpABn5n_5alloc2io4read4Read13read_vectored",
+      "name": "_RNvXsa_NtCsbExOLNirMov_3std2fsNtB5_4FileNtNtNtCsfLhUnpABn5n_5alloc2io4read4Read13read_vectored",
+      "base_insns": 35,
+      "gold_insns": 35,
+      "base_level": null,
+      "gold_level": null
+     },
+     {
+      "key": "_RNvXsa_NtCsbExOLNirMov_3std2fsNtB5_4FileNtNtNtCsfLhUnpABn5n_5alloc2io4read4Read4read",
+      "name": "_RNvXsa_NtCsbExOLNirMov_3std2fsNtB5_4FileNtNtNtCsfLhUnpABn5n_5alloc2io4read4Read4read",
+      "base_insns": 33,
+      "gold_insns": 33,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvXsa_NtCsbExOLNirMov_3std2fsNtB5_4FileNtNtNtCsfLhUnpABn5n_5alloc2io4read4Read8read_buf",
+      "name": "_RNvXsa_NtCsbExOLNirMov_3std2fsNtB5_4FileNtNtNtCsfLhUnpABn5n_5alloc2io4read4Read8read_buf",
+      "base_insns": 46,
+      "gold_insns": 46,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "_RNvXsb_NtCsbExOLNirMov_3std2fsNtB5_4FileNtNtNtCs09rNiPxLfqU_4core2io5write5Write5write",
+      "name": "_RNvXsb_NtCsbExOLNirMov_3std2fsNtB5_4FileNtNtNtCs09rNiPxLfqU_4core2io5write5Write5write",
+      "base_insns": 33,
+      "gold_insns": 33,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "rust_eh_personality",
+      "name": "rust_eh_personality",
+      "base_insns": 102,
+      "gold_insns": 102,
+      "base_level": "L0",
+      "gold_level": "L0"
+     }
+    ],
+    "added": [],
+    "removed": [],
+    "data_modified": [
+     {
+      "key": "_RNvNtNtNtCs09rNiPxLfqU_4core2io5error12os_functions12OS_FUNCTIONS",
+      "name": "_RNvNtNtNtCs09rNiPxLfqU_4core2io5error12os_functions12OS_FUNCTIONS",
+      "base_bytes": 8,
+      "gold_bytes": 8
+     }
+    ],
+    "data_added": [],
+    "data_removed": []
+   },
+   "anonymous_literals_changed": 16,
+   "source_changes": {
+    "base": [],
+    "gold": [
+     "_RNvMs2_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_10DelayQueueReE6removeCs9mNdW91B5RX_16time_delay_queue",
+     "_RNvMs2_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_10DelayQueuelE6removeCs9mNdW91B5RX_16time_delay_queue"
+    ],
+    "debug_info": true
+   },
+   "scratch": {
+    "removes": [
+     "_RNvMs2_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_10DelayQueueReE6removeCs9mNdW91B5RX_16time_delay_queue",
+     "_RNvMs2_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_10DelayQueuelE6removeCs9mNdW91B5RX_16time_delay_queue"
+    ],
+    "basis": "source lines (DWARF)",
+    "functions": [
+     {
+      "name": "_RNvMs2_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_10DelayQueueReE6removeCs9mNdW91B5RX_16time_delay_queue",
+      "instructions": 257,
+      "signature": null,
+      "callers": [
+       "_RNCNvCs9mNdW91B5RX_16time_delay_queues_12remove_entry0B3_",
+       "_RNCNvCs9mNdW91B5RX_16time_delay_queues_19remove_expired_item0B3_",
+       "_RNCNvCs9mNdW91B5RX_16time_delay_queues_20compact_remove_empty0B3_",
+       "_RNCNvCs9mNdW91B5RX_16time_delay_queues_20remove_after_compact0B3_",
+       "_RNCNvCs9mNdW91B5RX_16time_delay_queues_22wake_after_remove_last0B3_",
+       "_RNCNvCs9mNdW91B5RX_16time_delay_queues_25remove_after_compact_poll0B3_",
+       "_RNCNvCs9mNdW91B5RX_16time_delay_queues_28compact_remove_remapped_keys0B3_",
+       "_RNCNvCs9mNdW91B5RX_16time_delay_queues_31remove_at_timer_wheel_threshold0B3_"
+      ]
+     },
+     {
+      "name": "_RNvMs2_NtNtCsiYP9xZGBy8N_10tokio_util4time11delay_queueINtB5_10DelayQueuelE6removeCs9mNdW91B5RX_16time_delay_queue",
+      "instructions": 302,
+      "signature": null,
+      "callers": [
+       "_RNCNvCs9mNdW91B5RX_16time_delay_queues_35delay_queue_poll_expired_when_empty0B3_"
+      ]
+     }
+    ],
+    "instructions": 559,
+    "gold_instructions": 583,
+    "new_functions": [],
+    "data_to_write": [
+     "_RNvNtNtNtCs09rNiPxLfqU_4core2io5error12os_functions12OS_FUNCTIONS"
+    ]
+   }
+  }
+ ],
+ "commands": [
+  {
+   "stage": "checkout",
+   "cwd": "tokio-rs__tokio-6752",
+   "cmd": "git clone -q /mnt/scratch/ec2-user/swe-bin/repos/tokio.git /mnt/scratch/ec2-user/swe-bin/work/tokio-rs__tokio-6752/src"
+  },
+  {
+   "stage": "checkout",
+   "cwd": "src",
+   "cmd": "git checkout -q ab53bf0c4727ae63c6a3a3d772b7bd837d2f49c3"
+  },
+  {
+   "stage": "test-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/tokio-rs__tokio-6752/test.patch"
+  },
+  {
+   "stage": "toolchain",
+   "cwd": "",
+   "cmd": "# {\"toolchain\": \"nightly-2026-11-01\", \"target\": \"/mnt/scratch/ec2-user/swe-bin/tc/rust/nightly-2026-11-01/riscv64imafd-unknown-linux-musl.json\", \"unstable_flag\": \"-Zunstable-options\", \"sysroot_std\": \"/mnt/scratch/ec2-user/rustup/toolchains/nightly-2026-11-01-x86_64-unknown-linux-gnu/lib/rustlib/riscv64imafd-unknown-linux-musl/lib\", \"jump_tables_flag\": \"-C jump-tables=no\", \"json_target_flag\": \"-Zjson-target-spec\"}"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "RUSTUP_HOME=/mnt/scratch/ec2-user/rustup CARGO_HOME=/mnt/scratch/ec2-user/cargo CARGO_TARGET_DIR=/mnt/scratch/ec2-user/swe-bin/cargo-target/tokio/rv CC_riscv64imafd_unknown_linux_musl=rv-cc CXX_riscv64imafd_unknown_linux_musl=rv-c++ AR_riscv64imafd_unknown_linux_musl=llvm-ar CFLAGS_riscv64imafd_unknown_linux_musl=-g CARGO_PROFILE_RELEASE_STRIP=false CARGO_PROFILE_DEV_STRIP=false CARGO_PROFILE_DEV_OPT_LEVEL=2 RUST_TARGET_PATH=/mnt/scratch/ec2-user/swe-bin/tc/rust/nightly-2026-11-01 RUSTFLAGS='-C linker=rv-cc -C link-self-contained=no -C target-feature=+zba,+zbb,-relax -C code-model=medium -C relocation-model=static -C debuginfo=1 -C link-arg=-Wl,--emit-relocs -C link-arg=-lgcc -C link-arg=-lswb_lfs64 -Awarnings -C jump-tables=no -Zunstable-options' cargo +nightly-2026-11-01 test --no-run -j2 --test time_delay_queue -Zjson-target-spec --target riscv64imafd-unknown-linux-musl --message-format=json 2>/dev/null"
+  },
+  {
+   "stage": "metadata",
+   "cwd": "src",
+   "cmd": "RUSTUP_HOME=/mnt/scratch/ec2-user/rustup CARGO_HOME=/mnt/scratch/ec2-user/cargo CARGO_TARGET_DIR=/mnt/scratch/ec2-user/swe-bin/cargo-target/tokio/rv CC_riscv64imafd_unknown_linux_musl=rv-cc CXX_riscv64imafd_unknown_linux_musl=rv-c++ AR_riscv64imafd_unknown_linux_musl=llvm-ar CFLAGS_riscv64imafd_unknown_linux_musl=-g CARGO_PROFILE_RELEASE_STRIP=false CARGO_PROFILE_DEV_STRIP=false cargo +nightly-2026-11-01 metadata --no-deps --format-version 1 2>/dev/null"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug --keep-section=.debug_gdb_scripts /mnt/scratch/ec2-user/swe-bin/artifacts/tokio-rs__tokio-6752/base.time_delay_queue.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/tokio-rs__tokio-6752/base.time_delay_queue.elf"
+  },
+  {
+   "stage": "test",
+   "cwd": "tokio-util",
+   "cmd": "CARGO_MANIFEST_DIR=/mnt/scratch/ec2-user/swe-bin/work/tokio-rs__tokio-6752/src/tokio-util /mnt/scratch/ec2-user/bin/qemu-riscv64-static /mnt/scratch/ec2-user/swe-bin/artifacts/tokio-rs__tokio-6752/base.time_delay_queue.elf  2>&1 ; true"
+  },
+  {
+   "stage": "test-unpatch",
+   "cwd": "src",
+   "cmd": "git apply -R --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/tokio-rs__tokio-6752/test.patch"
+  },
+  {
+   "stage": "reset",
+   "cwd": "src",
+   "cmd": "git checkout -q -- . && git clean -fdq"
+  },
+  {
+   "stage": "gold-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/tokio-rs__tokio-6752/gold.patch"
+  },
+  {
+   "stage": "test-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/tokio-rs__tokio-6752/test.patch"
+  },
+  {
+   "stage": "toolchain",
+   "cwd": "",
+   "cmd": "# {\"toolchain\": \"nightly-2026-11-01\", \"target\": \"/mnt/scratch/ec2-user/swe-bin/tc/rust/nightly-2026-11-01/riscv64imafd-unknown-linux-musl.json\", \"unstable_flag\": \"-Zunstable-options\", \"sysroot_std\": \"/mnt/scratch/ec2-user/rustup/toolchains/nightly-2026-11-01-x86_64-unknown-linux-gnu/lib/rustlib/riscv64imafd-unknown-linux-musl/lib\", \"jump_tables_flag\": \"-C jump-tables=no\", \"json_target_flag\": \"-Zjson-target-spec\"}"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "RUSTUP_HOME=/mnt/scratch/ec2-user/rustup CARGO_HOME=/mnt/scratch/ec2-user/cargo CARGO_TARGET_DIR=/mnt/scratch/ec2-user/swe-bin/cargo-target/tokio/rv CC_riscv64imafd_unknown_linux_musl=rv-cc CXX_riscv64imafd_unknown_linux_musl=rv-c++ AR_riscv64imafd_unknown_linux_musl=llvm-ar CFLAGS_riscv64imafd_unknown_linux_musl=-g CARGO_PROFILE_RELEASE_STRIP=false CARGO_PROFILE_DEV_STRIP=false CARGO_PROFILE_DEV_OPT_LEVEL=2 RUST_TARGET_PATH=/mnt/scratch/ec2-user/swe-bin/tc/rust/nightly-2026-11-01 RUSTFLAGS='-C linker=rv-cc -C link-self-contained=no -C target-feature=+zba,+zbb,-relax -C code-model=medium -C relocation-model=static -C debuginfo=1 -C link-arg=-Wl,--emit-relocs -C link-arg=-lgcc -C link-arg=-lswb_lfs64 -Awarnings -C jump-tables=no -Zunstable-options' cargo +nightly-2026-11-01 test --no-run -j2 --test time_delay_queue -Zjson-target-spec --target riscv64imafd-unknown-linux-musl --message-format=json 2>/dev/null"
+  },
+  {
+   "stage": "metadata",
+   "cwd": "src",
+   "cmd": "RUSTUP_HOME=/mnt/scratch/ec2-user/rustup CARGO_HOME=/mnt/scratch/ec2-user/cargo CARGO_TARGET_DIR=/mnt/scratch/ec2-user/swe-bin/cargo-target/tokio/rv CC_riscv64imafd_unknown_linux_musl=rv-cc CXX_riscv64imafd_unknown_linux_musl=rv-c++ AR_riscv64imafd_unknown_linux_musl=llvm-ar CFLAGS_riscv64imafd_unknown_linux_musl=-g CARGO_PROFILE_RELEASE_STRIP=false CARGO_PROFILE_DEV_STRIP=false cargo +nightly-2026-11-01 metadata --no-deps --format-version 1 2>/dev/null"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug --keep-section=.debug_gdb_scripts /mnt/scratch/ec2-user/swe-bin/artifacts/tokio-rs__tokio-6752/gold.time_delay_queue.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/tokio-rs__tokio-6752/gold.time_delay_queue.elf"
+  },
+  {
+   "stage": "test",
+   "cwd": "tokio-util",
+   "cmd": "CARGO_MANIFEST_DIR=/mnt/scratch/ec2-user/swe-bin/work/tokio-rs__tokio-6752/src/tokio-util /mnt/scratch/ec2-user/bin/qemu-riscv64-static /mnt/scratch/ec2-user/swe-bin/artifacts/tokio-rs__tokio-6752/gold.time_delay_queue.elf  2>&1 ; true"
+  },
+  {
+   "stage": "test-unpatch",
+   "cwd": "src",
+   "cmd": "git apply -R --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/tokio-rs__tokio-6752/test.patch"
+  }
+ ],
+ "convert_s": 132.3
+}

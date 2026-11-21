@@ -6,5 +6,6 @@
  "tokio-rs__axum-1730": "the test patch does not compile at the base commit: it uses the gold patch's API (`MethodRouter: Handler` not satisfied), so there is no base test binary",
  "tokio-rs__tokio-4384": "the FAIL_TO_PASS tests are compile-time checks (the net types are UnwindSafe); at base the test executable does not compile, so there is no base binary",
  "uutils__coreutils-6377": "PASS_TO_PASS tests about argv[0] (test_env_overwrite_arg0, test_env_arg_argv0_overwrite, test_gnu_e20, ...) fail at base and gold alike: under qemu-user the program runs through the wrapper, which sets argv[0] itself",
- "tokio-rs__tokio-4898": "PASS_TO_PASS runtime-metrics tests (worker_noop_count, worker_park_count) fail at base and gold alike under qemu (they count worker parks and wakeups, which qemu's timing changes)"
+ "tokio-rs__tokio-4898": "PASS_TO_PASS runtime-metrics tests (worker_noop_count, worker_park_count) fail at base and gold alike under qemu (they count worker parks and wakeups, which qemu's timing changes)",
+ "sharkdp__bat-562": "links two definitions of regerror (oniguruma's POSIX API and libgit2's bundled regex, which libgit2 uses on musl): `ld.lld: error: duplicate symbol: regerror`; not forced with --allow-multiple-definition"
 }

@@ -32,6 +32,7 @@ from recipes import RECIPES, SWB, Failed, Log, wrapper  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TASKS = os.path.join(os.path.dirname(HERE), "tasks")
+MIN_FREE = 20e9
 NC = os.environ.get("NOCOMPILER", "/mnt/scratch/ec2-user/target-nc-d/release/nocompiler")
 
 
@@ -184,7 +185,7 @@ def convert(task, keep_work=False):
     work = os.path.join(SWB, "work", iid)
     art = os.path.join(SWB, "artifacts", iid)
     shutil.rmtree(work, ignore_errors=True)
-    os.makedirs(work)
+    os.makedirs(work, exist_ok=True)  # rmtree can leave a directory behind (a file still open)
     os.makedirs(art, exist_ok=True)
     wt = os.path.join(work, "src")
     log = Log(os.path.join(work, "convert.log"))
@@ -193,6 +194,11 @@ def convert(task, keep_work=False):
            "test_command": test_cmd(task), "FAIL_TO_PASS": list(task["FAIL_TO_PASS"]),
            "PASS_TO_PASS": list(task["PASS_TO_PASS"]), "status": "dropped"}
     t0 = time.time()
+    free = shutil.disk_usage(SWB).free
+    if free < MIN_FREE:
+        # lead 17:02: no new build below 20 GB free; nothing is written for the task
+        print(f"{iid}: not started, {free / 1e9:.1f} GB free (< {MIN_FREE / 1e9:.0f} GB)", flush=True)
+        return {"status": "not started", "convert_s": 0, "drop_reason": ["disk"]}
     try:
         bare = os.path.join(SWB, "repos", task["repo"].split("/")[1] + ".git")
         log.run(f"git clone -q {bare} {wt}", work, "checkout")
@@ -262,6 +268,13 @@ def convert(task, keep_work=False):
         rec["error"] = e.detail[-2000:]
     rec["commands"] = log.commands
     rec["convert_s"] = round(time.time() - t0, 1)
+    # disk (lead 17:02): the riscv64 build tree goes after every task; a class-A Rust task keeps
+    # its host test build, which run_tests uses
+    if hasattr(recipe, "dirs"):
+        rv, host = recipe.dirs(wt)
+        shutil.rmtree(rv, ignore_errors=True)
+        if getattr(recipe, "build_with_test_patch", False) or rec["status"] != "kept":
+            shutil.rmtree(host, ignore_errors=True)
     os.makedirs(TASKS, exist_ok=True)
     with open(os.path.join(TASKS, f"{iid}.json"), "w") as fh:
         json.dump(rec, fh, indent=1, sort_keys=False)
@@ -306,6 +319,8 @@ def main():
         if a.skip_done and os.path.exists(os.path.join(TASKS, t["instance_id"] + ".json")):
             continue
         r = convert(t)
+        if r["status"] == "not started":
+            continue
         print(t["instance_id"], r["status"], "; ".join(r.get("drop_reason", [])), f"{r['convert_s']}s", flush=True)
 
 

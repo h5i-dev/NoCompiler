@@ -1,0 +1,380 @@
+{
+ "instance_id": "jqlang__jq-2650",
+ "repo": "jqlang/jq",
+ "base_commit": "d8072564c28d38d29aa0a7c416621f02c19f7f44",
+ "language": "C",
+ "recipe": "jq",
+ "subjects": [
+  "jq"
+ ],
+ "test_command": "(make check) | cat",
+ "FAIL_TO_PASS": [
+  "tests/jqtest"
+ ],
+ "PASS_TO_PASS": [
+  "test_utf8",
+  "test_syntax",
+  "test_options",
+  "testc",
+  "testcu",
+  "test_regset",
+  "test_back",
+  "encode",
+  "listcap",
+  "names",
+  "simple",
+  "sql",
+  "syntax",
+  "user_property",
+  "callout",
+  "echo",
+  "count",
+  "bug_fix",
+  "regset",
+  "scan",
+  "callback_each_match",
+  "tests/optionaltest",
+  "tests/mantest",
+  "tests/onigtest",
+  "tests/shtest",
+  "tests/utf8test",
+  "tests/base64test"
+ ],
+ "status": "kept",
+ "tests": [
+  {
+   "test": "tests/jqtest",
+   "kind": "FAIL_TO_PASS",
+   "base": "FAILED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "tests/optionaltest",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "tests/mantest",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "tests/onigtest",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "tests/shtest",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "tests/utf8test",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  },
+  {
+   "test": "tests/base64test",
+   "kind": "PASS_TO_PASS",
+   "base": "PASSED",
+   "gold": "PASSED"
+  }
+ ],
+ "excluded_tests": {
+  "test_utf8": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "test_syntax": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "test_options": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "testc": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "testcu": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "test_regset": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "test_back": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "encode": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "listcap": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "names": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "simple": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "sql": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "syntax": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "user_property": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "callout": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "echo": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "count": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "bug_fix": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "regset": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "scan": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq",
+  "callback_each_match": "oniguruma's own test programs (modules/oniguruma/test), not a test of jq"
+ },
+ "timing_s": {
+  "base": {
+   "build": 110.5,
+   "test": 85.8
+  },
+  "gold": {
+   "build": 104.8,
+   "test": 62.3
+  }
+ },
+ "binaries": [
+  {
+   "subject": "jq",
+   "base": {
+    "path": "artifacts/jqlang__jq-2650/base.jq.elf",
+    "sha256": "497aac030ae6ee2ab58a2522f618f36dd956afcbd65df187e2b7ad0c1ffb28ef",
+    "bytes": 3666992,
+    "functions": 1415,
+    "instructions": 147904,
+    "levels": {
+     "L2": 756,
+     "L0": 406,
+     "below L0": 167,
+     "L1": 4
+    }
+   },
+   "gold": {
+    "path": "artifacts/jqlang__jq-2650/gold.jq.elf",
+    "sha256": "7600cb9e1c8f42fbd2d1d08c909c9f145794ae694ad22ab2f9c441af05fc65d4",
+    "bytes": 3667568,
+    "functions": 1415,
+    "instructions": 147932
+   },
+   "gold_changes": {
+    "modified": [
+     {
+      "key": "::yysyntax_error",
+      "name": "yysyntax_error",
+      "base_insns": 228,
+      "gold_insns": 228,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "jq_parse_library",
+      "name": "jq_parse_library",
+      "base_insns": 44,
+      "gold_insns": 44,
+      "base_level": "L0",
+      "gold_level": "L0"
+     },
+     {
+      "key": "yyparse",
+      "name": "yyparse",
+      "base_insns": 2943,
+      "gold_insns": 2971,
+      "base_level": "below L0",
+      "gold_level": "below L0"
+     }
+    ],
+    "added": [],
+    "removed": [],
+    "data_modified": [
+     {
+      "key": "::yycheck",
+      "name": "yycheck",
+      "base_bytes": 4188,
+      "gold_bytes": 4320
+     },
+     {
+      "key": "::yydefact",
+      "name": "yydefact",
+      "base_bytes": 326,
+      "gold_bytes": 328
+     },
+     {
+      "key": "::yydefgoto",
+      "name": "yydefgoto",
+      "base_bytes": 60,
+      "gold_bytes": 60
+     },
+     {
+      "key": "::yypact",
+      "name": "yypact",
+      "base_bytes": 652,
+      "gold_bytes": 656
+     },
+     {
+      "key": "::yypgoto",
+      "name": "yypgoto",
+      "base_bytes": 60,
+      "gold_bytes": 60
+     },
+     {
+      "key": "::yyr1",
+      "name": "yyr1",
+      "base_bytes": 171,
+      "gold_bytes": 173
+     },
+     {
+      "key": "::yyr2",
+      "name": "yyr2",
+      "base_bytes": 171,
+      "gold_bytes": 173
+     },
+     {
+      "key": "::yystos",
+      "name": "yystos",
+      "base_bytes": 326,
+      "gold_bytes": 328
+     },
+     {
+      "key": "::yytable",
+      "name": "yytable",
+      "base_bytes": 4188,
+      "gold_bytes": 4320
+     }
+    ],
+    "data_added": [],
+    "data_removed": []
+   },
+   "anonymous_literals_changed": 0,
+   "source_changes": {
+    "base": [],
+    "gold": [
+     "yyparse"
+    ],
+    "debug_info": true
+   },
+   "scratch": {
+    "removes": [
+     "yyparse"
+    ],
+    "basis": "source lines (DWARF)",
+    "functions": [
+     {
+      "name": "yyparse",
+      "instructions": 2943,
+      "signature": "int yyparse(block * answer, int * errors, struct locfile * locations, struct lexer_param * lexer_param_ptr)",
+      "callers": [
+       "jq_parse"
+      ]
+     }
+    ],
+    "instructions": 2943,
+    "gold_instructions": 2971,
+    "new_functions": [],
+    "data_to_write": [
+     "yycheck",
+     "yydefact",
+     "yydefgoto",
+     "yypact",
+     "yypgoto",
+     "yyr1",
+     "yyr2",
+     "yystos",
+     "yytable"
+    ]
+   }
+  }
+ ],
+ "commands": [
+  {
+   "stage": "checkout",
+   "cwd": "jqlang__jq-2650",
+   "cmd": "git clone -q /mnt/scratch/ec2-user/swe-bin/repos/jq.git /mnt/scratch/ec2-user/swe-bin/work/jqlang__jq-2650/src"
+  },
+  {
+   "stage": "checkout",
+   "cwd": "src",
+   "cmd": "git checkout -q d8072564c28d38d29aa0a7c416621f02c19f7f44"
+  },
+  {
+   "stage": "prepare",
+   "cwd": "src",
+   "cmd": "git submodule update --init -q"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "autoreconf -fi"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "./configure --host=riscv64-linux-musl CC=rv-cc CFLAGS='-O2 -g' --with-oniguruma=builtin --disable-docs --disable-shared --enable-static --enable-all-static"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "touch src/parser.y src/lexer.l"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "make -j2"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/jqlang__jq-2650/base.jq.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/jqlang__jq-2650/base.jq.elf"
+  },
+  {
+   "stage": "test-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/jqlang__jq-2650/test.patch"
+  },
+  {
+   "stage": "test",
+   "cwd": "src",
+   "cmd": "make -o jq check SUBDIRS= ; true"
+  },
+  {
+   "stage": "test-unpatch",
+   "cwd": "src",
+   "cmd": "git apply -R --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/jqlang__jq-2650/test.patch"
+  },
+  {
+   "stage": "reset",
+   "cwd": "src",
+   "cmd": "git checkout -q -- . && git clean -fdxq -e '*.rv.elf' && git submodule foreach -q git clean -fdxq"
+  },
+  {
+   "stage": "gold-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/jqlang__jq-2650/gold.patch"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "autoreconf -fi"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "./configure --host=riscv64-linux-musl CC=rv-cc CFLAGS='-O2 -g' --with-oniguruma=builtin --disable-docs --disable-shared --enable-static --enable-all-static"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "touch src/parser.y src/lexer.l"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "make -j2"
+  },
+  {
+   "stage": "strip",
+   "cwd": "src",
+   "cmd": "llvm-objcopy --strip-debug /mnt/scratch/ec2-user/swe-bin/artifacts/jqlang__jq-2650/gold.jq.debug.elf /mnt/scratch/ec2-user/swe-bin/artifacts/jqlang__jq-2650/gold.jq.elf"
+  },
+  {
+   "stage": "test-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/jqlang__jq-2650/test.patch"
+  },
+  {
+   "stage": "test",
+   "cwd": "src",
+   "cmd": "make -o jq check SUBDIRS= ; true"
+  },
+  {
+   "stage": "test-unpatch",
+   "cwd": "src",
+   "cmd": "git apply -R --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/jqlang__jq-2650/test.patch"
+  }
+ ],
+ "convert_s": 389.3
+}

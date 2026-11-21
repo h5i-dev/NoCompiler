@@ -1,0 +1,57 @@
+{
+ "instance_id": "astral-sh__ruff-15309",
+ "repo": "astral-sh/ruff",
+ "base_commit": "75a24bbc67aa31b825b6326cfb6e6afdf3ca90d5",
+ "language": "Rust",
+ "recipe": "ruff",
+ "subjects": [],
+ "test_command": "(cargo test --package ruff_linter 'f52') | cat",
+ "FAIL_TO_PASS": [
+  "rules::pyflakes::tests::rules::rule_stringdotformatextrapositionalarguments_path_new_f523_py_expects"
+ ],
+ "PASS_TO_PASS": [
+  "rules::pyflakes::tests::rules::rule_stringdotformatmixingautomatic_path_new_f525_py_expects",
+  "rules::pyflakes::tests::rules::rule_stringdotformatinvalidformat_path_new_f521_py_expects",
+  "rules::pyflakes::tests::rules::rule_stringdotformatmissingarguments_path_new_f524_py_expects",
+  "rules::pyflakes::tests::rules::rule_stringdotformatextranamedarguments_path_new_f522_py_expects"
+ ],
+ "status": "dropped",
+ "failed_side": "base",
+ "drop_reason": [
+  "build failed at base"
+ ],
+ "error": "the test executables did not build (with the test patch at this commit)",
+ "commands": [
+  {
+   "stage": "checkout",
+   "cwd": "astral-sh__ruff-15309",
+   "cmd": "git clone -q /mnt/scratch/ec2-user/swe-bin/repos/ruff.git /mnt/scratch/ec2-user/swe-bin/work/astral-sh__ruff-15309/src"
+  },
+  {
+   "stage": "checkout",
+   "cwd": "src",
+   "cmd": "git checkout -q 75a24bbc67aa31b825b6326cfb6e6afdf3ca90d5"
+  },
+  {
+   "stage": "test-patch",
+   "cwd": "src",
+   "cmd": "git apply --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/astral-sh__ruff-15309/test.patch"
+  },
+  {
+   "stage": "toolchain",
+   "cwd": "",
+   "cmd": "# {\"toolchain\": \"nightly-2025-01-07\", \"target\": \"/mnt/scratch/ec2-user/swe-bin/tc/rust/nightly-2025-01-07/riscv64imafd-unknown-linux-musl.json\", \"unstable_flag\": \"\", \"sysroot_std\": \"/mnt/scratch/ec2-user/rustup/toolchains/nightly-2025-01-07-x86_64-unknown-linux-gnu/lib/rustlib/riscv64imafd-unknown-linux-musl/lib\", \"jump_tables_flag\": \"-Z no-jump-tables\", \"json_target_flag\": \"\"}"
+  },
+  {
+   "stage": "build",
+   "cwd": "src",
+   "cmd": "RUSTUP_HOME=/mnt/scratch/ec2-user/rustup CARGO_HOME=/mnt/scratch/ec2-user/cargo CARGO_TARGET_DIR=/mnt/scratch/ec2-user/swe-bin/cargo-target/ruff/rv CC_riscv64imafd_unknown_linux_musl=rv-cc CXX_riscv64imafd_unknown_linux_musl=rv-c++ AR_riscv64imafd_unknown_linux_musl=llvm-ar CFLAGS_riscv64imafd_unknown_linux_musl=-g CARGO_PROFILE_RELEASE_STRIP=false CARGO_PROFILE_DEV_STRIP=false CARGO_PROFILE_DEV_OPT_LEVEL=2 RUST_TARGET_PATH=/mnt/scratch/ec2-user/swe-bin/tc/rust/nightly-2025-01-07 RUSTFLAGS='-C linker=rv-cc -C link-self-contained=no -C target-feature=+zba,+zbb,-relax -C code-model=medium -C relocation-model=static -C debuginfo=1 -C link-arg=-Wl,--emit-relocs -C link-arg=-lgcc -C link-arg=-lswb_lfs64 -Awarnings -Z no-jump-tables ' cargo +nightly-2025-01-07 test --no-run -j2 --package ruff_linter  --target riscv64imafd-unknown-linux-musl --message-format=json 2>/dev/null"
+  },
+  {
+   "stage": "build-errors",
+   "cwd": "src",
+   "cmd": "RUSTUP_HOME=/mnt/scratch/ec2-user/rustup CARGO_HOME=/mnt/scratch/ec2-user/cargo CARGO_TARGET_DIR=/mnt/scratch/ec2-user/swe-bin/cargo-target/ruff/rv CC_riscv64imafd_unknown_linux_musl=rv-cc CXX_riscv64imafd_unknown_linux_musl=rv-c++ AR_riscv64imafd_unknown_linux_musl=llvm-ar CFLAGS_riscv64imafd_unknown_linux_musl=-g CARGO_PROFILE_RELEASE_STRIP=false CARGO_PROFILE_DEV_STRIP=false CARGO_PROFILE_DEV_OPT_LEVEL=2 RUST_TARGET_PATH=/mnt/scratch/ec2-user/swe-bin/tc/rust/nightly-2025-01-07 RUSTFLAGS='-C linker=rv-cc -C link-self-contained=no -C target-feature=+zba,+zbb,-relax -C code-model=medium -C relocation-model=static -C debuginfo=1 -C link-arg=-Wl,--emit-relocs -C link-arg=-lgcc -C link-arg=-lswb_lfs64 -Awarnings -Z no-jump-tables ' cargo +nightly-2025-01-07 test --no-run -j2 --package ruff_linter  --target riscv64imafd-unknown-linux-musl 2>&1 | tail -40"
+  }
+ ],
+ "convert_s": 139.0
+}

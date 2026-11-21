@@ -43,8 +43,8 @@ def main():
         st = r["status"]
         by[(lang, st)] += 1
         if st != "kept":
-            for x in r.get("drop_reason", []):
-                reasons[(lang, reason_class(x))] += 1
+            for c in sorted({reason_class(x) for x in r.get("drop_reason", [])}):
+                reasons[(lang, c)] += 1  # once per task
             why = "; ".join(r.get("drop_reason", []))[:140]
             if iid in notes:
                 why += " (" + notes[iid][:160] + ")"
@@ -75,7 +75,7 @@ def main():
     for lang in ("C", "Rust"):
         k, d, n = by[(lang, "kept")], by[(lang, "dropped")], by[(lang, "not converted")]
         out.append(f"| {lang} | {k} | {d} | {n} | {k + d + n} |")
-    out += ["", "## Drop reasons", "", "| language | reason | tasks |", "| --- | --- | --- |"]
+    out += ["", "## Drop reasons", "", "| language | reason (a task with several counts in each) | tasks |", "| --- | --- | --- |"]
     for (lang, why), c in sorted(reasons.items()):
         out.append(f"| {lang} | {why} | {c} |")
     out += ["", "## Tasks", "",
