@@ -110,3 +110,15 @@ A decoding that disagrees with `objdump`, a lifting that disagrees with the
 processor, or a recovered fact that is untrue are the most valuable reports
 this project can get. Include the bytes, the architecture, and what the other
 tool said.
+
+## Checks before pushing
+
+CI on GitHub runs only for pull requests. Before pushing, run its jobs here:
+
+```sh
+scripts/ci/local.sh check   # always: fmt, clippy
+scripts/ci/local.sh core    # lean/**, crates/nocompiler/**, crates/nocompiler-cli/**, examples/**
+scripts/ci/local.sh test    # any crate: the whole suite with the fixture corpus, in a container
+```
+
+A job that was not run is said to be not run, in the commit message.

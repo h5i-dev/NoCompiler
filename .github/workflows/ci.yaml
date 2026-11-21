@@ -1,35 +1,22 @@
 name: ci
 
-# `main`, `next` and pull requests, and nothing else.
-#
-# A branch name in this list is a name that will be wrong later: it was
-# `full-rewrite-to-rs`, which is one branch of one period of this repository's
-# life, and every other branch went unchecked while that one burned a runner on
-# every push. Work in progress is checked when it is proposed, which is what a
-# pull request is; a push to a branch nobody has proposed is not yet a claim
-# that anything works. `next` is the exception: it is the integration branch
-# that main is merged from, and what lands there is a claim.
+# Pull requests only (and by hand). A push, to `next` or anywhere, runs
+# nothing here: before a change is proposed it is checked on the developer's
+# machine with scripts/ci/local.sh, which runs these same jobs. CI is for the
+# claim a pull request makes, not for every commit on the way to it.
 on:
-  push:
-    branches: [main, next]
   # Any base branch, so a feature branch proposed against anything is checked.
   pull_request:
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
 
-# Pull requests: one in-flight run per PR; pushing a fix ten seconds after a
-# typo should not leave the first run holding a runner.
-# Pushes (main, next): every commit gets its own group, so no run is ever
-# cancelled, neither in progress nor pending (GitHub cancels a pending run in
-# a group when a newer one arrives, even without cancel-in-progress). Every
-# commit that lands on next or main is a claim that it passes, and a cancelled
-# run leaves that commit unchecked: on next, runs for 962964f, 3249b86, 74e7559
-# and 187c313 were cancelled by the push behind them before this change.
+# One in-flight run per pull request: a newer push to it replaces the older run.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 # Keep package mirror/network stalls bounded, separately from analysis time.
 # apt options below retain retries and fail with the actual download error.
