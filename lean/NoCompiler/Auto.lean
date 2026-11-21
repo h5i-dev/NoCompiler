@@ -881,6 +881,9 @@ register_option nocompiler.auto.debugKernel : Bool :=
       kernel-check the proof of every step bottom-up, tracing the time (adds declarations)" }
 register_option nocompiler.auto.traceFile : String :=
   { defValue := "", descr := "append nocompiler_auto's trace to this file as it runs" }
+register_option nocompiler.vc.kernelSteps : Bool :=
+  { defValue := false, descr := "debugging only: after the explore path, kernel-check the proof of each \
+      recorded step (the explore check, each call) and trace the time (adds declarations)" }
 register_option nocompiler.auto.vc : Bool :=
   { defValue := true, descr := "run the paths of a function without calls, syscalls or a frame by \
       `explore` (one kernel evaluation per path) instead of step by step" }
@@ -1860,6 +1863,8 @@ structure VCx where
   joinsActive : List Nat := []
   /-- The prologue, as `frameOf` gives it (for the frame facts at a join). -/
   frameList : List Nat := []
+  /-- Debugging (`nocompiler.vc.kernelSteps`): goals to kernel-check afterwards, with a label. -/
+  log : Option (IO.Ref (Array (MVarId × String))) := none
 
 /-- The hypothesis `s.pc = lit` about the state of a `Reach` goal, and the pc. -/
 def reachPc (g : MVarId) : MetaM (Option (Ident × Nat)) := g.withContext do
@@ -1989,6 +1994,7 @@ partial def vcRun (cx : Ctx) (vx : VCx) (g : MVarId) (pc : Nat) (hpcT hxT : Lean
         (by decide) $hpcT $hxT (by simp) ?_))
   let [g] := gs | throwError "vc_auto: explore at {hex pc}"
   let fs ← simpArgs cx.facts
+  if let some r := vx.log then r.modify (·.push (g, s!"explore from {hex pc}"))
   let gs ← run g (← `(tactic| open NoCompiler.VC.M in (
     unfold exploreVC; vc_run;
     simp only [allOb, allNext, Ob.den, symDen, smemDen, evalI, evalR, and_true];
@@ -2102,6 +2108,7 @@ partial def vcRun (cx : Ctx) (vx : VCx) (g : MVarId) (pc : Nat) (hpcT hxT : Lean
           return mkFVar d.fvarId
         let extra : Array Lean.Term := #[← `(nocompiler_vpc), ← `(nocompiler_vreg), ← `(nocompiler_vmem), ← `(nocompiler_vt), ← `(NoCompiler.VC.M.symDen),
           ← `(NoCompiler.VC.M.smemDen), ← `(NoCompiler.evalI), ← `(NoCompiler.evalR), ← `(NoCompiler.loadVal)]
+        if let some r := vx.log then r.modify (·.push (g, s!"call at {hex pc'}"))
         let (cont, left) ← g.withContext do closeCall { cx with facts := cx.facts ++ extra } g pc' thm csp s1
         out := out ++ left
         for (g3, cx3) in cont do
@@ -2172,6 +2179,21 @@ end
 
 set_option hygiene true
 
+/-- `kernelCheckStep`, instantiating first (a goal closed through `intro` is delayed-assigned,
+    and zapping first would replace it by `sorry`). -/
+def vcKernelCheck (g : MVarId) : TermElabM Nat := g.withContext do
+  let e ← instantiateMVars (mkMVar g)
+  let e ← zapMVars e
+  let ty ← zapMVars (← instantiateMVars (← g.getType))
+  let fvs := (← getLCtx).getFVars
+  let val ← instantiateMVars (← mkLambdaFVars fvs e)
+  let typ ← instantiateMVars (← mkForallFVars fvs ty)
+  let n := (← Term.getDeclName?).getD `nocompiler ++ Name.mkSimple s!"vc_step_{← IO.monoNanosNow}"
+  let t0 ← IO.monoMsNow
+  try addDecl (.thmDecl { name := n, levelParams := [], type := typ, value := val })
+  catch ex => traceLine s!"[kernel] error {(← ex.toMessageData.toString).take 300}"
+  return (← IO.monoMsNow) - t0
+
 /-- `nocompiler_auto` with every path run by `explore`: a function without syscalls. -/
 def vcCore (call : Call) (heads rsList : List Nat) (entryN : Nat) (callees : Array (Nat × Lean.Term × Name))
     (frameList : List Nat) (ecallList : List Nat := []) (chunkThm : Option Name := none)
@@ -2213,6 +2235,7 @@ def vcCore (call : Call) (heads rsList : List Nat) (entryN : Nat) (callees : Arr
   let invT ← `(fun ($pcIdent : Word) ($uIdent : State) =>
     State.exit $uIdent = none ∧ Same $s0 $uIdent $rs ∧ $frameT ∧ $invChain)
   let muT ← `(fun ($pcIdent : Word) ($uIdent : State) => $muChain)
+  let gTop ← getMainGoal
   evalTactic (← `(tactic| have := (show (State.reg $s0 2).toNat % 16 = 0 from ($he).sp)))
   evalTactic (← `(tactic| have nocompiler_hsp : aligned (State.reg $s0 2) 16 := ($he).sp))
   alignFacts
@@ -2238,7 +2261,9 @@ def vcCore (call : Call) (heads rsList : List Nat) (entryN : Nat) (callees : Arr
     | some (cE, dm, bE, chE), some n => pure (some (← Term.exprToSyntax cE, ← Term.exprToSyntax dm,
         (← `($(mkIdent n))), ← Term.exprToSyntax chE, ← Term.exprToSyntax bE))
     | _, _ => pure none
-  let vx : VCx := { baseN := baseN, fuelT := natLit (sizeN + 2), cutsT := cutsT, callsT := stopsT, onChunk := onChunk, callNs := callEntries ++ ecallList, joins := joins, frameList := frameList }
+  let logRef ← IO.mkRef (#[] : Array (MVarId × String))
+  let log := if nocompiler.vc.kernelSteps.get (← getOptions) then some logRef else none
+  let vx : VCx := { baseN := baseN, fuelT := natLit (sizeN + 2), cutsT := cutsT, callsT := stopsT, onChunk := onChunk, callNs := callEntries ++ ecallList, joins := joins, frameList := frameList, log := log }
   let mkCx (fs : Array Lean.Term) (mode : Mode) (origin : String) (endsRef : IO.Ref (Std.HashMap String Nat)) : Ctx :=
     { ends := some endsRef, callees, ecalls := ecallList, cuts := heads, facts := call.userFacts ++ retFacts ++ fs, rs := rs,
       s0 := s0, he := he, spec := mkIdent call.specName, hR := hR, mode := mode, origin := origin,
@@ -2313,6 +2338,13 @@ def vcCore (call : Call) (heads rsList : List Nat) (entryN : Nat) (callees : Arr
       let cx0 := mkCx (fs ++ own) .body "" endsRef
       vcRun { cx0 with origin := cx0.name pc } vx g pc hpc hx
     bodyGoals := bodyGoals ++ gs
+  if log.isSome then
+    -- Debugging only: what is left is closed with sorry first (as `debugKernel` does).
+    for g in startGoals ++ bodyGoals do
+      unless ← g.isAssigned do g.withContext do g.assign (← mkSorry (← g.getType) false)
+    for (g, t) in ← logRef.get do
+      traceLine s!"[kstep] {t}: {← vcKernelCheck g} ms"
+    traceLine s!"[kstep] whole goal: {← vcKernelCheck gTop} ms"
   replaceMainGoal (startGoals ++ bodyGoals)
 
 /-- The image's `<f>_chunk` theorem for the function `f` (`<f>_func`), on a chunk image. -/
