@@ -65,20 +65,32 @@ cp "$SR/lib/libunwind.a" "$SR/lib/libgcc_eh.a"
 # rv-cc / rv-c++: the C compiler every C task uses (flags recorded in each task's recipe)
 for n in cc c++; do
   d=clang; [ $n = c++ ] && d=clang++
-  # -static, except for a -shared link (jemalloc's build makes a .so that is never used):
-  # that one links its objects only, -nostdlib (the sysroot has no shared libc)
+  # -static, except for a -shared link (jemalloc's build, a crate's cdylib: never run here):
+  # that one links its objects only, -nostdlib (the sysroot has no shared libc), and -z notext
+  # and -Bsymbolic (the code is not PIC: relocation-model=static)
   cat > "$BIN/rv-$n" <<EOS
 #!/bin/sh
 st=-static
-for a in "\$@"; do [ "\$a" = -shared ] && st=-nostdlib; done
+for a in "\$@"; do [ "\$a" = -shared ] && st="-nostdlib -Wl,-z,notext -Wl,-Bsymbolic"; done
 # the cc crate adds its own -march (rv64gc, from the target name): it would win over ours, so
-# every -march, -mabi and -mcmodel of the caller is dropped
+# every -march, -mabi, -mcmodel and --target of the caller is dropped (newer cc passes
+# --target=riscv64imafd-unknown-linux-musl, which clang does not know)
 n=\$#
 while [ \$n -gt 0 ]; do
   a=\$1; shift; n=\$((n-1))
-  case "\$a" in -march=*|-mabi=*|-mcmodel=*) ;; *) set -- "\$@" "\$a";; esac
+  case "\$a" in -march=*|-mabi=*|-mcmodel=*|--target=*) ;; *) set -- "\$@" "\$a";; esac
 done
-exec $d --target=riscv64-linux-musl $MARCH --sysroot=$SR -Qunused-arguments -fuse-ld=lld \$st -Wl,--emit-relocs "\$@"
+if [ -z "\$st" ] || [ "\$st" = -static ]; then
+  exec $d --target=riscv64-linux-musl $MARCH --sysroot=$SR -Qunused-arguments -fuse-ld=lld \$st -Wl,--emit-relocs "\$@"
+fi
+# a shared object: a crate's cdylib (ruff's pep440_rs) or jemalloc's .so, which nothing here
+# loads (every program is static). Non-PIC code with local-exec TLS cannot go into one, so if
+# the link fails the output is left empty, with a warning, and the build goes on
+$d --target=riscv64-linux-musl $MARCH --sysroot=$SR -Qunused-arguments -fuse-ld=lld \$st "\$@" && exit 0
+out=; prev=
+for a in "\$@"; do [ "\$prev" = -o ] && out=\$a; prev=\$a; done
+case "\$out" in *.so|*.so.*) echo "rv-cc: shared link of \$out failed; left empty (never loaded)" >&2; : > "\$out"; exit 0;; esac
+exit 1
 EOS
   chmod +x "$BIN/rv-$n"
 done

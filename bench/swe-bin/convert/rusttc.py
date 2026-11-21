@@ -98,7 +98,7 @@ def setup(tc: str) -> dict:
         with open(meta) as fh:
             m = json.load(fh)
         # a meta from before the std was installed (or a std removed since) is redone
-        if m.get("sysroot_std") and os.path.exists(os.path.join(m["sysroot_std"], ".swe-bin-std")):
+        if m.get("sysroot_std") and os.path.exists(os.path.join(m["sysroot_std"], ".swe-bin-std-2")):
             return m
     os.makedirs(d, exist_ok=True)
     spec = json.loads(_run(["rustc", f"+{tc}", "-Z", "unstable-options", "--print", "target-spec-json",
@@ -150,7 +150,7 @@ def install_std(tc: str, spec: str, jt: str, cargo_z: str) -> str:
     plist 1.1 does not compile (sharkdp__bat-1892)."""
     sysroot = _run(["rustc", f"+{tc}", "--print", "sysroot"]).strip()
     dst = os.path.join(sysroot, "lib", "rustlib", TARGET, "lib")
-    if os.path.exists(os.path.join(dst, ".swe-bin-std")):
+    if os.path.exists(os.path.join(dst, ".swe-bin-std-2")):
         return dst
     shutil.rmtree(dst, ignore_errors=True)
     work = os.path.join(SWB, "tc", "rust", tc, "std-build")
@@ -165,7 +165,7 @@ def install_std(tc: str, spec: str, jt: str, cargo_z: str) -> str:
     # the path in the crates' triple, and a project built by name would not find them
     e.update(RUSTFLAGS=f"{STD_RUSTFLAGS} {jt}", CARGO_TARGET_DIR=os.path.join(work, "target"),
              PATH=f"{SWB}/tc/bin:{e['PATH']}", RUST_TARGET_PATH=os.path.dirname(spec))
-    args = ["cargo", f"+{tc}", "build", "--release", "-Zbuild-std=std,panic_unwind,proc_macro",
+    args = ["cargo", f"+{tc}", "build", "--release", "-Zbuild-std=std,panic_unwind,proc_macro,test",  # test: libtest, for the class-B test executables
             "--target", TARGET]
     if "json-target-spec" in cargo_z:
         args.insert(4, "-Zjson-target-spec")
@@ -183,5 +183,5 @@ def install_std(tc: str, spec: str, jt: str, cargo_z: str) -> str:
                 n += 1
     if n == 0:
         raise RuntimeError(f"std for {tc}: no rlib built")
-    open(os.path.join(dst, ".swe-bin-std"), "w").close()
+    open(os.path.join(dst, ".swe-bin-std-2"), "w").close()
     return dst
