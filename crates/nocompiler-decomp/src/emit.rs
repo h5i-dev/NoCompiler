@@ -5,7 +5,7 @@ use std::fmt::Write as _;
 
 use nocompiler_core::Addr;
 use nocompiler_ir::op::{Op, Space};
-use nocompiler_ir::ssa::{Operand, SsaFunction, SsaKind, SsaOp, Value};
+use nocompiler_ir::ssa::{Operand, Reaching, SsaFunction, SsaKind, SsaOp, Value};
 
 use crate::expr::{Expr, Rebuilder, c_type, input_name, negate};
 use crate::structure::{Graph, Region, Switches, Taken, lift_exit_guards, structure_with};
@@ -2187,7 +2187,7 @@ impl Emitter<'_> {
         let mut out = Vec::new();
         for (slot, offset) in self.r.abi.integer_arguments.iter().enumerate().take(n) {
             let value = match self.value_before(at, index, *offset) {
-                Some(v) => self.r.operand(&Operand::Value(v)),
+                Some(v) => self.r.operand(&v),
                 None => Expr::Const(0, 8),
             };
             // A constant written into a 64-bit register by a 32-bit move is
@@ -2285,26 +2285,28 @@ impl Emitter<'_> {
     }
 
     /// The value a register held just before an operation.
-    fn value_before(&self, at: Addr, index: usize, offset: u64) -> Option<Value> {
-        let b = self.f.blocks.get(&at)?;
-        if let Some(v) = b.ops[..index]
-            .iter()
-            .rev()
-            .filter_map(|op| op.out)
-            .find(|v| v.location.space == Space::Register && v.location.offset == offset)
-        {
-            return Some(v);
+    fn value_before(&self, at: Addr, index: usize, offset: u64) -> Option<Operand> {
+        let written =
+            |v: &Value| v.location.space == Space::Register && v.location.offset == offset;
+        match self.f.reaching(at, index, written) {
+            Reaching::Defined(v) => Some(Operand::Value(v)),
+            Reaching::Entry => Some(Operand::Undefined(nocompiler_ir::ssa::Location {
+                space: Space::Register,
+                offset,
+                size: 8,
+            })),
+            // A cycle with no write on it: the newest version, which is right
+            // whenever the register is written once.
+            Reaching::Unknown => self
+                .f
+                .blocks
+                .values()
+                .flat_map(|other| other.ops.iter())
+                .filter_map(|op| op.out)
+                .filter(written)
+                .max_by_key(|v| v.version)
+                .map(Operand::Value),
         }
-        // Nothing in this block wrote it, so whatever reached the block did.
-        // Without liveness this takes the newest version, which is right
-        // whenever the register is written once.
-        self.f
-            .blocks
-            .values()
-            .flat_map(|other| other.ops.iter())
-            .filter_map(|op| op.out)
-            .filter(|v| v.location.space == Space::Register && v.location.offset == offset)
-            .max_by_key(|v| v.version)
     }
 
     /// What a function returns: whatever last reached the result register.

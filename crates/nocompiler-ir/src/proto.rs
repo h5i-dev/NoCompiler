@@ -286,6 +286,8 @@ pub fn model_of(arch: &Arch) -> Model {
         Arch::AArch64 => Model::lp64().with_unsigned_char(),
         Arch::X86 => Model::ilp32(),
         Arch::Arm | Arch::Thumb => Model::ilp32().with_unsigned_char(),
+        // The RISC-V psABI makes plain `char` unsigned as well.
+        _ if crate::lift::sleigh::is_riscv64(arch) => Model::lp64().with_unsigned_char(),
         _ => Model::lp64(),
     }
 }
@@ -607,7 +609,7 @@ pub fn recover(f: &SsaFunction, abi: &Abi) -> Prototype {
 /// corroborate a convention the compiler invented. Its callers can: see
 /// [`conv::observe`], which turns one caller's code into this.
 pub fn recover_observed(f: &SsaFunction, abi: &Abi, observed: &Observed) -> Prototype {
-    let facts = conv::facts(f);
+    let facts = conv::facts(f, abi);
     let definitions = f.definitions();
     let detected = conv::detect_from(f, abi, &facts, &definitions, observed);
 
@@ -747,6 +749,9 @@ pub(crate) fn returned(
                 .rev()
                 .find(|(_, op)| op.out.is_some_and(|v| v.location == location))
             {
+                // What a call clobbered is not a result: the register holds
+                // nothing in particular, so it cannot be what is returned.
+                Some((_, op)) if op.kind == SsaKind::Op(Op::Undefine) => continue,
                 Some((n, op)) => (n, op.out?),
                 None => {
                     let newest = f
@@ -759,7 +764,9 @@ pub(crate) fn returned(
                     (0, newest)
                 }
             };
-            if is_entry_value(f, definitions, value, location, 0) {
+            if is_entry_value(f, definitions, value, location, 0)
+                || is_entry_or_clobber(f, definitions, value, location, 0)
+            {
                 continue;
             }
             if best.is_none_or(|(at, _)| rank > at) {
@@ -768,6 +775,45 @@ pub(crate) fn returned(
         }
     }
     best.map(|(_, offset)| offset)
+}
+
+/// True when every path gives a location either the value it was entered
+/// with or whatever a call left in it: `phi(fa0_in, clobbered)` after a
+/// branch that made a call. Neither is something the function computed, so
+/// neither is a result.
+pub(crate) fn is_entry_or_clobber(
+    f: &SsaFunction,
+    definitions: &Definitions,
+    value: crate::ssa::Value,
+    location: Location,
+    depth: u32,
+) -> bool {
+    if depth > 16 {
+        return false;
+    }
+    let Some((block, index)) = definitions.get(&value) else {
+        return false;
+    };
+    let Some(op) = f.blocks.get(block).and_then(|b| b.ops.get(*index)) else {
+        return false;
+    };
+    match op.kind {
+        SsaKind::Op(Op::Undefine) => true,
+        SsaKind::Phi => op.inputs.iter().all(|i| match i {
+            Operand::Undefined(l) => *l == location,
+            Operand::Value(v) => is_entry_or_clobber(f, definitions, *v, location, depth + 1),
+            Operand::Const(..) => false,
+        }),
+        _ => false,
+    }
+}
+
+/// True when the function stores the value `location` was entered with.
+fn spills_entry_value(f: &SsaFunction, location: Location) -> bool {
+    f.blocks.values().flat_map(|b| b.ops.iter()).any(|op| {
+        op.kind == SsaKind::Op(Op::Store)
+            && matches!(op.inputs.get(1), Some(Operand::Undefined(l)) if *l == location)
+    })
 }
 
 /// True when a value is the one the function was entered with, however many
@@ -797,8 +843,11 @@ pub(crate) fn is_entry_value(
     // reload of the same location counts as a restore only when the function
     // spilled it first. Treating a load as a restore is the assumption a
     // prologue and epilogue actually satisfy.
+    // Only for a location the function did spill, though: a result read
+    // back out of memory (`*out` after `get(x, &out)`) is a value the
+    // function computed, and calling it a restore makes the function void.
     if op.kind == SsaKind::Op(Op::Load) {
-        return true;
+        return spills_entry_value(f, location);
     }
     inputs.iter().all(|i| match i {
         Operand::Undefined(l) => *l == location,

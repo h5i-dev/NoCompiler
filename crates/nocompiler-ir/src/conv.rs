@@ -383,7 +383,7 @@ pub fn detect(f: &SsaFunction, abi: &Abi) -> Detected {
 
 /// Detect one function's convention, with what its callers said.
 pub fn detect_with(f: &SsaFunction, abi: &Abi, observed: &Observed) -> Detected {
-    detect_from(f, abi, &facts(f), &f.definitions(), observed)
+    detect_from(f, abi, &facts(f, abi), &f.definitions(), observed)
 }
 
 /// What one pass over a function establishes, so recovery and detection share
@@ -399,16 +399,67 @@ pub(crate) struct Facts {
     pub returns_to_caller: bool,
 }
 
+/// The phis whose value reaches a real use: an operand of an operation that
+/// is not itself a phi, or a result register at a return when it holds
+/// something the function computed rather than its entry value or a clobber.
+fn used_phis(f: &SsaFunction, abi: &Abi) -> BTreeSet<Value> {
+    let definitions = f.definitions();
+    let mut work: Vec<Value> = Vec::new();
+    for (at, b) in &f.blocks {
+        for (n, op) in b.ops.iter().enumerate() {
+            if op.kind != SsaKind::Phi {
+                work.extend(op.inputs.iter().filter_map(|i| i.as_value()));
+            }
+            if op.kind != SsaKind::Op(Op::Return) {
+                continue;
+            }
+            for offset in &abi.results {
+                let location = Location {
+                    space: Space::Register,
+                    offset: *offset,
+                    size: 8,
+                };
+                if let crate::ssa::Reaching::Defined(v) =
+                    f.reaching(*at, n, |v| v.location == location)
+                    && !crate::proto::is_entry_or_clobber(f, &definitions, v, location, 0)
+                {
+                    work.push(v);
+                }
+            }
+        }
+    }
+    let mut used = BTreeSet::new();
+    while let Some(v) = work.pop() {
+        let Some((block, index)) = definitions.get(&v) else {
+            continue;
+        };
+        let Some(op) = f.blocks.get(block).and_then(|b| b.ops.get(*index)) else {
+            continue;
+        };
+        if op.kind == SsaKind::Phi && used.insert(v) {
+            work.extend(op.inputs.iter().filter_map(|i| i.as_value()));
+        }
+    }
+    used
+}
+
 /// Walk the function once.
-pub(crate) fn facts(f: &SsaFunction) -> Facts {
+pub(crate) fn facts(f: &SsaFunction, abi: &Abi) -> Facts {
     let mut live_in = BTreeSet::new();
     let mut written = BTreeSet::new();
     let mut complete = true;
     let mut returns_to_caller = false;
+    let used_phis = used_phis(f, abi);
     for b in f.blocks.values() {
         for op in &b.ops {
+            // A phi's entry input is a read only if something reads the phi:
+            // `phi(fa0_in, clobbered)` after a branch with a call in it is a
+            // merge the SSA builder made, not an argument the function takes.
+            let counts = op.kind != SsaKind::Phi || op.out.is_some_and(|v| used_phis.contains(&v));
             for i in &op.inputs {
-                if let Operand::Undefined(l) = i {
+                if let Operand::Undefined(l) = i
+                    && counts
+                {
                     live_in.insert(*l);
                 }
             }
@@ -624,6 +675,11 @@ fn housekeeping(arch: &Arch, abi: &Abi, offset: u64) -> bool {
         Arch::Arm | Arch::Thumb => offset == crate::lift::arm::pc_offset(),
         // x30 arrives with the return address under every AArch64 convention.
         Arch::AArch64 => offset == crate::lift::aarch64::gpr_offset(30),
+        // ra, and gp and tp, which the startup code sets once for the whole
+        // process: a function reading them is not taking an argument.
+        _ if crate::lift::sleigh::is_riscv64(arch) => [1u8, 3, 4]
+            .iter()
+            .any(|n| offset == crate::lift::sleigh::gpr_offset(*n)),
         _ => false,
     }
 }

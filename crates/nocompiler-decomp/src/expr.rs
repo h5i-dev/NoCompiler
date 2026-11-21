@@ -287,6 +287,9 @@ pub fn input_name(l: Location, abi: &Abi) -> String {
     if l.size == 1 {
         return format!("flag{}", l.offset % 8);
     }
+    if let Some(name) = abi.register_name(l.offset) {
+        return name.to_string();
+    }
     format!("reg{:x}", l.offset)
 }
 

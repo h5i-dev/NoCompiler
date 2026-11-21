@@ -263,20 +263,17 @@ fn evaluate(op: Op, a: &[u64], size: u8, inputs: &[Operand]) -> Option<u64> {
 /// there or arrived from a predecessor.
 fn last_definition(
     f: &SsaFunction,
-    b: &crate::ssa::SsaBlock,
+    at: nocompiler_core::Addr,
     location: Location,
     before: usize,
 ) -> Option<Value> {
-    if let Some(v) = b.ops[..before.min(b.ops.len())]
-        .iter()
-        .rev()
-        .filter_map(|op| op.out)
-        .find(|v| v.location == location)
-    {
-        return Some(v);
+    match f.reaching(at, before, |v| v.location == location) {
+        crate::ssa::Reaching::Defined(v) => return Some(v),
+        crate::ssa::Reaching::Entry => return None,
+        crate::ssa::Reaching::Unknown => {}
     }
-    // Nothing in this block wrote it, so whatever the rest of the function
-    // last put there is what the caller sees.
+    // A cycle with no write on it: the newest version, which is right
+    // whenever the location is written once.
     f.blocks
         .values()
         .flat_map(|other| other.ops.iter())
@@ -297,7 +294,7 @@ pub fn remove_dead(f: &mut SsaFunction) -> Changes {
     // and every function optimizes down to its side effects.
     let abi = crate::abi::of(&f.arch);
     let live_out = abi.live_at_return();
-    for b in f.blocks.values() {
+    for (at, b) in &f.blocks {
         let returns = b
             .ops
             .iter()
@@ -306,7 +303,7 @@ pub fn remove_dead(f: &mut SsaFunction) -> Changes {
             continue;
         }
         for location in &live_out {
-            if let Some(v) = last_definition(f, b, *location, b.ops.len()) {
+            if let Some(v) = last_definition(f, *at, *location, b.ops.len()) {
                 if live.insert(v) {
                     work.push(v);
                 }
@@ -328,7 +325,7 @@ pub fn remove_dead(f: &mut SsaFunction) -> Changes {
             size: 8,
         })
         .collect();
-    for b in f.blocks.values() {
+    for (at, b) in &f.blocks {
         for (n, op) in b.ops.iter().enumerate() {
             let tail_call = match op.kind {
                 SsaKind::Op(crate::op::Op::Branch) => op
@@ -347,7 +344,7 @@ pub fn remove_dead(f: &mut SsaFunction) -> Changes {
                 continue;
             }
             for location in &argument_locations {
-                if let Some(v) = last_definition(f, b, *location, n) {
+                if let Some(v) = last_definition(f, *at, *location, n) {
                     if live.insert(v) {
                         work.push(v);
                     }

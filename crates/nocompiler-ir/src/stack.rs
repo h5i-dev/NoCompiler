@@ -45,7 +45,14 @@ type Offsets = BTreeMap<Varnode, i64>;
 
 /// Promote the stack slots this function only ever reads and writes directly.
 pub fn promote(f: &mut Function) -> Promoted {
-    let sp = Varnode::register(abi::of(&f.arch).stack_pointer, 8);
+    let abi = abi::of(&f.arch);
+    let sp = Varnode::register(abi.stack_pointer, 8);
+    let args: Vec<u64> = abi
+        .integer_arguments
+        .iter()
+        .chain(&abi.float_arguments)
+        .copied()
+        .collect();
     let order = f.reverse_postorder();
 
     // The stack offset each block starts with, which a function that pushes in
@@ -67,7 +74,7 @@ pub fn promote(f: &mut Function) -> Promoted {
             };
             let mut state = entry_state.get(at).cloned().unwrap_or_default();
             for op in &block.ops {
-                step(op, sp, &mut state, &mut slots, &mut escaped);
+                step(op, sp, &args, &mut state, &mut slots, &mut escaped);
             }
             for s in &block.successors {
                 match entry_state.get(s) {
@@ -123,7 +130,7 @@ pub fn promote(f: &mut Function) -> Promoted {
         for op in &mut block.ops {
             let mut ignore = false;
             let before = state.clone();
-            step(op, sp, &mut state, &mut BTreeMap::new(), &mut ignore);
+            step(op, sp, &args, &mut state, &mut BTreeMap::new(), &mut ignore);
 
             match op.op {
                 Op::Load => {
@@ -178,6 +185,7 @@ fn slot((offset, size): (i64, u8)) -> Varnode {
 fn step(
     op: &IrOp,
     sp: Varnode,
+    args: &[u64],
     state: &mut Offsets,
     slots: &mut BTreeMap<(i64, u8), usize>,
     escaped: &mut bool,
@@ -244,6 +252,16 @@ fn step(
             }
         }
         _ => {
+            // A call reads its arguments from registers it does not name as
+            // inputs. A stack address sitting in one is handed to the callee,
+            // which may write the slot: `f(&local)` with the address in a1.
+            if matches!(op.op, Op::Call | Op::CallInd)
+                && state
+                    .keys()
+                    .any(|v| v.space == crate::op::Space::Register && args.contains(&v.offset))
+            {
+                *escaped = true;
+            }
             for i in op.inputs() {
                 if tracked(*i, state) && *i != sp {
                     *escaped = true;

@@ -196,7 +196,77 @@ pub struct SsaFunction {
     pub blocks: BTreeMap<Addr, SsaBlock>,
 }
 
+/// What reaches a point in a function for one location.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Reaching {
+    /// This definition.
+    Defined(Value),
+    /// Nothing in the function wrote it on the way: the value it was entered
+    /// with.
+    Entry,
+    /// The walk went round a cycle without finding a write, which SSA only
+    /// allows when no path writes it; callers fall back to their own answer.
+    Unknown,
+}
+
 impl SsaFunction {
+    /// The definition of a location that reaches operation `before` of block
+    /// `at`, where `matches` says which outputs write the location.
+    ///
+    /// A write in the block wins. Otherwise the walk goes to a predecessor:
+    /// SSA puts a phi at the head of a block where incoming paths disagree,
+    /// and a phi is a write found by the walk, so with none every predecessor
+    /// carries the same value and any one of them will do. Reaching the entry
+    /// means the function was entered with it. Taking the newest version
+    /// anywhere instead would read a write made *after* the point, which is
+    /// how a call's argument ends up being the result of a later call.
+    pub fn reaching(&self, at: Addr, before: usize, matches: impl Fn(&Value) -> bool) -> Reaching {
+        let Some(b) = self.blocks.get(&at) else {
+            return Reaching::Unknown;
+        };
+        if let Some(v) = b.ops[..before.min(b.ops.len())]
+            .iter()
+            .rev()
+            .filter_map(|op| op.out)
+            .find(|v| matches(v))
+        {
+            return Reaching::Defined(v);
+        }
+        let mut visited = BTreeSet::from([at]);
+        let mut cur = at;
+        loop {
+            let Some(block) = self.blocks.get(&cur) else {
+                return Reaching::Unknown;
+            };
+            if block.predecessors.is_empty() {
+                return if cur == self.entry {
+                    Reaching::Entry
+                } else {
+                    Reaching::Unknown
+                };
+            }
+            let Some(next) = block
+                .predecessors
+                .iter()
+                .find(|p| !visited.contains(*p))
+                .copied()
+            else {
+                return Reaching::Unknown;
+            };
+            visited.insert(next);
+            if let Some(v) = self.blocks.get(&next).and_then(|p| {
+                p.ops
+                    .iter()
+                    .rev()
+                    .filter_map(|op| op.out)
+                    .find(|v| matches(v))
+            }) {
+                return Reaching::Defined(v);
+            }
+            cur = next;
+        }
+    }
+
     /// How many operations there are.
     pub fn op_count(&self) -> usize {
         self.blocks.values().map(|b| b.ops.len()).sum()
