@@ -8,7 +8,7 @@ SWE-bench-derived (function-level from-scratch), not SWE-bench.
 | language | kept | dropped | not converted | total |
 | --- | --- | --- | --- | --- |
 | C | 28 | 2 | 0 | 30 |
-| Rust | 22 | 11 | 10 | 43 |
+| Rust | 24 | 11 | 8 | 43 |
 
 ## Drop reasons
 
@@ -95,8 +95,8 @@ Tests: FAIL_TO_PASS/PASS_TO_PASS kept (excluded: tests that do not run a subject
 | uutils__coreutils-6377 | Rust | dropped | PASS_TO_PASS test_env::test_env_overwrite_arg0: gold FAILED; PASS_TO_PASS test_env::test_env_overwrite_arg0: base FAILED; PASS_TO_PASS test_ (PASS_TO_PASS tests about argv[0] (test_env_overwrite_arg0, test_env_arg_argv0_overwrite, test_gnu_e20, ...) fail at base and gold alike: under qemu-user the pro) |  |  |  |  |  |
 | uutils__coreutils-6575 | Rust | kept | 1/64 | 43.3 MB | 1,535,346 | L2 1563, L1 16, L0 3766, below L0 1867 | 3695 / _ZN8uu_cksum5cksum17h5c18a287cb731450E, _ZN8uu_cksum5cksum17h997348087223df04E,  | 4,804 |
 | uutils__coreutils-6682 | Rust | kept | 1/17 | 45.0 MB | 1,539,729 | L2 1467, L1 18, L0 3916, below L0 1849 | 1441 / _ZN8uu_mkdir10create_dir17h1445e68ad5f8f5deE, _ZN8uu_mkdir10create_dir17h62b8261 | 2,306 |
-| uutils__coreutils-6690 | Rust | not converted |  |  |  |  |  |  |
-| uutils__coreutils-6731 | Rust | not converted |  |  |  |  |  |  |
+| uutils__coreutils-6690 | Rust | kept | 1/7 | 45.0 MB | 1,539,428 | L2 1467, L1 18, L0 3916, below L0 1849 | 864 / - | 0 |
+| uutils__coreutils-6731 | Rust | kept | 1/9 | 45.1 MB | 1,543,385 | L2 1479, L1 17, L0 3920, below L0 1861 | 3626 / _ZN5uu_tr6uumain17hf202e31fc508655cE | 2,331 |
 | valkey-io__valkey-1499 | C | kept | 1/46 | 11.4 MB + 2.0 MB | 434,713 + 86,107 | L2 3851, L1 31, L0 1584, below L0 475 | 53 / lookupKey | 145 |
 | valkey-io__valkey-1842 | C | kept | 1/3 | 11.5 MB + 2.0 MB | 438,468 + 86,399 | L2 3881, L1 30, L0 1597, below L0 473 | 58 / ACLLoadFromFile | 962 |
 | valkey-io__valkey-790 | C | kept | 1/4 | 11.0 MB + 2.0 MB | 422,121 + 84,664 | L2 3731, L1 23, L0 1522, below L0 471 | 52 / addShardReplyForClusterShards, clusterCommandShards | 173 |
