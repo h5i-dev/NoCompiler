@@ -227,4 +227,24 @@ theorem memset_verified : VerifiedImg code memset_dom memset_entry memsetSpec :=
       ((d + (w32 (fun x1 x2 => x1 - x2) (0#64) d &&& 3#64) &&& 4#64 ||| 24#64)).toNat, ?_⟩
     refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩ <;> (try rfl) <;> bv_omega
 
+/-! ### The empty functions on the path: `_init` (crti), `__init_ssp` and `__funcs_on_exit` (musl's weak
+    dummies when the program uses no stack protector and no `atexit`): each is one `ret`. -/
+
+/-- Returns, changing nothing a caller can see. -/
+def retSpec : Spec Unit where
+  pre := fun _ _ => True
+  post := fun _ _ _ => True
+
+theorem _init_verified : VerifiedImg code _init_dom _init_entry retSpec := by
+  rintro ⟨⟩ s he _
+  nocompiler_auto _init_func s he
+
+theorem __init_ssp_verified : VerifiedImg code __init_ssp_dom __init_ssp_entry retSpec := by
+  rintro ⟨⟩ s he _
+  nocompiler_auto __init_ssp_func s he
+
+theorem __funcs_on_exit_verified : VerifiedImg code __funcs_on_exit_dom __funcs_on_exit_entry retSpec := by
+  rintro ⟨⟩ s he _
+  nocompiler_auto __funcs_on_exit_func s he
+
 end Examples.Libc.Slen
