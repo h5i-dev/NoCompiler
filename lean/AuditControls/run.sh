@@ -16,6 +16,8 @@
 #               a theorem under Examples. concluding RefinesRel (alone, or in
 #               a conjunction)                       -> the audit FAILS, naming it
 #   refines     one concluding Refines               -> the audit passes
+#   indirect-wrong
+#               an indirect call through the wrong pointer -> the file does not build
 # and the unmodified copy passes.
 #
 #   lean/AuditControls/run.sh            (from the repository root; needs lake)
@@ -122,6 +124,43 @@ build AuditCtlRel
 if audit; then echo "ok   refines: a theorem concluding Refines passes"
 else echo "FAIL refines: rejected"; tail -5 "$work/out"; fail=1; fi
 drop AuditCtlRel
+
+# An indirect call (NoCompiler/Indirect.lean) whose register holds the wrong
+# pointer (0x1008, the callee is at 0x1000): the call rule's target equation
+# is false, so the proof does not build. (Examples/Libc/IndirectCall.lean is
+# the same with the right pointer.)
+add AuditCtlIndirect "$(cat <<'LEAN'
+import NoCompiler.Indirect
+
+/-!
+`VerifiedImg.callIndirect` on its own: a call through `a5` to a verified
+function at `0x1000`. It applies because the precondition says `a5` holds
+`0x1000`; with `0x1008` the target equation is false and the proof does not
+build (lean/AuditControls/run.sh, control `indirect-wrong`).
+-/
+namespace Examples.AuditCtlIndirect
+open NoCompiler
+
+theorem call_through_a5 {α : Type} {c : Code} {Dg D : Dom} {sp : Spec α} {P : Perm} {Q : State → Prop}
+    {s : State} (a : α) (hg : VerifiedImg c Dg 0x1000#64 sp)
+    (hi : c.instr s.pc = some (.jalr Reg.ra 15 0#12)) (hx : s.exit = none) (hd : D.mem s.pc)
+    (h15 : s.reg 15 = 0x1008#64)
+    (hret : ¬ Dg.mem (s.pc + 4)) (hretA : aligned (s.pc + 4) 4) (hsp : aligned (s.reg Reg.sp) 16)
+    (hpre : sp.pre a (s.afterCall 0x1000#64)) (hD : Dg.sub D)
+    (hP : (sp.perm a (s.afterCall 0x1000#64)).le P)
+    (k : ∀ s', sp.Done a (s.afterCall 0x1000#64) s' →
+      (∀ x, ¬ (sp.perm a (s.afterCall 0x1000#64)).writable x → s'.mem x = s.mem x) → Reach c P D Q s') :
+    Reach c P D Q s :=
+  VerifiedImg.callIndirect hg a hi hx hd (by rw [h15]; decide) (by decide) hret hretA hsp hpre hD hP k
+
+end Examples.AuditCtlIndirect
+LEAN
+)"
+if build AuditCtlIndirect; then echo "FAIL indirect-wrong: a call through the wrong pointer builds"; fail=1
+elif grep -q "proved that the proposition" "$work/build"; then
+  echo "ok   indirect-wrong: a call through the wrong pointer does not build"
+else echo "FAIL indirect-wrong: it fails, but not at the target:"; tail -5 "$work/build"; fail=1; fi
+drop AuditCtlIndirect
 
 add AuditCtlUnbuilt 'theorem audit_ctl_unbuilt : True := trivial'
 if ! audit && grep -q 'FAIL axiom audit: a module of the source tree could not be imported' "$work/out"; then
