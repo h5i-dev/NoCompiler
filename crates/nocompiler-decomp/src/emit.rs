@@ -222,6 +222,7 @@ pub fn decompile_full(
         returns,
         unmodelled: 0,
         dead: BTreeSet::new(),
+        entry_reads: Default::default(),
     };
 
     let mut body = {
@@ -266,24 +267,30 @@ pub fn decompile_full(
     };
     let mut called: BTreeSet<u64> = BTreeSet::new();
     let mut helpers: BTreeSet<&'static str> = BTreeSet::new();
+    let mut inherit = |l: nocompiler_ir::ssa::Location| {
+        let name = rebuilder.name_of(l);
+        let is_parameter = if prototype.is_some() {
+            declared.contains(&name)
+        } else {
+            name.starts_with("arg") || name.starts_with("farg")
+        };
+        if !is_parameter {
+            let ty = if rebuilder.floats.contains(&l) {
+                crate::expr::float_type(l.size)
+            } else {
+                c_type(l.size)
+            };
+            inherited.entry(name).or_insert_with(|| ty.to_string());
+        }
+    };
+    for l in e.entry_reads.borrow().iter() {
+        inherit(*l);
+    }
     for b in f.blocks.values() {
         for op in &b.ops {
             for i in &op.inputs {
                 if let nocompiler_ir::ssa::Operand::Undefined(l) = i {
-                    let name = rebuilder.name_of(*l);
-                    let is_parameter = if prototype.is_some() {
-                        declared.contains(&name)
-                    } else {
-                        name.starts_with("arg") || name.starts_with("farg")
-                    };
-                    if !is_parameter {
-                        let ty = if rebuilder.floats.contains(l) {
-                            crate::expr::float_type(l.size)
-                        } else {
-                            c_type(l.size)
-                        };
-                        inherited.entry(name).or_insert_with(|| ty.to_string());
-                    }
+                    inherit(*l);
                 }
             }
             if op.kind == SsaKind::Op(Op::Call) {
@@ -832,6 +839,10 @@ struct Emitter<'a> {
     unmodelled: usize,
     /// Pure locals whose emitted assignments have no reader.
     dead: BTreeSet<String>,
+    /// Registers a call passes on as they arrived at entry, because nothing in
+    /// this function wrote them first. They are not in any operation's inputs,
+    /// so the declarations below would miss the ones that are not parameters.
+    entry_reads: std::cell::RefCell<BTreeSet<nocompiler_ir::ssa::Location>>,
 }
 
 /// Names that occur only on the left of assignments in the emitted body.
@@ -2290,11 +2301,15 @@ impl Emitter<'_> {
             |v: &Value| v.location.space == Space::Register && v.location.offset == offset;
         match self.f.reaching(at, index, written) {
             Reaching::Defined(v) => Some(Operand::Value(v)),
-            Reaching::Entry => Some(Operand::Undefined(nocompiler_ir::ssa::Location {
-                space: Space::Register,
-                offset,
-                size: 8,
-            })),
+            Reaching::Entry => {
+                let l = nocompiler_ir::ssa::Location {
+                    space: Space::Register,
+                    offset,
+                    size: 8,
+                };
+                self.entry_reads.borrow_mut().insert(l);
+                Some(Operand::Undefined(l))
+            }
             // A cycle with no write on it: the newest version, which is right
             // whenever the register is written once.
             Reaching::Unknown => self
