@@ -900,6 +900,14 @@ fn core(cli: &Cli, w: &mut out::Out) -> Option<Result<u8, String>> {
             json,
             fuel,
         } => cmd::sim(file, stdin.as_deref(), function.as_deref(), *json, *fuel),
+        Command::Funcs(c) if is_risc_v(&c.file) => cmd::funcs(&c.file, c.json, &mut text),
+        Command::Xrefs {
+            common,
+            target,
+            from,
+        } if is_risc_v(&common.file) => {
+            cmd::xrefs(&common.file, target, *from, common.json, &mut text)
+        }
         Command::Disasm { common, .. } if common.json && is_risc_v(&common.file) => {
             Err("disasm: --json is not available for a RISC-V binary".into())
         }

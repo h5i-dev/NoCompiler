@@ -519,3 +519,39 @@ pub fn listing(bin: &crate::Binary, only: Option<&str>, out: &mut String) -> Res
     }
     Ok(0)
 }
+
+/// `nocompiler funcs FILE [--json]` on a RISC-V binary (crate::rv_tools).
+pub fn funcs(file: &Path, json: bool, out: &mut String) -> Result<u8, String> {
+    let bytes = read(file)?;
+    let bin = crate::load(&bytes)?;
+    if bin.funcs.is_empty() {
+        eprintln!("no functions in the symbol table");
+        return Ok(1);
+    }
+    out.push_str(&crate::rv_tools::funcs(&bin, json));
+    Ok(0)
+}
+
+/// `nocompiler xrefs FILE TARGET [--from] [--json]` on a RISC-V binary
+/// (crate::rv_tools): 1 when there is no reference.
+pub fn xrefs(
+    file: &Path,
+    target: &str,
+    from: bool,
+    json: bool,
+    out: &mut String,
+) -> Result<u8, String> {
+    let bytes = read(file)?;
+    let bin = crate::load(&bytes)?;
+    let (text, n) = crate::rv_tools::xrefs(&bin, target, from, json)
+        .ok_or_else(|| format!("{target:?} is not an address or a symbol"))?;
+    out.push_str(&text);
+    if n == 0 && !json {
+        eprintln!(
+            "no references {} {target}",
+            if from { "from" } else { "to" }
+        );
+        return Ok(1);
+    }
+    Ok(0)
+}
