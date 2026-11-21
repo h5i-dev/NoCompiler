@@ -113,7 +113,7 @@ swe-bin-env --bind 127.0.0.1:8000 [--mode scratch] --nocompiler PATH
 `reset(seed)` picks kept task `seed mod N` and creates the episode directory with the starting
 binary. MCP tools (OpenEnv `call_tool`, over the WebSocket or `POST /mcp`):
 - **files:** list_files, read_file, write_file (text only), copy_file;
-- **nocompiler:** disasm, asm, check, funcs, symbols, sections, info, strings, stats, xrefs, decompile, diff, refine, emulate;
+- **nocompiler:** disasm, asm, check, funcs, symbols, sections, info, strings, stats, xrefs, decompile, diff, refine, emulate (decompile, diff, stats and emulate work on RV64 since E's 3b4a0f9; the analysis runs with 2 threads, and the arguments follow `--`, so a name cannot be read as an option; emulate takes integer arguments only);
 - **`link`:** an `asm` object into a binary; its functions replace the binary's, and calls go to the new code;
 - **run_tests:** patch mode shows the PASS_TO_PASS results only, since FAIL_TO_PASS stays hidden as in SWE-bench; scratch mode shows all;
 - **check_proof.**

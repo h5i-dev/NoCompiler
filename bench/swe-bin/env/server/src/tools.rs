@@ -284,6 +284,39 @@ pub fn specs() -> Vec<(&'static str, &'static str, Value)> {
             schema(&[file, ("target", "a symbol name")], &["file", "target"]),
         ),
         (
+            "stats",
+            "nocompiler stats: counts of functions, blocks, instructions, references and strings.",
+            schema(&[file], &["file"]),
+        ),
+        (
+            "decompile",
+            "nocompiler decompile: a function as pseudo-C, for reading only (nothing compiles it).",
+            schema(
+                &[file, ("target", "a symbol or an address")],
+                &["file", "target"],
+            ),
+        ),
+        (
+            "diff",
+            "nocompiler diff: which functions differ between two binaries, most changed first.",
+            schema(&[file, ("other", "the other binary")], &["file", "other"]),
+        ),
+        (
+            "emulate",
+            "nocompiler emulate: run one function in the interpreter on integer arguments. Memory is a copy; a system call or the budget stops the run.",
+            schema(
+                &[
+                    file,
+                    ("target", "a symbol or an address"),
+                    (
+                        "args",
+                        "integer arguments, space-separated, in calling-convention order",
+                    ),
+                ],
+                &["file", "target"],
+            ),
+        ),
+        (
             "refine",
             "nocompiler refine: block/loop tree diff of a function in two binaries.",
             schema(
@@ -313,6 +346,9 @@ pub fn specs() -> Vec<(&'static str, &'static str, Value)> {
         ),
     ]
 }
+
+/// the toolkit commands analyze with this many threads (the host is shared)
+const NC_THREADS: &str = "--threads=2";
 
 fn nc(cfg: &Config, dir: &Path, args: Vec<String>) -> Result<Value, String> {
     let (code, out) = run(
@@ -391,7 +427,7 @@ pub fn call(
                     return Err(format!("{target} was put in {file} by `link`: its text is the structured text you assembled \
                                         (read your .s file); nocompiler lists the binary's own .text"));
                 }
-            let r = nc(cfg, dir, vec!["disasm".into(), file.clone(), target.clone()])?;
+            let r = nc(cfg, dir, vec!["disasm".into(), "--".into(), file.clone(), target.clone()])?;
             let listing = r["output"].as_str().is_some_and(|o| o.starts_with("; no structured text"));
             if !listing || target == "all" {
                 return Ok(r);
@@ -402,7 +438,7 @@ pub fn call(
             let Ok(iso) = elf::isolate(&bin, &target) else { return Ok(r) };
             let tmp = dir.join(".isolated.elf");
             write_exe(&tmp, &iso)?;
-            let r2 = nc(cfg, dir, vec!["disasm".into(), ".isolated.elf".into(), target])?;
+            let r2 = nc(cfg, dir, vec!["disasm".into(), "--".into(), ".isolated.elf".into(), target])?;
             let _ = std::fs::remove_file(&tmp);
             Ok(r2)
         }
@@ -451,7 +487,24 @@ pub fn call(
             let lines: Vec<String> = refs.into_iter().map(|(func, off, kind)| format!("{func}+{off:#x}  {kind}")).collect();
             Ok(Value::String(limited(lines, a)))
         }
-        "refine" => nc(cfg, dir, vec!["refine".into(), f("file")?, f("other")?, s(a, "target")?]),
+        "stats" => nc(cfg, dir, vec!["stats".into(), NC_THREADS.into(), "--".into(), f("file")?]),
+        "decompile" => nc(cfg, dir, vec!["decompile".into(), NC_THREADS.into(), "--color=never".into(), "--".into(), f("file")?, s(a, "target")?]),
+        "diff" => nc(cfg, dir, vec!["diff".into(), NC_THREADS.into(), "--".into(), f("file")?, f("other")?]),
+        "emulate" => {
+            let mut v = vec!["emulate".into(), NC_THREADS.into(), "--".into(), f("file")?, s(a, "target")?];
+            for x in opt(a, "args").unwrap_or_default().split_whitespace() {
+                // integers only: nothing here is passed to a shell, but keep the argv plain
+                let ok = x.strip_prefix('-').unwrap_or(x);
+                let ok = ok.strip_prefix("0x").map_or(!ok.is_empty() && ok.bytes().all(|b| b.is_ascii_digit()),
+                                                      |h| !h.is_empty() && h.bytes().all(|b| b.is_ascii_hexdigit()));
+                if !ok {
+                    return Err(format!("not an integer: {x:?}"));
+                }
+                v.push(x.to_string());
+            }
+            nc(cfg, dir, v)
+        }
+        "refine" => nc(cfg, dir, vec!["refine".into(), "--".into(), f("file")?, f("other")?, s(a, "target")?]),
         "run_tests" => {
             let names: Vec<String> = match opt(a, "files") {
                 Some(l) => l.split(',').map(|x| x.trim().to_string()).collect(),

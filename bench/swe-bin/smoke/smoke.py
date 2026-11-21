@@ -80,6 +80,45 @@ def episode(env, seed, eid, put, files, label):
     return res
 
 
+def tools_check(env, f, fname):
+    """The analysis tools on the starting binary, and on a binary the agent's own path made:
+    disasm -> write_file -> asm -> link, then decompile and diff on the linked copy."""
+    def short(r):
+        out = r["output"] if isinstance(r, dict) else str(r)
+        ex = r.get("exit") if isinstance(r, dict) else "-"
+        first = next((x for x in out.splitlines() if x.strip() and not x.startswith(("#include", "//"))), "")
+        return f"exit {ex}, {len(out)} bytes: {first[:110]}"
+
+    def call(name, **kw):
+        try:
+            return short(env.call_tool(name, **kw))
+        except RuntimeError as e:
+            return f"error: {str(e)[:140]}"
+    print(f"[tools] stats {f}: {call('stats', file=f)}")
+    print(f"[tools] decompile {f} {fname}: {call('decompile', file=f, target=fname)}")
+    print(f"[tools] emulate {f} {fname} 0: {call('emulate', file=f, target=fname, args='0')}")
+    print(f"[tools] emulate args 'x;y' refused: {call('emulate', file=f, target=fname, args='x;y')}")
+    print(f"[tools] decompile target '--db=/x' (an option, as a target): {call('decompile', file=f, target='--db=/x')}")
+    # the round trip needs structured text: an L2 function (a below-L1 one is a flat listing)
+    rows = env.call_tool("funcs", file=f, filter="", limit="2000")
+    rows = rows if isinstance(rows, str) else json.dumps(rows)
+    l2 = [x.split()[-1] for x in rows.splitlines() if " L2 " in x and int(x.split()[1]) >= 20]
+    fname = l2[0] if l2 else fname
+    print(f"[tools] round trip on {fname} (L2)")
+    d = env.call_tool("disasm", file=f, target=fname)
+    env.call_tool("write_file", file="rt.s", content=d["output"])
+    r = env.call_tool("asm", file="rt.s", out="rt.o")
+    print(f"[tools] asm rt.s: exit {r.get('exit')}: {r.get('output', '')[:300]}")
+    try:
+        print(f"[tools] link rt.o into rt.elf: {env.call_tool('link', binary=f, object='rt.o', out='rt.elf')}")
+        r = env.call_tool("decompile", file="rt.elf", target=fname)
+        at = [x for x in r["output"].splitlines() if x.startswith("// 0x")]
+        print(f"[tools] decompile rt.elf {fname}: exit {r['exit']}, at {at} (the linked copy is at the segment above)")
+        print(f"[tools] diff {f} rt.elf: {call('diff', file=f, other='rt.elf')}")
+    except RuntimeError as e:
+        print(f"[tools] link: error: {str(e)[:140]}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--task", required=True)
@@ -120,6 +159,7 @@ def main():
             print(f"[tools] disasm {files[0]} {fname}: {len(out)} bytes; exit {d.get('exit') if isinstance(d, dict) else '?'}")
             for x in lines[:3]:
                 print(f"[tools]   | {x[:150]}")
+            tools_check(env, files[0], fname)
             try:
                 env.call_tool("read_file", file="../x")
                 print("[tools] read_file ../x: NOT refused (bug)")
