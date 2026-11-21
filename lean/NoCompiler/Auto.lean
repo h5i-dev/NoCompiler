@@ -2253,6 +2253,9 @@ def vcCovers (_call : Call) (_fE : Expr) : TacticM Bool := return true
   let frameList ← evalNatList (mkApp2 (mkConst ``frameOf) ac fE)
   let entryN ← evalNat (← mkAppM ``BitVec.toNat #[mkApp (mkConst ``Struct.Func.entry) fE])
   let given := call.cuts.toList.map (·.1)
+  -- A function without a block/loop tree (level L0, `⟨entry, len, []⟩`): the cut points are
+  -- the ones given, by address; every cycle must pass one, or explore runs out of fuel.
+  let heads := if heads.isEmpty then given else heads
   for h in heads do
     unless given.contains h do throwError "vc_auto: no invariant for the loop at {hex h}"
   for h in given do
@@ -2280,6 +2283,9 @@ end VCPath
   let frameList ← evalNatList (mkApp2 (mkConst ``frameOf) ac fE)
   let entryN ← evalNat (← mkAppM ``BitVec.toNat #[mkApp (mkConst ``Struct.Func.entry) fE])
   let given := call.cuts.toList.map (·.1)
+  -- A function without a block/loop tree (level L0, `⟨entry, len, []⟩`): the cut points are
+  -- the ones given, by address; every cycle must pass one, or explore runs out of fuel.
+  let heads := if heads.isEmpty then given else heads
   for h in heads do
     unless given.contains h do throwError "nocompiler_auto: no invariant for the loop at {hex h}"
   for h in given do
