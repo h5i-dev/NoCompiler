@@ -57,4 +57,51 @@ theorem errno_disj_slot {sp e k : Word} (hd : (Region.mk e 4).Disjoint ⟨sp - B
 -- nocompiler_auto's explore path with no facts about the final state (reported to C in STATUS-A). The
 -- work in progress is kept outside the tree until then.
 
+/-! ### musl's `FILE` (src/internal/stdio_impl.h): the fields the path touches, by byte offset -/
+def F_flags : Word := 0#64
+def F_rpos : Word := 8#64
+def F_rend : Word := 16#64
+def F_wend : Word := 32#64
+def F_wpos : Word := 40#64
+def F_wbase : Word := 56#64
+def F_buf : Word := 88#64
+def F_buf_size : Word := 96#64
+
+/-- `__towrite(f)`: unless `f` cannot be written (flag 8, F_NOWR; then -1), the read pointers cleared and
+    the write pointers at the buffer, 0. It writes the first 144 bytes of `*f` and no stack. -/
+def towriteSpec : Spec Word where
+  pre := fun f s => s.reg Reg.a0 = f ∧ aligned f 8
+  post := fun f s s' =>
+    (read32 s.mem f &&& 8#64 = 0 → s'.reg Reg.a0 = 0 ∧
+      read64 s'.mem (f + F_wpos) = read64 s.mem (f + F_buf) ∧
+      read64 s'.mem (f + F_wbase) = read64 s.mem (f + F_buf) ∧
+      read64 s'.mem (f + F_wend) = read64 s.mem (f + F_buf) + read64 s.mem (f + F_buf_size) ∧
+      read64 s'.mem (f + F_rpos) = 0 ∧ read64 s'.mem (f + F_rend) = 0) ∧
+    (read32 s.mem f &&& 8#64 ≠ 0 → s'.reg Reg.a0 = -1)
+  writes := fun f _ => [⟨f, 144⟩]
+
+/-- An 8-byte load at `f + b` past a store at `f + a` that it does not overlap, the offsets constants. -/
+theorem read64_writeLE_off (m : Word → Byte) (f a b : Word) (v w : Nat)
+    (h1 : w ≤ (b - a).toNat) (h2 : 8 ≤ (a - b).toNat) :
+    read64 (writeLE m (f + a) v w) (f + b) = read64 m (f + b) := by
+  apply Auto.read64_writeLE_other'
+  · have : f + b - (f + a) = b - a := by bv_omega
+    rw [this]; exact h1
+  · have : f + a - (f + b) = a - b := by bv_omega
+    rw [this]; exact h2
+
+theorem __towrite_verified : VerifiedImg code __towrite_dom __towrite_entry towriteSpec := by
+  rintro f s he ⟨ha0, hal⟩
+  nocompiler_auto __towrite_func s he [hal]
+  case entry_ret_x50_0 => intro h; simp [h] at hb_12208
+  case entry_ret_x50_1 => intro _; trivial
+  case entry_ret_x40_1 => intro h; simp_all
+  case entry_ret_x40_0 =>
+    intro _
+    refine ⟨trivial, ?_⟩
+    simp only [F_wpos, F_wbase, F_wend, F_rpos, F_rend, F_buf, F_buf_size]
+    simp (disch := decide) only [read64_writeLE_off, Auto.read64_writeLE_same', BitVec.ofNat_toNat,
+      BitVec.setWidth_eq]
+    simp
+
 end Examples.Libc.Slen
