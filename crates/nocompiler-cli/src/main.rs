@@ -253,6 +253,21 @@ pub enum Command {
         #[arg(short = 'o', value_name = "OUT.o")]
         out: PathBuf,
     },
+    /// Rebuild a patched binary from its patch stack: the base ELF, then each `.s` patch
+    /// assembled and linked in (docs/toolkit/patch-stack.md).
+    Link {
+        /// The stack file (`nocompiler-stack 1`, base, patches, result).
+        stack: PathBuf,
+        /// Write the rebuilt binary here.
+        #[arg(short = 'o', value_name = "OUT.elf")]
+        out: Option<PathBuf>,
+        /// Status 1 unless the rebuilt binary's SHA-256 is the recorded `result`.
+        #[arg(long)]
+        check: bool,
+        /// Write the rebuilt binary's SHA-256 into the stack's `result` line.
+        #[arg(long, conflicts_with = "check")]
+        record: bool,
+    },
     /// A RISC-V binary as text for `git diff`: per function, by name, addresses masked
     /// (docs/toolkit/git-diff.md).
     Textconv {
@@ -773,6 +788,7 @@ impl Command {
             | Command::Module { .. }
             | Command::Ledger { .. }
             | Command::Textconv { .. }
+            | Command::Link { .. }
             | Command::Asm { .. }
             | Command::Sim { .. }
             | Command::Refine { .. } => None,
@@ -810,6 +826,7 @@ impl Command {
             | Command::Module { .. }
             | Command::Ledger { .. }
             | Command::Textconv { .. }
+            | Command::Link { .. }
             | Command::Asm { .. }
             | Command::Sim { .. }
             | Command::Refine { .. } => {
@@ -889,6 +906,12 @@ fn core(cli: &Cli, w: &mut out::Out) -> Option<Result<u8, String>> {
         ),
         Command::Ledger { file, proofs } => cmd::ledger(file, proofs.as_deref(), &mut text),
         Command::Textconv { file } => cmd::textconv(file, &mut text),
+        Command::Link {
+            stack,
+            out,
+            check,
+            record,
+        } => cmd::link(stack, out.as_deref(), *check, *record, &mut text),
         Command::Asm { file, out } => cmd::asm(file, out, &mut text),
         Command::Refine {
             a,

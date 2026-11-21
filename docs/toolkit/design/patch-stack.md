@@ -1,8 +1,12 @@
 # Design: binaries as a patch stack (Q-VC2) and proof status per version (Q-VC3)
 
-Status: DESIGN, for the lead's decision (lead 17:55: "design first, with the
-refinement benchmark; owner decided then"). Nothing here is implemented yet
-except what is named as existing.
+Status: Q-VC2 IMPLEMENTED (lead 21:10: "next is Q-VC2 implementation"; user
+docs: docs/toolkit/patch-stack.md). As built, it differs from the design
+below in two places: the stack file is a line format (`nocompiler-stack 1`,
+`base`, `patch`, `result` lines), not JSON lines, so the core crate needs no
+JSON parser; and the linker is option (a), ported to crates/nocompiler/src/
+link.rs, with `.swb` marked executable again (swb-elf had dropped the flag
+while nocompiler refused a second code section). Q-VC3 is still a design.
 
 ## What exists
 

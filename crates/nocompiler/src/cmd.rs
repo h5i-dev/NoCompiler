@@ -562,3 +562,57 @@ pub fn textconv(file: &Path, out: &mut String) -> Result<u8, String> {
     out.push_str(&crate::textconv::textconv(&bin));
     Ok(0)
 }
+
+/// `nocompiler link STACK [-o OUT] [--check | --record]`: rebuild a patched
+/// binary from its patch stack (crate::stack, docs/toolkit/patch-stack.md).
+/// `--check`: status 1 unless the rebuilt binary's SHA-256 is the stack's
+/// `result`. `--record`: write that SHA-256 into the stack's `result` line.
+pub fn link(
+    stack: &Path,
+    dst: Option<&Path>,
+    check: bool,
+    record: bool,
+    out: &mut String,
+) -> Result<u8, String> {
+    let text = std::fs::read_to_string(stack).map_err(|e| format!("{}: {e}", stack.display()))?;
+    let mut s = crate::stack::parse(&text).map_err(|e| format!("{}: {e}", stack.display()))?;
+    let dir = stack.parent().unwrap_or(Path::new("."));
+    let bin = crate::stack::build(&s, dir)?;
+    let sha = crate::stack::result_sha(&bin);
+    if let Some(d) = dst {
+        std::fs::write(d, &bin).map_err(|e| format!("{}: {e}", d.display()))?;
+    }
+    say!(
+        out,
+        "{}: {} patches, result {sha}",
+        stack.display(),
+        s.patches.len()
+    );
+    if record {
+        // Replace the `result` line (or add one), keeping the rest as written.
+        let mut lines: Vec<String> = text
+            .lines()
+            .filter(|l| !l.trim_start().starts_with("result "))
+            .map(str::to_string)
+            .collect();
+        lines.push(format!("result {sha}"));
+        std::fs::write(stack, lines.join("\n") + "\n")
+            .map_err(|e| format!("{}: {e}", stack.display()))?;
+        s.result = Some(sha.clone());
+        say!(out, "recorded in {}", stack.display());
+    }
+    if check {
+        match &s.result {
+            Some(r) if *r == sha => say!(out, "matches the recorded result"),
+            Some(r) => {
+                eprintln!("nocompiler: the rebuilt binary is {sha}, the stack records {r}");
+                return Ok(1);
+            }
+            None => {
+                eprintln!("nocompiler: the stack records no result (--record writes it)");
+                return Ok(1);
+            }
+        }
+    }
+    Ok(0)
+}
