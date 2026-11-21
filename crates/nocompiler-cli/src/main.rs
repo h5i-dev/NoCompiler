@@ -169,7 +169,15 @@ pub enum Command {
     /// Sections and their mapping.
     Sections(Common),
     /// Symbols the container names.
-    Symbols(Common),
+    Symbols {
+        #[command(flatten)]
+        common: Common,
+        /// Only symbols whose name (raw or demangled) contains this, ignoring case.
+        /// The list stops at 500 unless `--limit N` says otherwise (0: all); a cut
+        /// list says how many were left out.
+        #[arg(long, value_name = "SUBSTR")]
+        filter: Option<String>,
+    },
     /// Symbols needed from elsewhere.
     Imports(Common),
     /// Symbols offered to others.
@@ -776,12 +784,12 @@ impl Command {
         match self {
             Command::Info(c)
             | Command::Sections(c)
-            | Command::Symbols(c)
             | Command::Imports(c)
             | Command::Exports(c)
             | Command::Funcs(c)
             | Command::Stats(c) => c,
-            Command::Notes { common, .. }
+            Command::Symbols { common, .. }
+            | Command::Notes { common, .. }
             | Command::Batch { common, .. }
             | Command::Diff { common, .. } => common,
             Command::Project { .. }
@@ -1044,7 +1052,15 @@ pub fn run(cli: &Cli, w: &mut out::Out) -> Result<u8, String> {
     match &cli.command {
         Command::Info(c) => return print::info(w, &object, c.json),
         Command::Sections(c) => return print::sections(w, &object, c.json),
-        Command::Symbols(c) => return print::symbols(w, &object, c.json),
+        Command::Symbols { common, filter } => {
+            return print::symbols(
+                w,
+                &object,
+                common.json,
+                filter.as_deref(),
+                common.limit.unwrap_or(500),
+            );
+        }
         Command::Imports(c) => return print::imports(w, &object, c.json),
         Command::Exports(c) => return print::exports(w, &object, c.json),
         Command::Overlay { common } => return print::overlay(w, &object, &data, common.json),
@@ -1132,7 +1148,15 @@ pub fn dispatch(
     match &cli.command {
         Command::Info(c) => return print::info(w, &program.object, c.json),
         Command::Sections(c) => return print::sections(w, &program.object, c.json),
-        Command::Symbols(c) => return print::symbols(w, &program.object, c.json),
+        Command::Symbols { common, filter } => {
+            return print::symbols(
+                w,
+                &program.object,
+                common.json,
+                filter.as_deref(),
+                common.limit.unwrap_or(500),
+            );
+        }
         Command::Imports(c) => return print::imports(w, &program.object, c.json),
         Command::Exports(c) => return print::exports(w, &program.object, c.json),
         Command::Overlay { common } => {

@@ -122,10 +122,9 @@ pub struct SymbolOut {
     dynamic: bool,
 }
 
-pub fn symbols(o: &Object) -> Listing<SymbolOut> {
+pub fn symbols(syms: &[&nocompiler_format::Symbol]) -> Listing<SymbolOut> {
     listing(
-        o.symbols
-            .iter()
+        syms.iter()
             .map(|s| SymbolOut {
                 name: s.name.clone(),
                 addr: hex(s.addr),

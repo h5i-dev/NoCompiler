@@ -38,3 +38,33 @@ fn funcs_and_xrefs_on_a_risc_v_elf() {
         .unwrap();
     assert_eq!(out.status.code(), Some(1));
 }
+
+/// `symbols --filter` and the default limit (lead 17:05, item 2): a solver's
+/// client cannot take a 575 KB list.
+#[test]
+fn symbols_filter_and_limit() {
+    let exe = env!("CARGO_BIN_EXE_nocompiler");
+    let elf = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/elf/sum.elf");
+    let run = |args: &[&str]| {
+        let out = Command::new(exe)
+            .arg("symbols")
+            .arg(elf)
+            .args(args)
+            .output()
+            .unwrap();
+        (out.status.code(), String::from_utf8(out.stdout).unwrap())
+    };
+    let (_, all) = run(&[]);
+    assert!(all.contains("object    static  data"), "{all}");
+    let (_, f) = run(&["--filter", "SUM2"]);
+    assert_eq!(f.lines().count(), 1, "{f}");
+    assert!(f.contains("function  static  sum2"), "{f}");
+    let (_, one) = run(&["--limit", "1"]);
+    let n = all.lines().count();
+    assert_eq!(one.lines().count(), 2, "{one}");
+    assert!(one.ends_with(&format!(
+        "... {} more of {n} (--limit 0 for all, --filter NAME to narrow)\n",
+        n - 1
+    )));
+    assert_eq!(run(&["--filter", "zzz_none"]).0, Some(1));
+}

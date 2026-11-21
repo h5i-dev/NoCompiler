@@ -104,16 +104,46 @@ pub fn sections(w: &mut Out, o: &Object, as_json: bool) -> R {
     Ok(exit::OK)
 }
 
-/// Symbols.
-pub fn symbols(w: &mut Out, o: &Object, as_json: bool) -> R {
+/// Symbols: those whose name (raw or demangled) holds `filter`, ignoring case,
+/// the first `limit` of them (0: all); a cut list ends with a line saying how
+/// many were left out.
+pub fn symbols(w: &mut Out, o: &Object, as_json: bool, filter: Option<&str>, limit: usize) -> R {
+    let f = filter.map(str::to_lowercase);
+    let matched: Vec<&nocompiler_format::Symbol> = o
+        .symbols
+        .iter()
+        .filter(|s| {
+            f.as_ref().is_none_or(|f| {
+                s.name.to_lowercase().contains(f)
+                    || nocompiler_types::pretty(&s.name).to_lowercase().contains(f)
+            })
+        })
+        .collect();
+    let shown = if limit == 0 {
+        matched.len()
+    } else {
+        limit.min(matched.len())
+    };
     if as_json {
-        return json::emit(w, &json::symbols(o));
+        if shown < matched.len() {
+            eprintln!(
+                "{} more of {} not listed (--limit 0 for all)",
+                matched.len() - shown,
+                matched.len()
+            );
+        }
+        return json::emit(w, &json::symbols(&matched[..shown]));
     }
-    if o.symbols.is_empty() {
-        eprintln!("no symbols");
+    if matched.is_empty() {
+        eprintln!(
+            "no symbols{}",
+            filter
+                .map(|f| format!(" matching {f:?}"))
+                .unwrap_or_default()
+        );
         return Ok(exit::NOT_FOUND);
     }
-    for s in &o.symbols {
+    for s in &matched[..shown] {
         outln!(
             w,
             "{}{:>8x}  {:<10}{:<8}{}",
@@ -122,6 +152,14 @@ pub fn symbols(w: &mut Out, o: &Object, as_json: bool) -> R {
             format!("{:?}", s.kind).to_lowercase(),
             if s.dynamic { "dynamic" } else { "static" },
             w.paint(Role::Name, &last(w, 48, &nocompiler_types::pretty(&s.name)))
+        );
+    }
+    if shown < matched.len() {
+        outln!(
+            w,
+            "... {} more of {} (--limit 0 for all, --filter NAME to narrow)",
+            matched.len() - shown,
+            matched.len()
         );
     }
     Ok(exit::OK)
