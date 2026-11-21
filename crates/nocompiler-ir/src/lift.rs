@@ -13,6 +13,7 @@
 pub mod aarch64;
 pub mod arm;
 pub mod neon;
+pub mod sleigh;
 pub mod sse;
 pub mod x86;
 
@@ -132,6 +133,7 @@ pub fn lift(arch: &Arch, insn: &Insn) -> Lifted {
         Arch::X86 => x86::lift32(insn),
         Arch::Arm => arm::lift_mode(insn, false),
         Arch::Thumb => arm::lift_mode(insn, true),
+        Arch::Sleigh(id) => sleigh::lift(id, insn),
         _ => Builder::new(insn.addr).unimplemented(),
     }
 }

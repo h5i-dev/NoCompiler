@@ -346,6 +346,7 @@ dependencies = [
  "nocompiler-arch",
  "nocompiler-core",
  "nocompiler-format",
+ "nocompiler-sleigh",
  "nocompiler-types",
  "serde",
 ]

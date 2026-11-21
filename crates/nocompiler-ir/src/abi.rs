@@ -19,7 +19,7 @@
 
 use nocompiler_core::Arch;
 
-use crate::lift::{aarch64, arm, x86};
+use crate::lift::{aarch64, arm, sleigh, x86};
 use crate::op::Space;
 use crate::ssa::Location;
 
@@ -52,6 +52,8 @@ pub enum Named {
     Thiscall,
     /// 32-bit x86 `__vectorcall`: `__fastcall` plus `xmm0` through `xmm5`.
     Vectorcall,
+    /// The RISC-V LP64D convention (the psABI's hard-float 64-bit one).
+    Lp64d,
 }
 
 impl Named {
@@ -67,6 +69,7 @@ impl Named {
             Named::Fastcall => "fastcall",
             Named::Thiscall => "thiscall",
             Named::Vectorcall => "vectorcall",
+            Named::Lp64d => "lp64d",
         }
     }
 }
@@ -167,6 +170,29 @@ impl Abi {
     }
 
     /// True when the convention passes an argument in this register.
+    /// The assembler's name for a register, where this module knows the
+    /// architecture's names. Only RISC-V today, whose register file offsets
+    /// come from a SLEIGH specification rather than a decoder that names them.
+    pub fn register_name(&self, offset: u64) -> Option<&'static str> {
+        if self.name != Named::Lp64d {
+            return None;
+        }
+        const F: [&str; 32] = [
+            "ft0", "ft1", "ft2", "ft3", "ft4", "ft5", "ft6", "ft7", "fs0", "fs1", "fa0", "fa1",
+            "fa2", "fa3", "fa4", "fa5", "fa6", "fa7", "fs2", "fs3", "fs4", "fs5", "fs6", "fs7",
+            "fs8", "fs9", "fs10", "fs11", "ft8", "ft9", "ft10", "ft11",
+        ];
+        (0..32u8).find_map(|n| {
+            if sleigh::gpr_offset(n) == offset {
+                Some(nocompiler_arch::sleigh::gpr_name(n))
+            } else if sleigh::fpr_offset(n) == offset {
+                Some(F[n as usize])
+            } else {
+                None
+            }
+        })
+    }
+
     pub fn passes_arguments_in(&self, offset: u64) -> bool {
         self.slot(offset).is_some()
     }
@@ -196,6 +222,7 @@ pub fn of(arch: &Arch) -> Abi {
         Arch::X86_64 => of_named(arch, Named::SysV),
         Arch::X86 => of_named(arch, Named::Cdecl),
         Arch::Arm | Arch::Thumb => of_named(arch, Named::Aapcs32),
+        _ if sleigh::is_riscv64(arch) => of_named(arch, Named::Lp64d),
         _ => of_named(arch, Named::Aapcs64),
     }
 }
@@ -218,6 +245,7 @@ pub fn of_named(arch: &Arch, name: Named) -> Abi {
         Named::Win64 => win64(),
         Named::SysV if *arch == Arch::X86_64 => sysv64(),
         Named::Aapcs32 => aapcs32(),
+        Named::Lp64d => lp64d(),
         Named::Cdecl | Named::Stdcall | Named::Fastcall | Named::Thiscall | Named::Vectorcall => {
             x86_32(name)
         }
@@ -359,6 +387,43 @@ fn x86_32(name: Named) -> Abi {
         return_address_bytes: 4,
         callee_pops: name != Named::Cdecl,
         this_register: (name == Named::Thiscall).then(|| x86::gpr_offset(1)),
+        indirect_result: None,
+        varargs_count: None,
+    }
+}
+
+/// RISC-V LP64D: a0-a7 and fa0-fa7 carry arguments, a0/a1 and fa0/fa1 the
+/// result, s0-s11 and fs0-fs11 survive a call, and `jal` leaves the return
+/// address in ra rather than on the stack.
+pub fn lp64d() -> Abi {
+    let x = sleigh::gpr_offset;
+    let f = sleigh::fpr_offset;
+    Abi {
+        name: Named::Lp64d,
+        integer_arguments: (10..=17).map(x).collect(),
+        float_arguments: (10..=17).map(f).collect(),
+        results: vec![x(10), x(11), f(10), f(11)],
+        // s0, s1, s2-s11; fs0, fs1, fs2-fs11.
+        callee_saved: [8u8, 9]
+            .into_iter()
+            .chain(18..=27)
+            .map(x)
+            .chain([8u8, 9].into_iter().chain(18..=27).map(f))
+            .collect(),
+        // ra, t0-t2, a0-a7, t3-t6; ft0-ft7, fa0-fa7, ft8-ft11.
+        caller_saved: [1u8, 5, 6, 7]
+            .into_iter()
+            .chain(10..=17)
+            .chain(28..=31)
+            .map(x)
+            .chain((0..=7).chain(10..=17).chain(28..=31).map(f))
+            .collect(),
+        stack_pointer: sleigh::sp_offset(),
+        vector_base: f(0),
+        stack_argument_base: 0,
+        return_address_bytes: 0,
+        callee_pops: false,
+        this_register: None,
         indirect_result: None,
         varargs_count: None,
     }

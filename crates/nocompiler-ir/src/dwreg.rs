@@ -17,7 +17,7 @@
 
 use nocompiler_core::Arch;
 
-use crate::lift::{aarch64, x86};
+use crate::lift::{aarch64, sleigh, x86};
 
 /// x86-64 DWARF number to encoding number, for the first eight registers. The
 /// System V psABI, figure 3.36: rax, rdx, rcx, rbx, rsi, rdi, rbp, rsp.
@@ -55,6 +55,12 @@ pub fn offset(arch: &Arch, number: u16) -> Option<u64> {
             64..=95 => Some(aarch64::vec_offset((number - 64) as u8)),
             _ => None,
         },
+        // The RISC-V psABI: x0-x31 are 0-31 and f0-f31 are 32-63.
+        _ if sleigh::is_riscv64(arch) => match number {
+            0..=31 => Some(sleigh::gpr_offset(number as u8)),
+            32..=63 => Some(sleigh::fpr_offset((number - 32) as u8)),
+            _ => None,
+        },
         _ => None,
     }
 }
@@ -70,6 +76,7 @@ pub fn number(arch: &Arch, offset_of: u64) -> Option<u16> {
         Arch::X86_64 => 33u16,
         Arch::X86 => 29,
         Arch::AArch64 => 96,
+        _ if sleigh::is_riscv64(arch) => 64,
         _ => 0,
     };
     (0..limit).find(|n| offset(arch, *n) == Some(offset_of))
@@ -77,5 +84,5 @@ pub fn number(arch: &Arch, offset_of: u64) -> Option<u16> {
 
 /// True when the architecture has a mapping at all.
 pub fn known(arch: &Arch) -> bool {
-    matches!(arch, Arch::X86 | Arch::X86_64 | Arch::AArch64)
+    matches!(arch, Arch::X86 | Arch::X86_64 | Arch::AArch64) || sleigh::is_riscv64(arch)
 }

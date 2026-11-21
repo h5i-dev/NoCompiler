@@ -59,7 +59,13 @@ fn every_committed_instruction_decodes() {
         while at < bytes.len() {
             let i = decode(&rv64(), &bytes[at..], Addr::new(base + at as u64))
                 .unwrap_or_else(|| panic!("{name}: {:#x} decodes", base + at as u64));
-            assert!(i.len == 4 || i.len == 2);
+            // 8 is a fused `call`/`tail` pair.
+            assert!(
+                matches!(i.len, 2 | 4 | 8),
+                "{name}: {} is {} bytes",
+                i.addr,
+                i.len
+            );
             at += i.len as usize;
         }
     }

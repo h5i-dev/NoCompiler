@@ -510,7 +510,7 @@ pub fn step(m: &mut Machine<'_>, ir: &IrOp) -> Step {
         Op::PopCount => x.count_ones() as u64,
         Op::LzCount => {
             let bits = ir.input(0).map(|v| v.size as u32 * 8).unwrap_or(64);
-            (x << (64 - bits)).leading_zeros() as u64
+            (x << (64 - bits)).leading_zeros().min(bits) as u64
         }
         Op::BoolAnd => ((x != 0) && (y != 0)) as u64,
         Op::BoolOr => ((x != 0) || (y != 0)) as u64,

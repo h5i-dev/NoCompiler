@@ -11,6 +11,7 @@ authors.workspace = true
 [dependencies]
 nocompiler-core = { workspace = true }
 nocompiler-arch = { workspace = true }
+nocompiler-sleigh = { workspace = true }
 nocompiler-types = { workspace = true }
 serde = { workspace = true }
 
