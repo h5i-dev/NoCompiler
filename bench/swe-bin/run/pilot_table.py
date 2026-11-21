@@ -45,12 +45,15 @@ def main():
         if attempts.get(r["task"], {}).get("submitted"):
             r["submitted"] = attempts[r["task"]]["submitted"]
             r["reward"] = attempts[r["task"]].get("reward", r["reward"])
+            if r["submitted"].startswith("none"):
+                r["f2p"] = r["p2p"] = "–"
+                r["submitted_sha256"] = []
     out = os.path.join(BENCH, "results", f"pilot-{date}")
     os.makedirs(out, exist_ok=True)
     json.dump(rows, open(os.path.join(out, "rows.json"), "w"), indent=1)
     solved = sum(1 for r in rows if r["reward"] == 1.0)
     md = [f"# swe-bin pilot, {date}", "",
-          "A pilot, not the benchmark. Patch mode, one attempt per task. Solver: Claude Code TUI "
+          "A pilot, not the benchmark. Patch mode, one counted attempt per task (the attempts column counts every session; see below). Solver: Claude Code TUI "
           "(`claude --model claude-opus-4-8`, run/solve.sh), with the environment's MCP tools as its only "
           "tools. 90 minutes wall per task, at most two at once. The prompt is run/prompt.md plus the issue. "
           "The proof bonus was not available (check_proof is not wired, STATUS-D).", "",
@@ -68,7 +71,9 @@ def main():
     for r in rows:
         q = [x for x in r["fix_knowledge_quotes"]]
         md.append(f"- {r['task']}: {'yes' if r['claims_fix_knowledge'] else 'no'}" + (": " + " / ".join(f'\"{x[:160]}\"' for x in q[:3]) if q else ""))
-    md += ["", "Full SHA-256s, the tools each run used and the session paths: rows.json. Transcripts are not committed."]
+    md += ["", "SHA-256s are per submitted file; the environment's own message hashes a multi-file "
+           "submission as the SHA-256 of the files' SHA-256s.",
+           "", "Full SHA-256s, the tools each run used and the session paths: rows.json. Transcripts are not committed."]
     open(os.path.join(out, "README.md"), "w").write("\n".join(md) + "\n")
     print("\n".join(md))
 
