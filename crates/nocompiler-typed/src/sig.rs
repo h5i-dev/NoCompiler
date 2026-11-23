@@ -417,11 +417,13 @@ fn check_frame(f: &Frame, stack: i128) -> Result<(), String> {
 /// The syscall signatures (note, システムコール; decision I17).
 pub fn syscall_sig(num: i128, names: &mut Names) -> Option<Sig> {
     let text = match num {
+        // Env.lean's relation (decision I31): an error −e with 1 ≤ e ≤ 4095, or a count
+        // r ≤ min(n, MAX_RW_COUNT); a write of n ≥ 1 bytes accepts at least one.
         63 => {
-            "fn sys_read [b, n] in a1: int(b), a2: int(n) borrow b ↦ bytes[n] rw where 0 ≤ n < 2^64 out a0: int(r) where −4095 ≤ r ≤ n, r ≤ 0x7ffff000"
+            "fn sys_read [b, n] in a1: int(b), a2: int(n) borrow b ↦ bytes[n] rw where 0 ≤ n < 2^64 out a0: int(r) where −4095 ≤ r ≤ −1 ∨ (0 ≤ r ≤ n ∧ r ≤ 0x7ffff000)"
         }
         64 => {
-            "fn sys_write [b, n] in a1: int(b), a2: int(n) borrow b ↦ bytes[n] ro where 0 ≤ n < 2^64 out a0: int(r) where −4095 ≤ r ≤ n, r ≤ 0x7ffff000"
+            "fn sys_write [b, n] in a1: int(b), a2: int(n) borrow b ↦ bytes[n] ro where 0 ≤ n < 2^64 out a0: int(r) where −4095 ≤ r ≤ −1 ∨ (0 ≤ r ≤ n ∧ r ≤ 0x7ffff000 ∧ (n ≥ 1 ⇒ r ≥ 1))"
         }
         _ => return None,
     };

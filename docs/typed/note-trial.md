@@ -38,3 +38,10 @@ Predictions: 3 of 4 as predicted outright; `cobs_decode` was predicted "accept, 
 the named risk (S2 block layout) is what rejects it with the default rules.
 `tests/exec.rs` runs every function accepted in either mode (incl. `cobs_decode`) 300 times
 from random signature-satisfying states: no fault.
+
+### After I31 (syscall signatures as Env.lean states them)
+
+With `write`'s signature as `Env.lean`'s relation (`n ≥ 1 ⇒ r ≥ 1` on success, decision I31),
+`write_all` is **accepted** (default rules). This is the second half of its prediction. The
+change only strengthens what the checker may assume after a `write`, to exactly the trusted
+environment model; the other results are unchanged.

@@ -1,6 +1,6 @@
 # examples/typed/src/hello.c (bcb19fed), compiled by scripts/typed-trial/build.sh, unchanged;
 # annotations are the '#:' lines (docs/typed/note-trial.md).
-#! expect write_all: reject loop-decreases
+#! expect write_all: accept
 #! expect hello: accept
 #: fn write_all [fd, b, n]
 #:   in     a0: int(fd), a1: int(b), a2: int(n)

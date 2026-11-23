@@ -269,8 +269,9 @@ impl Machine<'_> {
                         93 | 94 => return Stop::Exited,
                         63 | 64 => {
                             let (b, n) = (r(A1), r(A2));
-                            let write = r(A7) == 63;
-                            if n > 0 && !self.allowed(b, n.min(1 << 20), write) {
+                            // read (63) stores into the buffer; write (64) reads it
+                            let stores = r(A7) == 63;
+                            if n > 0 && !self.allowed(b, n.min(1 << 20), stores) {
                                 return Stop::Fault(format!(
                                     "syscall {} buffer [{b:#x}, +{n}) outside the permission",
                                     r(A7)
@@ -279,9 +280,12 @@ impl Machine<'_> {
                             let res = if rng.below(8) == 0 {
                                 -(1 + rng.below(4095) as i64) as u64
                             } else {
-                                rng.below(n.min(0x7fff_f000) + 1)
+                                // Env.lean: r ≤ min(n, MAX_RW_COUNT); a write of n ≥ 1 takes ≥ 1
+                                let top = n.min(0x7fff_f000);
+                                let lo = u64::from(!stores && n >= 1);
+                                lo + rng.below(top + 1 - lo)
                             };
-                            if write && (res as i64) > 0 {
+                            if stores && (res as i64) > 0 {
                                 for j in 0..res {
                                     let v = rng.next() as u8;
                                     self.mem.insert(b + j, v);

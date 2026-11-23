@@ -197,3 +197,9 @@ comments can cite them.
   constraint, a call's lent length, a missing measure, …) where V's annotations, written for
   S2, stop. Adopting it needs: T's agreement (the Lean checker uses S2), the proof's S2 and
   Theorem C text updated, and the export to carry the back-edge set instead of intervals.
+- **I31 Syscall signatures follow Env.lean.** `read` and `write` return
+  `int(r)` with `−4095 ≤ r ≤ −1 ∨ (0 ≤ r ≤ n ∧ r ≤ 0x7ffff000)`, and for `write` also
+  `n ≥ 1 ⇒ r ≥ 1` in the success case: this is `Sys.writeOk`/`writeErr`/`readOk`/`readErr`
+  read as a signature (E1), and it implies the note's weaker `−4095 ≤ r ≤ n, r ≤ 0x7ffff000`.
+  Without `r ≥ 1`, a write loop cannot be shown to terminate (`write_all`, note-trial.md).
+  The assumption is Env.lean's (docs/isa/environment.md lists it as a kernel assumption).
