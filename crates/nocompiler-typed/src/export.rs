@@ -8,7 +8,7 @@
 use crate::asm::{Func, Program};
 use crate::check::{Cap, Checker, FnExport, Report, State};
 use crate::formula::Formula;
-use crate::isa::Reg;
+use crate::isa::{Instr, Reg, Target};
 use crate::lin::Lin;
 use crate::sig::{CapKind, Sig, SigCap};
 use crate::syntax::Mode;
@@ -145,12 +145,17 @@ fn lean_hcap(c: &Cap, borrow_ids: &[u32]) -> String {
     )
 }
 
-fn lean_sty(st: &State, borrow_ids: &[u32]) -> String {
+fn lean_sty(st: &State, borrow_ids: &[u32], extra: &[Formula]) -> String {
     let regs: Vec<(Reg, Lin)> = Reg::all()
         .skip(1)
         .map(|r| (r, st.regs[r.0 as usize].clone()))
         .collect();
-    let facts: Vec<String> = st.facts.iter().map(|(_, f)| lean_formula(f)).collect();
+    let facts: Vec<String> = st
+        .facts
+        .iter()
+        .map(|(_, f)| lean_formula(f))
+        .chain(extra.iter().map(lean_formula))
+        .collect();
     let caps: Vec<String> = st.caps.iter().map(|c| lean_hcap(c, borrow_ids)).collect();
     let slots: Vec<String> = st
         .slots
@@ -171,6 +176,24 @@ fn lean_sty(st: &State, borrow_ids: &[u32]) -> String {
 /// parameter with its range and alignment in `pre`, and each read-only symbol is an
 /// ordinary `borrow ℓ_sym ↦ bytes[size] ro {fields}` clause after the signature's own.
 pub fn exported_sig(s: &Sig, ck: &Checker) -> Sig {
+    exported_sig_at(s, ck, None)
+}
+
+/// The equations `ℓ_sym = address` a linked image gives (export.md "Linked image").
+fn sym_eqs(ck: &Checker, image: Option<&BTreeMap<String, u64>>) -> Vec<Formula> {
+    let Some(img) = image else { return vec![] };
+    ck.sym_vars
+        .iter()
+        .filter_map(|(name, v)| {
+            let a = *img.get(name)?;
+            Formula::eq(&Lin::var(*v), &Lin::konst(a as i128))
+        })
+        .collect()
+}
+
+/// `exported_sig`, with the linked addresses of the data symbols in `pre` when an image is
+/// given.
+pub fn exported_sig_at(s: &Sig, ck: &Checker, image: Option<&BTreeMap<String, u64>>) -> Sig {
     let mut e = s.clone();
     if s.syscall {
         return e;
@@ -200,6 +223,7 @@ pub fn exported_sig(s: &Sig, ck: &Checker) -> Sig {
             out_fields: None,
         });
     }
+    e.pre.extend(sym_eqs(ck, image));
     e
 }
 
@@ -228,6 +252,26 @@ fn lean_ident(n: &str) -> String {
 
 /// A Lean module with one `Sig` per signature and one `Fn` per checked safe function.
 pub fn to_lean(prog: &Program, ck: &Checker, rep: &Report, module: &str) -> String {
+    to_lean_image(prog, ck, rep, module, None)
+}
+
+/// `to_lean` against a linked image: entries and callees at their linked addresses (callees
+/// in other files too), and `ℓ_sym = address` in every signature's `pre` and every point's
+/// facts, so `auipc`'s literal meets the data capabilities (export.md "Linked image").
+pub fn to_lean_image(
+    prog: &Program,
+    ck: &Checker,
+    rep: &Report,
+    module: &str,
+    image: Option<&BTreeMap<String, u64>>,
+) -> String {
+    let eqs = sym_eqs(ck, image);
+    let addr_of = |name: &str, fallback: Option<u64>| -> Option<u64> {
+        match image {
+            Some(img) => img.get(name).copied(),
+            None => fallback,
+        }
+    };
     let mut o = String::new();
     let _ = writeln!(
         o,
@@ -250,7 +294,7 @@ pub fn to_lean(prog: &Program, ck: &Checker, rep: &Report, module: &str) -> Stri
             o,
             "def sig_{} : Sig :=\n  {}\n",
             lean_ident(name).trim_matches(['«', '»']),
-            lean_sig(&exported_sig(s, ck))
+            lean_sig(&exported_sig_at(s, ck, image))
         );
     }
     for f in &rep.funcs {
@@ -272,7 +316,8 @@ pub fn to_lean(prog: &Program, ck: &Checker, rep: &Report, module: &str) -> Stri
         );
         let _ = writeln!(o, "def fn_{n} : Fn where");
         let _ = writeln!(o, "  sig := sig_{n}");
-        let _ = writeln!(o, "  entry := {:#x}", func.instrs[0].addr);
+        let entry = addr_of(&f.name, Some(func.instrs[0].addr)).unwrap_or(func.instrs[0].addr);
+        let _ = writeln!(o, "  entry := {entry:#x}");
         let _ = writeln!(o, "  size := {size}");
         let rv: Vec<String> = ex
             .reg_var
@@ -290,6 +335,41 @@ pub fn to_lean(prog: &Program, ck: &Checker, rep: &Report, module: &str) -> Stri
                 slots.join(", "),
                 addr.join(", ")
             );
+        }
+        // callees (T's ask 6): each called function's entry address in the image with the
+        // signature it is called at; only callees in the same file and section have a known
+        // address before linking (export.md)
+        let mut callees: Vec<String> = Vec::new();
+        for pi in &func.instrs {
+            let (Instr::Jal {
+                target: Target::Symbol(s),
+                ..
+            }
+            | Instr::CallPair {
+                target: Target::Symbol(s),
+                ..
+            }) = &pi.instr
+            else {
+                continue;
+            };
+            if !ck.sigs.contains_key(s) {
+                continue;
+            }
+            let local = prog
+                .funcs
+                .iter()
+                .find(|g| &g.name == s && g.section == func.section && !g.instrs.is_empty())
+                .map(|g| g.instrs[0].addr);
+            let Some(a) = addr_of(s, local) else {
+                continue;
+            };
+            let c = format!("({a:#x}, sig_{})", lean_ident(s).trim_matches(['«', '»']));
+            if !callees.contains(&c) {
+                callees.push(c);
+            }
+        }
+        if !callees.is_empty() {
+            let _ = writeln!(o, "  callees := [{}]", callees.join(", "));
         }
         let loops: Vec<String> = ex
             .loops
@@ -321,7 +401,7 @@ pub fn to_lean(prog: &Program, ck: &Checker, rep: &Report, module: &str) -> Stri
         let types: Vec<String> = ex
             .snapshots
             .iter()
-            .map(|(ix, st)| format!("    ({}, {})", wi[*ix], lean_sty(st, &ex.borrow_ids)))
+            .map(|(ix, st)| format!("    ({}, {})", wi[*ix], lean_sty(st, &ex.borrow_ids, &eqs)))
             .collect();
         let _ = writeln!(o, "  types := [\n{}]", types.join(",\n"));
         let _ = writeln!(o, "  fresh := {}\n", ex.fresh);

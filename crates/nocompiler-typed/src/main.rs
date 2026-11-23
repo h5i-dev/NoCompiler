@@ -1,4 +1,4 @@
-//! `nocompiler-typed check FILE.s [--ledger OUT.json] [--states]`
+//! `nocompiler-typed check FILE.s [--ledger OUT.json] [--states] [--image LINKED.elf] …`
 //!
 //! Checks every safe function of a typed assembly file. Exit status 0 when all pass, 1 when
 //! one is rejected, 2 on a usage or parse error.
@@ -8,7 +8,7 @@ use std::process::ExitCode;
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let usage = "usage: nocompiler-typed link FILE.s... | check FILE.s [--ledger OUT.json] [--states] [--object FILE.o] [--export-lean OUT.lean] [--export-json OUT.json] [--loops natural|interval]";
+    let usage = "usage: nocompiler-typed link FILE.s... | check FILE.s [--ledger OUT.json] [--states] [--object FILE.o] [--export-lean OUT.lean] [--export-json OUT.json] [--image LINKED.elf] [--loops natural|interval]";
     if args.first().map(String::as_str) == Some("link") {
         // nocompiler-typed link A.s B.s ... [--loops natural]: the whole program (Theorem D)
         let natural = !args.iter().any(|a| a == "interval");
@@ -56,6 +56,7 @@ fn main() -> ExitCode {
     let file = &args[1];
     let mut ledger_out = None;
     let mut object = None;
+    let mut image_file: Option<String> = None;
     let mut states = false;
     let mut natural = true;
     let mut export_lean: Option<String> = None;
@@ -69,6 +70,10 @@ fn main() -> ExitCode {
             }
             "--object" if i + 1 < args.len() => {
                 object = Some(args[i + 1].clone());
+                i += 1;
+            }
+            "--image" if i + 1 < args.len() => {
+                image_file = Some(args[i + 1].clone());
                 i += 1;
             }
             "--states" => states = true,
@@ -166,6 +171,19 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     }
+    let image = match &image_file {
+        None => None,
+        Some(p) => match std::fs::read(p)
+            .map_err(|e| e.to_string())
+            .and_then(|b| nocompiler_typed::object::symbol_addresses(&b))
+        {
+            Ok(m) => Some(m),
+            Err(e) => {
+                eprintln!("{p}: {e}");
+                return ExitCode::from(2);
+            }
+        },
+    };
     if let Some(out) = export_lean {
         let stem = std::path::Path::new(file)
             .file_stem()
@@ -175,11 +193,12 @@ fn main() -> ExitCode {
             .chars()
             .map(|c| if c.is_alphanumeric() { c } else { '_' })
             .collect();
-        let text = nocompiler_typed::export::to_lean(
+        let text = nocompiler_typed::export::to_lean_image(
             &prog,
             &ck,
             &rep,
             &format!("NoCompiler.Typed.Export.{module}"),
+            image.as_ref(),
         );
         if let Err(e) = std::fs::write(&out, text) {
             eprintln!("{out}: {e}");

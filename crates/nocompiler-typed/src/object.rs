@@ -38,14 +38,22 @@ fn cstr(d: &[u8], o: usize) -> Option<String> {
 
 impl<'a> Elf<'a> {
     fn parse(d: &'a [u8]) -> Result<Elf<'a>, String> {
+        Self::parse_kind(d, false)
+    }
+
+    fn parse_kind(d: &'a [u8], linked: bool) -> Result<Elf<'a>, String> {
         if d.get(0..4) != Some(b"\x7fELF") || d.get(4) != Some(&2) || d.get(5) != Some(&1) {
             return Err("not a little-endian ELF64 file".into());
         }
         if u16_at(d, 0x12) != Some(243) {
             return Err("not a RISC-V object".into());
         }
-        if u16_at(d, 0x10) != Some(1) {
+        let ty = u16_at(d, 0x10);
+        if !linked && ty != Some(1) {
             return Err("not a relocatable object (ET_REL)".into());
+        }
+        if linked && ty != Some(2) && ty != Some(3) {
+            return Err("not a linked executable (ET_EXEC or ET_DYN)".into());
         }
         let bad = || "truncated ELF".to_string();
         let shoff = u64_at(d, 0x28).ok_or_else(bad)? as usize;
@@ -129,6 +137,18 @@ impl<'a> Elf<'a> {
         }
         out
     }
+}
+
+/// The addresses of the named symbols of a linked RISC-V ELF (for the export with
+/// `--image`, export.md "Linked image"). Undefined symbols (section 0) are left out.
+pub fn symbol_addresses(bytes: &[u8]) -> Result<BTreeMap<String, u64>, String> {
+    let elf = Elf::parse_kind(bytes, true)?;
+    Ok(elf
+        .symbols()
+        .into_iter()
+        .filter(|(n, sh, _)| !n.is_empty() && *sh != 0)
+        .map(|(n, _, v)| (n, v))
+        .collect())
 }
 
 /// Compares every function's instructions with the object's bytes.

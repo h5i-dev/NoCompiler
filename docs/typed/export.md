@@ -80,6 +80,28 @@ loop's last point **in τ** (not the largest address); no edge enters an interva
 head. The JSON has the same list as `"tau"`. Under `--loops interval`, `tau` is the address
 order. T: please add the field to `Fn` (the generated `.lean` already writes `tau := [...]`).
 
+### Callees (2026-11-23, T's ask 6)
+
+`fn_<name>` gains `callees := [(addr, sig_<g>), …]`: for every function `g` it calls (`jal`,
+`call`/`tail` pairs) that has a signature and lies in the same file and section, `g`'s entry
+address in the image (its section offset, as `entry`) with `sig_<g>`, the signature it is called
+at. Callees in other files or sections have no address before linking and are left out; the
+Lean checker then rejects the call (no matching `callees` entry), which is the safe direction.
+With `--image` (below) every callee with a signature gets its linked address, in any file.
+
+### Linked image (2026-11-23, static data in Lean)
+
+`nocompiler-typed check FILE.s --export-lean X.lean --image a.out` reads the symbol table of the
+linked ELF (ET_EXEC/ET_DYN) and then:
+* `entry` of each `fn_*` is the function's linked address, and `callees` lists every called
+  function with a signature at its linked address;
+* for each data symbol with an address, `ℓ_sym = address` is added to every signature's `pre`
+  and to the facts of every exported point. The Lean checker types `auipc` with the literal
+  `pc + (imm<<12)` (T, I21), so the literal and the data capability `ℓ_sym ↦ bytes[size]` meet
+  in the solver. ⟦σ⟧ is unchanged: the equation is an ordinary entry constraint, which the
+  caller (or the loader, for `_start`) establishes.
+Without `--image` the export is as before (section offsets, same-section callees, ℓ_sym free).
+
 ### θ per edge (2026-11-23, T's ask 4)
 
 For each exported function, `theta_<name> : List (Option Nat × Nat × List (Var × IExpr))`
