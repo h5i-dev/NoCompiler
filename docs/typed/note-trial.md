@@ -45,3 +45,10 @@ With `write`'s signature as `Env.lean`'s relation (`n ≥ 1 ⇒ r ≥ 1` on succ
 `write_all` is **accepted** (default rules). This is the second half of its prediction. The
 change only strengthens what the checker may assume after a `write`, to exactly the trusted
 environment model; the other results are unchanged.
+
+### Running them
+
+`check.sh` links the objects (`ld.lld -static -e _start`) and runs them under
+qemu-riscv64: `hello` prints `nocompiler` and exits 0 (through `write_all` and `exit`); `sum`'s
+`_start` exits 24 = (1+2+3+4+5) + (2+3+4), through `sum2` and `sum`. A sanity check of the
+compiled code, not part of any guarantee.
