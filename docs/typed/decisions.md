@@ -239,6 +239,16 @@ comments can cite them.
   the next point's type on an edge (its θ is found from registers). Exception left: the
   single-bit `andi` rule still has a fact-only quotient.
 
+- **I38 The `heap` mark (T, 2026-11-23).** In the Lean ⟦σ⟧ the mark `heap` has no meaning
+  (Sem.lean does not mention it), so the assumption U1 for `free` (`take p ↦ bytes[n] rw heap`)
+  promises that `free` accepts any byte range, which a real allocator does not. Two parts:
+  (1) the call rule now lends a `heap` clause only from a held `heap` capability with the same
+  base and length (the note's "free が受け取れるのはこの印が付いた全体だけ"); sound, as it only
+  rejects more. (2) Open, for the user: give `heap` a meaning in ⟦σ⟧, e.g. "the range is an
+  allocation unit of the `Heap` token's invariant" (the token definition would expose its set of
+  live units), so that an unsafe allocator's U1 is a true statement. Until then a `heap` clause in
+  an unsafe signature is a promise of the ledger's assumption only.
+
 ## Proposals (not adopted: the default checker does not use them)
 
 - **P1 Natural loops instead of address intervals** (adopted as I36, 2026-11-23, user; docs/Tab 1.md decision 11, docs/健全性の証明.md S2 and Theorem C) (from the musl trial, docs/typed/musl-trial.md
