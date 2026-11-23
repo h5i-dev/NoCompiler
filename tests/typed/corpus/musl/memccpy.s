@@ -20,12 +20,12 @@ memccpy:
 	andi	a2, a2, 255             # 8: 0ff67613
 	beq	a4, zero, .Lmemccpy_3c  # c: 02070863
 .Lmemccpy_10:
-	#: inv [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 0 <= m <= n
+	#: join [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 0 <= m <= n
 	# 0x10, 0x14, 0x34, 0x9c are targets of backward edges only because of block layout; they are
 	# not loops, so no decreases clause is given.
 	beq	a3, zero, .Lmemccpy_34  # 10: 02068263
 .Lmemccpy_14:
-	#: inv [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 1 <= m <= n
+	#: join [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 1 <= m <= n
 	addi	a0, a0, 1               # 14: 00150513
 .Lmemccpy_18:
 	#: inv [m] a0: int(d + n - m + 1), a1: int(s + n - m), a3: int(m) where 1 <= m <= n decreases m
@@ -37,7 +37,7 @@ memccpy:
 	addi	a0, a0, 1               # 2c: 00150513
 	bne	a3, zero, .Lmemccpy_18  # 30: fe0694e3
 .Lmemccpy_34:
-	#: inv a0: int
+	#: join a0: int
 	addi	a0, zero, 0             # 34: 00000513
 	jalr	zero, 0(ra)             # 38: 00008067
 .Lmemccpy_3c:
@@ -68,7 +68,7 @@ memccpy:
 	sub	a3, a3, a5              # 94: 40f686b3
 	bne	a4, zero, .Lmemccpy_108 # 98: 06071863
 .Lmemccpy_9c:
-	#: inv [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 0 <= m <= n, 8 | s + n - m, 8 | d + n - m
+	#: join [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 0 <= m <= n, 8 | s + n - m, 8 | d + n - m
 	addi	a4, zero, 8             # 9c: 00800713
 	bltu	a3, a4, .Lmemccpy_10    # a0: f6e6e8e3
 .Lpcrel_a4:

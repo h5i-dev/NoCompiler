@@ -363,6 +363,63 @@ Totals after batch 3, 29 functions compiled with the pinned flags: **18 accepted
 (6 `cfg`/S2, 2 `profile` function pointers, 1 `loop-inv` strlen, 1 `call-sig` a64l→strchr,
 1 `static-data` writable). malloc/free external.
 
+### Stage 4: natural loops (U's P1, `--loops natural`) (2026-11-23T18:38Z)
+
+Checker at origin/typed b8382418. U implemented finding 1 as an opt-in (decision P1, 433f5515).
+`CHECK_FLAGS="--loops natural" scripts/musl-trial/check.sh` runs it. Default-mode verdicts
+(the corpus `#! expect` lines) are unchanged.
+
+My annotations had been written for S2, which stopped these files before any typing rule. Under
+natural loops the checker reached the parts I had left unannotated, so I completed them. All the
+changes are annotations or signatures, the instructions are unchanged (verify.sh), and every
+change is listed here:
+- `inv` without `decreases` at backward targets that are not loops → `join` (the mechanical
+  change announced under finding 1): memchr, memchr-ic, memccpy, memccpy-ic, memmove, stpncpy.
+- Missing `join`s added where two paths meet with different registers: memmove 0x10c/0x138,
+  stpncpy 0xec, memccpy-x 0x10/0x14/0x84/0x94, stpncpy-x 0x1c/0x20/0x8c/0x104/0x108, memcpy and
+  memcpy-x at all tail blocks. An invariant made too strict was relaxed (stpncpy 0xf0: on the
+  `n = 0` path `s0 = d`). Facts the loop needs were added (memmove: `8 ∣ s − d`; stpncpy-x: `a4`).
+- memcpy and memcpy-x: the three misaligned loops are now annotated. Case k (`d ≡ k mod 4`)
+  keeps the source pointer 16 − k bytes ahead of the byte position:
+  `inv [j] a1: int(s + n − j + 16 − k), …, where 20 − k ≤ j ≤ n, 4 ∣ s + n − j + k, 4 ∣ d + n − j`.
+  The tails test bits 16/8/4/2/1 of `a2` without changing it. Each tail join says how much `r` is
+  left, with `2^k ∣ j − r`.
+- Signatures: `a2: u64(n)` (C `size_t`) for memcpy, memcpy-x and stpncpy-x. Without it,
+  `int(n)` with `d ↦ bytes[n]` allows `n = 2^64` (`d = 0`), and the `bltu`/`sltu` facts do not
+  bound `n` (the same corner as memchr-x in stage 2).
+- **memmove: the checker found a real precondition.** musl's fast-path test
+  `(uintptr_t)s - (uintptr_t)d - n <= -2*n` implies the two ranges are disjoint only if
+  `n < 2^63`. For larger `n` it sends overlapping ranges to memcpy. An exhaustive search with
+  2^6 in place of 2^64 finds 649,264 counterexamples, all with `n > 2^5`, and none among
+  10,029,182 cases with `n < 2^5`. The signature now says `0 ≤ n < 2^63` (objects are at most
+  `PTRDIFF_MAX` bytes, which musl assumes).
+
+| function | default (S2 intervals) | `--loops natural` |
+|----------|------------------------|-------------------|
+| memcpy | reject `cfg` | **accept** (368 queries, 0.2–0.35 s) |
+| stpncpy | reject `cfg` | **accept** (97 q, 0.1 s) |
+| memcpy-x / memccpy-x / stpncpy-x | reject `cfg` | **accept** (370 / 73 / 88 q) |
+| memchr, memchr-ic, memchr-x | reject `cfg` / `loop-inv` | reject `loop-inv`: `8 ∣ p` at the word loop, finding 7 (path fact) |
+| memccpy, memccpy-ic | reject `cfg` | reject `loop-inv`: the branch-free loop test `sltu zero, (xor a7, a5)` means `a7 ≠ a5`, and no rule gives that |
+| memmove | reject `cfg` | reject `join` at 0x170: the procedure answers **unknown** (budget, ledger `verdict: unknown`) on a goal that is literally one of the hypotheses |
+| fwrite | reject `cfg` | reject `call-cap`: `size·nmemb` (finding 8) |
+| all others | unchanged | unchanged |
+
+**With natural loops, 20 of the 29 compiled functions are accepted as compiled** (default: 18).
+Every remaining rejection has a named cause: path facts at a join (memchr), `xor`+`sltu`
+inequality (memccpy), solver budget (memmove), non-linear length (fwrite), function pointers
+(__fwritex, bsearch), NUL-terminated contracts (strlen, a64l), writable static data (l64a).
+
+Asks for U from this stage:
+1. `sltu rd, zero, x` where `x = xor a, b` was remembered: `rd = 1 ⇔ a ≢ b (mod 2^64)` (I29 at
+   full width). This would unblock memccpy and memccpy-ic.
+2. Before building the DNF, drop the hypotheses that share no variables with the goal, and
+   check whether the goal is syntactically a hypothesis. The query at memmove 0x170 is `Unknown`
+   with the goal among the facts. Reproduce with
+   `nocompiler-typed check examples/musl/memmove.s --loops natural --ledger out.json`.
+3. A corpus expectation per loop mode (e.g. `#! expect-natural NAME: …`), so these results are
+   tested too. Until then they live in this section and in check.sh.
+
 ## Files
 
 - `scripts/musl-trial/build.sh` — pinned build (musl tree digest, clang 15.0.7, flags);

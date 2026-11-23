@@ -10,10 +10,12 @@
 #:   borrow s |-> bytes[n] ro
 #:   out    a0: int(d)
 #:   stack  0
+# n < 2^63 (PTRDIFF_MAX) is needed: for larger n, the test at 0x14 lets overlapping ranges
+# through to memcpy (found by the checker; confirmed by exhaustive search with 2^6 for 2^64).
 #: fn memmove [d, s, n, b, len]
 #:   in     a0: int(d), a1: int(s), a2: int(n)
 #:   borrow b |-> bytes[len] rw
-#:   where  b <= d, d + n <= b + len, b <= s, s + n <= b + len
+#:   where  0 <= n < 2^63, b <= d, d + n <= b + len, b <= s, s + n <= b + len
 #:   out    a0: int(d)
 #:   stack  0
 	.section .text.memmove,"ax",@progbits
@@ -33,8 +35,8 @@ memmove:
 	beq	a3, zero, .Lmemmove_84  # 24: 06068063
 	addi	a3, a0, 0               # 28: 00050693
 .Lmemmove_2c:
-	#: inv [m] a1: int(s + n - m), a3: int(d + n - m), a2: int(m) where 0 <= m <= n
-	# 0x2c, 0x5c, 0x80 are backward-edge targets only because of block layout (no decreases).
+	#: join [m] a1: int(s + n - m), a3: int(d + n - m), a2: int(m) where 0 <= m <= n
+	# 0x2c, 0x5c, 0x80 are backward-edge targets only because of block layout: joins, not loops.
 	beq	a2, zero, .Lmemmove_80  # 2c: 04060a63
 .Lmemmove_30:
 	#: inv [m] a1: int(s + n - m), a3: int(d + n - m), a2: int(m) where 1 <= m <= n decreases m
@@ -51,7 +53,7 @@ memmove:
 .Lmemmove_58:
 	beq	a3, zero, .Lmemmove_c8  # 58: 06068863
 .Lmemmove_5c:
-	#: inv [m] a1: int(s), a2: int(m) where 0 <= m <= n
+	#: join [m] a1: int(s), a2: int(m) where 0 <= m <= n
 	beq	a2, zero, .Lmemmove_80  # 5c: 02060263
 	addi	a1, a1, -1              # 60: fff58593
 .Lmemmove_64:
@@ -64,7 +66,7 @@ memmove:
 	addi	a2, a4, 0               # 78: 00070613
 	bne	a4, zero, .Lmemmove_64  # 7c: fe0714e3
 .Lmemmove_80:
-	#: inv a0: int(d)
+	#: join a0: int(d)
 	jalr	zero, 0(ra)             # 80: 00008067
 .Lmemmove_84:
 	andi	a3, a0, 7               # 84: 00757693
@@ -72,7 +74,7 @@ memmove:
 	addi	a4, zero, 0             # 8c: 00000713
 	addi	a3, a0, 1               # 90: 00150693
 .Lmemmove_94:
-	#: inv [i] a4: int(i), a3: int(d + 1) where 0 <= i <= n decreases n - i
+	#: inv [i] a4: int(i), a3: int(d + 1) where 0 <= i <= n, 8 | s - d decreases n - i
 	beq	a2, a4, .Lmemmove_80    # 94: fee606e3
 	add	a5, a1, a4              # 98: 00e587b3
 	lb	a5, 0(a5)               # 9c: 00078783
@@ -93,7 +95,7 @@ memmove:
 	addi	a4, a0, -1              # d4: fff50713
 	addi	a5, a1, -1              # d8: fff58793
 .Lmemmove_dc:
-	#: inv [m] a2: int(m), a4: int(d - 1), a5: int(s - 1) where 0 <= m <= n decreases m
+	#: inv [m] a2: int(m), a4: int(d - 1), a5: int(s - 1) where 0 <= m <= n, 8 | s - d decreases m
 	beq	a2, zero, .Lmemmove_80  # dc: fa0602e3
 	addi	a3, a2, -1              # e0: fff60693
 	add	a6, a5, a2              # e4: 00c78833
@@ -108,6 +110,7 @@ memmove:
 .Lmemmove_108:
 	addi	a3, a0, 0               # 108: 00050693
 .Lmemmove_10c:
+	#: join [m] a1: int(s + n - m), a3: int(d + n - m), a2: int(m) where 0 <= m <= n, 8 | s + n - m, 8 | d + n - m
 	addi	a4, zero, 8             # 10c: 00800713
 	bltu	a2, a4, .Lmemmove_2c    # 110: f0e66ee3
 	addi	a4, zero, 7             # 114: 00700713
@@ -123,6 +126,7 @@ memmove:
 .Lmemmove_134:
 	addi	a3, a2, 0               # 134: 00060693
 .Lmemmove_138:
+	#: join [m] a3: int(m) where 0 <= m <= n, 8 | s + m, 8 | d + m
 	addi	a2, zero, 8             # 138: 00800613
 	bltu	a3, a2, .Lmemmove_16c   # 13c: 02c6e863
 	addi	a4, a1, -8              # 140: ff858713

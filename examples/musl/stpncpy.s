@@ -29,8 +29,8 @@ __stpncpy:
 	andi	a0, a0, 7               # 14: 00757513
 	beq	a0, zero, .L__stpncpy_40# 18: 02050463
 .L__stpncpy_1c:
-	#: inv [m] s0: int(d + n - m), a1: int(s + n - m), a2: int(m) where 0 <= m <= n
-	# 0x1c and 0x8c are backward-edge targets only because of block layout (no decreases).
+	#: join [m] s0: int(d + n - m), a1: int(s + n - m), a2: int(m) where 0 <= m <= n
+	# 0x1c and 0x8c are backward-edge targets only because of block layout: joins, not loops.
 	beq	a2, zero, .L__stpncpy_f0# 1c: 0c060a63
 .L__stpncpy_20:
 	#: inv [m] s0: int(d + n - m), a1: int(s + n - m), a2: int(m) where 1 <= m <= n decreases m
@@ -65,7 +65,7 @@ __stpncpy:
 	bne	a4, zero, .L__stpncpy_58# 84: fc071ae3
 	beq	a3, zero, .L__stpncpy_ec# 88: 06068263
 .L__stpncpy_8c:
-	#: inv [m] s0: int(d + n - m), a1: int(s + n - m), a2: int(m) where 1 <= m <= n, 8 | s + n - m, 8 | d + n - m
+	#: join [m] s0: int(d + n - m), a1: int(s + n - m), a2: int(m) where 1 <= m <= n, 8 | s + n - m, 8 | d + n - m
 	lbu	a0, 0(a1)               # 8c: 0005c503
 	beq	a0, zero, .L__stpncpy_f0# 90: 06050063
 	addi	a0, zero, 8             # 94: 00800513
@@ -96,9 +96,10 @@ __stpncpy:
 	sltu	a3, zero, a2            # e4: 00c036b3
 	bne	a3, zero, .L__stpncpy_8c# e8: fa0692e3
 .L__stpncpy_ec:
+	#: join [p] s0: int(p) where d <= p <= d + n
 	addi	a2, zero, 0             # ec: 00000613
 .L__stpncpy_f0:
-	#: join [m] s0: int(d + n - m), a2: int(m) where 0 <= m <= n
+	#: join [p, m] s0: int(p), a2: int(m) where d <= p, 0 <= m, p + m <= d + n
 	addi	a0, s0, 0               # f0: 00040513
 	addi	a1, zero, 0             # f4: 00000593
 	call	memset                  # f8: 00000097 000080e7

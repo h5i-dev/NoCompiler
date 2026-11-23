@@ -21,8 +21,10 @@ memccpy:
 	andi	a2, a2, 255             # 8: 0ff67613
 	beq	a4, zero, .Lmemccpy_3c  # c: 02070863
 .Lmemccpy_10:
+	#: join [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 0 <= m <= n
 	beq	a3, zero, .Lmemccpy_34  # 10: 02068263
 .Lmemccpy_14:
+	#: join [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 1 <= m <= n
 	addi	a0, a0, 1               # 14: 00150513
 .Lmemccpy_18:
 	#: inv [m] a0: int(d + n - m + 1), a1: int(s + n - m), a3: int(m) where 1 <= m <= n decreases m
@@ -58,11 +60,13 @@ memccpy:
 	beq	t0, zero, .Lmemccpy_84  # 7c: 00028463
 	bne	a5, a6, .Lmemccpy_58    # 80: fd079ce3
 .Lmemccpy_84:
+	#: join [i, r] a6: int(i), a7: int(i + 1), t0: int(r) where 0 <= i <= n - 1, 0 <= r <= 7, ((r = 0 && 8 | s + i + 1 && 8 | d + i + 1) || (r != 0 && i = n - 1))
 	sltu	a4, zero, t0            # 84: 00503733
 	add	a1, a1, a7              # 88: 011585b3
 	add	a0, a0, a7              # 8c: 01150533
 	sub	a3, a3, a7              # 90: 411686b3
 .Lmemccpy_94:
+	#: join [m, b] a0: int(d + n - m), a1: int(s + n - m), a3: int(m), a4: int(b) where 0 <= m <= n, ((b = 0 && 8 | s + n - m && 8 | d + n - m) || (b = 1 && m = 0))
 	beq	a4, zero, .Lmemccpy_a4  # 94: 00070863
 	beq	a3, zero, .Lmemccpy_34  # 98: f8068ee3
 	addi	a0, a0, 1               # 9c: 00150513

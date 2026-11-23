@@ -17,15 +17,17 @@
 #:   stack  16
 #:   frame  16 slots 0, 8
 [at .L__stpncpy_1c]
-#: inv [m] s0: int(d + n - m), a1: int(s + n - m), a2: int(m) where 0 <= m <= n
-# 0x1c and 0x8c are backward-edge targets only because of block layout (no decreases).
+#: join [m] s0: int(d + n - m), a1: int(s + n - m), a2: int(m) where 0 <= m <= n
+# 0x1c and 0x8c are backward-edge targets only because of block layout: joins, not loops.
 [at .L__stpncpy_20]
 #: inv [m] s0: int(d + n - m), a1: int(s + n - m), a2: int(m) where 1 <= m <= n decreases m
 [at .L__stpncpy_58]
 #: inv [m] s0: int(d + n - m), a1: int(s + n - m), a0: int(s + n - m + 1), a2: int(m) where 1 <= m <= n decreases m
 [at .L__stpncpy_8c]
-#: inv [m] s0: int(d + n - m), a1: int(s + n - m), a2: int(m) where 1 <= m <= n, 8 | s + n - m, 8 | d + n - m
+#: join [m] s0: int(d + n - m), a1: int(s + n - m), a2: int(m) where 1 <= m <= n, 8 | s + n - m, 8 | d + n - m
 [at .L__stpncpy_b8]
 #: inv [m] s0: int(d + n - m), a1: int(s + n - m), a2: int(m) where 8 <= m <= n, 8 | s + n - m, 8 | d + n - m decreases m
 [at .L__stpncpy_f0]
-#: join [m] s0: int(d + n - m), a2: int(m) where 0 <= m <= n
+#: join [p, m] s0: int(p), a2: int(m) where d <= p, 0 <= m, p + m <= d + n
+[at .L__stpncpy_ec]
+#: join [p] s0: int(p) where d <= p <= d + n

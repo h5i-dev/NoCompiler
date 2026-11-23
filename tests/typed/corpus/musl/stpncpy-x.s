@@ -11,7 +11,7 @@
 #:   out    a0: int(s)
 #:   stack  0
 #: fn __stpncpy [d, s, n]
-#:   in     a0: int(d), a1: int(s), a2: int(n)
+#:   in     a0: int(d), a1: int(s), a2: u64(n)
 #:   borrow d |-> bytes[n] rw
 #:   borrow s |-> bytes[n] ro
 #:   out    a0: int
@@ -30,8 +30,10 @@ __stpncpy:
 	andi	a0, a0, 7               # 14: 00757513
 	beq	a0, zero, .L__stpncpy_44# 18: 02050663
 .L__stpncpy_1c:
+	#: join [m] s0: int(d + n - m), a1: int(s + n - m), a2: int(m) where 0 <= m <= n
 	beq	a2, zero, .L__stpncpy_104# 1c: 0e060463
 .L__stpncpy_20:
+	#: join [m] s0: int(d + n - m), a1: int(s + n - m), a2: int(m) where 1 <= m <= n
 	addi	a3, a2, 0               # 20: 00060693
 .L__stpncpy_24:
 	#: inv [m] s0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 1 <= m <= n decreases m
@@ -51,7 +53,7 @@ __stpncpy:
 	addi	a4, a1, 1               # 54: 00158713
 	addi	a5, zero, 1             # 58: 00100793
 .L__stpncpy_5c:
-	#: inv [m] s0: int(d + n - m), a1: int(s + n - m), a2: int(m) where 1 <= m <= n decreases m
+	#: inv [m] s0: int(d + n - m), a1: int(s + n - m), a2: int(m), a4: int(s + n - m + 1) where 1 <= m <= n decreases m
 	lbu	a0, 0(a1)               # 5c: 0005c503
 	addi	a3, a2, 0               # 60: 00060693
 	sb	a0, 0(s0)               # 64: 00a40023
@@ -65,6 +67,7 @@ __stpncpy:
 	addi	a4, a4, 1               # 84: 00170713
 	bne	a3, a5, .L__stpncpy_5c  # 88: fcf69ae3
 .L__stpncpy_8c:
+	#: join [m, b] s0: int(d + n - m), a1: int(s + n - m), a2: int(m), a0: int(b) where 0 <= m <= n, ((b = 0 && m = 0) || (b = 1 && 1 <= m && 8 | s + n - m && 8 | d + n - m))
 	beq	a0, zero, .L__stpncpy_104# 8c: 06050c63
 	lbu	a0, 0(a1)               # 90: 0005c503
 	beq	a0, zero, .L__stpncpy_130# 94: 08050e63
@@ -98,8 +101,10 @@ __stpncpy:
 	bltu	a4, a2, .L__stpncpy_d8  # fc: fcc76ee3
 	jal	zero, .L__stpncpy_1c    # 100: f1dff06f
 .L__stpncpy_104:
+	#: join [p] s0: int(p) where d <= p <= d + n
 	addi	a3, zero, 0             # 104: 00000693
 .L__stpncpy_108:
+	#: join [p, m] s0: int(p), a3: int(m) where d <= p, 0 <= m, p + m <= d + n
 	addi	a0, s0, 0               # 108: 00040513
 	addi	a1, zero, 0             # 10c: 00000593
 	addi	a2, a3, 0               # 110: 00068613

@@ -11,18 +11,18 @@
 #:   out    a0: int
 #:   stack  0
 [at .Lmemccpy_10]
-#: inv [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 0 <= m <= n
+#: join [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 0 <= m <= n
 # 0x10, 0x14, 0x34, 0x9c are targets of backward edges only because of block layout; they are
 # not loops, so no decreases clause is given.
 [at .Lmemccpy_14]
-#: inv [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 1 <= m <= n
+#: join [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 1 <= m <= n
 [at .Lmemccpy_18]
 #: inv [m] a0: int(d + n - m + 1), a1: int(s + n - m), a3: int(m) where 1 <= m <= n decreases m
 [at .Lmemccpy_34]
-#: inv a0: int
+#: join a0: int
 [at .Lmemccpy_58]
 #: inv [i] a5: int(i), a6: int(s + 1), a7: int(n - 1) where 0 <= i <= n - 1 decreases n - i
 [at .Lmemccpy_9c]
-#: inv [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 0 <= m <= n, 8 | s + n - m, 8 | d + n - m
+#: join [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 0 <= m <= n, 8 | s + n - m, 8 | d + n - m
 [at .Lmemccpy_d0]
 #: inv [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 8 <= m <= n, 8 | s + n - m, 8 | d + n - m decreases m

@@ -17,3 +17,11 @@
 #: inv [i] a7: int(i) where 0 <= i <= n - 1 decreases n - i
 [at .Lmemccpy_100]
 #: inv [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 8 <= m <= n, 8 | s + n - m, 8 | d + n - m decreases m
+[at .Lmemccpy_10]
+#: join [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 0 <= m <= n
+[at .Lmemccpy_14]
+#: join [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 1 <= m <= n
+[at .Lmemccpy_94]
+#: join [m, b] a0: int(d + n - m), a1: int(s + n - m), a3: int(m), a4: int(b) where 0 <= m <= n, ((b = 0 && 8 | s + n - m && 8 | d + n - m) || (b = 1 && m = 0))
+[at .Lmemccpy_84]
+#: join [i, r] a6: int(i), a7: int(i + 1), t0: int(r) where 0 <= i <= n - 1, 0 <= r <= 7, ((r = 0 && 8 | s + i + 1 && 8 | d + i + 1) || (r != 0 && i = n - 1))

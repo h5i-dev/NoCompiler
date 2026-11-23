@@ -36,7 +36,7 @@ memchr:
 	addi	a1, zero, 0             # 44: 00000593
 	bne	a4, zero, .Lmemchr_60   # 48: 00071c63
 .Lmemchr_4c:
-	#: inv a1: int
+	#: join a1: int
 	# 0x4c is a return block, not a loop: no measure exists, so there is no decreases clause.
 	addi	a0, a1, 0               # 4c: 00058513
 	jalr	zero, 0(ra)             # 50: 00008067

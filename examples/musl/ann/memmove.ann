@@ -10,28 +10,34 @@
 #:   borrow s |-> bytes[n] ro
 #:   out    a0: int(d)
 #:   stack  0
+# n < 2^63 (PTRDIFF_MAX) is needed: for larger n, the test at 0x14 lets overlapping ranges
+# through to memcpy (found by the checker; confirmed by exhaustive search with 2^6 for 2^64).
 #: fn memmove [d, s, n, b, len]
 #:   in     a0: int(d), a1: int(s), a2: int(n)
 #:   borrow b |-> bytes[len] rw
-#:   where  b <= d, d + n <= b + len, b <= s, s + n <= b + len
+#:   where  0 <= n < 2^63, b <= d, d + n <= b + len, b <= s, s + n <= b + len
 #:   out    a0: int(d)
 #:   stack  0
 [at .Lmemmove_2c]
-#: inv [m] a1: int(s + n - m), a3: int(d + n - m), a2: int(m) where 0 <= m <= n
-# 0x2c, 0x5c, 0x80 are backward-edge targets only because of block layout (no decreases).
+#: join [m] a1: int(s + n - m), a3: int(d + n - m), a2: int(m) where 0 <= m <= n
+# 0x2c, 0x5c, 0x80 are backward-edge targets only because of block layout: joins, not loops.
 [at .Lmemmove_30]
 #: inv [m] a1: int(s + n - m), a3: int(d + n - m), a2: int(m) where 1 <= m <= n decreases m
 [at .Lmemmove_5c]
-#: inv [m] a1: int(s), a2: int(m) where 0 <= m <= n
+#: join [m] a1: int(s), a2: int(m) where 0 <= m <= n
 [at .Lmemmove_64]
 #: inv [m] a1: int(s - 1), a2: int(m) where 1 <= m <= n decreases m
 [at .Lmemmove_80]
-#: inv a0: int(d)
+#: join a0: int(d)
 [at .Lmemmove_94]
-#: inv [i] a4: int(i), a3: int(d + 1) where 0 <= i <= n decreases n - i
+#: inv [i] a4: int(i), a3: int(d + 1) where 0 <= i <= n, 8 | s - d decreases n - i
 [at .Lmemmove_dc]
-#: inv [m] a2: int(m), a4: int(d - 1), a5: int(s - 1) where 0 <= m <= n decreases m
+#: inv [m] a2: int(m), a4: int(d - 1), a5: int(s - 1) where 0 <= m <= n, 8 | s - d decreases m
 [at .Lmemmove_118]
 #: inv [m] a1: int(s + n - m), a3: int(d + n - m), a2: int(m) where 8 <= m <= n, 8 | s + n - m, 8 | d + n - m decreases m
 [at .Lmemmove_14c]
 #: inv [m] a3: int(m), a4: int(s - 8), a5: int(d - 8) where 8 <= m <= n, 8 | s + m, 8 | d + m decreases m
+[at .Lmemmove_10c]
+#: join [m] a1: int(s + n - m), a3: int(d + n - m), a2: int(m) where 0 <= m <= n, 8 | s + n - m, 8 | d + n - m
+[at .Lmemmove_138]
+#: join [m] a3: int(m) where 0 <= m <= n, 8 | s + m, 8 | d + m

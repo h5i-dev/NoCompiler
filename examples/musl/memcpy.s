@@ -2,10 +2,10 @@
 # Instructions as compiled, unchanged (scripts/musl-trial/verify.sh checks the bytes).
 # Annotations are the lines that start with hash-colon (provisional syntax of docs/Tab 1.md; see docs/typed/musl-trial.md).
 # Predicted (fixed before compiling): reject (v0 rules: andi n, 2^k tails)
-# Expected now (after reading the compiled code): reject. (1) As predicted, the tails 'if (n&8)', 'if (n&4)', ... are andi a1, a2, 8 + beq (0x15c, 0x17c, ...): x != 0 does not give k >= 8, so lw 4(a4) at 0x168 fails. (2) S2: 33 violations (11 backward-edge targets; the misaligned cases share tail blocks reached backwards). (3) The head loop test '(uintptr_t)s % 4 && n' is branch-free (0x0-0x10, 0x30-0x4c). Only the signature, the head loop, the aligned 16-byte loop and the joins around it are annotated; the misaligned paths 0x58-0x11c, 0x198-0x410 are not, since (1)-(3) already reject the file.
+# Expected now (after reading the compiled code): reject. (1) As predicted, the tails 'if (n&8)', 'if (n&4)', ... are andi a1, a2, 8 + beq (0x15c, 0x17c, ...): x != 0 does not give k >= 8, so lw 4(a4) at 0x168 fails. (2) S2: 33 violations (11 backward-edge targets; the misaligned cases share tail blocks reached backwards). (3) The head loop test '(uintptr_t)s % 4 && n' is branch-free (0x0-0x10, 0x30-0x4c). Annotated in full (added when the checker got --loops natural; same scheme as memcpy-x.ann): head loop, aligned loop, the three misaligned loops, and a join at every tail block.
 #! expect memcpy: reject cfg
 #: fn memcpy [d, s, n]
-#:   in     a0: int(d), a1: int(s), a2: int(n)
+#:   in     a0: int(d), a1: int(s), a2: u64(n)
 #:   borrow d |-> bytes[n] rw
 #:   borrow s |-> bytes[n] ro
 #:   out    a0: int(d)
@@ -40,6 +40,7 @@ memcpy:
 	andi	a1, a3, 3               # 50: 0036f593
 	beq	a1, zero, .Lmemcpy_120  # 54: 0c058663
 .Lmemcpy_58:
+	#: join [m, x] a4: int(s + n - m), a3: int(d + n - m), a2: int(m), a1: int(x) where 0 <= m <= n, 1 <= x <= 3, 4 | d + n - m - x, (m = 0 || 4 | s + n - m)
 	addi	a5, zero, 32            # 58: 02000793
 	bltu	a2, a5, .Lmemcpy_214    # 5c: 1af66c63
 	addi	a5, zero, 3             # 60: 00300793
@@ -59,6 +60,7 @@ memcpy:
 	addi	a1, a4, 16              # 98: 01070593
 	addi	a4, zero, 16            # 9c: 01000713
 .Lmemcpy_a0:
+	#: inv [j] a1: int(s + n - j + 13), a3: int(d + n - j), a2: int(j) where 17 <= j <= n, 4 | s + n - j + 1, 4 | d + n - j decreases j
 	lw	a6, -12(a1)             # a0: ff45a803
 	srliw	a5, a5, 24              # a4: 0187d79b
 	slli	a7, a6, 8               # a8: 00881893
@@ -122,6 +124,7 @@ memcpy:
 	addi	a3, a3, 8               # 174: 00868693
 	addi	a4, a4, 8               # 178: 00870713
 .Lmemcpy_17c:
+	#: join [j, r] a2: int(j), a4: int(s + n - r), a3: int(d + n - r) where 0 <= r <= 7, 8 | j - r, 0 <= j <= 15, j <= n, 4 | d + n - r, (j = 0 || 4 | s + n - r)
 	andi	a1, a2, 4               # 17c: 00467593
 	beq	a1, zero, .Lmemcpy_258  # 180: 0c058c63
 	lw	a1, 0(a4)               # 184: 00072583
@@ -137,6 +140,7 @@ memcpy:
 	addi	a1, a4, 16              # 1a8: 01070593
 	addi	a4, zero, 18            # 1ac: 01200713
 .Lmemcpy_1b0:
+	#: inv [j] a1: int(s + n - j + 15), a3: int(d + n - j), a2: int(j) where 19 <= j <= n, 4 | s + n - j + 3, 4 | d + n - j decreases j
 	lw	a6, -12(a1)             # 1b0: ff45a803
 	srliw	a5, a5, 8               # 1b4: 0087d79b
 	slli	a7, a6, 24              # 1b8: 01881893
@@ -163,15 +167,19 @@ memcpy:
 	bltu	a4, a2, .Lmemcpy_1b0    # 20c: fac762e3
 	addi	a4, a1, -15             # 210: ff158713
 .Lmemcpy_214:
+	#: join [j] a2: int(j), a4: int(s + n - j), a3: int(d + n - j) where 0 <= j <= 31, j <= n
 	andi	a1, a2, 16              # 214: 01067593
 	bne	a1, zero, .Lmemcpy_328  # 218: 10059863
 .Lmemcpy_21c:
+	#: join [j, r] a2: int(j), a4: int(s + n - r), a3: int(d + n - r) where 0 <= r <= 15, 16 | j - r, 0 <= j <= 31, j <= n
 	andi	a1, a2, 8               # 21c: 00867593
 	bne	a1, zero, .Lmemcpy_3bc  # 220: 18059e63
 .Lmemcpy_224:
+	#: join [j, r] a2: int(j), a4: int(s + n - r), a3: int(d + n - r) where 0 <= r <= 7, 8 | j - r, 0 <= j <= 31, j <= n
 	andi	a1, a2, 4               # 224: 00467593
 	beq	a1, zero, .Lmemcpy_258  # 228: 02058863
 .Lmemcpy_22c:
+	#: join [j, r] a2: int(j), a4: int(s + n - r), a3: int(d + n - r) where 4 <= r <= 7, 8 | j - r, 0 <= j <= 31, j <= n
 	lb	a1, 0(a4)               # 22c: 00070583
 	lb	a5, 1(a4)               # 230: 00170783
 	lb	a6, 2(a4)               # 234: 00270803
@@ -184,6 +192,7 @@ memcpy:
 	sb	a1, 3(a3)               # 250: 00b681a3
 	addi	a3, a5, 0               # 254: 00078693
 .Lmemcpy_258:
+	#: join [j, r] a2: int(j), a4: int(s + n - r), a3: int(d + n - r) where 0 <= r <= 3, 4 | j - r, 0 <= j <= 31, j <= n
 	andi	a1, a2, 2               # 258: 00267593
 	bne	a1, zero, .Lmemcpy_26c  # 25c: 00059863
 	andi	a1, a2, 1               # 260: 00167593
@@ -191,6 +200,7 @@ memcpy:
 .Lmemcpy_268:
 	jalr	zero, 0(ra)             # 268: 00008067
 .Lmemcpy_26c:
+	#: join [j, r] a2: int(j), a4: int(s + n - r), a3: int(d + n - r) where 2 <= r <= 3, 4 | j - r, 0 <= j <= 31, j <= n
 	lb	a1, 0(a4)               # 26c: 00070583
 	lb	a5, 1(a4)               # 270: 00170783
 	sb	a1, 0(a3)               # 274: 00b68023
@@ -201,6 +211,7 @@ memcpy:
 	andi	a1, a2, 1               # 288: 00167593
 	beq	a1, zero, .Lmemcpy_268  # 28c: fc058ee3
 .Lmemcpy_290:
+	#: join a4: int(s + n - 1), a3: int(d + n - 1) where 1 <= n
 	lb	a1, 0(a4)               # 290: 00070583
 	sb	a1, 0(a3)               # 294: 00b68023
 	jalr	zero, 0(ra)             # 298: 00008067
@@ -214,6 +225,7 @@ memcpy:
 	addi	a1, a4, 16              # 2b4: 01070593
 	addi	a4, zero, 17            # 2b8: 01100713
 .Lmemcpy_2bc:
+	#: inv [j] a1: int(s + n - j + 14), a3: int(d + n - j), a2: int(j) where 18 <= j <= n, 4 | s + n - j + 2, 4 | d + n - j decreases j
 	lw	a6, -12(a1)             # 2bc: ff45a803
 	srliw	a5, a5, 16              # 2c0: 0107d79b
 	slli	a7, a6, 16              # 2c4: 01081893
@@ -242,6 +254,7 @@ memcpy:
 	andi	a1, a2, 16              # 320: 01067593
 	beq	a1, zero, .Lmemcpy_21c  # 324: ee058ce3
 .Lmemcpy_328:
+	#: join [j] a2: int(j), a4: int(s + n - j), a3: int(d + n - j) where 16 <= j <= 31, j <= n
 	lb	a1, 0(a4)               # 328: 00070583
 	lb	a5, 1(a4)               # 32c: 00170783
 	lb	a6, 2(a4)               # 330: 00270803
@@ -280,6 +293,7 @@ memcpy:
 	andi	a1, a2, 8               # 3b4: 00867593
 	beq	a1, zero, .Lmemcpy_224  # 3b8: e60586e3
 .Lmemcpy_3bc:
+	#: join [j, r] a2: int(j), a4: int(s + n - r), a3: int(d + n - r) where 8 <= r <= 15, 16 | j - r, 0 <= j <= 31, j <= n
 	lb	a1, 0(a4)               # 3bc: 00070583
 	lb	a5, 1(a4)               # 3c0: 00170783
 	lb	a6, 2(a4)               # 3c4: 00270803
