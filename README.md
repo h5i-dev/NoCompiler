@@ -58,7 +58,7 @@ The syntax is provisional.
 | Lean: type language and ⟦σ⟧, total version | done ([Typed/Lang.lean](lean/NoCompiler/Typed/Lang.lean), [Typed/Sem.lean](lean/NoCompiler/Typed/Sem.lean)) |
 | Rust checker: parser, typing rules, Presburger decision, ledger | in progress |
 | Lean checker, proved sound against ⟦σ⟧ (theorems A–D) | in progress: Presburger entailment with checked certificates, proved sound ([Typed/Presburger.lean](lean/NoCompiler/Typed/Presburger.lean)); the checker runs on decoded images without calls, frames or syscalls yet ([Typed/Check.lean](lean/NoCompiler/Typed/Check.lean)); its soundness is not proved yet |
-| Trial set: musl 1.2.5 functions as compiled, annotated, with verdicts predicted in advance | 15 functions compiled, annotated and byte-verified; qemu-sanity-checked; verdicts predicted, no checker run yet ([musl-trial.md](docs/typed/musl-trial.md)) |
+| Trial set: musl 1.2.5 functions as compiled, annotated, with verdicts predicted in advance | 21 functions (+3 flag variants) compiled, annotated and byte-verified; qemu-sanity-checked; verdicts predicted, no checker run yet ([musl-trial.md](docs/typed/musl-trial.md)) |
 | `partial` functions; pointer structures of unbounded size (lists, trees) | not started; unsafe for now |
 
 Decisions taken where the design is silent are in [docs/typed/decisions.md](docs/typed/decisions.md).
