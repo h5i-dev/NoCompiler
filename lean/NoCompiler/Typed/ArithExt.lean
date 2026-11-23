@@ -167,6 +167,15 @@ def arith2Sh (S : STy) (i : Instr) : Option STy :=
         (S.setReg rd (some (.var x))).addFacts
           (lowFacts (x + 1) e 32 ++ quotFacts x (.var (x + 1)) (2 ^ sh.toNat))
     else none
+  -- srlw by a constant register: as srliw with the amount c mod 32 (the Rust checker)
+  | .rwop .srlw rd a b =>
+    match S.reg a, S.reg b with
+    | some e, some ⟨c, []⟩ =>
+      if 1 ≤ (c % 32).toNat then
+        some ((S.setReg rd (some (.var x))).addFacts
+          (lowFacts (x + 1) e 32 ++ quotFacts x (.var (x + 1)) (2 ^ (c % 32).toNat)))
+      else none
+    | _, _ => none
   | _ => none
 
 /-- The rules of decisions.md I23 not in `arith`, by class. `x = f.freshAt S` is the result,

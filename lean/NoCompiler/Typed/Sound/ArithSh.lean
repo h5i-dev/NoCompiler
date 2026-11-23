@@ -7,6 +7,48 @@ namespace NoCompiler.Typed
 
 variable {f : Fn} {T : TokEnv} {P : Perm} {s0 : State} {ι0 : Val}
 
+/-- `srliw` (and `srlw` by a constant) by `n ≥ 1`: the low word divided by `2^n`, below `2^31`,
+    so the sign extension keeps it (I35). -/
+theorem Fn.srlw_core (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S : STy} {s : State} {ι : Val}
+    {F : TokFp} (hI : Inv f T P s0 ι0 S s ι F) {rd : Reg} (hrd : rd ≠ 2) {rs : Reg} {e : IExpr}
+    (hr : S.reg rs = some e) {n : Nat} (hn : 1 ≤ n) :
+    ∃ ι', (∀ y : Nat, y < f.fresh → ι' y = ι y) ∧
+      Inv f T P s0 ι0 ((S.setReg rd (some (.var (f.freshAt S)))).addFacts
+        (Fn.lowFacts (f.freshAt S + 1) e 32 ++ Fn.quotFacts (f.freshAt S) (.var (f.freshAt S + 1)) (2 ^ n)))
+        ((s.setReg rd (evalShW .srliw (s.reg rs) n)).setPc (s.pc + 4)) ι' F ∧
+      ((s.setReg rd (evalShW .srliw (s.reg rs) n)).setPc (s.pc + 4)).pc = s.pc + 4 := by
+    -- the shifted low word, below 2^31
+    have hy : (((s.reg rs).setWidth 32) >>> n).toNat = (s.reg rs).toNat % 2 ^ 32 / 2 ^ n := by
+      rw [BitVec.toNat_ushiftRight, BitVec.toNat_setWidth, Nat.shiftRight_eq_div_pow]
+    have hylt : (((s.reg rs).setWidth 32) >>> n).toNat < 2 ^ 31 := by
+      rw [hy]
+      have h32 := Nat.mod_lt (s.reg rs).toNat (show 0 < 2 ^ 32 by decide)
+      have hp2 : 2 ≤ 2 ^ n := by
+        calc 2 = 2 ^ 1 := rfl
+          _ ≤ 2 ^ n := Nat.pow_le_pow_right (by decide) hn
+      refine Nat.div_lt_of_lt_mul (Nat.lt_of_lt_of_le h32 ?_)
+      calc 2 ^ 32 = 2 * 2 ^ 31 := by decide
+        _ ≤ 2 ^ n * 2 ^ 31 := Nat.mul_le_mul_right _ hp2
+    have hv : (evalShW .srliw (s.reg rs) n).toInt =
+        (((s.reg rs).toNat % 2 ^ 32 / 2 ^ n : Nat) : Int) := by
+      simp only [evalShW]
+      rw [BitVec.toInt_signExtend_of_le (by omega), BitVec.toInt_eq_toNat_cond, if_pos (by omega), hy]
+    let vs : List Int := [(evalShW .srliw (s.reg rs) n).toInt,
+      (((s.reg rs).toNat % 2 ^ 32 : Nat) : Int)]
+    refine hI.fresh4 hprot hrd vs (.var (f.freshAt S)) _ (evalShW .srliw (s.reg rs) n)
+      (hasInt_toInt _ _ _ (by simp [vs, setFrom_x])) (fun p hp => ?_)
+    simp only [List.mem_append] at hp
+    rcases hp with hp | hp
+    · exact lowFacts_holds (by omega) ((STy.reg_hasInt hI.regs hr).of_eq
+        (Fn.eval_setFrom_old (STy.reg_maxVar' hr) ι vs).symm) (by simp [vs, setFrom_x1]) p hp
+    · refine quotFacts_holds (by have := Nat.two_pow_pos n; exact_mod_cast this) ?_ p hp
+      have e0 : setFrom ι (f.freshAt S) vs (f.freshAt S) = (evalShW .srliw (s.reg rs) n).toInt := by
+        simp [vs, setFrom_x]
+      have e1 : setFrom ι (f.freshAt S) vs (f.freshAt S + 1) = (((s.reg rs).toNat % 2 ^ 32 : Nat) : Int) := by
+        simp [vs, setFrom_x1]
+      rw [IExpr.eval_var, e0, e1, hv, Int.natCast_ediv]
+      norm_cast
+
 theorem Fn.arith2Sh_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' : STy} {s s' : State}
     {ι : Val} {F : TokFp} (hI : Inv f T P s0 ι0 S s ι F) {i : Instr} {rd : Reg}
     (hw : writesReg i = some rd) (hrd : rd ≠ 2) (ha : f.arith2Sh S i = some S')
@@ -21,6 +63,30 @@ theorem Fn.arith2Sh_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S'
         HasInt (setFrom ι (f.freshAt S) vs) (zext32 (s.reg a)) (.var (f.freshAt S)) := by
       intro n vs h; subst h; exact hasInt_toNat _ _ _ (by simp [setFrom_x, zext32_toNat])
     cases op
+    case srlw =>
+      simp only [Fn.arith2Sh] at ha
+      cases h1 : S.reg a with
+      | none => simp [h1] at ha
+      | some e1 =>
+      cases h2 : S.reg b with
+      | none => simp [h1, h2] at ha
+      | some e2 =>
+        obtain ⟨c, ts⟩ := e2
+        cases ts with
+        | cons t ts => simp [h1, h2] at ha
+        | nil =>
+          simp only [h1, h2] at ha
+          split at ha
+          · rename_i hn
+            simp only [Option.some.injEq] at ha; subst ha
+            have hb := toNat_of_lit (STy.reg_hasInt hI.regs h2)
+            have hamt : ((s.reg b).setWidth 32).toNat % 32 = (c % 32).toNat := by
+              rw [BitVec.toNat_setWidth]; omega
+            have hv : evalRW .srlw (s.reg a) (s.reg b) = evalShW .srliw (s.reg a) (c % 32).toNat := by
+              simp only [evalRW, w32, evalShW, hamt]
+            rw [hv]
+            exact f.srlw_core hprot hI hrd h1 hn
+          · cases ha
     case mulw =>
       simp only [Fn.arith2Sh] at ha
       cases h1 : S.reg a with
@@ -135,37 +201,7 @@ theorem Fn.arith2Sh_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S'
         | none => simp [hr] at ha
         | some e =>
           simp only [hr, Option.map_some, Option.some.injEq] at ha; subst ha
-          -- the shifted low word, below 2^31
-          have hy : (((s.reg rs).setWidth 32) >>> sh.toNat).toNat = (s.reg rs).toNat % 2 ^ 32 / 2 ^ sh.toNat := by
-            rw [BitVec.toNat_ushiftRight, BitVec.toNat_setWidth, Nat.shiftRight_eq_div_pow]
-          have hylt : (((s.reg rs).setWidth 32) >>> sh.toNat).toNat < 2 ^ 31 := by
-            rw [hy]
-            have h32 := Nat.mod_lt (s.reg rs).toNat (show 0 < 2 ^ 32 by decide)
-            have hp2 : 2 ≤ 2 ^ sh.toNat := by
-              calc 2 = 2 ^ 1 := rfl
-                _ ≤ 2 ^ sh.toNat := Nat.pow_le_pow_right (by decide) hsh
-            refine Nat.div_lt_of_lt_mul (Nat.lt_of_lt_of_le h32 ?_)
-            calc 2 ^ 32 = 2 * 2 ^ 31 := by decide
-              _ ≤ 2 ^ sh.toNat * 2 ^ 31 := Nat.mul_le_mul_right _ hp2
-          have hv : (evalShW .srliw (s.reg rs) sh.toNat).toInt =
-              (((s.reg rs).toNat % 2 ^ 32 / 2 ^ sh.toNat : Nat) : Int) := by
-            simp only [evalShW]
-            rw [BitVec.toInt_signExtend_of_le (by omega), BitVec.toInt_eq_toNat_cond, if_pos (by omega), hy]
-          let vs : List Int := [(evalShW .srliw (s.reg rs) sh.toNat).toInt,
-            (((s.reg rs).toNat % 2 ^ 32 : Nat) : Int)]
-          refine hI.fresh4 hprot hrd vs (.var (f.freshAt S)) _ (evalShW .srliw (s.reg rs) sh.toNat)
-            (hasInt_toInt _ _ _ (by simp [vs, setFrom_x])) (fun p hp => ?_)
-          simp only [List.mem_append] at hp
-          rcases hp with hp | hp
-          · exact lowFacts_holds (by omega) ((STy.reg_hasInt hI.regs hr).of_eq
-              (Fn.eval_setFrom_old (STy.reg_maxVar' hr) ι vs).symm) (by simp [vs, setFrom_x1]) p hp
-          · refine quotFacts_holds (by have := Nat.two_pow_pos sh.toNat; exact_mod_cast this) ?_ p hp
-            have e0 : setFrom ι (f.freshAt S) vs (f.freshAt S) = (evalShW .srliw (s.reg rs) sh.toNat).toInt := by
-              simp [vs, setFrom_x]
-            have e1 : setFrom ι (f.freshAt S) vs (f.freshAt S + 1) = (((s.reg rs).toNat % 2 ^ 32 : Nat) : Int) := by
-              simp [vs, setFrom_x1]
-            rw [IExpr.eval_var, e0, e1, hv, Int.natCast_ediv]
-            norm_cast
+          exact f.srlw_core hprot hI hrd hr hsh
       · cases ha
     all_goals (simp only [Fn.arith2Sh, reduceCtorEq] at ha)
   | uop op rd' rs =>
