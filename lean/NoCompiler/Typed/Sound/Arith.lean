@@ -1,4 +1,4 @@
-import NoCompiler.Typed.Sound.Step
+import NoCompiler.Typed.Sound.ArithExt
 
 /-
 Lemma 2 (arithmetic): every register-writing instruction the checker types.
@@ -22,10 +22,8 @@ theorem hasInt_lui (ι : Val) (imm : BitVec 20) :
 set_option hygiene false in
 /-- The default rule: the register is a fresh word. -/
 local macro "arith_any" : tactic => `(tactic| (
-  simp only [Fn.arith, Option.some.injEq] at ha; subst ha
-  simp only [exec, Option.some.injEq] at hx; subst hx
-  obtain ⟨ι', h1, h2⟩ := hI.any hprot hrd _ _
-  exact ⟨ι', h1, h2, by simp⟩))
+  simp only [Fn.arith] at ha
+  exact f.arithExt_sound hprot hI (by simp [writesReg]) hrd ha hx))
 
 theorem STy.reg_maxVar {S : STy} {r : Reg} {e : IExpr} (h : S.reg r = some e) :
     e.maxVar ≤ S.maxVar := by
@@ -379,8 +377,8 @@ theorem Fn.arith_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' : 
             | cons t1 r1 =>
               simp only [h1, h2, Option.some.injEq] at ha; subst ha
               obtain ⟨ι', h1, h2⟩ := hI.any hprot hrd _ _; exact ⟨ι', h1, h2, by simp⟩
-    all_goals (simp only [Fn.arith, Option.some.injEq] at ha; subst ha
-               obtain ⟨ι', h1, h2⟩ := hI.any hprot hrd _ _; exact ⟨ι', h1, h2, by simp⟩)
+    all_goals (simp only [Fn.arith] at ha
+               exact f.arithExt_sound hprot hI (by simp [writesReg]) hrd ha (by simp [exec]))
   | rwop op rd' a b =>
     simp only [writesReg, Option.some.injEq] at hw; subst hw
     cases op

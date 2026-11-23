@@ -13,11 +13,14 @@ import NoCompiler.Typed.Sem
 import NoCompiler.Typed.Lin
 import NoCompiler.Typed.Presburger
 import NoCompiler.Typed.Search
+import NoCompiler.Typed.CheckBase
+import NoCompiler.Typed.ArithExt
 import NoCompiler.Typed.Check
 import NoCompiler.Typed.Sound.Inv
 import NoCompiler.Typed.Sound.Rank
 import NoCompiler.Typed.Sound.Congr
 import NoCompiler.Typed.Sound.Step
+import NoCompiler.Typed.Sound.ArithExt
 import NoCompiler.Typed.Sound.Arith
 import NoCompiler.Typed.Sound.Branch
 import NoCompiler.Typed.Sound.Mem
