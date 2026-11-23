@@ -10,6 +10,7 @@ use std::collections::BTreeMap;
 struct Sec {
     name: String,
     ty: u32,
+    addr: u64,
     off: usize,
     size: usize,
     link: u32,
@@ -66,18 +67,20 @@ impl<'a> Elf<'a> {
             raw.push((
                 u32_at(d, h).ok_or_else(bad)?,
                 u32_at(d, h + 4).ok_or_else(bad)?,
+                u64_at(d, h + 16).ok_or_else(bad)?,
                 u64_at(d, h + 24).ok_or_else(bad)? as usize,
                 u64_at(d, h + 32).ok_or_else(bad)? as usize,
                 u32_at(d, h + 40).ok_or_else(bad)?,
                 u32_at(d, h + 44).ok_or_else(bad)?,
             ));
         }
-        let stro = raw.get(shstrndx).ok_or_else(bad)?.2;
+        let stro = raw.get(shstrndx).ok_or_else(bad)?.3;
         let secs = raw
             .into_iter()
-            .map(|(n, ty, off, size, link, info)| Sec {
+            .map(|(n, ty, addr, off, size, link, info)| Sec {
                 name: cstr(d, stro + n as usize).unwrap_or_default(),
                 ty,
+                addr,
                 off,
                 size,
                 link,
@@ -149,6 +152,26 @@ pub fn symbol_addresses(bytes: &[u8]) -> Result<BTreeMap<String, u64>, String> {
         .filter(|(n, sh, _)| !n.is_empty() && *sh != 0)
         .map(|(n, _, v)| (n, v))
         .collect())
+}
+
+/// The `.text` section of a linked RISC-V ELF: its address and its 32-bit words (the code
+/// image the Lean checker runs on).
+pub fn text_words(bytes: &[u8]) -> Result<(u64, Vec<u32>), String> {
+    let elf = Elf::parse_kind(bytes, true)?;
+    let sec = elf
+        .secs
+        .iter()
+        .find(|s| s.name == ".text")
+        .ok_or("no .text section")?;
+    let data = bytes
+        .get(sec.off..sec.off + sec.size)
+        .ok_or("truncated .text")?;
+    Ok((
+        sec.addr,
+        data.chunks_exact(4)
+            .map(|w| u32::from_le_bytes([w[0], w[1], w[2], w[3]]))
+            .collect(),
+    ))
 }
 
 /// Compares every function's instructions with the object's bytes.

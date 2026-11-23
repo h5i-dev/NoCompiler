@@ -13,5 +13,6 @@ pub mod lin;
 pub mod link;
 pub mod object;
 pub mod presburger;
+pub mod prove;
 pub mod sig;
 pub mod syntax;

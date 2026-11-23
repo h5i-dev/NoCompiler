@@ -313,6 +313,88 @@ pub fn to_lean_image(
     module: &str,
     image: Option<&BTreeMap<String, u64>>,
 ) -> String {
+    to_lean_full(prog, ck, rep, module, image, None)
+}
+
+/// The functions a call instruction of `name` names.
+fn callees_of(prog: &Program, name: &str) -> Vec<String> {
+    prog.funcs
+        .iter()
+        .find(|g| g.name == name)
+        .map(|g| {
+            g.instrs
+                .iter()
+                .filter_map(|pi| match &pi.instr {
+                    Instr::Jal {
+                        target: Target::Symbol(s),
+                        ..
+                    }
+                    | Instr::CallPair {
+                        target: Target::Symbol(s),
+                        ..
+                    } => Some(s.clone()),
+                    _ => None,
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// The functions `name` calls, deduplicated (the ledger's evidence).
+pub fn callees_in(prog: &Program, name: &str) -> Vec<String> {
+    let mut v = callees_of(prog, name);
+    v.dedup();
+    v
+}
+
+/// The exported (checked) functions, each after the ones it calls (S5 order).
+pub fn callee_first(prog: &Program, rep: &Report) -> Vec<String> {
+    let exported: Vec<&str> = rep
+        .funcs
+        .iter()
+        .filter(|f| f.export.is_some())
+        .map(|f| f.name.as_str())
+        .collect();
+    let mut order: Vec<&str> = Vec::new();
+    while order.len() < exported.len() {
+        let next = exported.iter().find(|n| {
+            !order.contains(n)
+                && callees_of(prog, n)
+                    .iter()
+                    .all(|c| !exported.contains(&c.as_str()) || order.contains(&c.as_str()))
+        });
+        match next {
+            Some(n) => order.push(n),
+            // a cycle (S5 rejects it): keep the rest in file order
+            None => order.extend(exported.iter().filter(|n| !order.contains(n)).collect::<Vec<_>>()),
+        }
+    }
+    order.into_iter().map(String::from).collect()
+}
+
+/// Every callee of every exported function is exported too: theorem D needs no external
+/// functions (`Prog.check code [] prog`).
+pub fn closed(prog: &Program, rep: &Report) -> bool {
+    let ex: Vec<&str> = rep
+        .funcs
+        .iter()
+        .filter(|f| f.export.is_some())
+        .map(|f| f.name.as_str())
+        .collect();
+    !ex.is_empty() && ex.iter().all(|n| callees_of(prog, n).iter().all(|c| ex.contains(&c.as_str())))
+}
+
+/// `to_lean_image`, and with the linked `.text` (`code`) for a closed program, the program's
+/// theorem: `prog_checked` (by the kernel) and `prog_meets` (theorem D, `Prog.check_sound_closed`).
+/// The ledger records `proved` when this module compiles (main.rs `--prove`).
+pub fn to_lean_full(
+    prog: &Program,
+    ck: &Checker,
+    rep: &Report,
+    module: &str,
+    image: Option<&BTreeMap<String, u64>>,
+    code: Option<&(u64, Vec<u32>)>,
+) -> String {
     let eqs = sym_eqs(ck, image);
     let pins = sym_addrs(ck, image);
     let addr_of = |name: &str, fallback: Option<u64>| -> Option<u64> {
@@ -330,7 +412,12 @@ pub fn to_lean_image(
         o,
         "-- re-checks everything against the decoded image. Do not edit."
     );
-    let _ = writeln!(o, "import NoCompiler.Typed.Check\n");
+    let with_thm = image.is_some() && code.is_some() && closed(prog, rep);
+    let _ = writeln!(
+        o,
+        "import {}\n",
+        if with_thm { "NoCompiler.Typed.Sound.Prog" } else { "NoCompiler.Typed.Check" }
+    );
     let _ = writeln!(o, "namespace {module}\nopen NoCompiler NoCompiler.Typed\n");
     for (name, s) in &ck.sigs {
         let _ = writeln!(
@@ -454,6 +541,10 @@ pub fn to_lean_image(
         }
         let tau: Vec<String> = tw.iter().map(|w| w.to_string()).collect();
         let _ = writeln!(o, "  tau := [{}]", tau.join(", "));
+        if !ex.xor_bits.is_empty() {
+            let kb: Vec<String> = ex.xor_bits.iter().map(|k| k.to_string()).collect();
+            let _ = writeln!(o, "  xorBits := [{}]", kb.join(", "));
+        }
         // with --image: each auipc %pcrel_hi's L is the linker's %pcrel_lo value, so the
         // register is the exact literal pc + (hi << 12) the Lean checker computes (T's ask b)
         let mut fpins = pins.clone();
@@ -525,54 +616,22 @@ pub fn to_lean_image(
     }
     if image.is_some() {
         // theorem D (T's ask 8): the exported functions, each after the ones it calls (S5)
-        let exported: Vec<&str> = rep
-            .funcs
-            .iter()
-            .filter(|f| f.export.is_some())
-            .map(|f| f.name.as_str())
-            .collect();
-        let calls = |name: &str| -> Vec<String> {
-            prog.funcs
-                .iter()
-                .find(|g| g.name == name)
-                .map(|g| {
-                    g.instrs
-                        .iter()
-                        .filter_map(|pi| match &pi.instr {
-                            Instr::Jal {
-                                target: Target::Symbol(s),
-                                ..
-                            }
-                            | Instr::CallPair {
-                                target: Target::Symbol(s),
-                                ..
-                            } => Some(s.clone()),
-                            _ => None,
-                        })
-                        .collect()
-                })
-                .unwrap_or_default()
-        };
-        let mut order: Vec<&str> = Vec::new();
-        while order.len() < exported.len() {
-            let next = exported.iter().find(|n| {
-                !order.contains(n)
-                    && calls(n)
-                        .iter()
-                        .all(|c| !exported.contains(&c.as_str()) || order.contains(&c.as_str()))
-            });
-            match next {
-                Some(n) => order.push(n),
-                // a cycle (S5 rejects it): keep the rest in file order
-                None => order.extend(exported.iter().filter(|n| !order.contains(n)).collect::<Vec<_>>()),
-            }
-        }
+        let order = callee_first(prog, rep);
         let names: Vec<String> = order
             .iter()
             .map(|n| format!("fn_{}", lean_ident(n).trim_matches(['«', '»'])))
             .collect();
         let _ = writeln!(o, "/-- Callee-first (S5): `Prog.check code [] prog`. -/");
         let _ = writeln!(o, "def prog : List Fn := [{}]\n", names.join(", "));
+        if let (Some((base, words)), true) = (code, closed(prog, rep)) {
+            // the ledger's evidence (theorem D): the linked image and the program's theorem
+            let ws: Vec<String> = words.iter().map(|w| format!("0x{w:08x}#32")).collect();
+            let _ = writeln!(o, "/-- The linked `.text`. -/");
+            let _ = writeln!(o, "def code : Code := ⟨0x{base:x}#64, #[{}]⟩\n", ws.join(", "));
+            let _ = writeln!(o, "set_option maxRecDepth 100000 in\n/-- Theorem D's check, by the kernel. -/\ntheorem prog_checked : Prog.check code [] prog = true := by decide +kernel\n");
+            let _ = writeln!(o, "/-- Every function of the program meets its signature (⟦σ⟧, total), for every meaning of tokens. -/");
+            let _ = writeln!(o, "theorem prog_meets (T : TokEnv) :\n    ∀ e ∈ Prog.env [] prog, Meets code e.2.2 e.1 T e.2.1 :=\n  Prog.check_sound_closed prog_checked\n");
+        }
     }
     let _ = writeln!(o, "end {module}");
     o

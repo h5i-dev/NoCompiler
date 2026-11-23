@@ -175,6 +175,9 @@ pub struct FnExport {
     pub fresh: u32,
     /// The `%pcrel_lo` variable L of each `auipc %pcrel_hi(sym)`: (instruction index, L, sym).
     pub lo_vars: Vec<(usize, Var, String)>,
+    /// The bit counts `k` of the masks `2^k − 1` the xor-then-mask rule used (I23): the Lean
+    /// checker adds `2^k ∣ a xor b ⇔ 2^k ∣ a − b` at each xor for these.
+    pub xor_bits: Vec<u32>,
 }
 
 /// What the checker did for one function (the ledger's "判断の記録").
@@ -522,6 +525,8 @@ struct FnCheck<'a> {
     xor_defs: BTreeMap<Var, (Lin, Lin)>,
     /// The `%pcrel_lo` value of each `auipc %pcrel_hi` (by instruction index), I30.
     lo_vars: BTreeMap<usize, Var>,
+    /// See `FnExport::xor_bits`.
+    xor_bits: std::collections::BTreeSet<u32>,
     /// The order points are checked in, the back edges, and each loop head's body.
     order: Vec<usize>,
     back: BTreeSet<(usize, usize)>,
@@ -568,6 +573,7 @@ impl<'a> FnCheck<'a> {
             nqueries: 0,
             xor_defs: BTreeMap::new(),
             lo_vars: BTreeMap::new(),
+            xor_bits: Default::default(),
             order: vec![],
             back: BTreeSet::new(),
             loop_bodies: vec![],
@@ -619,6 +625,7 @@ impl<'a> FnCheck<'a> {
             })
             .collect();
         FnExport {
+            xor_bits: self.xor_bits.iter().copied().collect(),
             lo_vars,
             reg_var,
             loops,
@@ -2629,6 +2636,7 @@ impl<'a> FnCheck<'a> {
             let r = self.divr(st, e, c + 1)?;
             // (a xor b) mod 2^k = 0 ⇔ a ≡ b (mod 2^k)
             if let Some((a, b)) = e.as_var().and_then(|v| self.xor_defs.get(&v)).cloned() {
+                self.xor_bits.insert((c + 1).trailing_zeros());
                 let d = a.sub(&b).ok_or_else(ovf_)?;
                 let zero = Formula::Eq(r.clone());
                 let f = Formula::or(vec![
