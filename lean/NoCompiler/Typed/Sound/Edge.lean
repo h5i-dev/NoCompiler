@@ -15,7 +15,7 @@ structure Fn.StructSpec (f : Fn) : Prop where
     ∀ y ∈ c.vars, y ∈ f.sig.params ∨ y ∈ f.sig.outVars
   callees : ∀ p ∈ f.callees, Fn.calleeOk p.2 = true
   frameDecl : f.frameDeclOk = true
-  borrowBytes : ∀ b ∈ f.sig.borrow, ∃ x, b.cap.kind = .bytes x
+  borrowGuard : ∀ b ∈ f.sig.borrow, b.cap.guard = .tt
   kept : ∀ r ∈ keptRegs, (f.regVar.lookup r).isSome
   protNodup : f.protectedVars.Nodup
   entryIds : ((List.range f.sig.entryCaps.length).map f.entryId).Nodup
@@ -55,10 +55,7 @@ theorem Fn.structOk_spec (h : f.structOk = true) : f.StructSpec := by
     refine ⟨?_, hx, fun y hy => by simpa using hv y hy⟩
     revert hm; cases c.kind <;> simp
   · intro b hb
-    have := hbb b hb
-    split at this
-    · rename_i x hx; exact ⟨x, hx⟩
-    · cases this
+    simpa using hbb b hb
   · rcases htau with h | ⟨hl, hall⟩
     · exact .inl h
     · exact .inr ⟨hl, fun k hk => hall k (List.mem_range.2 hk)⟩

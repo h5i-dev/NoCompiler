@@ -199,17 +199,15 @@ theorem Fn.entry_inv (hst : f.StructSpec) {D : Dom} {a : Val × TokFp} {s0 : Sta
 
 /-! ## Theorems A–C -/
 
-theorem Fn.instr_spec {c : Code} {k : Nat} (h : f.instr c k = true) :
+theorem Fn.instr_spec {c : Code} {k : Nat} {S0 : STy} (hS0 : f.tyAt k = some S0)
+    (h : f.instr c k = true) :
     ∃ S i, f.tyAt k = some S ∧ c.instr (f.pcOf k) = some i ∧ f.instrAt k S i = true := by
   unfold Fn.instr at h
-  generalize hS : f.tyAt k = oS at h
+  rw [hS0] at h
   generalize hI : c.instr (f.pcOf k) = oi at h
-  cases oS with
+  cases oi with
   | none => cases h
-  | some S =>
-    cases oi with
-    | none => cases h
-    | some i => exact ⟨S, i, rfl, rfl, h⟩
+  | some i => exact ⟨S0, i, hS0, rfl, h⟩
 
 theorem Sig.Post_setPc {σ : Sig} {ι : Val} {F : TokFp} {s0 s : State} (pc : Word)
     (h : σ.Post T ι F s0 s) : σ.Post T ι F s0 (s.setPc pc) := by
@@ -331,7 +329,7 @@ theorem Fn.tail_step (hst : f.StructSpec) {c : Code} {D : Dom}
   · intro s2 hdone hfr
     rcases hdone with ⟨hlive, hpc2, hpres, hpost⟩ | ⟨hex, -⟩
     · obtain ⟨ι', -, hI'⟩ := f.afterCall_inv hst hI hok hθ hstk hls htx hids hregs1 hmem1 hpres hlive hpost hfr
-      obtain ⟨hkept, hpost'⟩ := f.retOkOn_sound (Fα := a.2) hst hI' hret hι0r hι0p rfl rfl
+      obtain ⟨hkept, hpost'⟩ := f.retOkOn_sound (Fα := a.2) hst hI' hret hι0r hι0p rfl
       have hpc2' : s2.pc = s0.reg 1 := by rw [hpc2]; exact hra1
       refine Reach.done ⟨.inl (by rw [hpc2']; exact he.ret), .inl ⟨hlive, hpc2', hkept, hpost'⟩⟩
     · exact Reach.done ⟨.inr hex, .inr ⟨hex, trivial⟩⟩
@@ -372,7 +370,7 @@ theorem Fn.run (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.instr
       exact ih (k', _) (hrk k rfl) S2 s' hS2 hk' hpc' hI2
   have hd : Dom.mem D s.pc := hpc ▸ hDf k hk
   have hprot := hst.protFresh
-  obtain ⟨S', i, hS', hci, hk1⟩ := Fn.instr_spec (hinstr k hk)
+  obtain ⟨S', i, hS', hci, hk1⟩ := Fn.instr_spec hS (hinstr k hk)
   rw [hS] at hS'; cases hS'
   have hi : c.instr s.pc = some i := hpc ▸ hci
   cases i with
@@ -455,7 +453,7 @@ theorem Fn.run (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.instr
     clear hk1
     obtain ⟨⟨rfl, rfl⟩, hk1⟩ := hk2
     unfold Fn.ret at hk1
-    obtain ⟨hkept, hpost⟩ := f.retOk_sound (Fα := a.2) hst hI hk1 hι0r hι0p rfl rfl
+    obtain ⟨hkept, hpost⟩ := f.retOk_sound (Fα := a.2) hst hI hk1 hι0r hι0p rfl
     refine Reach.exec_step hd hI.live hi trivial ?_
     have hs0 : s.setReg 0 (s.pc + 4) = s := by simp [State.setReg]
     have hra : s.reg 1 = s0.reg 1 := hkept 1 (by simp [keptRegs])

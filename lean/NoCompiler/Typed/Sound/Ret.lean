@@ -79,6 +79,10 @@ theorem Fn.kept_reg_sound {S : STy} {s : State} {ι : Val} {F : TokFp}
     exact h3.word_eq h4
   · cases h
 
+theorem Cap.fp_bytes_F {c : Cap} {b : BytesCap} (hk : c.kind = .bytes b) (ι : Val) (F F' : TokFp) :
+    c.fp ι F = c.fp ι F' := by
+  unfold Cap.fp Cap.regions; rw [hk]
+
 theorem nodup_getElem_inj {α : Type} {l : List α} (h : l.Nodup) {i j : Nat} (hi : i < l.length)
     (hj : j < l.length) (e : l[i] = l[j]) : i = j := by
   induction l generalizing i j with
@@ -160,7 +164,7 @@ theorem Fn.retOkOn_sound (hst : f.StructSpec) {rs : List Reg} {S : STy} {s : Sta
     (hI : Inv f T P s0 ι0 S s ι F) (hr : f.retOkOn rs S θ = true)
     (hι0r : ∀ r x, (r, x) ∈ f.regVar → ι0 x = (s0.reg r).toNat)
     {ια : Val} {Fα : TokFp} (hι0p : ∀ x ∈ f.sig.params, ι0 x = ια x)
-    (hP : P = (f.sig.spec T).perm (ια, Fα) s0) (hF : F = Fα) :
+    (hP : P = (f.sig.spec T).perm (ια, Fα) s0) :
     (∀ r ∈ rs, s.reg r = s0.reg r) ∧ f.sig.Post T ια Fα s0 s := by
   unfold Fn.retOkOn at hr
   simp only [Bool.and_eq_true, List.all_eq_true, List.any_eq_true, List.contains_iff_mem] at hr
@@ -208,11 +212,14 @@ theorem Fn.retOkOn_sound (hst : f.StructSpec) {rs : List Reg} {S : STy} {s : Sta
     refine ⟨c, hc, ho, fun x hx => hfp x ((hcg.1 x).2 hx), hex, (hcg.2 _).1 (hv _ (hI.valid c hc))⟩
   -- the given capabilities: held ones, distinct, not returned for a borrow
   obtain ⟨hs, hgs, hd0⟩ : ∃ hs : List HCap, f.giveFrom S θ f.sig.give [] = some hs ∧
-      (f.sig.give ≠ [] → S.depth = 0) := by
+      (f.sig.give ≠ [] ∨ (∃ b ∈ f.sig.borrow, ∃ t, b.cap.kind = .token t) → S.depth = 0) := by
     simp only [Bool.or_eq_true, List.isEmpty_iff, Bool.and_eq_true, decide_eq_true_eq,
-      Option.isSome_iff_exists] at hgv
-    rcases hgv with h | ⟨h0, hs, h⟩
-    · exact ⟨[], by rw [h]; rfl, fun h' => absurd h h'⟩
+      Option.isSome_iff_exists, List.all_eq_true] at hgv
+    rcases hgv with ⟨h, hb⟩ | ⟨h0, hs, h⟩
+    · refine ⟨[], by rw [h]; rfl, fun h' => ?_⟩
+      rcases h' with h' | ⟨b, hb', t, ht⟩
+      · exact absurd h h'
+      · have := hb b hb'; rw [ht] at this; simp at this
     · exact ⟨hs, h, fun _ => h0⟩
   obtain ⟨hlen, hgsp, hgnd⟩ := f.giveFrom_spec hgs
   have hvarsP : ∀ y ∈ f.sig.params, ι' y = ια y := by
@@ -282,57 +289,74 @@ theorem Fn.retOkOn_sound (hst : f.StructSpec) {rs : List Reg} {S : STy} {s : Sta
     obtain ⟨cj, hcj, hfj, -, -⟩ := hcapE j hj
     exact hI.sep ci (hchMem _ _ hci) cj (hchMem _ _ hcj) (hdist _ _ _ _ hci hcj hne) (hei ▸ hex) x
       (hfi x hx) (hfj x hy)
-  · -- the Pool: a given capability lies in the taken ones
+  · -- the Pool: a returned token or given capability lies in the taken ones or borrowed tokens
+    have hpoolOf : ∀ k d, Chosen k d → d.cap.exclusive = true →
+        (∀ i (hi : i < f.sig.borrow.length), (∃ y, f.sig.borrow[i].cap.kind = .bytes y) → i ≠ k) →
+        S.depth = 0 → ∀ x, d.cap.fp ι F x → Sig.pool f.sig ια Fα x := by
+      intro k d hdc hdx hbk hz x hxd
+      have hdm := hchMem _ _ hdc
+      obtain ⟨r, hr, hm⟩ := (hI.perm d hdm x hxd).1
+      rw [hP] at hr
+      simp only [Spec.perm, Sig.spec, Sig.readRegions, Sig.writeRegions, List.mem_append,
+        List.mem_flatMap, List.mem_filter, List.mem_singleton] at hr
+      -- the region is an entry capability's, or the stack
+      have hent : ∀ e ∈ f.sig.entryCaps, r ∈ e.regions ια Fα → Sig.pool f.sig ια Fα x := by
+        intro e he hre
+        simp only [Sig.entryCaps, List.mem_append, List.mem_map] at he
+        rcases he with ⟨b, hb, rfl⟩ | he
+        · obtain ⟨i, hi, rfl⟩ := List.getElem_of_mem hb
+          cases hkb : f.sig.borrow[i].cap.kind with
+          | token t =>
+            exact .inr ⟨_, hb, by simp [hkb], r, hre, hm⟩
+          | bytes y =>
+            exfalso
+            obtain ⟨ci, hci, hoi, hfi, -, -⟩ := hcap i hi
+            have hci' : Chosen i ci := .inl ⟨hi, hci, hoi⟩
+            have hne : i ≠ k := hbk i hi ⟨y, hkb⟩
+            have hbx : f.sig.borrow[i].exitCap.fp ι' F x := by
+              rw [Borrow.exitCap_fp, Cap.fp_bytes_F hkb ι' F Fα]
+              have hv : ∀ y ∈ f.sig.borrow[i].cap.vars, ια y = ι' y := fun y hy =>
+                (hvarsP y (f.entryCap_vars hst _ (by unfold Sig.entryCaps; exact List.mem_append.2 (.inl (List.mem_map.2 ⟨_, List.getElem_mem hi, rfl⟩))) y hy)).symm
+              rw [← ((Cap.congr_vars (T := T) (F := Fα) hv).1 x)]
+              exact ⟨r, hre, hm⟩
+            exact hI.sep d hdm ci hci (hdist _ _ _ _ hdc hci' (Ne.symm hne)) hdx x hxd (hfi x hbx)
+        · exact .inl ⟨e, he, r, hre, hm⟩
+      rcases hr with ⟨e, ⟨he, -⟩, hre⟩ | ⟨e, ⟨he, -⟩, hre⟩ | rfl
+      · exact hent e he hre
+      · exact hent e he hre
+      · exfalso
+        have hin := hI.stack d hdm x hxd hm
+        obtain ⟨-, -, -, hd0', -⟩ := hin
+        exact hd0' hz
     intro c hc x hx
     simp only [Sig.fresh, List.mem_append, List.mem_filter, List.mem_map] at hc
     rcases hc with ⟨⟨b, hb', rfl⟩, ht⟩ | hc
-    · obtain ⟨y, hy⟩ := hst.borrowBytes b hb'
-      simp [hy] at ht
+    · -- a borrowed token, returned by the held capability with its origin
+      obtain ⟨i, hi, rfl⟩ := List.getElem_of_mem hb'
+      cases hkb : f.sig.borrow[i].cap.kind with
+      | bytes y => simp [hkb] at ht
+      | token t =>
+        obtain ⟨ci, hci, hoi, hfi, hei, -⟩ := hcap i hi
+        have hex : ci.cap.exclusive = true := by
+          rw [← hei]; simp [Borrow.exitCap, Cap.exclusive, hkb]
+        refine hpoolOf i ci (.inl ⟨hi, hci, hoi⟩) hex (fun i' hi' ⟨y, hy⟩ e => ?_)
+          (hd0 (.inr ⟨_, hb', t, hkb⟩)) x (hfi x (by rw [Borrow.exitCap_fp]; exact hx))
+        subst e; rw [hkb] at hy; cases hy
     obtain ⟨j, hj, rfl⟩ := List.getElem_of_mem hc
     have hk : f.sig.borrow.length + j < f.sig.exitCaps.length := by omega
     obtain ⟨d, hdc, hfd, hed, -⟩ := hcapE _ hk
     have e : f.sig.exitCaps[f.sig.borrow.length + j] = f.sig.give[j] := by
       simp only [Sig.exitCaps]; rw [List.getElem_append_right (by simp)]; simp
     rw [e] at hfd hed
-    have hdm := hchMem _ _ hdc
-    have hxd := hfd x hx
     have hdx : d.cap.exclusive = true := by rw [← hed]; exact (hst.give _ hc).2.1
-    obtain ⟨r, hr, hm⟩ := (hI.perm d hdm x hxd).1
-    rw [hP] at hr
-    simp only [Spec.perm, Sig.spec, Sig.readRegions, Sig.writeRegions, List.mem_append,
-      List.mem_flatMap, List.mem_filter, List.mem_singleton] at hr
-    -- the region is an entry capability's, or the stack
-    have hent : ∀ e ∈ f.sig.entryCaps, r ∈ e.regions ια Fα → Sig.pool f.sig ια Fα x := by
-      intro e he hre
-      simp only [Sig.entryCaps, List.mem_append, List.mem_map] at he
-      rcases he with ⟨b, hb, rfl⟩ | he
-      · exfalso
-        obtain ⟨i, hi, rfl⟩ := List.getElem_of_mem hb
-        obtain ⟨ci, hci, hoi, hfi, -, -⟩ := hcap i hi
-        have hci' : Chosen i ci := .inl ⟨hi, hci, hoi⟩
-        have hne : i ≠ f.sig.borrow.length + j := by omega
-        have hbx : f.sig.borrow[i].exitCap.fp ι' F x := by
-          rw [Borrow.exitCap_fp]
-          have hv : ∀ y ∈ f.sig.borrow[i].cap.vars, ια y = ι' y := fun y hy =>
-            (hvarsP y (f.entryCap_vars hst _ (by unfold Sig.entryCaps; exact List.mem_append.2 (.inl (List.mem_map.2 ⟨_, List.getElem_mem hi, rfl⟩))) y hy)).symm
-          rw [hF, ← ((Cap.congr_vars (T := T) (F := Fα) hv).1 x)]
-          exact ⟨r, hre, hm⟩
-        exact hI.sep d hdm ci hci (hdist _ _ _ _ hdc hci' (Ne.symm hne)) hdx x hxd (hfi x hbx)
-      · exact .inl ⟨e, he, r, hre, hm⟩
-    rcases hr with ⟨e, ⟨he, -⟩, hre⟩ | ⟨e, ⟨he, -⟩, hre⟩ | rfl
-    · exact hent e he hre
-    · exact hent e he hre
-    · exfalso
-      have hin := hI.stack d hdm x hxd hm
-      obtain ⟨-, -, -, hd0', -⟩ := hin
-      exact hd0' (hd0 (List.ne_nil_of_mem hc))
+    exact hpoolOf _ d hdc hdx (fun i hi _ => by omega) (hd0 (.inl (List.ne_nil_of_mem hc))) x (hfd x hx)
 
 theorem Fn.retOk_sound (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {F : TokFp} {θ : Subst}
     (hI : Inv f T P s0 ι0 S s ι F) (hr : f.retOk S θ = true)
     (hι0r : ∀ r x, (r, x) ∈ f.regVar → ι0 x = (s0.reg r).toNat)
     {ια : Val} {Fα : TokFp} (hι0p : ∀ x ∈ f.sig.params, ι0 x = ια x)
-    (hP : P = (f.sig.spec T).perm (ια, Fα) s0) (hF : F = Fα) :
+    (hP : P = (f.sig.spec T).perm (ια, Fα) s0) :
     (∀ r ∈ keptRegs, s.reg r = s0.reg r) ∧ f.sig.Post T ια Fα s0 s :=
-  f.retOkOn_sound hst hI hr hι0r hι0p hP hF
+  f.retOkOn_sound hst hI hr hι0r hι0p hP
 
 end NoCompiler.Typed

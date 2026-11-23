@@ -190,7 +190,8 @@ def retOkOn (rs : List Reg) (S : STy) (θ : Subst) : Bool :=
     | _, _ => false) &&
   θ.all (fun p => σ.outVars.contains p.1) &&
   S.sub θ { regs := σ.outRegs, facts := [σ.post] } &&
-  (σ.give.isEmpty || (decide (S.depth = 0) && (f.giveFrom S θ σ.give []).isSome)) &&
+  ((σ.give.isEmpty && σ.borrow.all fun b => match b.cap.kind with | .bytes _ => true | .token _ => false) ||
+    (decide (S.depth = 0) && (f.giveFrom S θ σ.give []).isSome)) &&
   σ.borrow.zipIdx.all fun (b, i) =>
     S.caps.any fun c => c.origin == some i && S.capSub θ c { id := c.id, origin := some i, cap := b.exitCap }
 
@@ -305,8 +306,12 @@ def arithOk (k : Nat) (S : STy) (i : Instr) : Bool :=
     symbol's linked address (I30/I32). -/
 def pinned (y : Var) : Constr → Option Int
   | .eq a b =>
-    if a.asVar == some y && b.terms.isEmpty then some b.const
-    else if b.asVar == some y && a.terms.isEmpty then some a.const
+    -- `±y + c₁ = c₂`, either side
+    let solve (e : IExpr) (c : Int) : Option Int :=
+      if e.terms == [(1, y)] then some (c - e.const)
+      else if e.terms == [(-1, y)] then some (e.const - c) else none
+    if b.terms.isEmpty then solve a b.const
+    else if a.terms.isEmpty then solve b a.const
     else none
   | .and p q => (pinned y p).orElse fun _ => pinned y q
   | _ => none
@@ -485,7 +490,9 @@ def instrAt (k : Nat) (S : STy) : Instr → Bool
 def instr (c : Code) (k : Nat) : Bool :=
   match f.tyAt k, c.instr (f.pcOf k) with
   | some S, some i => f.instrAt k S i
-  | _, _ => false
+  | some _, none => false
+  -- no type in the record: no edge reaches the point (every edge needs its target's type)
+  | none, _ => true
 
 /-- The frame fits the stack; its slots and ranges lie inside it and apart (S4). -/
 def frameDeclOk : Bool :=
@@ -533,7 +540,7 @@ def structOk : Bool :=
     c.vars.all (fun y => σ.params.contains y || σ.outVars.contains y)) &&
   (f.callees.all fun p => calleeOk p.2) &&
   f.frameDeclOk &&
-  σ.borrow.all (fun b => match b.cap.kind with | .bytes _ => b.cap.guard == .tt | .token _ => false) &&
+  σ.borrow.all (fun b => b.cap.guard == .tt) &&
   (keptRegs.all fun r => (f.regVar.lookup r).isSome) &&
   (f.protectedVars.Nodup) &&
   ((List.range f.sig.entryCaps.length).map f.entryId).Nodup &&
