@@ -304,6 +304,9 @@ structure Fn where
   /-- Fresh variables are allocated from here up. -/
   fresh : Nat
   frame : Option Frame := none
+  /-- The order τ of the points (word indices) from the export (decisions.md I36); not used by
+      the checker yet. -/
+  tau : List Nat := []
   deriving Repr
 
 /-- The instructions whose only effect is a register write, and the register. -/
