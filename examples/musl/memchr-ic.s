@@ -4,7 +4,8 @@
 # Annotations are the lines that start with hash-colon (provisional syntax of docs/Tab 1.md; see docs/typed/musl-trial.md).
 # Predicted (fixed before compiling this variant): reject (as memchr without static data)
 # Expected now (after reading the compiled code): reject. (1) S2: clang places the return block 0x4c after the head loop and reaches it by backward branches (0x5c, 0xf4), giving loop intervals [0x4c,0xf4] and [0xf0,0x100] that are not nested, and edges entering [0x4c,0xf4] in the middle. (2) Even with S2 fixed: the head-loop conditions '(s&7) && n' are branch-free sltiu/or/sltu/and (0x0-0x14, 0x2c-0x40), so 1 <= m at the head loop is not derivable. (3) The word loop 0xc4 is reached through the join 0x60, also from the 'found' path 0x20 where s is not aligned; that path never reaches the word loop only because it re-reads the same byte (memory contents, not in v0 types), so 8 | p at 0xc4 is not derivable under the coarse join (decision 2).
-#! expect memchr: reject cfg
+#! expect memchr: reject loop-inv
+#! expect-interval memchr: reject cfg
 #: fn memchr [s, n]
 #:   in     a0: int(s), a2: int(n)
 #:   borrow s |-> bytes[n] ro

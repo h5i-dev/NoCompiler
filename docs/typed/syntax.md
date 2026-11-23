@@ -111,6 +111,11 @@ false` in their positions.
   of 16, F ≤ K); slots are 8-byte save slots at `sp + k`; each `addr` range becomes an `rw`
   capability `sp+o ↦ bytes[l]` after the prologue and must be held, intact, at the epilogue
   `addi sp, sp, F`.
+- Loops (I36): a *back edge* is a jump to a label that every path from the entry passes
+  first (it dominates the jump); its target needs an `inv`. Without back edges the control-flow
+  graph must be acyclic. A loop is the head's natural loop; blocks may lie anywhere in the file.
+  (`--loops interval` checks the older rule: backward jumps only to `inv` labels, loops as
+  nested address intervals.) An `inv` on a label that heads no loop acts as a `join`.
 - `inv` at a loop head: the types of the registers the loop changes, the head's constraint,
   and the measure (required unless the function is `partial`). Registers the loop writes and
   the annotation omits become `int`; the others keep their values. `[m, …]` are new variables
@@ -154,4 +159,5 @@ sum:
   file-level syntax error. A safe `fn` signature without a body in the file is a declaration
   of a function checked elsewhere (ledger status `declared`), not an error.
 - 2026-11-23: read-only static data (I30): data sections are parsed; constant pools work.
+- 2026-11-23: natural loops are the default (I36); `--loops interval` keeps the old rule.
 - 2026-11-23: `@sym` (a data symbol's address) in expressions; writable data via signatures (I32).

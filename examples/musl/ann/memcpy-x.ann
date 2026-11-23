@@ -4,7 +4,8 @@
 # Annotations are the lines that start with hash-colon (docs/typed/syntax.md).
 # Predicted (fixed before building this variant): reject
 # Expected now (after reading the compiled code): reject: S2 33 violations (6 non-loop backward edges); andi n,2^k tails. Annotated in full (added when the checker got --loops natural): head loop, the aligned loop, the three misaligned loops (d = 1, 2, 3 mod 4: source pointer kept 13/14/15 bytes ahead of the byte position), and a join at every tail block (the tails test bits 16, 8, 4, 2, 1 of a2 without changing it: r is what remains to copy, 2^k | j - r).
-#! expect memcpy: reject cfg
+#! expect memcpy: accept
+#! expect-interval memcpy: reject cfg
 #: fn memcpy [d, s, n]
 #:   in     a0: int(d), a1: int(s), a2: u64(n)
 #:   borrow d |-> bytes[n] rw

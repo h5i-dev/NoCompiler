@@ -3,7 +3,8 @@
 # Annotations are the lines that start with hash-colon (provisional syntax of docs/Tab 1.md; see docs/typed/musl-trial.md).
 # Predicted (fixed before compiling): reject (v0 rules: xor alignment test)
 # Expected now (after reading the compiled code): reject. (1) S2: the two copy directions share entry blocks 0x2c and 0x5c that are reached backwards from the word loops (0x110, 0x130, 0x168, 0x170) and the return 0x80 is reached backwards from 0xdc: intervals [0x2c,0x130]/[0x5c,0x170] and [0x80,0xdc]/[0xdc,0x100] are not nested. (2) As predicted, 's % 8 == d % 8' is xor + andi 7 (0x18-0x1c): the fact is lost and the sd at 0x11c / 0x15c fails 8 | a. The signature (one region, two offsets) and the tail call to memcpy with two disjoint sub-borrows are expressible; disjointness follows from the bgeu at 0x14 (u(-2n) >= u(s - d - n)) and d != s.
-#! expect memmove: reject cfg
+#! expect memmove: accept
+#! expect-interval memmove: reject cfg
 #: fn memcpy [d, s, n]
 #:   in     a0: int(d), a1: int(s), a2: u64(n)
 #:   borrow d |-> bytes[n] rw

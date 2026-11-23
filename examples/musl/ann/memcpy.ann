@@ -3,7 +3,8 @@
 # Annotations are the lines that start with hash-colon (provisional syntax of docs/Tab 1.md; see docs/typed/musl-trial.md).
 # Predicted (fixed before compiling): reject (v0 rules: andi n, 2^k tails)
 # Expected now (after reading the compiled code): reject. (1) As predicted, the tails 'if (n&8)', 'if (n&4)', ... are andi a1, a2, 8 + beq (0x15c, 0x17c, ...): x != 0 does not give k >= 8, so lw 4(a4) at 0x168 fails. (2) S2: 33 violations (11 backward-edge targets; the misaligned cases share tail blocks reached backwards). (3) The head loop test '(uintptr_t)s % 4 && n' is branch-free (0x0-0x10, 0x30-0x4c). Annotated in full (added when the checker got --loops natural; same scheme as memcpy-x.ann): head loop, aligned loop, the three misaligned loops, and a join at every tail block.
-#! expect memcpy: reject cfg
+#! expect memcpy: accept
+#! expect-interval memcpy: reject cfg
 #: fn memcpy [d, s, n]
 #:   in     a0: int(d), a1: int(s), a2: u64(n)
 #:   borrow d |-> bytes[n] rw

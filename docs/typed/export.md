@@ -70,3 +70,12 @@ Every exported signature carries the program's data symbols: each symbol's addre
 clause after the signature's own (exit fields = entry fields). In the record, the implicit
 capabilities' `origin` is that clause's index. Writable symbols get no clause; a signature
 lends them explicitly (`@sym`, I32).
+
+### τ (2026-11-23, P1 adopted as the default, I36)
+
+`Fn` gains `tau : List Nat`: the word indices of the reached points in the checker's order
+τ. Every edge other than a back edge goes from an earlier to a later point of `tau`; each loop
+is the τ-interval from `Loop.head` to `Loop.last`, where `last` is now the word index of the
+loop's last point **in τ** (not the largest address); no edge enters an interval except at its
+head. The JSON has the same list as `"tau"`. Under `--loops interval`, `tau` is the address
+order. T: please add the field to `Fn` (the generated `.lean` already writes `tau := [...]`).

@@ -213,10 +213,20 @@ comments can cite them.
   `srliw rd, rs, c` and `srlw` by a constant c (mod 32) ≥ 1 give `zext32(e) = 2^c·x + r`,
   `0 ≤ r < 2^c` (the shifted low word is below 2^31, so its sign extension is itself).
   Under P1 an `inv` on a label that heads no loop needs no measure (it is a `join`).
+- **I36 P1 adopted (user decision 2026-11-23): natural loops are the default**, in T's τ form.
+  The checker computes back edges (to a dominating label), requires the CFG without them to be
+  acyclic, takes each head's natural loop, and builds τ per region of the loop-nesting forest
+  (inner loops collapsed to their head, topological order with address order among ready
+  points, inner loops expanded in place). It then checks the τ conditions itself — every edge
+  but a back edge goes up in τ, every loop is a τ-interval, no edge enters an interval except
+  at its head — and checks the points in τ order. τ is in the export (export.md). The old
+  address-interval rule stays as `--loops interval`; corpus files keep its verdicts in
+  `#! expect-interval` lines where they differ. An `inv` on a label that heads no loop is a
+  `join`. T updates the proof's S2/Theorem C and the design note.
 
 ## Proposals (not adopted: the default checker does not use them)
 
-- **P1 Natural loops instead of address intervals** (from the musl trial, docs/typed/musl-trial.md
+- **P1 Natural loops instead of address intervals** (adopted as I36) (from the musl trial, docs/typed/musl-trial.md
   "Stage 2"). S2 asks that every edge to a lower address goes to an `inv` head and that loops
   be nested address intervals entered at the head. clang's block layout breaks this in 8 of 29
   musl files (backward jumps to return blocks; interleaved loops) although every compiled CFG

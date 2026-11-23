@@ -56,3 +56,9 @@ compiled code, not part of any guarantee.
 ### After I32 (writable data through signatures)
 
 `_start` (sum.c) with `borrow @data ↦ bytes[40] rw` in its signature is **accepted**.
+
+### After I36 (natural loops the default)
+
+`cobs_decode` is **accepted** with the default rules (it was rejected by the address-interval
+rule, still available as `--loops interval`, which the corpus copy keeps as `#! expect-interval`).
+All six functions of the trial are now accepted as compiled.

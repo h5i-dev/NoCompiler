@@ -2,9 +2,11 @@
 # The note's prose declares slot 72 = ra and [0, 64) address-taken; here that is the
 # signature's `frame` clause (I8).
 #! expect sum_bytes: assumed
-#! expect read_sum: reject cfg
+#! expect read_sum: accept
+#! expect-interval read_sum: reject cfg
 # As written in the note, `fail` jumps back to `out`: a backward edge to a label that is
-# not a loop head, which S2 forbids (the proof's S2 too). See note_read_sum_fwd.s.
+# not a loop head, which the address-interval rule forbids; with natural loops (the
+# default since 2026-11-23, I36) it is an ordinary forward edge of the acyclic graph.
     .text
 #: unsafe fn sum_bytes [ρ, n]
 #:   in a0: int(ρ), a1: int(n)   borrow ρ ↦ bytes[n] ro   out a0: int   stack 0

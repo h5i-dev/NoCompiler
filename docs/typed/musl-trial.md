@@ -477,3 +477,58 @@ across files (S5 over the whole call graph).
   lengths 0…100; fwrite with stub callees).
 - `examples/musl/<name>.s` — annotated functions; `examples/musl/malloc-free.s` — contracts.
 - Build outputs go to `/mnt/scratch/ec2-user/musl-trial-build` (never committed).
+
+## P1 default (2026-11-23, written by U; V paused)
+
+The user adopted natural loops (P1, in T's τ form) as the default rule (decisions.md). U re-ran
+`scripts/musl-trial/check.sh` with the Rust checker at this commit, against the objects
+compiled from musl (`--object`, I15: no object mismatch in any file), once with the default
+and once with `--loops interval` (the S2 rule as first written). Predictions above are
+unchanged.
+
+- Functions: **23 of 29 accepted** with the default, 19 with `--loops interval`.
+- Variants (`-ic`, `-x`): 5 of 8 accepted with the default, 1 with the interval rule.
+- Rejected by default: `memchr` (loop-inv: `8 ∣ p` at the aligned loop), `strlen` (loop-inv: the
+  NUL precondition is not a v0 signature, as predicted), `fwrite` (call-cap: the length lent to
+  `__fwritex` is `size·nmemb`), `__fwritex` and `bsearch` (profile: function pointers), `a64l`
+  (call-sig: no contract for `strchr`).
+
+| file | `--loops interval` | default (P1) |
+| --- | --- | --- |
+| `labs` | accept | accept |
+| `memcmp` | accept | accept |
+| `bcmp` | accept | accept |
+| `memrchr` | accept | accept |
+| `memchr` | reject cfg | reject loop-inv |
+| `strnlen` | accept | accept |
+| `strncmp` | accept | accept |
+| `swab` | accept | accept |
+| `bzero` | accept | accept |
+| `memset` | accept | accept |
+| `memcpy` | reject cfg | accept |
+| `memccpy` | reject cfg | accept |
+| `memmove` | reject cfg | accept |
+| `strlen` | reject loop-inv | reject loop-inv |
+| `fwrite` | reject cfg | reject call-cap |
+| `memchr-ic` | reject cfg | reject loop-inv |
+| `memccpy-ic` | reject cfg | accept |
+| `strlen-ic` | reject loop-inv | reject loop-inv |
+| `wmemcpy` | accept | accept |
+| `wmemset` | accept | accept |
+| `wmemcmp` | accept | accept |
+| `wmemchr` | accept | accept |
+| `stpncpy` | reject cfg | accept |
+| `strncpy` | accept | accept |
+| `strncmp-x` | accept | accept |
+| `memcpy-x` | reject cfg | accept |
+| `memchr-x` | reject loop-inv | reject loop-inv |
+| `memccpy-x` | reject cfg | accept |
+| `stpncpy-x` | reject cfg | accept |
+| `_Exit` | accept | accept |
+| `__towrite` | accept | accept |
+| `__fwritex` | reject profile | reject profile |
+| `bsearch` | reject profile | reject profile |
+| `ffsl` | accept | accept |
+| `div` | accept | accept |
+| `a64l` | reject call-sig | reject call-sig |
+| `l64a` | accept | accept |

@@ -290,6 +290,8 @@ pub fn to_lean(prog: &Program, ck: &Checker, rep: &Report, module: &str) -> Stri
             })
             .collect();
         let _ = writeln!(o, "  loops := [{}]", loops.join(", "));
+        let tau: Vec<String> = ex.tau.iter().map(|i| wi[*i].to_string()).collect();
+        let _ = writeln!(o, "  tau := [{}]", tau.join(", "));
         let types: Vec<String> = ex
             .snapshots
             .iter()
@@ -404,6 +406,7 @@ pub fn to_json(prog: &Program, ck: &Checker, rep: &Report) -> Value {
             "regVar": ex.reg_var.iter().map(|(r, v)| json!([r.0, v.0])).collect::<Vec<_>>(),
             "loops": ex.loops.iter().map(|(h, l, vs, m)| json!({"head": wi[*h], "last": wi[*l], "vars": vs.iter().map(|v| v.0).collect::<Vec<_>>(), "meas": m.as_ref().map(j_lin)})).collect::<Vec<_>>(),
             "types": ex.snapshots.iter().map(|(ix, st)| json!([wi[*ix], j_state(st, ex)])).collect::<Vec<_>>(),
+            "tau": ex.tau.iter().map(|i| wi[*i]).collect::<Vec<_>>(),
             "fresh": ex.fresh,
         }));
     }

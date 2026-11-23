@@ -17,7 +17,8 @@ expectation lines, anywhere in the file:
 #! expect NAME: external       # an `extern fn` contract
 ```
 
-`#!` is an ordinary assembler comment. Every function the file checks should have a line.
+`#!` is an ordinary assembler comment. `#! expect-interval NAME: …` (optional) gives the verdict
+under `--loops interval`, the address-interval rule kept for comparison (I36). Every function the file checks should have a line.
 `RULE` is the rule the first rejection is attributed to, one of:
 
 - `syntax`

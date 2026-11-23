@@ -2,7 +2,8 @@
 # annotations are the '#:' lines (docs/typed/note-trial.md). The outer loop is entered at
 # .LBB0_8, in the middle of the address interval that starts at .LBB0_7: S2 rejects it.
 # The annotations are for the natural loops (proposal P1, --loops natural).
-#! expect cobs_decode: reject cfg
+#! expect cobs_decode: accept
+#! expect-interval cobs_decode: reject cfg
 #: fn cobs_decode [r, b, len]
 #:   in     a0: int(r), a1: int(b), a2: int(len)
 #:   borrow r ↦ bytes[24] rw

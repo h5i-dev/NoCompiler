@@ -22,14 +22,18 @@ fn corpus() {
             .unwrap()
             .display()
             .to_string();
-        let expects: Vec<(String, String)> = src
-            .lines()
-            .filter_map(|l| l.trim().strip_prefix("#! expect "))
-            .filter_map(|l| {
-                l.split_once(':')
-                    .map(|(a, b)| (a.trim().to_string(), b.trim().to_string()))
-            })
-            .collect();
+        let parse_expects = |tag: &str| -> Vec<(String, String)> {
+            src.lines()
+                .filter_map(|l| l.trim().strip_prefix(tag))
+                .filter_map(|l| {
+                    l.split_once(':')
+                        .map(|(a, b)| (a.trim().to_string(), b.trim().to_string()))
+                })
+                .collect()
+        };
+        let expects = parse_expects("#! expect ");
+        // the interval rule (S2 as first written, `--loops interval`), kept for comparison
+        let expects_interval = parse_expects("#! expect-interval ");
         if expects.is_empty() {
             failures.push(format!("{name}: no '#! expect' line"));
             continue;
@@ -50,6 +54,32 @@ fn corpus() {
             }
         };
         let (ck, rep) = check::check_program(&prog, false);
+        if !expects_interval.is_empty() {
+            let (_, ri) = check::check_program_opts(
+                &prog,
+                check::Options {
+                    record: false,
+                    natural_loops: false,
+                },
+            );
+            for (f, want) in &expects_interval {
+                n += 1;
+                let got = match ri
+                    .funcs
+                    .iter()
+                    .find(|r| r.name == *f)
+                    .and_then(|r| r.error.as_ref())
+                {
+                    Some(e) => format!("reject {}", e.rule.as_str()),
+                    None => "accept".into(),
+                };
+                if got != *want {
+                    failures.push(format!(
+                        "{name}: {f} (interval): expected {want}, got {got}"
+                    ));
+                }
+            }
+        }
         for (f, want) in &expects {
             n += 1;
             let got = if let Some(g) = rep

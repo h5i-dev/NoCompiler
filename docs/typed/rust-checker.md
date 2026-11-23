@@ -22,9 +22,10 @@ FILE.s ──asm.rs──▶ functions, labels, annotations, data symbols
 
 - **Structure.** S1: the instruction set is what `isa.rs` (a copy of `Isa.lean`'s) parses;
   only `jalr zero, 0(ra)` among indirect jumps; branches stay in the function; calls go to
-  functions with signatures. S2 (default): back edges = edges to a lower or equal address, to
-  `inv` labels; loops = intervals, nested, entered at the head. P1 (`--loops natural`, a
-  proposal): dominator back edges, reducibility, natural loops. S3: `sp` only by
+  functions with signatures. Loops (default, I36): dominator back edges to `inv` labels,
+  reducibility, natural loops, and a loop-contiguous order τ that is checked and exported;
+  `--loops interval`: the older S2 (backward edges to `inv` labels, nested address intervals
+  entered at the head). S3: `sp` only by
   `addi sp, sp, ∓F` at the declared frame size; depth 0/F tracked in the state. S4: the
   `frame` clause's slots and address-taken ranges are checked when the signature is read.
   S5: no cycle among safe functions' calls.
@@ -32,7 +33,7 @@ FILE.s ──asm.rs──▶ functions, labels, annotations, data symbols
   variable for `int`); facts Ψ with identities; slots Φ; capabilities C with identities
   (I12), guards, fields; frame depth. Capability validity facts (D2: `0 ≤ b`, `0 ≤ n`,
   `b + n ≤ 2^64`, field positions) are added to every query from C.
-- **Order.** Points are visited in address order (S2) or a topological order (P1); a point's
+- **Order.** Points are visited in τ (address order under `--loops interval`); a point's
   type is the join of its forward in-edges (I16), or, at an `inv`/`join` label, the
   annotation, which every in-edge is checked against (D7, `subtype`). Back edges are checked
   against the head with the edge's instantiation θ and the measure (T2). Loop-head fields

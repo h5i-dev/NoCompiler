@@ -157,8 +157,12 @@ pub struct Query {
 pub struct FnExport {
     /// The variable of each register's entry value: ra, then sp, gp, tp, s0–s11.
     pub reg_var: Vec<(Reg, Var)>,
-    /// (head index, last index, bound variables, measure) per loop.
+    /// (head index, last index, bound variables, measure) per loop; "last" is the body's
+    /// last point in τ, so the loop is the τ-interval from head to last.
     pub loops: Vec<(usize, usize, Vec<Var>, Option<Lin>)>,
+    /// τ: the reached instruction indices in checking order (P1; address order under
+    /// `--loops interval`). Every edge but a back edge goes up in τ; loops are intervals.
+    pub tau: Vec<usize>,
     /// Identity of each entry `borrow` capability, by clause.
     pub borrow_ids: Vec<u32>,
     /// The state type before each reached instruction (instruction index).
@@ -230,7 +234,7 @@ pub struct Static {
     pub fields: BTreeMap<i128, Lin>,
 }
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug)]
 pub struct Options {
     /// Record states, instantiations and queries (ledger, export).
     pub record: bool,
@@ -239,12 +243,22 @@ pub struct Options {
 }
 
 /// Checks every safe function of a parsed program.
+impl Default for Options {
+    /// Natural loops (P1) are the default since the user's decision of 2026-11-23.
+    fn default() -> Self {
+        Options {
+            record: false,
+            natural_loops: true,
+        }
+    }
+}
+
 pub fn check_program(p: &Program, record: bool) -> (Checker, Report) {
     check_program_opts(
         p,
         Options {
             record,
-            natural_loops: false,
+            natural_loops: true,
         },
     )
 }
@@ -468,7 +482,7 @@ struct Head {
 
 struct Loop {
     head: usize,
-    end: usize,
+
     body: BTreeSet<usize>,
     written: BTreeSet<Reg>,
 }
@@ -561,14 +575,25 @@ impl<'a> FnCheck<'a> {
                 reg_var.push((r, *v));
             }
         }
+        let tpos: BTreeMap<usize, usize> = self
+            .order
+            .iter()
+            .enumerate()
+            .map(|(i, x)| (*x, i))
+            .collect();
         let loops = self
             .loops
             .iter()
             .map(|l| {
                 let h = self.heads.get(&l.head);
+                let last = *l
+                    .body
+                    .iter()
+                    .max_by_key(|x| tpos.get(x).copied().unwrap_or(0))
+                    .unwrap();
                 (
                     l.head,
-                    l.end,
+                    last,
                     h.map(|h| h.inv_vars.iter().map(|x| x.1).collect())
                         .unwrap_or_default(),
                     h.and_then(|h| h.measure.clone()),
@@ -578,6 +603,7 @@ impl<'a> FnCheck<'a> {
         FnExport {
             reg_var,
             loops,
+            tau: self.order.clone(),
             // the export lists the implicit data capabilities as borrow clauses after the
             // signature's own (export.md), so their identities follow
             borrow_ids: self
@@ -936,10 +962,8 @@ impl<'a> FnCheck<'a> {
                     written.extend(Reg::all().filter(|r| caller_saved(*r)));
                 }
             }
-            let end = *body.iter().next_back().unwrap();
             self.loops.push(Loop {
                 head: h,
-                end,
                 body,
                 written,
             });
@@ -1154,9 +1178,117 @@ impl<'a> FnCheck<'a> {
                 }
             }
         }
-        self.order = order;
+        let _ = order;
+        // τ (T's form of P1): an order of the reached points in which every edge other than
+        // a back edge goes up and every natural loop is an interval. Built per region of
+        // the loop-nesting forest: inner loops collapsed to their head, the region sorted
+        // topologically (address order among ready points), inner loops expanded in place.
+        let reached: BTreeSet<usize> = rpo.iter().copied().collect();
+        let tau = self.tau_region(&reached, 0, &succ, &bodies);
+        // check the τ conditions themselves (what the Lean checker will check)
+        let mut pos = vec![usize::MAX; n];
+        for (i, u) in tau.iter().enumerate() {
+            pos[*u] = i;
+        }
+        let ivs: Vec<(usize, usize, usize)> = bodies
+            .iter()
+            .map(|(h, b)| (*h, pos[*h], b.iter().map(|x| pos[*x]).max().unwrap()))
+            .collect();
+        for &u in &tau {
+            for &t in &succ[u] {
+                let ok = if self.back.contains(&(u, t)) {
+                    pos[t] <= pos[u]
+                } else {
+                    pos[t] > pos[u]
+                };
+                let entering = ivs.iter().any(|(h, lo, hi)| {
+                    t != *h && pos[t] > *lo && pos[t] <= *hi && (pos[u] < *lo || pos[u] > *hi)
+                });
+                if !ok || entering {
+                    self.line = self.f.instrs[u].line;
+                    return self.err(
+                        Rule::Cfg,
+                        "no loop-contiguous order τ for this control-flow graph (P1)",
+                    );
+                }
+            }
+        }
+        for (h, lo, hi) in &ivs {
+            if bodies[h].len() != hi - lo + 1 {
+                self.line = self.f.instrs[*h].line;
+                return self.err(Rule::Cfg, "a natural loop is not contiguous in τ (P1)");
+            }
+        }
+        self.order = tau;
         self.loop_bodies = bodies.into_iter().collect();
         Ok(())
+    }
+
+    /// The τ order of `region` (a loop body with head `head`, or the whole function).
+    fn tau_region(
+        &self,
+        region: &BTreeSet<usize>,
+        head: usize,
+        succ: &[Vec<usize>],
+        bodies: &BTreeMap<usize, BTreeSet<usize>>,
+    ) -> Vec<usize> {
+        // the maximal loops strictly inside the region
+        let inner: Vec<(usize, &BTreeSet<usize>)> = bodies
+            .iter()
+            .filter(|(h, b)| **h != head && b.is_subset(region) && region.contains(h))
+            .filter(|(h, b)| {
+                !bodies.iter().any(|(h2, b2)| {
+                    *h2 != **h
+                        && *h2 != head
+                        && b2.is_subset(region)
+                        && b.is_subset(b2)
+                        && b2.len() > b.len()
+                })
+            })
+            .map(|(h, b)| (*h, b))
+            .collect();
+        let rep = |x: usize| -> usize {
+            inner
+                .iter()
+                .find(|(_, b)| b.contains(&x))
+                .map(|(h, _)| *h)
+                .unwrap_or(x)
+        };
+        let nodes: BTreeSet<usize> = region.iter().map(|x| rep(*x)).collect();
+        let mut indeg: BTreeMap<usize, usize> = nodes.iter().map(|x| (*x, 0)).collect();
+        let mut edges: BTreeMap<usize, BTreeSet<usize>> = BTreeMap::new();
+        for &u in region {
+            for &t in &succ[u] {
+                if !region.contains(&t) || self.back.contains(&(u, t)) {
+                    continue;
+                }
+                let (a, b) = (rep(u), rep(t));
+                if a != b && edges.entry(a).or_default().insert(b) {
+                    *indeg.get_mut(&b).unwrap() += 1;
+                }
+            }
+        }
+        let mut ready: BTreeSet<usize> = indeg
+            .iter()
+            .filter(|(_, d)| **d == 0)
+            .map(|(x, _)| *x)
+            .collect();
+        let mut out = Vec::new();
+        while let Some(&x) = ready.iter().next() {
+            ready.remove(&x);
+            match inner.iter().find(|(h, _)| *h == x) {
+                Some((h, b)) => out.extend(self.tau_region(b, *h, succ, bodies)),
+                None => out.push(x),
+            }
+            for y in edges.get(&x).cloned().unwrap_or_default() {
+                let d = indeg.get_mut(&y).unwrap();
+                *d -= 1;
+                if *d == 0 {
+                    ready.insert(y);
+                }
+            }
+        }
+        out
     }
 
     // ------------------------------------------------------------------ entry (T0)
