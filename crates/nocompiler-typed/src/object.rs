@@ -163,8 +163,12 @@ pub fn compare(prog: &Program, bytes: &[u8]) -> Vec<CheckError> {
                 errs.push(e(
                     f.line,
                     format!(
-                        "'{}' is at {:#x} in the object, the text puts it at {:#x}",
-                        f.name, s.2, first.addr
+                        "'{}' is at {}+{:#x} in the object, the text puts it at {}+{:#x}",
+                        f.name,
+                        elf.secs.get(s.1).map(|x| x.name.as_str()).unwrap_or("?"),
+                        s.2,
+                        f.section,
+                        first.addr
                     ),
                 ));
                 continue;
