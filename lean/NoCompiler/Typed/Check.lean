@@ -306,6 +306,7 @@ def edge (k : Option Nat) (S : STy) (k' : Nat) : Bool :=
   | some S' =>
     let back := match k with | some k => decide (k' ≤ k) | none => false
     let L := f.loopAt k'
+    decide (k' < f.size) &&
     (if back then (match L, k with | some L, some k => decide (k ≤ L.last) | _, _ => false) else true) &&
     let sv := S.vars
     let nv := (if back then (L.map (·.vars)).getD [] else []) ++
@@ -541,12 +542,23 @@ def structOk : Bool :=
   (f.loops.all fun L => L.head ≤ L.last && L.last < f.size &&
      L.vars.all (fun x => x < f.fresh && !f.protectedVars.contains x) &&
      L.meas.vars.all (· < f.fresh)) &&
-  ((f.loops.map (·.head)).Nodup) &&
+  decide ((f.loops.map (·.head)).Pairwise (· < ·)) &&
+  decide (f.entry.toNat % 4 = 0) && decide (4 * f.size < 2 ^ 64) &&
   (f.loops.all fun K => f.loops.all fun L =>
     K.head == L.head || L.last < K.head || K.last < L.head ||
     (K.head < L.head && L.last ≤ K.last) || (L.head < K.head && K.last ≤ L.last)) &&
   -- the signature mentions parameters on entry and parameters and `out` variables on exit
-  (f.initTy.maxVar < f.fresh)
+  (f.initTy.maxVar < f.fresh) &&
+  (σ.inRegs.all fun p => p.2.vars.all σ.params.contains) &&
+  (σ.pre.vars.all σ.params.contains) &&
+  (σ.borrow.all fun b => b.cap.guard.vars.all σ.params.contains &&
+    match b.cap.kind with
+    | .bytes x => (x.base.vars ++ x.len.vars ++ x.fields.flatMap (·.ty.vars)).all σ.params.contains &&
+        (b.outFields.flatMap (·.ty.vars)).all (fun y => σ.params.contains y || σ.outVars.contains y)
+    | .token _ => true) &&
+  (σ.outRegs.all fun p => p.2.vars.all (fun y => σ.params.contains y || σ.outVars.contains y)) &&
+  (σ.post.vars.all (fun y => σ.params.contains y || σ.outVars.contains y)) &&
+  (σ.outVars.all fun y => !f.protectedVars.contains y) && σ.outVars.Nodup
 
 /-- The whole function. -/
 def check (c : Code) : Bool :=

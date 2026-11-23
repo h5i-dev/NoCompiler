@@ -15,3 +15,7 @@ import NoCompiler.Typed.Presburger
 import NoCompiler.Typed.Search
 import NoCompiler.Typed.Check
 import NoCompiler.Typed.Sound.Inv
+import NoCompiler.Typed.Sound.Rank
+import NoCompiler.Typed.Sound.Congr
+import NoCompiler.Typed.Sound.Step
+import NoCompiler.Typed.Sound.Arith
