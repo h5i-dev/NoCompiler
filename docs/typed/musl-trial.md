@@ -170,6 +170,21 @@ as the base build with offsets shifted by the inline constant sequences (memchr-
 /[0xf0,0x100]; memccpy-ic: 15 S2 violations; strlen-ic: S2 ok, rejected at the byte loop's back
 edge 0x28). All three parse with U's parser (no `%pcrel_*`), so they reach the typing rules.
 
+### Batch 2 (predictions written before compiling, 2026-11-23, after stage 1)
+
+These predictions already use what stage 1 showed (call pairs typed as calls, I21; clang's
+block layout; branch-free `&&`), so they test whether that understanding generalises.
+`wchar_t` is 4 bytes (`int`) on riscv64.
+
+| function | predicted | why |
+|----------|-----------|-----|
+| wmemcpy | accept | `while (n--) *d++ = *s++;` with `borrow d ↦ bytes[4n] rw`, `s ↦ bytes[4n] ro`, `4 ∣ d`, `4 ∣ s`; one loop, no `&&`. |
+| wmemset | accept | same shape, one store per element. |
+| wmemcmp | accept | same loop shape as memcmp (which compiled to branches); the result `*l < *r ? -1 : *l > *r` is `slt`s, only `int`. |
+| wmemchr | accept | same shape as memcmp's loop. |
+| stpncpy | reject | xor alignment test as in memccpy; likely S2 layout; branch-free `&&` in the head loop. Calls memset (call pair). |
+| strncpy | accept | one call to `__stpncpy` with the same borrows; `d` kept in a callee-saved register. Signature stronger than C (s readable for n bytes). |
+
 ## Files
 
 - `scripts/musl-trial/build.sh` — pinned build (musl tree digest, clang 15.0.7, flags);
