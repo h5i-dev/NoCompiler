@@ -628,7 +628,23 @@ pub fn to_lean_full(
             let ws: Vec<String> = words.iter().map(|w| format!("0x{w:08x}#32")).collect();
             let _ = writeln!(o, "/-- The linked `.text`. -/");
             let _ = writeln!(o, "def code : Code := ⟨0x{base:x}#64, #[{}]⟩\n", ws.join(", "));
-            let _ = writeln!(o, "set_option maxRecDepth 100000 in\n/-- Theorem D's check, by the kernel. -/\ntheorem prog_checked : Prog.check code [] prog = true := by decide +kernel\n");
+            // one kernel check per function (each needs a few GB), then the program's
+            for n in &names {
+                let _ = writeln!(
+                    o,
+                    "set_option maxRecDepth 100000 in\ntheorem chk_{} : {n}.check code = true := by decide +kernel\n",
+                    n.trim_start_matches("fn_")
+                );
+            }
+            let chks: Vec<String> = names
+                .iter()
+                .map(|n| format!("chk_{}", n.trim_start_matches("fn_")))
+                .collect();
+            let _ = writeln!(
+                o,
+                "set_option maxRecDepth 100000 in\n/-- Theorem D's check, by the kernel. -/\ntheorem prog_checked : Prog.check code [] prog = true := by\n  simp only [prog, Prog.check, {}, Bool.true_and]\n  decide +kernel\n",
+                chks.join(", ")
+            );
             let _ = writeln!(o, "/-- Every function of the program meets its signature (⟦σ⟧, total), for every meaning of tokens. -/");
             let _ = writeln!(o, "theorem prog_meets (T : TokEnv) :\n    ∀ e ∈ Prog.env [] prog, Meets code e.2.2 e.1 T e.2.1 :=\n  Prog.check_sound_closed prog_checked\n");
         }

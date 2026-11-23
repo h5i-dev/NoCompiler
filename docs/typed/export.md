@@ -111,6 +111,20 @@ linked ELF (ET_EXEC/ET_DYN) and then:
 * `def prog : List Fn` lists the exported functions callee-first (S5), for `Prog.check`.
 Without `--image` the export is as before (section offsets, same-section callees, ℓ_sym free).
 
+### The ledger's `proved` (2026-11-23)
+
+`check FILE.s --image a.out --export-lean X.lean --prove [--lean-dir DIR] --ledger L.json`: for a
+closed program (every callee of every exported function is exported), the module also gets the
+linked `.text` (`def code`), `chk_<f> : fn_<f>.check code = true` per function and
+`prog_checked : Prog.check code [] prog = true` (all by `decide +kernel`: the kernel's check,
+no extra axiom), and `prog_meets` (theorem D, `Prog.check_sound_closed`). `--prove` compiles it
+with the repository's Lean checker (`lake env lean`, in `--lean-dir`, `$NOCOMPILER_LEAN_DIR` or
+the repository's `lean/`) and reads `#print axioms prog_meets`. Only if that succeeds with the
+standard axioms (propext, Classical.choice, Quot.sound) does the ledger say `proved` for those
+functions, with the module, the theorem, its axioms and each function's callees as evidence;
+otherwise they stay `checked` and the reason is printed. `xorBits := [k, …]` in `fn_*` lists the
+bit counts of the masks the xor-then-mask rule used (a hint for the Lean xor rule).
+
 ### θ per edge (2026-11-23, T's ask 4)
 
 For each exported function, `theta_<name> : List (Option Nat × Nat × List (Var × IExpr))`

@@ -15,7 +15,8 @@ FILE.s ──asm.rs──▶ functions, labels, annotations, data symbols
         ──ledger.rs / export.rs ▶ JSON ledger; Lean/JSON export for the Lean checker
 ```
 
-`nocompiler-typed link A.s B.s …` checks a whole program (I34). `nocompiler-typed check FILE.s [--object FILE.o] [--ledger L.json] [--export-lean X.lean]
+`nocompiler-typed link A.s B.s …` checks a whole program (I34). With `--image a.out --prove` the ledger says `proved` for
+functions whose program theorem the Lean checker established (export.md, "The ledger's `proved`"). `nocompiler-typed check FILE.s [--object FILE.o] [--ledger L.json] [--export-lean X.lean]
 [--export-json X.json] [--states] [--loops natural]`. Exit 0 iff every safe function passes.
 
 ## The pass (check.rs)
