@@ -695,3 +695,22 @@ pub fn to_json_image(
     }
     json!({"format": "nocompiler-typed export v0", "names": names, "sigs": sigs, "functions": fns})
 }
+
+#[cfg(test)]
+mod tests {
+    use super::hi_lo;
+
+    /// The linker's %pcrel_hi/%pcrel_lo split: recombines, `lo` is a 12-bit signed immediate.
+    #[test]
+    fn hi_lo_splits_like_the_linker() {
+        let mut d: i128 = -(1 << 31);
+        while d < (1 << 31) - 1 {
+            for e in [d, d + 0x7ff, d + 0x800, d + 0x801, -d - 1] {
+                let (hi, lo) = hi_lo(e);
+                assert_eq!((hi << 12) + lo, e, "d = {e}");
+                assert!((-2048..2048).contains(&lo), "d = {e}: lo = {lo}");
+            }
+            d += 0x12345;
+        }
+    }
+}
