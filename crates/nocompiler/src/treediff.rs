@@ -117,7 +117,7 @@ pub struct Diff {
 
 fn uses(i: &Instr) -> Vec<u8> {
     match *i {
-        Instr::Lui(..) | Instr::Auipc(..) | Instr::Jal(..) => vec![],
+        Instr::Lui(..) | Instr::Auipc(..) | Instr::Jal(..) | Instr::Unimp => vec![],
         Instr::Jalr(_, a, _)
         | Instr::Load(_, _, a, _)
         | Instr::IOp(_, _, a, _)
@@ -324,7 +324,7 @@ pub fn diff(a: &Side, b: &Side) -> Result<Diff, String> {
                 continue;
             }
             let after = (a1 < na && b1 < nb).then_some((a1, b1));
-            let before = (a0 > 0 && b0 > 0).then_some((a0 - 1, b0 - 1));
+            let before = (a0 > 0 && b0 > 0).then(|| (a0 - 1, b0 - 1));
             let simple = |p: (usize, usize)| {
                 isa::decode(a.words[p.0]).is_some_and(|i| {
                     !matches!(i, Instr::Branch(..) | Instr::Jal(..) | Instr::Jalr(..))

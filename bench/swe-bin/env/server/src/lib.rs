@@ -329,6 +329,105 @@ fn reset(cfg: &Config, seed: Option<i64>, episode_id: &str) -> Result<Episode, E
     })
 }
 
+/// `check_proof FILE` (patch mode): the bonus checker (convert/proofcheck.py, lead 00:49) on each
+/// subject's current file (the starting names). For every function `link` replaced, FILE must
+/// prove Refines sp_f base_f patched_f with A's run, sp_f non-vacuous. If every subject with a
+/// replaced function passes, the proof is recorded for the hash of those files, the hash `submit`
+/// computes: the kernel pays the bonus only if that very binary is submitted and passes the tests.
+fn check_proof(
+    cfg: &Config,
+    s: &Episode,
+    a: &Map<String, Value>,
+) -> Result<(Option<Episode>, Value), String> {
+    let Some(idx) = s.task else {
+        return Err("reset first".into());
+    };
+    if cfg.mode != k::Mode::Patch {
+        return Err("check_proof: the scratch-mode bonus (Verified) is not available (scratch mode is TODO)".into());
+    }
+    let t = &cfg.tasks[idx];
+    let dir = PathBuf::from(&s.dir);
+    let proof = a
+        .get("file")
+        .and_then(Value::as_str)
+        .ok_or("missing string argument \"file\"")?;
+    let pp = tools::episode_path(&dir, proof)?;
+    if !pp.exists() {
+        return Err(format!("{proof}: no such file (write it with write_file)"));
+    }
+    let files: Vec<String> = t.subjects.iter().map(|x| subject_file(x)).collect();
+    let mut bins = Vec::new();
+    for f in &files {
+        let b = std::fs::read(dir.join(f)).map_err(|e| format!("{f}: {e}"))?;
+        elf::check_submission(&b).map_err(|e| format!("{f}: {e}"))?;
+        bins.push(b);
+    }
+    // the checker reads frozen copies, so the files may change while it runs
+    let ep = s
+        .episode_id
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-')
+        .collect::<String>();
+    let work = cfg.swb.join("proof-work").join(&ep);
+    let _ = std::fs::remove_dir_all(&work);
+    std::fs::create_dir_all(&work).map_err(|e| e.to_string())?;
+    let frozen_proof = work.join("proof.lean");
+    std::fs::copy(&pp, &frozen_proof).map_err(|e| e.to_string())?;
+    let mut results = Vec::new();
+    let mut any = false;
+    let mut all = true;
+    for (i, b) in bins.iter().enumerate() {
+        let sub = work.join(format!("{i}.elf"));
+        tools::write_exe(&sub, b)?;
+        let cache = cfg.swb.join("proof-cache").join(&t.id).join(i.to_string());
+        let _ = std::fs::create_dir_all(&cache);
+        let r = tools::proofcheck(
+            cfg,
+            &t.base[i],
+            &sub,
+            &frozen_proof,
+            &work.join(format!("w{i}")),
+            &cache,
+        );
+        let replaced = r
+            .get("replaced")
+            .and_then(Value::as_array)
+            .is_some_and(|x| !x.is_empty());
+        if replaced {
+            any = true;
+            all &= r.get("checked").and_then(Value::as_bool) == Some(true);
+        }
+        results.push(json!({ "file": files[i], "result": r }));
+    }
+    let refs: Vec<&[u8]> = bins.iter().map(|b| b.as_slice()).collect();
+    let (digest, h) = hash_of(&refs);
+    let checked = any && all;
+    let mut next = None;
+    if checked {
+        let mut n = s.clone();
+        n.core = core(
+            &s.core,
+            k::Command::RecordProof {
+                proof: k::Proof {
+                    binary: h,
+                    kind: k::ProofKind::Refines,
+                    checked: true,
+                },
+            },
+        )
+        .map_err(|e| format!("{e:?}"))?;
+        n.message = format!(
+            "proof checked for sha256 {}: the bonus is paid if this binary is submitted and passes",
+            hex(&digest)
+        );
+        next = Some(n);
+    }
+    Ok((
+        next,
+        json!({ "checked": checked, "sha256": hex(&digest), "subjects": results }),
+    ))
+}
+
 fn submit(cfg: &Config, s: &Episode, files: &[String]) -> Result<Episode, Error> {
     let Some(idx) = s.task else {
         return Err(Error::NotReset);
@@ -445,6 +544,19 @@ impl Kernel for SweBin {
                 };
                 if s.core.done {
                     return Err(Error::Kernel(k::Error::Done));
+                }
+                if name == "check_proof" {
+                    let (next, r) = match check_proof(&cfg, s, args) {
+                        Ok((n, v)) => (n, Ok(v)),
+                        Err(e) => (None, Err(e)),
+                    };
+                    return Ok((
+                        next,
+                        Reply::Tool {
+                            name: name.clone(),
+                            result: r,
+                        },
+                    ));
                 }
                 let r = tools::call(&cfg, &cfg.tasks[idx], Path::new(&s.dir), name, args);
                 Ok((

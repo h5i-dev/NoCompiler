@@ -1,0 +1,5 @@
+nocompiler-proofs 1
+# The proofs about examples/elf/sum.link1.elf (proofs.tsv as a proofs file;
+# docs/toolkit/proof-status.md). Checked: lean/Examples/Link.lean.
+module 1214abbe2dfed2827b44696b93d89085cddab57205d586ecbbedb9f89230910d ../elf/sum.link1.elf
+proof sum Examples.Link.sum_relocatable Examples.Sum.spec closure 4ef4bfc74df50b5e374bf1d2be0cbb28f45f7fee93482f34942a9714d6e3c589 checked

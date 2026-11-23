@@ -187,3 +187,79 @@ fn lean_semantics_agree_with_sail() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// `unimp` (0xc0001073) traps in the Sail model (illegal instruction: the
+/// trap handler at mtvec traps again, which the emulator reports with the
+/// `unimp`'s address as MEPC), and the run never reaches `tohost`. Its Lean
+/// counterpart, no step, is tests/semantics.rs's
+/// `unimp_is_sigill_under_qemu_and_no_step_in_lean`.
+#[test]
+fn unimp_traps_in_sail() {
+    let clang = tool("CLANG", &["clang"]);
+    let lld = tool("LLD", &["ld.lld", "ld.lld-20", "ld.lld-19", "ld.lld-18"]);
+    let (Some(clang), Some(lld), Some(sim)) = (clang, lld, sail()) else {
+        eprintln!("SKIPPED unimp_traps_in_sail: needs clang, ld.lld and SAIL_RISCV_SIM");
+        return;
+    };
+    let dir = std::env::temp_dir().join(format!("nocompiler-sail-unimp-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let (asm, obj, elf, ld) = (
+        dir.join("u.S"),
+        dir.join("u.o"),
+        dir.join("u.elf"),
+        dir.join("link.ld"),
+    );
+    std::fs::write(&ld, LINK).unwrap();
+    std::fs::write(
+        &asm,
+        format!(
+            ".globl _start\n_start:\n  li a0, 1\n  unimp\n{END}1: j 1b\n.data\n{DATA}  .dword 0\n"
+        ),
+    )
+    .unwrap();
+    assert!(
+        Command::new(&clang)
+            .args([
+                "--target=riscv64-unknown-elf",
+                "-march=rv64im_zba_zbb",
+                "-mabi=lp64",
+                "-mno-relax",
+                "-c"
+            ])
+            .arg(&asm)
+            .arg("-o")
+            .arg(&obj)
+            .status()
+            .unwrap()
+            .success()
+    );
+    assert!(
+        Command::new(&lld)
+            .arg("-T")
+            .arg(&ld)
+            .args(["-e", "_start"])
+            .arg(&obj)
+            .arg("-o")
+            .arg(&elf)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let out = Command::new(&sim)
+        .args(["--trace-instr", "--inst-limit", "200"])
+        .arg(&elf)
+        .output()
+        .unwrap();
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(text.contains("(0xC0001073)"), "{text}");
+    assert!(
+        text.contains("trap loop detected with MEPC=0x80000004"),
+        "{text}"
+    );
+    assert!(!text.contains("SUCCESS"), "{text}");
+}

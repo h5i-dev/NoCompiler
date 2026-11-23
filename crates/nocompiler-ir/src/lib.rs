@@ -25,6 +25,7 @@ pub mod range;
 pub mod shape;
 pub mod ssa;
 pub mod stack;
+pub mod syscall;
 
 pub use exec::{Outcome, run, run_with};
 pub use interp::{Machine, Step, Stop, step};

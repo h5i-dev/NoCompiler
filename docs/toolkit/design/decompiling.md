@@ -60,8 +60,7 @@ The rebuilder turns SSA into expression trees, recognizing what the machine
 does with pointers: `base + index * stride + offset` becomes an element or a
 field access when the shape analysis knows the pointer's layout, and stays
 arithmetic when it does not. Flag algebra becomes comparisons. Reciprocal
-multiplication should become division and does not yet, which the scorecard
-says.
+multiplication (a division by a constant, as compilers emit it) is not turned back into a division.
 
 ## What it deliberately does not do
 

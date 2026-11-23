@@ -75,7 +75,11 @@ simproc [nocompiler_image] chunkInstr (Code.instr _ _) := fun e => do
   let some k := sp.findIdx? (fun (o, l) => 4 * o ≤ off && off < 4 * (o + l)) | return .continue
   -- The chunk as its own constant, as the exporter names it (`chunk_k`).
   let some (.defnInfo d) := (← getEnv).find? (ns ++ `chunks) | return .continue
-  let some ck := (d.value.listLit?.bind (·.2[k]?)) | return .continue
+  -- A long list literal is not elaborated as a plain `List.cons` chain (`listLit?` does not see it, as
+  -- for an image of many chunks, e.g. 42): then the constant by its name. `hk` below is checked either way.
+  let byName := ns ++ Name.mkSimple s!"chunk_{k}"
+  let some ck := (d.value.listLit?.bind (·.2[k]?)) <|>
+      (if (← getEnv).contains byName then some (mkConst byName) else none) | return .continue
   let cc := mkApp2 (mkConst ``Chunk.code) base ck
   let lhs' := mkApp2 (mkConst ``Code.instr) cc pc
   let rhs := toExpr (← evalInstr lhs')

@@ -117,11 +117,11 @@ def _root_.NoCompiler.Instr.dst : Instr → Option Nat
   | .addiw rd _ _ | .shift _ rd _ _ | .shiftw _ rd _ _ | .rop _ rd _ _ | .rwop _ rd _ _
   | .uop _ rd _ => if rd.val = 0 then none else some rd.val
   | .ecall => some 10
-  | .branch .. | .store .. => none
+  | .branch .. | .store .. | .unimp => none
 
 /-- The registers an instruction reads. -/
 def _root_.NoCompiler.Instr.srcs : Instr → List Nat
-  | .lui .. | .auipc .. | .jal .. | .ecall => []
+  | .lui .. | .auipc .. | .jal .. | .ecall | .unimp => []
   | .jalr _ a _ | .load _ _ a _ | .iop _ _ a _ | .addiw _ a _ | .shift _ _ a _
   | .shiftw _ _ a _ | .uop _ _ a => [a.val]
   | .branch _ a b _ | .store _ a b _ | .rop _ _ a b | .rwop _ _ a b => [a.val, b.val]
@@ -312,14 +312,15 @@ def instrOkW (I : Word → Option Instr) (E : Word → Bool) (f : Func) (pc : Wo
     | .jal rd off =>
       let t := pc + off.signExtend 64
       if rd = 0 then local_ t || E t
-      else rd == 1 && E t && fall
+      else rd == 1 && E t
     | .jalr rd rs1 off =>
       if rd = 0 && rs1 = 1 && off = 0 then true
       else match pairAtW I f pc with
         | some (r, v) =>
           let t := (v + off.signExtend 64) &&& ~~~1
-          E t && ((rd == 1 && r == 1 && fall) || (rd == 0 && r == 6))
+          E t && ((rd == 1 && r == 1) || (rd == 0 && r == 6))
         | none => false
+    | .unimp => true
     | _ => fall
 
 def checkW (I : Word → Option Instr) (E : Word → Bool) (f : Func) : Bool :=

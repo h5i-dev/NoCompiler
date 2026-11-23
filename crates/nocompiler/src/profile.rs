@@ -159,6 +159,8 @@ pub enum Flow {
     /// A jump to another function's entry that does not return here.
     Tail(u64),
     Ret,
+    /// `unimp`: the process dies (SIGILL); control goes nowhere.
+    Trap,
 }
 
 fn target(pc: u64, i: isa::Imm) -> u64 {
@@ -180,6 +182,7 @@ pub fn flow(f: &Func, pc: u64, entries: &BTreeSet<u64>) -> Result<Flow, Violatio
     };
     let prev = if pc > f.entry { f.at(pc - 4) } else { None };
     Ok(match i {
+        Instr::Unimp => Flow::Trap,
         Instr::Branch(_, _, _, off) => {
             let t = target(pc, off);
             if !f.contains(t) {
@@ -272,7 +275,7 @@ fn succs(pc: u64, fl: Flow) -> Vec<u64> {
         Flow::Next | Flow::Call(_) => vec![pc + 4],
         Flow::Branch(t) => vec![pc + 4, t],
         Flow::Jump(t) => vec![t],
-        Flow::Tail(_) | Flow::Ret => vec![],
+        Flow::Tail(_) | Flow::Ret | Flow::Trap => vec![],
     }
 }
 
@@ -513,8 +516,15 @@ pub fn check_with(
             }
         }
     }
+    // R2: the last instruction does not fall through. A call may be last: it is to a
+    // function that never returns (musl's `abort`, ASan's report functions), and the
+    // caller's proof shows that from the callee's spec (docs/isa/profile.md;
+    // lean/NoCompiler/Struct.lean `instrOk`).
     if let Some((&last, &fl)) = flows.iter().next_back() {
-        if !matches!(fl, Flow::Ret | Flow::Jump(_) | Flow::Tail(_)) {
+        if !matches!(
+            fl,
+            Flow::Ret | Flow::Jump(_) | Flow::Tail(_) | Flow::Call(_) | Flow::Trap
+        ) {
             l1.push(v(
                 last,
                 "R2 control",

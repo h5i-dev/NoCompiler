@@ -1,5 +1,11 @@
 # Roadmap
 
+> **A plan and milestone record, not a description of the code.** Milestones, scopes and "will" sentences
+> below are plans unless the text says they shipped. What exists now: [MANUAL.md](MANUAL.md) (the commands
+> and their options, `nocompiler --help`), [prove.md](prove.md), [proof-status.md](proof-status.md) and the
+> code itself. Commands named here that `nocompiler --help` does not list (e.g. `nocompiler bundle`,
+> `nocompiler ptx`) do not exist. (Note added 2026-11-23, round 9 freeze.)
+
 Status: in progress, 2026-09-13. This file is the scope authority for nocompiler:
 what it is, what gets built in what order, and what will be refused in review
 rather than argued about again.

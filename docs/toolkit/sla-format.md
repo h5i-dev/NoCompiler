@@ -597,8 +597,9 @@ format's meaning.
 
 `crates/nocompiler-sla/tests/sleighc/` turns an `nocompiler-sleigh` specification into the
 model above and writes it. It lives in the test harness rather than the library
-because `nocompiler-sleigh` will depend on `nocompiler-sla` for its decode engine and cargo
-refuses a cycle between two normal dependencies; moving it is a file move.
+because a planned change (not made) would have `nocompiler-sleigh` depend on `nocompiler-sla` for its
+decode engine, and cargo refuses a cycle between two normal dependencies; if that is done, moving it
+is a file move.
 
 Over all 152 `.slaspec` files in the source and binary trees: 152 parse, 152
 compile, 152 read back with zero inconsistencies and a model that agrees with
@@ -705,6 +706,7 @@ takes a second or two on a small spec. Change one line, recompile, and diff the
 two decoded trees. That loop is the whole method, and it is why this document
 can say which claims are proved: each one names the edit that moved the bytes.
 
-The tests find a Ghidra tree at `$NOCOMPILER_GHIDRA_DIR`, at
-`~/.local/share/ghidra-cli/ghidra`, at `~/ghidra`, at `~/Ref/ghidra` or at
-`/opt/ghidra`, and report and return when there is none.
+The tests find a Ghidra tree and report and return when there is none. tests/compile.rs looks at
+`$NOCOMPILER_GHIDRA_DIR`, `~/.local/share/ghidra-cli/ghidra`, `~/ghidra`, `~/Ref/ghidra` and
+`/opt/ghidra`; tests/corpus.rs and tests/writer.rs look at `$NOCOMPILER_SLA_DIR`,
+`~/.local/share/ghidra-cli/ghidra`, `~/ghidra` and `/opt/ghidra`.

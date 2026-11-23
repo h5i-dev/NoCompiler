@@ -2,7 +2,7 @@
 //! episode directory, with a time limit and an output limit:
 //! - nocompiler commands (no `cc`, no `repl`, no `ui`, no `batch`, no `project`);
 //! - `link` (src/elf.rs), the file tools (text only, plain names), `run_tests` (the harness);
-//! - `check_proof`, not available yet (see STATUS-D R-D1).
+//! - `check_proof`: the proof bonus (convert/proofcheck.py; run by the episode in lib.rs).
 //!
 //! No tool runs a compiler, a shell or an interpreter on input the agent controls.
 
@@ -155,6 +155,36 @@ pub fn harness(cfg: &Config, task: &str, elfs: &[PathBuf], which: &str) -> Value
                 .unwrap_or_else(|_| json!({ "error": out.chars().take(2000).collect::<String>() }))
         }
         Err(e) => json!({ "error": e }),
+    }
+}
+
+/// The proof-bonus checker (convert/proofcheck.py, next to the harness) on one subject.
+pub fn proofcheck(
+    cfg: &Config,
+    base: &Path,
+    sub: &Path,
+    proof: &Path,
+    work: &Path,
+    cache: &Path,
+) -> Value {
+    let script = cfg.harness.with_file_name("proofcheck.py");
+    let args: Vec<String> = vec![
+        script.to_string_lossy().into_owned(),
+        "check".into(),
+        base.to_string_lossy().into_owned(),
+        sub.to_string_lossy().into_owned(),
+        proof.to_string_lossy().into_owned(),
+        work.to_string_lossy().into_owned(),
+        "--cache".into(),
+        cache.to_string_lossy().into_owned(),
+    ];
+    match run(&cfg.python, &args, &cfg.swb, cfg.test_timeout, 1 << 22) {
+        Ok((_, out)) => {
+            let line = out.lines().rev().find(|l| l.starts_with('{')).unwrap_or("");
+            serde_json::from_str(line)
+                .unwrap_or_else(|_| json!({ "checked": false, "error": out.chars().rev().take(2000).collect::<String>().chars().rev().collect::<String>() }))
+        }
+        Err(e) => json!({ "checked": false, "error": e }),
     }
 }
 
@@ -341,7 +371,7 @@ pub fn specs() -> Vec<(&'static str, &'static str, Value)> {
         ),
         (
             "check_proof",
-            "Check a Lean proof for the bonus.",
+            "Check a Lean proof (module SweBin.Proof, importing SweBin.Base and SweBin.Patched, the images of the starting binary and of yours) for the bonus: for each function you replaced with `link`, `theorem refines_<f> : Refines sp_<f> SweBin.Base.code SweBin.Base.<f>_dom SweBin.Base.<f>_entry SweBin.Patched.code SweBin.Patched.<f>_dom SweBin.Patched.<f>_entry` (with base's run, ARuns), `theorem inhabited_<f>` (an entry state meets sp_<f>.pre), and sp_<f>.pre the conjunction of `def pre_<f>_0`, `pre_<f>_1`, ... each of which the proof needs. Checked for the current binaries; the bonus is paid if they are what you submit and every test passes. The first check of a task exports and compiles the images: minutes.",
             schema(&[file], &["file"]),
         ),
     ]
@@ -396,7 +426,10 @@ pub fn call(
             let n = f("file")?;
             let ext = n.rsplit('.').next().unwrap_or("");
             if !WRITABLE.contains(&ext) || !n.contains('.') {
-                return Err(format!("only text files may be written ({})", WRITABLE.join(" ")));
+                return Err(format!(
+                    "only text files may be written ({})",
+                    WRITABLE.join(" ")
+                ));
             }
             let c = s(a, "content")?;
             if c.len() > MAX_WRITE {
@@ -406,58 +439,91 @@ pub fn call(
             Ok(json!({ "written": n }))
         }
         "copy_file" => {
-            let (from, to) = (episode_path(dir, &f("from")?)?, episode_path(dir, &f("to")?)?);
+            let (from, to) = (
+                episode_path(dir, &f("from")?)?,
+                episode_path(dir, &f("to")?)?,
+            );
             let b = std::fs::read(&from).map_err(|e| e.to_string())?;
             write_exe(&to, &b)?;
             Ok(json!({ "copied": b.len() }))
         }
-        "asm" => nc(cfg, dir, vec!["asm".into(), "-o".into(), f("out")?, f("file")?]),
+        "asm" => nc(
+            cfg,
+            dir,
+            vec!["asm".into(), "-o".into(), f("out")?, f("file")?],
+        ),
         "link" => {
-            let bin = std::fs::read(episode_path(dir, &f("binary")?)?).map_err(|e| e.to_string())?;
-            let obj = std::fs::read(episode_path(dir, &f("object")?)?).map_err(|e| e.to_string())?;
+            let bin =
+                std::fs::read(episode_path(dir, &f("binary")?)?).map_err(|e| e.to_string())?;
+            let obj =
+                std::fs::read(episode_path(dir, &f("object")?)?).map_err(|e| e.to_string())?;
             let (img, r) = elf::link(&bin, &obj).map_err(|e| e.to_string())?;
             write_exe(&episode_path(dir, &f("out")?)?, &img)?;
-            Ok(json!({ "segment": format!("{:#x}", r.segment.0), "bytes": r.segment.1, "replaced": r.replaced, "added": r.added }))
+            Ok(
+                json!({ "segment": format!("{:#x}", r.segment.0), "bytes": r.segment.1, "replaced": r.replaced, "added": r.added }),
+            )
         }
         "disasm" => {
             let file = f("file")?;
             let target = opt(a, "target").unwrap_or_else(|| "all".into());
             if let Ok(bin) = std::fs::read(episode_path(dir, &file)?)
-                && elf::in_swb(&bin, &target) {
-                    return Err(format!("{target} was put in {file} by `link`: its text is the structured text you assembled \
-                                        (read your .s file); nocompiler lists the binary's own .text"));
-                }
-            let r = nc(cfg, dir, vec!["disasm".into(), "--".into(), file.clone(), target.clone()])?;
-            let listing = r["output"].as_str().is_some_and(|o| o.starts_with("; no structured text"));
+                && elf::in_swb(&bin, &target)
+            {
+                return Err(format!(
+                    "{target} was put in {file} by `link`: its text is the structured text you assembled \
+                                        (read your .s file); nocompiler lists the binary's own .text"
+                ));
+            }
+            let r = nc(
+                cfg,
+                dir,
+                vec!["disasm".into(), "--".into(), file.clone(), target.clone()],
+            )?;
+            let listing = r["output"]
+                .as_str()
+                .is_some_and(|o| o.starts_with("; no structured text"));
             if !listing || target == "all" {
                 return Ok(r);
             }
             // nocompiler gives up on the whole binary (R-D1): print the function from a copy in
             // which every other function is `ret`
             let bin = std::fs::read(episode_path(dir, &file)?).map_err(|e| e.to_string())?;
-            let Ok(iso) = elf::isolate(&bin, &target) else { return Ok(r) };
+            let Ok(iso) = elf::isolate(&bin, &target) else {
+                return Ok(r);
+            };
             let tmp = dir.join(".isolated.elf");
             write_exe(&tmp, &iso)?;
-            let r2 = nc(cfg, dir, vec!["disasm".into(), "--".into(), ".isolated.elf".into(), target])?;
+            let r2 = nc(
+                cfg,
+                dir,
+                vec!["disasm".into(), "--".into(), ".isolated.elf".into(), target],
+            )?;
             let _ = std::fs::remove_file(&tmp);
             Ok(r2)
         }
-        "check" | "sections" | "info" => {
-            nc(cfg, dir, vec![name.into(), f("file")?])
-        }
+        "check" | "sections" | "info" => nc(cfg, dir, vec![name.into(), f("file")?]),
         "funcs" | "symbols" => {
             let bin = std::fs::read(episode_path(dir, &f("file")?)?).map_err(|e| e.to_string())?;
             let mut levels = std::collections::HashMap::new();
             if name == "funcs" {
                 // the levels nocompiler check gives (its JSON lists every function)
-                if let Ok((_, out)) = run(&cfg.nocompiler, &["check".into(), "--json".into(), f("file")?], dir, cfg.tool_timeout, 64 << 20)
-                    && let Some(j) = out.lines().find(|l| l.starts_with('{')).and_then(|l| serde_json::from_str::<Value>(l).ok()) {
-                        for fun in j["functions"].as_array().cloned().unwrap_or_default() {
-                            if let (Some(n), Some(l)) = (fun["name"].as_str(), fun["level"].as_str()) {
-                                levels.insert(n.to_string(), l.to_string());
-                            }
+                if let Ok((_, out)) = run(
+                    &cfg.nocompiler,
+                    &["check".into(), "--json".into(), f("file")?],
+                    dir,
+                    cfg.tool_timeout,
+                    64 << 20,
+                ) && let Some(j) = out
+                    .lines()
+                    .find(|l| l.starts_with('{'))
+                    .and_then(|l| serde_json::from_str::<Value>(l).ok())
+                {
+                    for fun in j["functions"].as_array().cloned().unwrap_or_default() {
+                        if let (Some(n), Some(l)) = (fun["name"].as_str(), fun["level"].as_str()) {
+                            levels.insert(n.to_string(), l.to_string());
                         }
                     }
+                }
             }
             let rows = elf::symbol_rows(&bin, name == "funcs").map_err(|e| e.to_string())?;
             let filter = opt(a, "filter").unwrap_or_default();
@@ -476,27 +542,73 @@ pub fn call(
             Ok(Value::String(limited(lines, a)))
         }
         "strings" => {
-            let (_, out) = run(&cfg.nocompiler, &["strings".into(), f("file")?], dir, cfg.tool_timeout, 64 << 20)?;
+            let (_, out) = run(
+                &cfg.nocompiler,
+                &["strings".into(), f("file")?],
+                dir,
+                cfg.tool_timeout,
+                64 << 20,
+            )?;
             let filter = opt(a, "filter").unwrap_or_default();
-            let lines: Vec<String> = out.lines().filter(|l| l.contains(&filter)).map(String::from).collect();
+            let lines: Vec<String> = out
+                .lines()
+                .filter(|l| l.contains(&filter))
+                .map(String::from)
+                .collect();
             Ok(Value::String(limited(lines, a)))
         }
         "xrefs" => {
             let bin = std::fs::read(episode_path(dir, &f("file")?)?).map_err(|e| e.to_string())?;
             let refs = elf::refs_to(&bin, &s(a, "target")?).map_err(|e| e.to_string())?;
-            let lines: Vec<String> = refs.into_iter().map(|(func, off, kind)| format!("{func}+{off:#x}  {kind}")).collect();
+            let lines: Vec<String> = refs
+                .into_iter()
+                .map(|(func, off, kind)| format!("{func}+{off:#x}  {kind}"))
+                .collect();
             Ok(Value::String(limited(lines, a)))
         }
-        "stats" => nc(cfg, dir, vec!["stats".into(), NC_THREADS.into(), "--".into(), f("file")?]),
-        "decompile" => nc(cfg, dir, vec!["decompile".into(), NC_THREADS.into(), "--color=never".into(), "--".into(), f("file")?, s(a, "target")?]),
-        "diff" => nc(cfg, dir, vec!["diff".into(), NC_THREADS.into(), "--".into(), f("file")?, f("other")?]),
+        "stats" => nc(
+            cfg,
+            dir,
+            vec!["stats".into(), NC_THREADS.into(), "--".into(), f("file")?],
+        ),
+        "decompile" => nc(
+            cfg,
+            dir,
+            vec![
+                "decompile".into(),
+                NC_THREADS.into(),
+                "--color=never".into(),
+                "--".into(),
+                f("file")?,
+                s(a, "target")?,
+            ],
+        ),
+        "diff" => nc(
+            cfg,
+            dir,
+            vec![
+                "diff".into(),
+                NC_THREADS.into(),
+                "--".into(),
+                f("file")?,
+                f("other")?,
+            ],
+        ),
         "emulate" => {
-            let mut v = vec!["emulate".into(), NC_THREADS.into(), "--".into(), f("file")?, s(a, "target")?];
+            let mut v = vec![
+                "emulate".into(),
+                NC_THREADS.into(),
+                "--".into(),
+                f("file")?,
+                s(a, "target")?,
+            ];
             for x in opt(a, "args").unwrap_or_default().split_whitespace() {
                 // integers only: nothing here is passed to a shell, but keep the argv plain
                 let ok = x.strip_prefix('-').unwrap_or(x);
-                let ok = ok.strip_prefix("0x").map_or(!ok.is_empty() && ok.bytes().all(|b| b.is_ascii_digit()),
-                                                      |h| !h.is_empty() && h.bytes().all(|b| b.is_ascii_hexdigit()));
+                let ok = ok.strip_prefix("0x").map_or(
+                    !ok.is_empty() && ok.bytes().all(|b| b.is_ascii_digit()),
+                    |h| !h.is_empty() && h.bytes().all(|b| b.is_ascii_hexdigit()),
+                );
                 if !ok {
                     return Err(format!("not an integer: {x:?}"));
                 }
@@ -504,14 +616,27 @@ pub fn call(
             }
             nc(cfg, dir, v)
         }
-        "refine" => nc(cfg, dir, vec!["refine".into(), "--".into(), f("file")?, f("other")?, s(a, "target")?]),
+        "refine" => nc(
+            cfg,
+            dir,
+            vec![
+                "refine".into(),
+                "--".into(),
+                f("file")?,
+                f("other")?,
+                s(a, "target")?,
+            ],
+        ),
         "run_tests" => {
             let names: Vec<String> = match opt(a, "files") {
                 Some(l) => l.split(',').map(|x| x.trim().to_string()).collect(),
                 None => task.subjects.iter().map(|x| subject_file(x)).collect(),
             };
             if names.len() != task.subjects.len() {
-                return Err(format!("one binary per subject ({})", task.subjects.join(", ")));
+                return Err(format!(
+                    "one binary per subject ({})",
+                    task.subjects.join(", ")
+                ));
             }
             let mut paths = Vec::new();
             for n in &names {
@@ -520,11 +645,13 @@ pub fn call(
                 elf::check_submission(&b).map_err(|e| format!("{n}: {e}"))?;
                 paths.push(p);
             }
-            let which = match cfg.mode { k::Mode::Patch => "p2p", k::Mode::Scratch => "all" };
+            let which = match cfg.mode {
+                k::Mode::Patch => "p2p",
+                k::Mode::Scratch => "all",
+            };
             Ok(harness(cfg, &task.id, &paths, which))
         }
-        "check_proof" => Err("check_proof is not available yet: nocompiler cannot export these whole Linux \
-                              binaries to Lean modules (STATUS-D R-D1), so there is no goal to prove".into()),
+        "check_proof" => Err("check_proof is handled by the episode (lib.rs)".into()),
         _ => Err(format!("unknown tool {name}")),
     }
 }

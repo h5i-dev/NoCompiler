@@ -268,6 +268,8 @@ def exec (i : Instr) (s : State) : Option State :=
   | .rwop op rd rs1 rs2 => some ((s.setReg rd (evalRW op (s.reg rs1) (s.reg rs2))).setPc next)
   | .uop op rd rs1 => some ((s.setReg rd (evalU op (s.reg rs1))).setPc next)
   | .ecall => none
+  -- A trap: the process dies (SIGILL). No step, as every fault.
+  | .unimp => none
 
 -- Rewritten by its equation lemmas only (simp [exec]), never unfolded by
 -- unification; see NoCompiler/Step.lean at `Reach.opt`.

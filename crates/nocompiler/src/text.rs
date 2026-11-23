@@ -499,6 +499,10 @@ fn parse_stmt(text: &str, line: usize) -> Result<Stmt, String> {
             n(0)?;
             Stmt::Ins(Instr::Ecall)
         }
+        "unimp" => {
+            n(0)?;
+            Stmt::Ins(Instr::Unimp)
+        }
         _ => {
             if let Some(op) = br(m) {
                 n(3)?;
@@ -1252,6 +1256,7 @@ pub fn encode(i: &Instr) -> u32 {
             }
         }
         Ecall => 0x73,
+        Unimp => 0xc000_1073,
     }
 }
 // ---------------------------------------------------------------- the object

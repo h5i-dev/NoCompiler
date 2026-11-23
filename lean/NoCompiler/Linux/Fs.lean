@@ -30,6 +30,8 @@ namespace NoCompiler.Linux
 def sysOpenat : Word := 56
 def sysFstat : Word := 80
 def atFdcwd : Word := -(BitVec.ofNat 64 100)
+/-- `AT_FDCWD`'s low 32 bits, as an fd argument is read (`SyscallInput.fd`). -/
+def atFdcwd32 : Word := atFdcwd &&& 0xffffffff#64
 def enoent : Word := -(BitVec.ofNat 64 2)
 def emfile : Word := -(BitVec.ofNat 64 24)
 
@@ -49,7 +51,7 @@ def openatSpec (k : Kern) (i : SyscallInput) (o : Outcome) (k' : Kern) : Prop :=
   match cString i.mem (i.arg 1) 4096 with
   | none => False
   | some p =>
-    (i.arg 0 = atFdcwd ∨ p.head? = some 0x2f) ∧ i.arg 2 &&& openBadFlags = 0 ∧
+    (i.fd 0 = atFdcwd32 ∨ p.head? = some 0x2f) ∧ i.arg 2 &&& openBadFlags = 0 ∧
     match k.fs.lookup p with
     | none => o = .ret { ret := enoent } none ∧ k' = k
     | some d =>
@@ -65,15 +67,15 @@ def OpenFile.chunk (f : OpenFile) (n : Nat) : List Byte := (f.data.drop f.off).t
 
 def fileReadOutcome (i : SyscallInput) (f : OpenFile) : Outcome :=
   let ds := f.chunk (i.arg 2).toNat
-  .ret { ret := BitVec.ofNat 64 ds.length, writes := [(i.arg 1, ds)] } (some (.read (i.arg 0) ds))
+  .ret { ret := BitVec.ofNat 64 ds.length, writes := [(i.arg 1, ds)] } (some (.read (i.fd 0) ds))
 
 /-- The 8 little-endian bytes of `n`. -/
 def le64 (n : Nat) : List Byte := (List.range 8).map fun j => BitVec.ofNat 8 (n >>> (8 * j))
 
 def fstatSpec (k : Kern) (i : SyscallInput) (o : Outcome) : Prop :=
-  if i.arg 0 ∈ k.fds then
+  if i.fd 0 ∈ k.fds then
     ∃ st : List Byte, st.length = 128 ∧
-      (∀ f, k.files.lookup (i.arg 0) = some f → (st.drop 48).take 8 = le64 f.data.length) ∧
+      (∀ f, k.files.lookup (i.fd 0) = some f → (st.drop 48).take 8 = le64 f.data.length) ∧
       o = .ret { ret := 0, writes := [(i.arg 1, st)] } none
   else o = .ret { ret := ebadf } none
 
@@ -81,16 +83,16 @@ def procSpec5 (k : Kern) (i : SyscallInput) (o : Outcome) (k' : Kern) : Prop :=
   if i.sysno = sysOpenat then openatSpec k i o k'
   else if i.sysno = sysFstat then fstatSpec k i o ∧ k' = k
   else if i.sysno = sysRead then
-    match k.files.lookup (i.arg 0) with
+    match k.files.lookup (i.fd 0) with
     | some f =>
       o = fileReadOutcome i f ∧
         k' = { k with files := k.files.map fun p =>
-          if p.1 = i.arg 0 then (p.1, { p.2 with off := p.2.off + (f.chunk (i.arg 2).toNat).length })
+          if p.1 = i.fd 0 then (p.1, { p.2 with off := p.2.off + (f.chunk (i.arg 2).toNat).length })
           else p }
     | none => procSpec4 k i o k'
   else if i.sysno = sysClose then
     -- `procSpec4`'s `close`, the file forgotten
-    ∃ k₁, procSpec4 k i o k₁ ∧ k' = { k₁ with files := k.files.filter (·.1 ≠ i.arg 0) }
+    ∃ k₁, procSpec4 k i o k₁ ∧ k' = { k₁ with files := k.files.filter (·.1 ≠ i.fd 0) }
   else procSpec4 k i o k'
 
 inductive ProcStep5 : State × Kern → State × Kern → Prop
@@ -181,7 +183,7 @@ theorem procSpec5_exists {s s₁ : State} (k : Kern) (ho : OldSys s) (hy : Sys s
       unfold fdSpec
       by_cases hrw : (SyscallInput.of s).sysno = sysRead ∨ (SyscallInput.of s).sysno = sysWrite
       · simp only [hrw, ↓reduceIte]
-        by_cases hfd : (SyscallInput.of s).arg 0 ∈ k.fds
+        by_cases hfd : (SyscallInput.of s).fd 0 ∈ k.fds
         · exact ⟨o, k, by simp only [hfd, ↓reduceIte]; exact ⟨hspec, trivial⟩⟩
         · exact ⟨_, k, by simp only [hfd, ↓reduceIte]; exact ⟨rfl, trivial⟩⟩
       · have hcl : ¬ (SyscallInput.of s).sysno = sysClose := by rw [hno]; exact h3

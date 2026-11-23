@@ -87,7 +87,7 @@ theorem InstrOk.mono {P Q : Perm} (h : P.le Q) : ∀ {i s}, InstrOk P i s → In
   | .ecall, _, ⟨hw, hr⟩ => ⟨fun e => h.read _ _ (hw e), fun e => h.write _ _ (hr e)⟩
   | .lui .., _, _ | .auipc .., _, _ | .jal .., _, _ | .jalr .., _, _ | .branch .., _, _
   | .iop .., _, _ | .addiw .., _, _ | .shift .., _, _ | .shiftw .., _, _ | .rop .., _, _
-  | .rwop .., _, _ | .uop .., _, _ => trivial
+  | .rwop .., _, _ | .uop .., _, _ | .unimp, _, _ => trivial
 
 /-! ## The code image -/
 
@@ -133,6 +133,9 @@ inductive Step (c : Code) (P : Perm) : State → State → Prop
       s.exit = none → c.instr s.pc = some .ecall → SysOk P s → Sys s s' → Step c P s s'
 
 theorem exec_ecall (s : State) : exec .ecall s = none := by unfold exec; rfl
+
+/-- `unimp` has no step: the process dies there (SIGILL). -/
+theorem exec_unimp (s : State) : exec .unimp s = none := by unfold exec; rfl
 
 /-- The instruction at `s` is allowed by `P` whenever some `P`-step exists. -/
 theorem Step.instrOk {c P s s'} (h : Step c P s s') :

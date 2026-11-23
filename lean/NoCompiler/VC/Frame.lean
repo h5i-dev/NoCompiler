@@ -183,6 +183,11 @@ partial def vcAlign (g : MVarId) : TacticM Unit := g.withContext do
     let st ← saveState
     try return some (← evalTacticAt tac g)
     catch _ => st.restore; return none
+  -- A shift as the step function writes it (`evalSh .slli x k`): as `x <<< k`.
+  if a.isAppOfArity ``NoCompiler.evalSh 3 then
+    if let some [g'] ← tryTac (← `(tactic| simp only [NoCompiler.evalSh])) then
+      vcAlign g'
+      return
   if a.isAppOfArity ``HAdd.hAdd 6 then
     let some gs ← tryTac (← `(tactic| refine NoCompiler.VC.M.aligned_add' (by decide) ?_ ?_))
       | throwError "vc_align: sum"

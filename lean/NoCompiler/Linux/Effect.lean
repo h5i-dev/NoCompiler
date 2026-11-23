@@ -36,6 +36,20 @@ def SyscallInput.of (s : State) : SyscallInput :=
 /-- Argument `k` (a0 is 0); 0 past a5, as LPS's `in_arg`. -/
 def SyscallInput.arg (i : SyscallInput) (k : Nat) : Word := i.args.getD k 0
 
+/-- Argument `k` as a file descriptor: its low 32 bits, as Linux reads an `unsigned int fd` and LPS's `fd32`
+    (user decision 2026-11-22 17:09, STATUS-D (4)). -/
+def SyscallInput.fd (i : SyscallInput) (k : Nat) : Word := i.arg k &&& 0xffffffff#64
+
+/-- The fd argument `k` of the `ecall` at `s`: register `a<k>`'s low 32 bits. -/
+theorem SyscallInput.fd_of (s : State) : (SyscallInput.of s).fd 0 = s.reg 10 &&& 0xffffffff#64 := rfl
+
+/-- A descriptor below 2^32 is its own low 32 bits. -/
+theorem SyscallInput.fd_of_lt {i : SyscallInput} {k : Nat} (h : (i.arg k).toNat < 2 ^ 32) : i.fd k = i.arg k := by
+  unfold SyscallInput.fd
+  apply BitVec.eq_of_toNat_eq
+  rw [BitVec.toNat_and, show (0xffffffff#64).toNat = 2 ^ 32 - 1 from rfl, Nat.and_two_pow_sub_one_eq_mod,
+    Nat.mod_eq_of_lt h]
+
 /-- What a returning syscall does to the process. -/
 structure Effect where
   ret : Word

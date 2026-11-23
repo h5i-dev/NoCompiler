@@ -231,3 +231,40 @@ fn x0_is_zero() {
     // addi zero, a1, 1 leaves a0 alone (a0 starts at 0)
     assert_eq!(exec(0x0015_8013, 7, 0), 0);
 }
+
+/// `ecall` is one call to `syscall::SYSCALL` that reads a7 and a0-a5 and
+/// writes a0, and clobbers nothing else (Linux preserves every other
+/// register); the interpreter steps over it (the runner models the kernel).
+#[test]
+fn ecall_is_a_system_call_that_writes_a0_only() {
+    let insn = nocompiler_arch::decode(&rv64(), &0x0000_0073u32.to_le_bytes(), Addr::new(0x1000))
+        .expect("decodes");
+    let lifted = nocompiler_ir::lift(&rv64(), &insn);
+    let calls: Vec<_> = lifted.ops.iter().filter(|o| o.op == Op::Call).collect();
+    assert_eq!(calls.len(), 1, "{:?}", lifted.ops);
+    let c = calls[0];
+    assert_eq!(
+        c.input(0).and_then(|v| v.value()),
+        Some(nocompiler_ir::syscall::SYSCALL)
+    );
+    let regs: Vec<u64> = c.inputs()[1..].iter().map(|v| v.offset).collect();
+    let want: Vec<u64> = [17u8, 10, 11, 12, 13, 14, 15]
+        .iter()
+        .map(|r| gpr_offset(*r))
+        .collect();
+    assert_eq!(regs, want, "a7, then a0-a5");
+    assert_eq!(c.out.map(|v| v.offset), Some(gpr_offset(10)));
+    assert!(
+        !lifted.ops.iter().any(|o| o.op == Op::Undefine),
+        "{:?}",
+        lifted.ops
+    );
+    // The interpreter does not jump to SYSCALL, and a1 keeps its value.
+    let mem = nocompiler_core::MemoryMap::new();
+    let mut m = Machine::over(&mem);
+    m.set_reg(gpr_offset(11), 8, 42);
+    for op in &lifted.ops {
+        assert_eq!(nocompiler_ir::step(&mut m, op), nocompiler_ir::Step::Next);
+    }
+    assert_eq!(m.reg(gpr_offset(11), 8), 42);
+}

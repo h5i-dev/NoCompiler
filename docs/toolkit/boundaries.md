@@ -1,6 +1,6 @@
 # G4: function boundaries against DWARF
 
-`ROADMAP.md` has listed G4, "function boundary precision and recall against
+`ROADMAP-toolkit.md` has listed G4, "function boundary precision and recall against
 DWARF ground truth, per fixture", in the quality gate table since the start.
 Nothing measured it. `scripts/toolkit/boundary-gate.sh` does, over 95,697 ground-truth
 functions in 592 binaries from 16 real projects at three optimization levels.
@@ -73,7 +73,7 @@ small and too lopsided to conclude anything from.
 
 **DecBench**, built by `scripts/toolkit/decbench-fixtures.sh`: 16 upstream projects at
 O0, O2 and O2-noinline with DWARF retained, 94,250 ground-truth functions in
-585 binaries. This is why `ROADMAP.md` wanted the DecBench dataset in the
+585 binaries. This is why `ROADMAP-toolkit.md` wanted the DecBench dataset in the
 fixture corpus, and it is why the totals below are in the tens of thousands of
 functions rather than the hundreds.
 

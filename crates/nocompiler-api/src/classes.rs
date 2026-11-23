@@ -1,6 +1,6 @@
 //! C++ classes: the hierarchy, the constructors and destructors, and `this`.
 //!
-//! [`crate::vtables`] finds the tables. A table on its own is a list of
+//! [`crate::vtables`](mod@crate::vtables) finds the tables. A table on its own is a list of
 //! function pointers with an address for a name; it says nothing about what a
 //! class inherits from, which of its functions build an object and which tear
 //! one down, or what the first argument of any of them points at. This module

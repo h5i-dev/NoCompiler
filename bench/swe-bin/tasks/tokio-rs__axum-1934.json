@@ -108518,5 +108518,11 @@
    "cmd": "git apply -R --whitespace=nowarn /mnt/scratch/ec2-user/swe-bin/work/tokio-rs__axum-1934/test.patch"
   }
  ],
- "convert_s": 1430.8
+ "convert_s": 1430.8,
+ "editable_crates": [
+  "axum",
+  "axum_core",
+  "axum_extra",
+  "axum_macros"
+ ]
 }

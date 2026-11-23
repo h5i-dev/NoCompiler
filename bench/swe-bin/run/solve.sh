@@ -75,13 +75,36 @@ tmux new-session -d -s "$SESSION" -x 200 -y 50 -c "$RUN/cwd" \
 # the folder-trust question, then the prompt
 for _ in $(seq 1 60); do
   P=$(tmux capture-pane -p -t "$SESSION")
-  # "No, exit" is the default answer: choose "Yes, I trust this folder" (the empty cwd)
-  if echo "$P" | grep -q "Yes, I trust this folder"; then
-    tmux send-keys -t "$SESSION" Down; sleep 0.5; tmux send-keys -t "$SESSION" Enter; sleep 3
+  # "No, exit" is the default answer: choose "Yes, I trust this folder" (the empty cwd). Press
+  # Enter only once the cursor is on "Yes": a Down sent before the dialog reads keys is lost,
+  # and Enter then exits (2026-11-21-r2, micropython: "Claude Code didn't start")
+  if echo "$P" | grep -q "didn't start because"; then
+    echo "$TASK: Claude Code exited at the folder-trust question; not started" >&2
+    tmux kill-session -t "$SESSION" 2>/dev/null || true; exit 1
   fi
-  if echo "$P" | grep -qE "^│ >|^> |\? for shortcuts"; then break; fi
+  if echo "$P" | grep -q "❯ Yes, I trust this folder"; then
+    tmux send-keys -t "$SESSION" Enter; sleep 3
+  elif echo "$P" | grep -q "Yes, I trust this folder"; then
+    tmux send-keys -t "$SESSION" Down; sleep 1; continue
+  fi
+  # the input box: "> " or "? for shortcuts" in older TUIs; v2.1.330 shows "❯ Try ..." and the
+  # mode line "⏵⏵ don't ask on" (the trust dialog also has a "❯", so not that alone)
+  if ! echo "$P" | grep -q "trust this folder" && echo "$P" | grep -qE "^│ >|^> |\? for shortcuts|⏵⏵|^❯ "; then READY=1; break; fi
   sleep 1
 done
+# the swebin tools must be loaded before the prompt goes in: the bridge writes reset.json when
+# Claude Code first lists its tools (2026-11-21-r2: a prompt sent before that met no tools, and the
+# solver wrote "@swebin:list_files" as text and ended its turn)
+for _ in $(seq 1 120); do [ -f "$RUN/logs/reset.json" ] && break; sleep 1; done
+if [ ! -f "$RUN/logs/reset.json" ]; then
+  echo "$TASK: the swebin MCP server did not connect; not started" >&2
+  tmux kill-session -t "$SESSION" 2>/dev/null || true; exit 1
+fi
+sleep 5
+if [ -z "${READY:-}" ]; then
+  echo "$TASK: Claude Code's input box did not appear; not started" >&2
+  tmux kill-session -t "$SESSION" 2>/dev/null || true; exit 1
+fi
 tmux load-buffer -b "p-$SHORT" "$RUN/prompt.txt"
 tmux paste-buffer -b "p-$SHORT" -t "$SESSION"
 sleep 2; tmux send-keys -t "$SESSION" Enter

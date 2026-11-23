@@ -119,6 +119,7 @@ def fexec (i : Instr) (S : FState) : Option FState :=
   | .rwop op rd rs1 rs2 => some ((S.setReg rd (evalRW op (S.reg rs1) (S.reg rs2))).setPc next)
   | .uop op rd rs1 => some ((S.setReg rd (evalU op (S.reg rs1))).setPc next)
   | .ecall => none
+  | .unimp => none
 
 /-- The bridge, proved once: on a well-formed flat state, `exec` of the
     trusted state it stands for is the trusted state of `fexec`. -/
@@ -150,6 +151,7 @@ theorem exec_toState {S : FState} (h : S.WF) (i : Instr) :
     · simp only [hc, ite_true, Option.map_some]; rfl
     · simp [hc]
   | ecall => simp [exec_ecall, fexec]
+  | unimp => simp [exec_unimp, fexec]
   | _ => simp only [exec, fexec, Option.map_some, FState.reg_toState, FState.toState_pc, e1]
 
 end NoCompiler.Fast

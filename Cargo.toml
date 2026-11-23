@@ -19,7 +19,6 @@ repository = "https://github.com/h5i-dev/NoCompiler"
 authors = ["nocompiler contributors"]
 # Publishing metadata. Here rather than in each crate so a crate that becomes
 # publishable only has to opt in.
-homepage = "https://github.com/h5i-dev/NoCompiler"
 documentation = "https://docs.rs/nocompiler-cli"
 readme = "README.md"
 keywords = ["risc-v", "formal-verification", "lean4", "binary", "elf"]
@@ -31,7 +30,6 @@ nocompiler-core = { path = "crates/nocompiler-core", version = "0.1.0" }
 nocompiler-format = { path = "crates/nocompiler-format", version = "0.1.0" }
 nocompiler-arch = { path = "crates/nocompiler-arch", version = "0.1.0" }
 nocompiler-asm = { path = "crates/nocompiler-asm", version = "0.1.0" }
-nocompiler-sla = { path = "crates/nocompiler-sla", version = "0.1.0" }
 nocompiler-sleigh = { path = "crates/nocompiler-sleigh", version = "0.1.0" }
 nocompiler-analysis = { path = "crates/nocompiler-analysis", version = "0.1.0" }
 nocompiler-db = { path = "crates/nocompiler-db", version = "0.1.0" }

@@ -1819,6 +1819,16 @@ fn apply_code_relocations(
         .then(|| plan_got(r, shdrs, obj, caps))
         .flatten();
     let got = got_layout.as_ref().map(|g| g.base).unwrap_or(0);
+    // Past the GOT too, which is mapped after the loop.
+    let mut externs = ExternPlan::after(
+        got_layout
+            .as_ref()
+            .map(|g| g.base.saturating_add(g.bytes.len() as u64))
+            .into_iter()
+            .chain(obj.memory.bounds().map(|b| b.end().get()))
+            .max()
+            .unwrap_or(0x10_0000),
+    );
 
     let mut applied: u64 = 0;
     let mut unresolved: u64 = 0;
@@ -1878,7 +1888,11 @@ fn apply_code_relocations(
                 },
             };
 
-            let value = symbol_value(r, shdrs, obj, rel.symbol);
+            let value = symbol_value(r, shdrs, obj, rel.symbol).or_else(|| {
+                is_branch(&arch, rel.kind, place, &obj.memory)
+                    .then(|| externs.stub(r, shdrs, wide, rel.symbol, caps))
+                    .flatten()
+            });
             if value.is_none() && needs_symbol(&arch, rel.kind) {
                 unresolved += 1;
                 continue;
@@ -1918,6 +1932,7 @@ fn apply_code_relocations(
     if let Some(g) = got_layout {
         g.map_into(obj);
     }
+    externs.map_into(obj);
     for (at, bytes) in patches {
         obj.memory.patch(at, &bytes);
     }
@@ -2034,6 +2049,159 @@ impl GotPlan {
             obj.memory.add(seg);
         }
     }
+}
+
+/// Stubs for the functions a relocatable object calls but does not define.
+///
+/// A call to an undefined symbol has no address in the object, and leaving
+/// its displacement at zero makes every such call a call to itself: the call
+/// graph cannot say that `bl __stack_chk_fail` does not return, and a walk
+/// runs on past it into whatever follows. So each one gets what a linked
+/// binary gives it, a named import thunk outside every section: one slot per
+/// symbol, an indirect jump, a function hint named `name@plt` with
+/// `ImportThunk` provenance, so everything that already understands a PLT
+/// entry (no-return names, signature libraries skipping thunks, prototypes the
+/// thunk does not claim) treats it the same way.
+struct ExternPlan {
+    base: u64,
+    /// Symbol index to stub address, in first-use order.
+    stubs: BTreeMap<u64, (u64, String)>,
+}
+
+/// Bytes per stub.
+const EXTERN_SLOT: u64 = 16;
+
+impl ExternPlan {
+    fn after(end: u64) -> ExternPlan {
+        ExternPlan {
+            base: end.checked_next_multiple_of(16).unwrap_or(end),
+            stubs: BTreeMap::new(),
+        }
+    }
+
+    /// The stub for an undefined symbol, made on first use.
+    fn stub(
+        &mut self,
+        r: &Reader<'_>,
+        shdrs: &[SecHdr],
+        wide: bool,
+        symbol: u64,
+        caps: &nocompiler_core::Caps,
+    ) -> Option<u64> {
+        if let Some((at, _)) = self.stubs.get(&symbol) {
+            return Some(*at);
+        }
+        let name = symbol_name(r, shdrs, wide, symbol, caps).filter(|n| !n.is_empty())?;
+        let at = self
+            .base
+            .checked_add((self.stubs.len() as u64).checked_mul(EXTERN_SLOT)?)?;
+        // The slot has to fit, or the stub would not be where the call says.
+        at.checked_add(EXTERN_SLOT)?;
+        self.stubs.insert(symbol, (at, name));
+        Some(at)
+    }
+
+    /// Map the stubs and name them.
+    fn map_into(self, obj: &mut Object) {
+        if self.stubs.is_empty() {
+            return;
+        }
+        let body = match obj.arch {
+            // br x16, then udf: the jump a linked AArch64 PLT entry ends in.
+            Arch::AArch64 => vec![0x00, 0x02, 0x1f, 0xd6],
+            // jmp *%rax (or %eax), then int3.
+            Arch::X86 | Arch::X86_64 => vec![0xff, 0xe0],
+            _ => return,
+        };
+        let fill = if matches!(obj.arch, Arch::AArch64) {
+            0x00
+        } else {
+            0xcc
+        };
+        let mut bytes = vec![fill; self.stubs.len() * EXTERN_SLOT as usize];
+        let mut named = Vec::with_capacity(self.stubs.len());
+        for (at, name) in self.stubs.into_values() {
+            let off = (at - self.base) as usize;
+            bytes[off..off + body.len()].copy_from_slice(&body);
+            named.push((Addr(at), name));
+        }
+        let Some(range) = AddrRange::sized(Addr(self.base), bytes.len() as u64) else {
+            return;
+        };
+        let Ok(seg) = Segment::new(
+            range,
+            Perms::new(true, false, true),
+            ".extern.synthetic",
+            0,
+            bytes,
+        ) else {
+            return;
+        };
+        obj.memory.add(seg);
+        obj.metadata
+            .insert("elf.extern_stubs".into(), named.len().to_string());
+        for (at, name) in named {
+            match obj.imports.iter_mut().find(|im| im.name == name) {
+                Some(imp) => imp.thunk = Some(at),
+                None => obj.imports.push(Import {
+                    name: name.clone(),
+                    library: None,
+                    thunk: Some(at),
+                }),
+            }
+            obj.function_hints.push(FunctionHint {
+                addr: at,
+                size: Some(EXTERN_SLOT),
+                name: Some(format!("{name}@plt")),
+                provenance: Provenance::new(Evidence::ImportThunk),
+            });
+        }
+    }
+}
+
+/// True when a relocation of this type at `place` writes a call or jump
+/// target, which is when a stub can stand in for an undefined symbol. A data
+/// reference to one stays unresolved: pointing it at code would be a guess.
+fn is_branch(arch: &Arch, kind: u64, place: u64, mem: &MemoryMap) -> bool {
+    // `call rel32` and `jmp rel32`: a PC32 is a branch only after their opcode.
+    let after_branch_opcode = || {
+        place
+            .checked_sub(1)
+            .and_then(|p| mem.slice(Addr(p), 1))
+            .is_some_and(|b| b[0] == 0xe8 || b[0] == 0xe9)
+    };
+    match arch {
+        // R_X86_64_PLT32, R_X86_64_PC32.
+        Arch::X86_64 => kind == 4 || (kind == 2 && after_branch_opcode()),
+        Arch::X86 => kind == R_386_PLT32 || (kind == R_386_PC32 && after_branch_opcode()),
+        // R_AARCH64_JUMP26, R_AARCH64_CALL26.
+        Arch::AArch64 => kind == 282 || kind == 283,
+        _ => false,
+    }
+}
+
+/// A symbol's name, through the string table its symbol table links to.
+fn symbol_name(
+    r: &Reader<'_>,
+    shdrs: &[SecHdr],
+    wide: bool,
+    index: u64,
+    caps: &nocompiler_core::Caps,
+) -> Option<String> {
+    let entsize: u64 = if wide { 24 } else { 16 };
+    let sh = shdrs.iter().find(|s| s.kind == SHT_SYMTAB)?;
+    if index >= sh.size / entsize {
+        return None;
+    }
+    let strsh = shdrs.get(sh.link as usize)?;
+    // `st_name` is the first word in both layouts.
+    let at = sh.offset.checked_add(index.checked_mul(entsize)?)?;
+    let name_off = r.slice_at("symbol", at, 4).ok()?.u32("st_name").ok()?;
+    let strtab = r.slice_at("string table", strsh.offset, strsh.size).ok()?;
+    let name = strtab
+        .cstr_at("symbol name", name_off as u64, caps.string_len)
+        .ok()?;
+    Some(String::from_utf8_lossy(name).into_owned())
 }
 
 /// Lay out a GOT for a relocatable i386 object.

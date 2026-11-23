@@ -29,11 +29,10 @@ comparison is not like for like and saying so matters more than the number.
 
 Memory is the axis where nocompiler is worse, by roughly ten times. It keeps the
 whole analysis in memory; objdump streams. On a 7.5 GB machine that is a
-tradeoff rather than a problem, and it is what M11's incremental analysis is
-for.
+tradeoff rather than a problem. Reducing it (incremental analysis) is a plan, not built.
 
-rizin and Ghidra are not installed here, so the comparison the roadmap names is
-not yet made. That is a gap in the scorecard, not a result.
+The rizin and Ghidra comparisons are below (rizin 0.8.2, Ghidra 12.1.3); IDA and Binary Ninja are not
+installed, so there is no comparison with them.
 
 ### Against rizin
 
@@ -273,10 +272,9 @@ datatests, had made every `<` and `<=` in a source program reach the output
 meaning its complement, on both architectures at every optimization level. It
 compiled cleanly, which is why the first gate never saw it.
 
-The gate is now a ratchet: 39 is a ceiling that fails both when the number
-rises and when it falls without being recorded, because a gate that is
-permanently red is a gate everyone learns to skip. Zero is the only acceptable
-end state and each of the 39 is named by the failure message.
+The gate was a ratchet at 39 (a ceiling that failed both when the number rose and when it fell without
+being recorded). It has since reached zero: `MAX_DISAGREEING` is 0 in
+`crates/nocompiler-decomp/tests/roundtrip.rs`, so any disagreeing function now fails it.
 
 ### Nothing is dropped
 
@@ -516,7 +514,7 @@ What costs the score, in order: goto density (1.98 per function against angr's
 0.57; functions nocompiler structures without a goto score 36.2% GED-perfect, above
 angr's whole-set 34.6%, and functions with three or more score 0.0%); locals
 reaching the metric with no name, offset or type, because `decompile --json`
-emits only a count of them, which makes 58% of the type ground truth
+emitted only a count of them at that run (it now emits each variable), which makes 58% of the type ground truth
 unmatchable by construction; and PLT call sites emitted with no arguments and
 their result read from `__clobbered()`, in 295 of the 780 functions.
 

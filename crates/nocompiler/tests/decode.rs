@@ -27,7 +27,6 @@ const EXCLUDED: &[&str] = &[
     "csrrwi",
     "csrrsi",
     "csrrci",
-    "unimp",
     "sret",
     "mret",
     "uret",

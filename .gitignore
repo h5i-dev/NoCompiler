@@ -266,4 +266,6 @@ __marimo__/
 /lean/.lake/
 # The committed binaries the proofs are about (`*.elf` is ignored above).
 !/examples/elf/*.elf
+# Decompiler test fixtures, built from the .c beside them (see the test that loads each).
+!/crates/nocompiler-decomp/tests/riscv/*.elf
 /examples/demo/build/

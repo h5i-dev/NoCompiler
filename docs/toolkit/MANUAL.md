@@ -10,9 +10,13 @@ Reverse engineering from the command line. Load a binary, recover its
 functions, disassemble them, decompile them, and ask questions about what is
 there.
 
-Every command takes `--json` and prints the same information in a form a
-script can read. Exit codes are `0` for success, `1` for nothing found, `2` for
-a bad command line, and `3` for input that could not be read.
+Most analysis commands take `--json` and print the same information in a form a
+script can read; `nocompiler <command> --help` says which. `export`, `textconv`,
+`link`, `asm`, `status`, `ledger`, `prove`, `completions`, `ui` and the
+`project new/add/import/dashboard` subcommands do not. Exit codes (from
+`nocompiler --help`): `0` ok; `1` a function violates the profile (`check`,
+`annotate`, `cc`) or nothing was found; `2` bad usage, and for the core commands
+also an unreadable or unsupported input; `3` bad input (toolkit commands).
 
 ```
 cargo build --release
@@ -23,7 +27,10 @@ cargo build --release
 
 ### A release binary
 
-Every release attaches one archive per platform, a `SHA256SUMS` file and a
+No release has been published yet (the repository has no tags). `.github/workflows/release.yaml`
+is how one will be made: it creates a draft release, and its macOS and Windows jobs have never
+run (UNVERIFIED in that file); the two Linux musl archives are what
+`scripts/toolkit/build-release.sh` produces locally. When a release exists, it attaches one archive per platform, a `SHA256SUMS` file and a
 signature over it. Unpack and put `nocompiler` on your path:
 
 ```
@@ -77,7 +84,7 @@ cargo install --path crates/nocompiler-cli          # from a checkout
 ```
 
 The dependency list is deliberately short (`serde` and `serde_json`, `clap`,
-`memmap2`, `rayon`, and nothing else), and no crate in the workspace has a
+`memmap2`, `rayon`, and `tiny_http` for `ui`), and no crate in the workspace has a
 build script or links against a C library. That is what makes cross-compiling
 a matter of naming a target rather than assembling a sysroot: the loaders and
 decoders are written here rather than pulled in, so nothing in the graph needs
@@ -153,8 +160,8 @@ nocompiler strings FILE        strings found in the image, by section
 nocompiler stats FILE          counts: functions, blocks, instructions, references
 ```
 
-`info` and the listings above need only the container, so they are instant
-whatever the size of the file.
+`info` and the listings above need no recovery or disassembly, but loading still parses the
+container's debug information (DWARF), so their time grows with it; benchmarks.md measures it.
 
 ## Code
 
@@ -520,8 +527,7 @@ Colour, paging and width-fitting happen only when a person is reading. Piped
 output carries no escape sequences and is never truncated, so a listing taken
 today diffs against the same listing taken a week ago.
 
-## What is not built yet
+## The roadmap
 
-SLEIGH languages, i386, Windows-specific entry points, an assembler, and an
-interactive session. `ROADMAP.md` is the list, and it says what each milestone
-is and what it is measured by.
+[ROADMAP-toolkit.md](ROADMAP-toolkit.md) is the toolkit's milestone record: what each milestone
+is and what it is measured by. It is a plan; what exists is what `nocompiler --help` lists.

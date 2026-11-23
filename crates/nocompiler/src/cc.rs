@@ -82,6 +82,40 @@ fn is_source(a: &str) -> bool {
     [".c", ".S", ".s"].iter().any(|e| a.ends_with(e)) && !a.starts_with('-')
 }
 
+/// `nocompiler cc -c SRC -o OUT.o`: compile one source to an object with the
+/// profile's flags, then the user's (so `--target` or `-mabi` given later
+/// win: a profile object linked against a library built for another float
+/// ABI must carry that ABI's tag), and nothing else: no link, no check (the
+/// linked binary is what `nocompiler check` reads).
+pub fn compile(args: &[String], out: &Path) -> Result<Report, String> {
+    let (clang, _) = tools()?;
+    let sources: Vec<&String> = args.iter().filter(|a| is_source(a)).collect();
+    let [src] = sources[..] else {
+        return Err("cc -c: one source file".into());
+    };
+    let mut flags: Vec<&str> = CFLAGS.to_vec();
+    if !args.iter().any(|a| a.starts_with("-O")) {
+        flags.push("-O2");
+    }
+    let user = args.iter().filter(|a| !is_source(a) && *a != "-c");
+    let st = Command::new(&clang)
+        .args(&flags)
+        .args(user)
+        .arg("-c")
+        .arg(src)
+        .arg("-o")
+        .arg(out)
+        .status()
+        .map_err(|e| format!("{clang}: {e}"))?;
+    if !st.success() {
+        return Err(format!("cc: clang failed on {src}"));
+    }
+    Ok(Report {
+        conforms: true,
+        text: String::new(),
+    })
+}
+
 /// Compile every source in `args` (the rest are clang flags; `-O2` unless an
 /// `-O` is given), link with entry `_start`, write `out` with `.nocompiler.struct`
 /// when every function conforms, and report.

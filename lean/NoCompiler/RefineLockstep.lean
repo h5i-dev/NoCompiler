@@ -100,7 +100,7 @@ def kindOk (k : Cert) (e : Pair) (i : Instr) : Bool :=
     decide (aligned (e.pb + off.signExtend 64) 4) && decide (aligned (e.pa + off.signExtend 64) 4) &&
     succOk k i e.live (e.pb + off.signExtend 64) (e.pa + off.signExtend 64)
   | .jalr rd rs1 off => rd == 0 && rs1 == 1 && off == 0 && obsRegs.all e.live.contains
-  | .auipc .. => false
+  | .auipc .. | .unimp => false
   | .ecall | .lui .. | .load .. | .store .. | .iop .. | .addiw .. | .shift .. | .shiftw ..
   | .rop .. | .rwop .. | .uop .. => succOk k i e.live (e.pb + 4) (e.pa + 4)
 
@@ -248,6 +248,7 @@ theorem uses_live {e : Pair} {i : Instr} (hf : PairFacts cA cB DA DB k e i) :
     intro r hr; simp only [Instr.uses, List.mem_singleton] at hr; subst hr
     exact h 1 (by simp [obsRegs])
   | auipc => simp [kindOk] at hk
+  | unimp => simp [kindOk] at hk
   | _ =>
     simp only [kindOk] at hk
     obtain ⟨_, _, _, _, ht⟩ := succOk_sound hk; exact ht.1
@@ -333,6 +334,7 @@ theorem step_pair {P : Perm} {s0 : State} (hral : aligned (s0.reg 1) 4) {e : Pai
         · exact (hag.mono hobs).setPc _ _
       · simp at hexb
     | auipc => simp [kindOk] at hk
+    | unimp => simp [kindOk] at hk
     | _ =>
       simp only [kindOk] at hk
       obtain ⟨e', he', hb', ha', ht⟩ := succOk_sound hk
@@ -366,6 +368,7 @@ theorem progress_pair {P : Perm} {e : Pair} {i : Instr} (hf : PairFacts cA cB DA
     cases i with
     | ecall => simp [exec_ecall] at hexa
     | auipc => simp [kindOk] at hk
+    | unimp => simp [kindOk] at hk
     | branch op a b off =>
       simp only [kindOk, Bool.and_eq_true, decide_eq_true_eq] at hk
       obtain ⟨⟨⟨_, halb⟩, _⟩, _⟩ := hk

@@ -116,6 +116,60 @@ pub fn export_with(
     export_as(bin, metas, namespace, source, chunked, level_check)
 }
 
+/// What `export --process` adds for a proof about the whole process: the
+/// ELF's entry point, the program headers as the kernel's auxiliary vector
+/// gives them (`AT_PHDR`, `AT_PHENT`, `AT_PHNUM`; musl's `__init_libc` and
+/// `__init_tls` read them), and their bytes at that address, from the
+/// `PT_LOAD` whose file range holds them. Not in `segments`, so the images
+/// written without it are unchanged.
+pub fn process_defs(elf: &[u8]) -> Result<String, String> {
+    let u = |o: usize, n: usize| -> Result<u64, String> {
+        let b = elf
+            .get(o..o + n)
+            .ok_or("export --process: truncated ELF header")?;
+        Ok(b.iter().rev().fold(0u64, |a, &x| (a << 8) | x as u64))
+    };
+    if elf.get(4) != Some(&2) || elf.get(5) != Some(&1) {
+        return Err("export --process: not a 64-bit little-endian ELF".into());
+    }
+    let (entry, phoff, phent, phnum) = (u(24, 8)?, u(32, 8)?, u(54, 2)?, u(56, 2)?);
+    let size = phent * phnum;
+    let mut at = None;
+    for k in 0..phnum {
+        let p = (phoff + k * phent) as usize;
+        let (kind, off, vaddr, filesz) = (u(p, 4)?, u(p + 8, 8)?, u(p + 16, 8)?, u(p + 32, 8)?);
+        if kind == 1 && off <= phoff && phoff + size <= off + filesz {
+            at = Some(vaddr + (phoff - off));
+            break;
+        }
+    }
+    let at = at.ok_or("export --process: no PT_LOAD maps the program headers")?;
+    let bytes = &elf[phoff as usize..(phoff + size) as usize];
+    let ws: Vec<u32> = bytes.iter().map(|&x| x as u32).collect();
+    let mut o = String::new();
+    writeln!(o, "/-- The ELF's entry point (`e_entry`). -/").unwrap();
+    writeln!(o, "def elfEntry : Word := 0x{entry:x}#64\n").unwrap();
+    writeln!(
+        o,
+        "/-- The program headers as the auxiliary vector gives them: {phnum} of {phent} bytes at {at:#x} (`AT_PHDR`, `AT_PHENT`, `AT_PHNUM`). -/"
+    )
+    .unwrap();
+    writeln!(
+        o,
+        "def phdrInfo : NoCompiler.Linux.PhdrInfo := ⟨0x{at:x}#64, {phent}#64, {phnum}#64⟩\n"
+    )
+    .unwrap();
+    writeln!(o, "/-- The program headers' bytes, where the first `PT_LOAD` maps them (not in `segments`). -/").unwrap();
+    writeln!(
+        o,
+        "def seg_phdrs : Segment :=\n  {{ name := \"phdrs\", base := 0x{at:x}#64, writable := false,\n    bytes := Segment.bytesOfNat {} {} }}\n",
+        bytes.len(),
+        nat_hex(&ws, 2)
+    )
+    .unwrap();
+    Ok(o)
+}
+
 /// `Σ xs[i] << (4 * digits * i)` as a hexadecimal Lean literal: the number
 /// `Chunk` (digits 8) and `Segment.bytesOfNat` (digits 2) decode.
 pub fn nat_hex(xs: &[u32], digits: usize) -> String {

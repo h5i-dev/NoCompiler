@@ -641,6 +641,34 @@ pub fn ledger(
         seen.pop();
         Some(m.frame + deepest)
     }
+    let keys = keys(m);
+    m.funcs
+        .iter()
+        .map(|f| {
+            let meta = metas
+                .iter()
+                .find(|r| r.entry == f.entry)
+                .and_then(|r| r.result.as_ref().ok());
+            let p = proofs.get(&f.name);
+            let (sha256, closure) = keys[&f.name].clone();
+            Entry {
+                name: f.name.clone(),
+                sha256,
+                closure,
+                level: meta
+                    .map(|m| format!("{:?}", m.level))
+                    .unwrap_or_else(|| "none".into()),
+                depth: meta.and_then(|_| depth(f.entry, &metas, &mut Vec::new())),
+                theorem: p.map(|p| p.0.clone()),
+                spec: p.map(|p| p.1.clone()),
+            }
+        })
+        .collect()
+}
+
+/// Every function's ledger keys, by name: the SHA-256 of its canonical form
+/// and its closure key (`Entry::closure`).
+pub fn keys(m: &Module) -> std::collections::HashMap<String, (String, String)> {
     // The call graph by name (call relocations), and each function's closure.
     let by_name: std::collections::HashMap<&str, &RFunc> =
         m.funcs.iter().map(|f| (f.name.as_str(), f)).collect();
@@ -672,22 +700,8 @@ pub fn ledger(
     m.funcs
         .iter()
         .map(|f| {
-            let meta = metas
-                .iter()
-                .find(|r| r.entry == f.entry)
-                .and_then(|r| r.result.as_ref().ok());
-            let p = proofs.get(&f.name);
-            Entry {
-                name: f.name.clone(),
-                sha256: crate::sha256::hex(&crate::sha256::digest(&canonical(f))),
-                closure: closure_key(f),
-                level: meta
-                    .map(|m| format!("{:?}", m.level))
-                    .unwrap_or_else(|| "none".into()),
-                depth: meta.and_then(|_| depth(f.entry, &metas, &mut Vec::new())),
-                theorem: p.map(|p| p.0.clone()),
-                spec: p.map(|p| p.1.clone()),
-            }
+            let own = crate::sha256::hex(&crate::sha256::digest(&canonical(f)));
+            (f.name.clone(), (own, closure_key(f)))
         })
         .collect()
 }
@@ -900,6 +914,20 @@ pub fn reuse_lean(
     namespace: &str,
     form: ReuseForm,
 ) -> (String, usize, usize) {
+    reuse_lean_for(old, new, old_ns, new_ns, namespace, form, None)
+}
+
+/// `reuse_lean`, for the functions of `old` named in `only` (every function
+/// when `None`). Theorem and control names keep `old`'s indices.
+pub fn reuse_lean_for(
+    old: &Module,
+    new: &Module,
+    old_ns: &str,
+    new_ns: &str,
+    namespace: &str,
+    form: ReuseForm,
+    only: Option<&std::collections::BTreeSet<String>>,
+) -> (String, usize, usize) {
     let idx: std::collections::HashMap<&str, usize> = new
         .funcs
         .iter()
@@ -932,6 +960,9 @@ pub fn reuse_lean(
         Some(v.join(", "))
     };
     for i in 0..old.funcs.len() {
+        if only.is_some_and(|o| !o.contains(&old.funcs[i].name)) {
+            continue;
+        }
         let cl = closure(old, i);
         let fs: Vec<String> = cl.iter().map(|j| format!("{old_ns}.f_{j}")).collect();
         let fs = format!("[{}]", fs.join(", "));

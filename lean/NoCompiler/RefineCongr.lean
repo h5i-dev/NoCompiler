@@ -29,13 +29,14 @@ def Instr.uses : Instr → List Reg
   | .rop _ _ a b | .rwop _ _ a b => [a, b]
   -- a7 the number, a0..a2 the arguments of the syscalls the model admits.
   | .ecall => [17, 10, 11, 12]
+  | .unimp => []
 
 /-- The registers an instruction writes. -/
 def Instr.defs : Instr → List Reg
   | .lui rd _ | .auipc rd _ | .jal rd _ | .jalr rd _ _ | .load _ rd _ _ | .iop _ rd _ _
   | .addiw rd _ _ | .shift _ rd _ _ | .shiftw _ rd _ _ | .rop _ rd _ _ | .rwop _ rd _ _
   | .uop _ rd _ => [rd]
-  | .branch .. | .store .. => []
+  | .branch .. | .store .. | .unimp => []
   | .ecall => [10]
 
 /-- Equal on the registers `L`, memory, the trace and the exit status. -/
@@ -164,7 +165,7 @@ theorem exec_congr {i : Instr} (hi : i.straight = true) {L L' : List Reg} (ht : 
     simp only [exec, Option.some.injEq] at ha hb; subst ha hb
     exact ⟨(h.setReg rd (by rw [u1 rs1 (by simp [Instr.uses])])
       (fun r hr hne => hl r hr (by simp [Instr.defs, hne]))).setPc _ _, by simp, by simp⟩
-  | auipc | jal | jalr | branch | ecall => simp [Instr.straight] at hi
+  | auipc | jal | jalr | branch | ecall | unimp => simp [Instr.straight] at hi
 
 /-- The permission an instruction needs is the same on agreeing states. -/
 theorem instrOk_congr {P : Perm} {i : Instr} {L' : List Reg} (hu : ∀ r ∈ i.uses, r ∈ L')

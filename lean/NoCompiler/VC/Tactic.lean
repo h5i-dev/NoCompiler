@@ -13,7 +13,7 @@ comparing, so the compiled evaluation is only a way to find `v` and is not
 trusted. The proof goes into the theorem as it is, unchecked by the elaborator
 (building it as an auxiliary theorem first made the elaborator check it).
 `Eq.refl` replaced `decide` on the derived `DecidableEq` after measuring both
-on the same files (c-logs/bench/xover/xover.txt): kernel time with `Eq.refl`
+on the same files (a local run; its log is not in the repository): kernel time with `Eq.refl`
 0.56x at 10 instructions per segment to 0.68x at 1000, and 35.4 s against 46 s
 on 10^4 instructions (`nocompiler.vc.byDecide` restores `decide`).
 -/
@@ -34,12 +34,14 @@ deriving instance ToExpr for NoCompiler.VC.M.Term
 deriving instance ToExpr for NoCompiler.VC.M.SState
 deriving instance ToExpr for NoCompiler.VC.M.Cond
 deriving instance ToExpr for NoCompiler.VC.M.PEnd
+deriving instance ToExpr for NoCompiler.VC.M.GOb
 deriving instance DecidableEq for NoCompiler.VC.M.Sym, NoCompiler.VC.M.SMem
 deriving instance DecidableEq for NoCompiler.VC.M.Ob
 deriving instance DecidableEq for NoCompiler.VC.M.Term
 deriving instance DecidableEq for NoCompiler.VC.M.SState
 deriving instance DecidableEq for NoCompiler.VC.M.Cond
 deriving instance DecidableEq for NoCompiler.VC.M.PEnd
+deriving instance DecidableEq for NoCompiler.VC.M.GOb
 
 /-- The value of a closed `runSeg` term, by compiled evaluation. -/
 unsafe def evalRunSegImpl (e : Expr) : MetaM (Option (SState × List Ob × Term)) := do
@@ -49,11 +51,11 @@ unsafe def evalRunSegImpl (e : Expr) : MetaM (Option (SState × List Ob × Term)
 opaque evalRunSeg (e : Expr) : MetaM (Option (SState × List Ob × Term))
 
 /-- The value of a closed `exploreR` term, by compiled evaluation. -/
-unsafe def evalExploreImpl (e : Expr) : MetaM (Option (List PEnd × List Ob)) := do
-  evalExpr (Option (List PEnd × List Ob)) (← inferType e) e
+unsafe def evalExploreImpl (e : Expr) : MetaM (Option (List PEnd × List GOb)) := do
+  evalExpr (Option (List PEnd × List GOb)) (← inferType e) e
 
 @[implemented_by evalExploreImpl]
-opaque evalExplore (e : Expr) : MetaM (Option (List PEnd × List Ob))
+opaque evalExplore (e : Expr) : MetaM (Option (List PEnd × List GOb))
 
 register_option nocompiler.vc.byDecide : Bool :=
   { defValue := false, descr := "vc_run: prove the equation by `decide` on the derived DecidableEq \
@@ -67,7 +69,7 @@ elab "vc_run" : tactic => withMainContext do
   let tgt ← instantiateMVars (← g.getType)
   let closed (t : Expr) := !t.hasFVar && !t.hasMVar
   let some t := tgt.find? fun t =>
-      (t.isAppOfArity ``runSeg 3 || t.isAppOfArity ``exploreR 8) && closed t
+      (t.isAppOfArity ``runSeg 3 || t.isAppOfArity ``exploreR 9) && closed t
     | throwError "vc_run: no closed `runSeg` or `exploreR` term in the goal"
   let v ← if t.isAppOf ``runSeg then pure (toExpr (← evalRunSeg t)) else pure (toExpr (← evalExplore t))
   let eq ← mkEq t v
@@ -217,7 +219,8 @@ set_option hygiene false in
     rewritten into the machine's terms over the cut point's state. -/
 macro "vc_ends" : tactic => `(tactic| (
   unfold exploreVC; vc_run
-  simp only [allOb, allNext, Ob.den, symDen, smemDen, evalI, and_true]
+  simp only [allOb, allNext, GOb.den, Ob.den, symDen, smemDen, evalI, and_true,
+    List.forall_mem_cons, List.not_mem_nil, false_imp_iff, imp_true_iff, forall_const, true_imp_iff]
   refine ?_
   repeat' apply And.intro
   all_goals try (

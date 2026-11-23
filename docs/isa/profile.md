@@ -40,9 +40,11 @@ Base: RV64I, user mode, little-endian, XLEN 64. Extensions: M, Zba, Zbb.
 | Zba | `sh1add sh2add sh3add add.uw sh1add.uw sh2add.uw sh3add.uw slli.uw` |
 | Zbb | `andn orn xnor max maxu min minu rol ror rori rolw rorw roriw clz ctz cpop clzw ctzw cpopw sext.b sext.h zext.h rev8 orc.b` |
 | Environment | `ecall` (meaning in [environment.md](environment.md)) |
+| Trap | `unimp`, the one word `0xc0001073` (`csrrw zero, cycle, zero`, defined to trap in every implementation): the process dies (SIGILL). Clang's `-fsanitize-trap` checks and `__builtin_trap` compile to it |
 
 Not in the profile: the C extension (every instruction is 32 bits and
-4-byte aligned, so decoding is unambiguous), CSR instructions, `fence`,
+4-byte aligned, so decoding is unambiguous), CSR instructions (except the
+one `unimp` word), `fence`,
 `fence.i`, `ebreak`, privileged and hypervisor instructions, and the A, F,
 D and V extensions. `decode` returns nothing for them, so a proof can never
 step over one; a binary containing one in a function fails rule R1.
@@ -53,6 +55,17 @@ simple (RISC-V division by zero is defined, not a trap). A, F, D and V are
 where the proof cost is: weak memory ordering, IEEE rounding, and
 variable-length vector state. They are later versions of the profile
 ([ROADMAP](../ROADMAP.md)).
+
+`unimp` (user decision, 2026-11-22) has LPS's meaning: the hart's
+illegal-instruction exception, which Linux turns into SIGILL, so the process
+dies there. LPS (theorem-labs/rocq-linux-process-semantics f1006fe8,
+theories/LinuxProcessSem/RiscvSemantics.v lines 866-877, `interp_eff_accesses`) classifies it as
+`EDefinedIllegal`, a `MachineFault`, and Run.v's `sstep_instr_fault` (lines
+405-409) ends the run in `SError`. Here, as every fault, it is an instruction
+with no step: `exec .unimp s = none` (Machine.lean). A `Verified` theorem,
+which runs never fault, therefore shows that no run reaches one: a sanitizer
+check that never fires. qemu-riscv64 kills the process with SIGILL
+(tests/semantics.rs), and the Sail model traps (tests/sail.rs).
 
 The decoder is checked against llvm-mc on every funct7/funct3 combination,
 every 12-bit immediate of every immediate opcode, and 60,000 random words
@@ -96,7 +109,13 @@ decides it; each rule has an identifier in its output.
   No other `jalr`: no computed jumps or calls in version 0. The `jalr` of
   an `auipc`/`jalr` pair is reached only from its `auipc` (no branch targets
   it), so its register holds what the `auipc` put there. The last
-  instruction of a function does not fall through.
+  instruction of a function does not fall through: it is a `ret`, a jump, a
+  tail call or `unimp` (control goes nowhere after a trap), or it may be a
+  call: a call to a function that never returns (`abort`, `exit`, a
+  sanitizer's report function) needs nothing after it. The checker accepts
+  such a call whatever the callee. What the call returns to is then not an
+  instruction of the function, and a proof that reaches it has to show, from
+  the callee's spec, that the callee does not return (lead, 2026-11-22 13:11).
 - **R3 structure.** The function has a block/loop tree: properly nested
   intervals of its addresses, each a `block` or a `loop`. A branch or jump
   target is either the end of a block enclosing the source or the start of a

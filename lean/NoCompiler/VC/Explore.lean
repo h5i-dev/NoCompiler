@@ -1,7 +1,7 @@
 import NoCompiler.VC.Seg
 
 /-
-Paths between cut points (docs/isa/vcgen.md on next-a, item 5): from a cut
+Paths between cut points: from a cut
 point, `explore` follows the code through every branch until each path
 reaches a cut point or a return. A path's end is data: the symbolic state
 there and the branch conditions taken on the way (`PEnd`). Straight-line code
@@ -53,14 +53,23 @@ theorem wordIdx_sound {c : Code} {p : Word} {k : Nat} (h : wordIdx c p = some k)
     bv_omega
   · simp at h
 
-def both : Option (List PEnd × List Ob) → Option (List PEnd × List Ob) → Option (List PEnd × List Ob)
+/-- An access's obligation under the branch conditions of the path it is on (what is known
+    there: an access past `beq a2, zero` needs its permission only for `a2 ≠ 0`). -/
+structure GOb where
+  cs : List Cond
+  o : Ob
+
+def GOb.den (ρ : Nat → Word) (μ : Word → Byte) (P : Perm) (g : GOb) : Prop :=
+  (∀ x ∈ g.cs, x.den ρ μ) → g.o.den ρ μ P
+
+def both : Option (List PEnd × List GOb) → Option (List PEnd × List GOb) → Option (List PEnd × List GOb)
   | some (e₁, o₁), some (e₂, o₂) => some (e₁ ++ e₂, o₁ ++ o₂)
   | _, _ => none
 
 /-- Every path from `S` (at word `k`, the words from there `ws`) to the next
     cut point or return; `first` skips the cut check where the run starts. -/
-def explore (c : Code) (D : Dom) (cuts : List Word) (fetch : Nat → List (BitVec 32)) :
-    Nat → Bool → Nat → List (BitVec 32) → SState → List Cond → Option (List PEnd × List Ob)
+def explore (c : Code) (D : Dom) (cuts : List Word) (fetch : Nat → List (BitVec 32)) (strict : Bool) :
+    Nat → Bool → Nat → List (BitVec 32) → SState → List Cond → Option (List PEnd × List GOb)
   | 0, _, _, _, _, _ => none
   | fuel + 1, first, k, ws, S, cs =>
     if !first && cuts.contains S.pc then some ([.cut S cs], []) else
@@ -74,9 +83,9 @@ def explore (c : Code) (D : Dom) (cuts : List Word) (fetch : Nat → List (BitVe
           if aligned t 4 then
             match wordIdx c t with
             | some k' =>
-              both (explore c D cuts fetch fuel false k' (fetch k') { S with pc := t }
+              both (explore c D cuts fetch strict fuel false k' (fetch k') { S with pc := t }
                   (⟨S.pc, op, S.reg rs1, S.reg rs2, true⟩ :: cs))
-                (explore c D cuts fetch fuel false (k + 1) ws' { S with pc := S.pc + 4 }
+                (explore c D cuts fetch strict fuel false (k + 1) ws' { S with pc := S.pc + 4 }
                   (⟨S.pc, op, S.reg rs1, S.reg rs2, false⟩ :: cs))
             | none => none
           else none
@@ -84,7 +93,10 @@ def explore (c : Code) (D : Dom) (cuts : List Word) (fetch : Nat → List (BitVe
           let t := S.pc + off.signExtend 64
           if aligned t 4 then
             match wordIdx c t with
-            | some k' => explore c D cuts fetch fuel false k' (fetch k')
+            | some k' =>
+              -- strict: a call (rd ≠ 0) goes only to a cut point outside `D` (a callee's entry)
+              if strict && rd ≠ 0 && (!cuts.contains t || D.mem t) then none else
+              explore c D cuts fetch strict fuel false k' (fetch k')
                 { S.setReg rd (.const (S.pc + 4)) with pc := t } cs
             | none => none
           else none
@@ -95,14 +107,18 @@ def explore (c : Code) (D : Dom) (cuts : List Word) (fetch : Nat → List (BitVe
             let t := (v + off.signExtend 64) &&& ~~~1
             if aligned t 4 then
               match wordIdx c t with
-              | some k' => explore c D cuts fetch fuel false k' (fetch k')
+              | some k' =>
+                -- strict: a jump through a register goes only to a cut point outside `D` (a callee's entry)
+                if strict && (!cuts.contains t || D.mem t) then none else
+                explore c D cuts fetch strict fuel false k' (fetch k')
                   { S.setReg rd (.const (S.pc + 4)) with pc := t } cs
               | none => none
             else none
           | _ => none
         | some i =>
           match sstep i S with
-          | some (S₁, o₁) => (explore c D cuts fetch fuel false (k + 1) ws' S₁ cs).map fun p => (p.1, o₁ ++ p.2)
+          | some (S₁, o₁) => (explore c D cuts fetch strict fuel false (k + 1) ws' S₁ cs).map fun p =>
+              (p.1, o₁.map (GOb.mk cs) ++ p.2)
           | none => none
         | none => none
     else none
@@ -135,7 +151,7 @@ theorem matches_setReg_setPc {ρ : Nat → Word} {μ : Word → Byte} {S : SStat
       · subst hq; simp [hq0, hw]
       · simp [hq0, hr0, hq, hr q]
 
-theorem pc_succ {b : Word} {k : Nat} (h : 4 * (k + 1) < 2 ^ 64) :
+theorem pc_succ {b : Word} {k : Nat} (_h : 4 * (k + 1) < 2 ^ 64) :
     b + BitVec.ofNat 64 (4 * k) + 4 = b + BitVec.ofNat 64 (4 * (k + 1)) := by
   rw [BitVec.add_assoc]; congr 1
   apply BitVec.eq_of_toNat_eq
@@ -144,12 +160,12 @@ theorem pc_succ {b : Word} {k : Nat} (h : 4 * (k + 1) < 2 ^ 64) :
   omega
 
 /-- `explore`, sound. -/
-theorem Reach.of_explore {ρ : Nat → Word} {μ : Word → Byte} {c : Code} {P : Perm} {D : Dom}
+theorem Reach.of_explore {ρ : Nat → Word} {μ : Word → Byte} {c : Code} {P : Perm} {D : Dom} {strict : Bool}
     {Q : State → Prop} {cuts : List Word} {τ : List Event} {fetch : Nat → List (BitVec 32)}
     (hb : 4 * c.words.size < 2 ^ 64) (hfe : ∀ k, fetch k = c.words.toList.drop k) :
     ∀ {fuel : Nat} {first : Bool} {k : Nat} {ws : List (BitVec 32)} {S : SState} {cs : List Cond}
-      {ends : List PEnd} {obs : List Ob} {s : State},
-      explore c D cuts fetch fuel first k ws S cs = some (ends, obs) →
+      {ends : List PEnd} {obs : List GOb} {s : State},
+      explore c D cuts fetch strict fuel first k ws S cs = some (ends, obs) →
       c.words.toList.drop k = ws → S.pc = c.base + BitVec.ofNat 64 (4 * k) → Matches ρ μ S s →
       s.exit = none → s.trace = τ → (∀ x ∈ cs, x.den ρ μ) → (∀ o ∈ obs, o.den ρ μ P) →
       (∀ e ∈ ends, e.Next ρ μ (fun s' => s'.trace = τ → Q s')) → Reach c P D Q s
@@ -226,6 +242,8 @@ theorem Reach.of_explore {ρ : Nat → Word} {μ : Word → Byte} {c : Code} {P 
       split at h
       case h_2 => simp at h
       rename_i k' hk'
+      split at h
+      · simp at h
       refine Reach.exec_step hD' hx (hfetch _ hi) trivial ?_
       simp only [exec, jumpTo]
       rw [hpcS]
@@ -254,6 +272,8 @@ theorem Reach.of_explore {ρ : Nat → Word} {μ : Word → Byte} {c : Code} {P 
         split at h
         case h_2 => simp at h
         rename_i k' hk'
+        split at h
+        · simp at h
         have hrs : s.reg rs1 = v := by rw [hm.2.2.1 rs1, hv]; rfl
         refine Reach.exec_step hD' hx (hfetch _ hi) trivial ?_
         simp only [exec, jumpTo, hrs]
@@ -265,14 +285,14 @@ theorem Reach.of_explore {ρ : Nat → Word} {μ : Word → Byte} {c : Code} {P 
       split at h
       case h_2 => simp at h
       rename_i S₁ o₁ hst
-      cases hr : explore c D cuts fetch fuel false (k + 1) ws' S₁ cs with
+      cases hr : explore c D cuts fetch strict fuel false (k + 1) ws' S₁ cs with
       | none => rw [hr] at h; simp at h
       | some p =>
         obtain ⟨e₂, o₂⟩ := p
         rw [hr] at h; simp only [Option.map_some, Option.some.injEq, Prod.mk.injEq] at h
         obtain ⟨rfl, rfl⟩ := h
         obtain ⟨s₁, he, hok, hm₁⟩ := sstep_sound (P := P) hm hst
-          (fun o ho => hob o (List.mem_append_left _ ho))
+          (fun o ho => hob ⟨cs, o⟩ (List.mem_append_left _ (List.mem_map_of_mem ho)) hcs)
         have hS₁ : S₁.pc = c.base + BitVec.ofNat 64 (4 * (k + 1)) := by
           rw [← hpc₁]
           cases i <;> simp only [sstep, Option.some.injEq, Prod.mk.injEq, reduceCtorEq] at hst <;>
@@ -298,12 +318,12 @@ theorem allNext_mem {ρ : Nat → Word} {μ : Word → Byte} {Q : State → Prop
     · exact allNext_mem h₂ _ h
 
 /-- Every obligation, as one conjunction. -/
-def allOb (ρ : Nat → Word) (μ : Word → Byte) (P : Perm) : List Ob → Prop
+def allOb (ρ : Nat → Word) (μ : Word → Byte) (P : Perm) : List GOb → Prop
   | [] => True
   | o :: os => o.den ρ μ P ∧ allOb ρ μ P os
 
 theorem allOb_mem {ρ : Nat → Word} {μ : Word → Byte} {P : Perm} :
-    ∀ {os : List Ob}, allOb ρ μ P os → ∀ o ∈ os, o.den ρ μ P
+    ∀ {os : List GOb}, allOb ρ μ P os → ∀ o ∈ os, o.den ρ μ P
   | [], _, _, h => by simp at h
   | _ :: _, ⟨h₁, h₂⟩, _, h => by
     simp only [List.mem_cons] at h
@@ -314,17 +334,17 @@ theorem allOb_mem {ρ : Nat → Word} {μ : Word → Byte} {P : Perm} :
 /-- The paths from `p` (word `k`), with the obligations the checker does not
     discharge from `facts`: what is left of them is the caller's. -/
 def exploreR (c : Code) (D : Dom) (cuts : List Word) (fetch : Nat → List (BitVec 32)) (fuel k : Nat)
-    (p : Word) (facts : List Fact) : Option (List PEnd × List Ob) :=
-  (explore c D cuts fetch fuel true k (fetch k) (SState.init p) []).map
-    fun r => (r.1, r.2.filter fun o => !o.check facts)
+    (p : Word) (facts : List Fact) (strict : Bool := false) : Option (List PEnd × List GOb) :=
+  (explore c D cuts fetch strict fuel true k (fetch k) (SState.init p) []).map
+    fun r => (r.1, r.2.filter fun o => !o.o.check facts)
 
 /-- One cut point's verification condition: every path from `p` (word `k`) to
     the next cut points and returns; the obligations the checker leaves; and
     each end's condition. -/
 def exploreVC (ρ : Nat → Word) (μ : Word → Byte) (P : Perm) (Q : State → Prop) (facts : List Fact)
     (c : Code) (D : Dom) (cuts : List Word) (fuel k : Nat) (p : Word)
-    (fetch : Nat → List (BitVec 32) := fun k => c.words.toList.drop k) : Prop :=
-  match exploreR c D cuts fetch fuel k p facts with
+    (fetch : Nat → List (BitVec 32) := fun k => c.words.toList.drop k) (strict : Bool := false) : Prop :=
+  match exploreR c D cuts fetch fuel k p facts strict with
   | some (ends, res) => allOb ρ μ P res ∧ allNext ρ μ Q ends
   | none => False
 
@@ -334,7 +354,7 @@ theorem Reach.of_exploreAt {c : Code} {P : Perm} {D : Dom} {Q : State → Prop} 
     (hf : ∀ f ∈ facts, f.den (ρOf s) P) (hvc : exploreVC (ρOf s) s.mem P Q facts c D cuts fuel k p) :
     Reach c P D Q s := by
   unfold exploreVC exploreR at hvc
-  cases h : explore c D cuts (fun k => c.words.toList.drop k) fuel true k (c.words.toList.drop k)
+  cases h : explore c D cuts (fun k => c.words.toList.drop k) false fuel true k (c.words.toList.drop k)
       (SState.init p) [] with
   | none => rw [h] at hvc; exact hvc.elim
   | some r =>
@@ -343,9 +363,9 @@ theorem Reach.of_exploreAt {c : Code} {P : Perm} {D : Dom} {Q : State → Prop} 
     simp only [Option.map_some] at hvc
     refine Reach.of_explore (τ := s.trace) hb (fun _ => rfl) h rfl hk (matches_init hpc) hx rfl (by simp)
       (fun o ho => ?_) (fun e he => PEnd.Next.weaken (allNext_mem hvc.2 e he))
-    cases hc : o.check facts
+    cases hc : o.o.check facts
     · exact allOb_mem hvc.1 o (List.mem_filter.2 ⟨ho, by simp [hc]⟩)
-    · exact Ob.check_sound hf hc
+    · exact fun _ => Ob.check_sound hf hc
 
 /-- As `Reach.of_exploreAt`, with the trace at every end known: the start's
     (a path between cut points makes no syscall). -/
@@ -357,7 +377,7 @@ theorem Reach.of_exploreAtT {c : Code} {P : Perm} {D : Dom} {Q : State → Prop}
     (hvc : exploreVC (ρOf s) s.mem P (fun s' => s'.trace = s.trace → Q s') facts c D cuts fuel k p fetch) :
     Reach c P D Q s := by
   unfold exploreVC exploreR at hvc
-  cases h : explore c D cuts fetch fuel true k (fetch k) (SState.init p) [] with
+  cases h : explore c D cuts fetch false fuel true k (fetch k) (SState.init p) [] with
   | none => rw [h] at hvc; exact hvc.elim
   | some r =>
     obtain ⟨ends, obs⟩ := r
@@ -365,8 +385,8 @@ theorem Reach.of_exploreAtT {c : Code} {P : Perm} {D : Dom} {Q : State → Prop}
     simp only [Option.map_some] at hvc
     refine Reach.of_explore (τ := s.trace) hb hfe h (hfe k).symm hk (matches_init hpc) hx rfl (by simp)
       (fun o ho => ?_) (allNext_mem hvc.2)
-    cases hc : o.check facts
+    cases hc : o.o.check facts
     · exact allOb_mem hvc.1 o (List.mem_filter.2 ⟨ho, by simp [hc]⟩)
-    · exact Ob.check_sound hf hc
+    · exact fun _ => Ob.check_sound hf hc
 
 end NoCompiler.VC.M

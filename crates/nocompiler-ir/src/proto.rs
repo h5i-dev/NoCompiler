@@ -54,6 +54,10 @@ pub struct Prototype {
     /// function that leaves nothing has `None` — so a caller is never denied a
     /// result that exists.
     pub returns: Option<u64>,
+    /// When `returns` rests only on tail calls (nothing this function writes
+    /// reaches a return), the functions it tail-calls: the result is theirs,
+    /// so a caller that knows them can say none of them returns anything.
+    pub returns_by_tail: Vec<u64>,
     /// True when the result is a floating point register.
     pub returns_float: bool,
     /// Callee-saved registers it writes without putting back, which is a
@@ -85,7 +89,8 @@ pub struct Prototype {
     /// a `returns` register together mean the code leaves something behind
     /// that nobody has named.
     pub return_type: Option<TypeId>,
-    /// True when a declaration said the function is variadic.
+    /// True when a declaration said the function is variadic, or its entry
+    /// block spills the `va_start` save area ([`varargs_spill`]).
     pub varargs: bool,
     /// True when the declared result is too large for the result registers and
     /// the caller passes its address as a hidden first argument.
@@ -385,6 +390,8 @@ fn apply(machine: Prototype, asserted: &Asserted, abi: &Abi) -> Prototype {
     conflicts.append(&mut return_conflicts);
 
     Prototype {
+        // A declaration says what it returns; tail calls are not evidence here.
+        returns_by_tail: Vec::new(),
         integer_arguments,
         float_arguments,
         // An asserted declaration carries its own types, so the widths the
@@ -614,8 +621,14 @@ pub fn recover_observed(f: &SsaFunction, abi: &Abi, observed: &Observed) -> Prot
     let detected = conv::detect_from(f, abi, &facts, &definitions, observed);
 
     // The highest argument register read, plus one: a function that reads the
-    // third and not the first two still takes three.
-    let integer_arguments = last_used(&facts.live_in, &abi.integer_arguments);
+    // third and not the first two still takes three. A variadic function
+    // reads every argument register past its fixed ones, to spill them for
+    // `va_start`; those are not parameters.
+    let fixed = varargs_spill(f, abi);
+    let integer_arguments = match fixed {
+        Some(k) => k,
+        None => last_used(&facts.live_in, &abi.integer_arguments),
+    };
     let float_arguments = last_used(&facts.live_in, &abi.float_arguments);
 
     // Arguments the caller left on the stack, which promotion turned into
@@ -631,6 +644,15 @@ pub fn recover_observed(f: &SsaFunction, abi: &Abi, observed: &Observed) -> Prot
 
     // The result, once the callers have had their say.
     let returns = detected.result;
+    let returns_by_tail = if returns.is_some()
+        && observed.sites == 0
+        && tail_result(f, abi).is_some()
+        && returned_direct(f, abi, &facts.written, &definitions).is_none()
+    {
+        tail_targets(f)
+    } else {
+        Vec::new()
+    };
     let returns_float = detected.result_float;
 
     // A callee-saved register this function writes and does not put back.
@@ -660,7 +682,81 @@ pub fn recover_observed(f: &SsaFunction, abi: &Abi, observed: &Observed) -> Prot
         standard: unsaved.is_empty(),
         unsaved,
         detected,
+        varargs: fixed.is_some(),
+        returns_by_tail,
         ..Prototype::default()
+    }
+}
+
+/// How many fixed integer arguments a variadic function has, when its entry
+/// block spills the rest for `va_start` (RISC-V lp64d only): the entry value
+/// of each argument register `a_k`..`a7` stored at `sp - 8 * (8 - i)`, so the
+/// slots run up to the stack pointer the caller passed, where the caller's own
+/// stack arguments continue. That is the save area the ABI lays out for
+/// `va_list`; an ordinary function has no reason to store its incoming
+/// registers exactly there. `None` when the function is not variadic.
+pub fn varargs_spill(f: &SsaFunction, abi: &Abi) -> Option<usize> {
+    if abi.name != crate::abi::Named::Lp64d {
+        return None;
+    }
+    let block = f.blocks.get(&f.entry)?;
+    let definitions = f.definitions();
+    let n = abi.integer_arguments.len();
+    let mut spilled = vec![false; n];
+    for op in &block.ops {
+        if op.kind != SsaKind::Op(Op::Store) || op.inputs.len() < 2 {
+            continue;
+        }
+        let Operand::Undefined(v) = op.inputs[1] else {
+            continue;
+        };
+        if v.space != Space::Register || v.size != 8 {
+            continue;
+        }
+        let Some(i) = abi.integer_arguments.iter().position(|o| *o == v.offset) else {
+            continue;
+        };
+        if sp_relative(f, &definitions, &op.inputs[0], abi.stack_pointer, 0)
+            == Some(-8 * (n - i) as i64)
+        {
+            spilled[i] = true;
+        }
+    }
+    // The spilled ones are a tail a_k..a7, at least a7.
+    let k = spilled.iter().rposition(|s| !s).map_or(0, |p| p + 1);
+    (k < n).then_some(k)
+}
+
+/// The offset from the entry stack pointer that an address operand holds,
+/// through additions of constants and copies.
+fn sp_relative(
+    f: &SsaFunction,
+    definitions: &Definitions,
+    a: &Operand,
+    sp: u64,
+    depth: u32,
+) -> Option<i64> {
+    if depth > 8 {
+        return None;
+    }
+    match a {
+        Operand::Undefined(l) if l.space == Space::Register && l.offset == sp => Some(0),
+        Operand::Value(v) => {
+            let (b, i) = definitions.get(v)?;
+            let op = f.blocks.get(b)?.ops.get(*i)?;
+            match (&op.kind, op.inputs.as_slice()) {
+                (SsaKind::Op(Op::Copy), [x]) => sp_relative(f, definitions, x, sp, depth + 1),
+                (SsaKind::Op(Op::IntAdd), [x, Operand::Const(c, _)])
+                | (SsaKind::Op(Op::IntAdd), [Operand::Const(c, _), x]) => {
+                    Some(sp_relative(f, definitions, x, sp, depth + 1)?.wrapping_add(*c as i64))
+                }
+                (SsaKind::Op(Op::IntSub), [x, Operand::Const(c, _)]) => {
+                    Some(sp_relative(f, definitions, x, sp, depth + 1)?.wrapping_sub(*c as i64))
+                }
+                _ => None,
+            }
+        }
+        _ => None,
     }
 }
 
@@ -726,6 +822,16 @@ pub(crate) fn returned(
     written: &BTreeSet<u64>,
     definitions: &Definitions,
 ) -> Option<u64> {
+    returned_direct(f, abi, written, definitions).or_else(|| tail_result(f, abi))
+}
+
+/// The result register a return leaves something in, not counting tail calls.
+fn returned_direct(
+    f: &SsaFunction,
+    abi: &Abi,
+    written: &BTreeSet<u64>,
+    definitions: &Definitions,
+) -> Option<u64> {
     let mut best: Option<(usize, u64)> = None;
     for b in f.blocks.values() {
         if !b.ops.iter().any(|op| op.kind == SsaKind::Op(Op::Return)) {
@@ -770,7 +876,7 @@ pub(crate) fn returned(
             // calling it a restore makes the function void.
             let restored = is_entry_value(f, definitions, value, location, 0)
                 && (spills_entry_value(f, location) || !loaded(f, definitions, value));
-            if restored || is_entry_or_clobber(f, definitions, value, location, 0) {
+            if restored || is_entry_or_clobber(f, definitions, value, location) {
                 continue;
             }
             if best.is_none_or(|(at, _)| rank > at) {
@@ -779,6 +885,44 @@ pub(crate) fn returned(
         }
     }
     best.map(|(_, offset)| offset)
+}
+
+/// A function that leaves only by tail calls returns what the callees return:
+/// that is left in the first result register, whatever this function wrote.
+/// A possibility, as `returns` is (lp64d only, where it was measured).
+fn tail_result(f: &SsaFunction, abi: &Abi) -> Option<u64> {
+    if abi.name != crate::abi::Named::Lp64d {
+        return None;
+    }
+    // Only a function that leaves by tail calls alone: one that also returns
+    // with nothing in the result register (`if (p) tail(p); return;`) was
+    // written void, and its tail call's result is not one it gives.
+    let returns_itself = f
+        .blocks
+        .values()
+        .any(|b| b.ops.iter().any(|op| op.kind == SsaKind::Op(Op::Return)));
+    // A computed jump out of the function (a block with no successors) is a
+    // tail call through a pointer: it leaves a0 to the callee as well.
+    let pointer_tail = f.blocks.values().any(|b| {
+        b.successors.is_empty() && b.ops.iter().any(|op| op.kind == SsaKind::Op(Op::BranchInd))
+    });
+    (!returns_itself && (pointer_tail || !tail_targets(f).is_empty())).then(|| abi.results[0])
+}
+
+/// The functions this one leaves by a tail call: branches to a constant
+/// address outside its own blocks.
+pub fn tail_targets(f: &SsaFunction) -> Vec<u64> {
+    let mut out: Vec<u64> = f
+        .blocks
+        .values()
+        .flat_map(|b| b.ops.iter())
+        .filter(|op| op.kind == SsaKind::Op(Op::Branch))
+        .filter_map(|op| op.inputs.first().and_then(|i| i.as_const()))
+        .filter(|t| !f.blocks.contains_key(&nocompiler_core::Addr(*t)))
+        .collect();
+    out.sort();
+    out.dedup();
+    out
 }
 
 /// True when every path gives a location either the value it was entered
@@ -790,10 +934,24 @@ pub(crate) fn is_entry_or_clobber(
     definitions: &Definitions,
     value: crate::ssa::Value,
     location: Location,
-    depth: u32,
 ) -> bool {
-    if depth > 16 {
-        return false;
+    entry_or_clobber(f, definitions, value, location, &mut BTreeSet::new())
+}
+
+/// The walk behind [`is_entry_or_clobber`]. A loop makes the phis a cycle;
+/// a value already on the walk adds nothing new, so it counts as entry or
+/// clobber and the rest of the cycle decides. (A depth limit here gave up on
+/// a loop header's `phi(fa0_in, v5, v5)` and made fa0 an argument of every
+/// function with a loop and a path that writes nothing to it.)
+fn entry_or_clobber(
+    f: &SsaFunction,
+    definitions: &Definitions,
+    value: crate::ssa::Value,
+    location: Location,
+    seen: &mut BTreeSet<crate::ssa::Value>,
+) -> bool {
+    if !seen.insert(value) {
+        return true;
     }
     let Some((block, index)) = definitions.get(&value) else {
         return false;
@@ -805,7 +963,7 @@ pub(crate) fn is_entry_or_clobber(
         SsaKind::Op(Op::Undefine) => true,
         SsaKind::Phi => op.inputs.iter().all(|i| match i {
             Operand::Undefined(l) => *l == location,
-            Operand::Value(v) => is_entry_or_clobber(f, definitions, *v, location, depth + 1),
+            Operand::Value(v) => entry_or_clobber(f, definitions, *v, location, seen),
             Operand::Const(..) => false,
         }),
         _ => false,

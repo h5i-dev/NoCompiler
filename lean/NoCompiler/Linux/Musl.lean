@@ -102,7 +102,7 @@ theorem withStdin_lookup (k : Kern) (d : List Byte) : (k.withStdin d).files.look
 /-- `read(0, buf, n)` on such a stdin: the first `min n MAX_RW_COUNT` bytes,
     exactly, and the offset moves past them. -/
 theorem stdin_read {k k' : Kern} {d : List Byte} {i : SyscallInput} {o : Outcome}
-    (hr : i.sysno = sysRead) (h0 : i.arg 0 = 0) (h : procSpec7 (k.withStdin d) i o k') :
+    (hr : i.sysno = sysRead) (h0 : i.fd 0 = 0) (h : procSpec7 (k.withStdin d) i o k') :
     o = fileReadOutcome i ⟨d, 0⟩ ∧ k'.files.lookup 0 = some ⟨d, (OpenFile.chunk ⟨d, 0⟩ (i.arg 2).toNat).length⟩ := by
   simp only [procSpec7, procSpec6, procSpec5, hr, ↓reduceIte, h0, withStdin_lookup] at h
   obtain ⟨rfl, rfl⟩ := h

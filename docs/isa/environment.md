@@ -16,9 +16,11 @@ at `pc + 4`.
 
 | Number | Call | Outcomes |
 | --- | --- | --- |
-| 64 | `write(fd, buf, n)` | `r` bytes accepted, `0 <= r <= min(n, 0x7ffff000)`, and `r >= 1` when `n >= 1`; event `write fd (first r bytes of buf)`. Or an error `-e`, `1 <= e <= 4095`, no event. |
-| 63 | `read(fd, buf, n)` | any byte string `ds` with `length ds <= min(n, 0x7ffff000)` stored at `buf`; event `read fd ds`; `a0 = length ds` (0 is end of file). Or an error, no event. |
+| 64 | `write(fd, buf, n)` | `r` bytes accepted, `0 <= r <= min(n, 0x7ffff000)`, and `r >= 1` when `n >= 1`; event `write (fd & 0xffffffff) (first r bytes of buf)`. Or an error `-e`, `1 <= e <= 4095`, no event. |
+| 63 | `read(fd, buf, n)` | any byte string `ds` with `length ds <= min(n, 0x7ffff000)` stored at `buf`; event `read (fd & 0xffffffff) ds`; `a0 = length ds` (0 is end of file). Or an error, no event. |
 | 93, 94 | `exit(code)`, `exit_group(code)` | the process ends with status `code`; event `exit code`. |
+
+The fd in an event is the register's low 32 bits, as Linux reads `unsigned int fd` (user decision 2026-11-22 (6)).
 
 Any other syscall number has no successor, so no proof about code that makes
 one goes through.

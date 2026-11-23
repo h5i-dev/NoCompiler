@@ -32,10 +32,14 @@ pub struct Output {
     pub signature: String,
     /// How many parameters it declares, so a call to it passes that many.
     pub arity: usize,
+    /// True when it takes a variadic tail after its `arity` fixed parameters.
+    pub variadic: bool,
     /// Whether an empty parameter list proves there are no parameters.
     pub parameters_known: bool,
     /// Which of them are pointers.
     pub pointer_parameters: Vec<bool>,
+    /// Which of them the convention passes in a floating point register.
+    pub floating_parameters: Vec<bool>,
     /// How wide each one is declared, in bytes, so a caller passing a constant
     /// can write it at the width the callee reads.
     pub parameter_widths: Vec<u8>,
@@ -52,6 +56,8 @@ pub struct Prototype {
     pub parameters: Vec<Param>,
     /// False for an import whose body cannot reveal what callers pass.
     pub parameters_known: bool,
+    /// True when the function is variadic: its parameters are the fixed ones.
+    pub varargs: bool,
     /// The return type as C spells it.
     pub returns: Option<String>,
     /// Local variables by their offset from the frame base.
@@ -67,10 +73,15 @@ pub struct Callee {
     pub name: String,
     /// How many parameters it declares.
     pub arity: usize,
+    /// True when it takes a variadic tail after its `arity` fixed parameters.
+    pub variadic: bool,
     /// False when callers must recover prepared arguments at the call site.
     pub parameters_known: bool,
     /// Which of them are pointers, so a call passes something C will take.
     pub pointer_parameters: Vec<bool>,
+    /// Which of them arrive in a floating point register, so a call passes
+    /// the float argument registers for those and not the integer ones.
+    pub floating_parameters: Vec<bool>,
     /// How wide each one is declared, in bytes.
     pub parameter_widths: Vec<u8>,
     /// False when it was declared to return nothing, so its result is not
@@ -141,14 +152,29 @@ pub fn decompile_full(
     callees: &BTreeMap<u64, Callee>,
     switches: &Switches,
 ) -> Output {
-    let graph: Graph = f
+    decompile_complete(name, f, prototype, callees, switches, false)
+}
+
+/// [`decompile_full`] for a function whose CFG is complete: every computed
+/// jump with nowhere to go after it then left the function (the CFG proved
+/// the rest were switches), and is written as a tail call through a pointer
+/// rather than as `__indirect_branch`.
+pub fn decompile_complete(
+    name: &str,
+    f: &SsaFunction,
+    prototype: Option<&Prototype>,
+    callees: &BTreeMap<u64, Callee>,
+    switches: &Switches,
+    pointer_tails: bool,
+) -> Output {
+    let mut graph: Graph = f
         .blocks
         .iter()
         .map(|(a, b)| (*a, b.successors.clone()))
         .collect();
     // Where each conditional branch goes when it is taken, read off the
     // branch rather than guessed from the order of the successors.
-    let taken: Taken = f
+    let mut taken: Taken = f
         .blocks
         .iter()
         .filter_map(|(a, b)| {
@@ -161,6 +187,13 @@ pub fn decompile_full(
             Some((*a, Addr(target)))
         })
         .collect();
+    let ors = fold_or_tests(
+        &mut graph,
+        &mut taken,
+        switches,
+        &block_weights(f),
+        &effect_blocks(f),
+    );
     let mut s = structure_with(f.entry, &graph, &taken, switches);
     // Done here, where a block's real work can be weighed. `structure_with`
     // only has the graph, and a diamond of empty blocks must stay an if/else.
@@ -220,6 +253,9 @@ pub fn decompile_full(
         result,
         callees,
         returns,
+        ors: &ors,
+        pointer_tails,
+        parameters: prototype.map(|p| p.parameters.iter().map(|q| q.name.clone()).collect()),
         unmodelled: 0,
         dead: BTreeSet::new(),
         entry_reads: Default::default(),
@@ -293,16 +329,33 @@ pub fn decompile_full(
                     inherit(*l);
                 }
             }
-            if op.kind == SsaKind::Op(Op::Call) {
-                if let Some(target) = op.inputs.first().and_then(|i| i.as_const()) {
-                    called.insert(target);
-                }
+            if op.kind == SsaKind::Op(Op::Call)
+                && let Some(target) = op.inputs.first().and_then(|i| i.as_const())
+                && target != nocompiler_ir::syscall::SYSCALL
+            {
+                called.insert(target);
             }
             if let Some(target) = tail_call(f, op) {
                 called.insert(target);
             }
+            // A call or tail call through a constant pointer to a function of
+            // this unit is written as that function's call (pointer_call).
+            if matches!(op.kind, SsaKind::Op(Op::CallInd | Op::BranchInd))
+                && let Some(i) = op.inputs.first()
+                && let Expr::Const(addr, _) =
+                    code_pointer(rebuilder.integer(rebuilder.operand(i), i))
+                && callees.contains_key(&addr)
+            {
+                called.insert(addr);
+            }
             if let SsaKind::Op(o) = op.kind {
                 if let Some(h) = helper_for(o) {
+                    helpers.insert(h);
+                }
+                // A computed branch out of the function is written as a call.
+                if o == Op::BranchInd
+                    && let Some(h) = helper_for(Op::CallInd)
+                {
                     helpers.insert(h);
                 }
             }
@@ -334,6 +387,9 @@ pub fn decompile_full(
     if body.contains("__clobbered(") && !declarations.iter().any(|d| d.contains("__clobbered")) {
         declarations.push("uint64_t __clobbered(void);".to_string());
     }
+    if body.contains("__syscall(") {
+        declarations.push("uint64_t __syscall(uint64_t, ...);".to_string());
+    }
 
     let mut text = String::new();
     let declared_return = prototype
@@ -361,12 +417,25 @@ pub fn decompile_full(
         Some(p) => p.parameters.iter().map(|param| param.pointer).collect(),
         None => vec![false; arity],
     };
+    let floating_parameters: Vec<bool> = match prototype {
+        Some(p) => p.parameters.iter().map(|param| param.floating).collect(),
+        None => vec![false; arity],
+    };
     let parameter_widths: Vec<u8> = match prototype {
         Some(p) => p.parameters.iter().map(|param| param.size).collect(),
         None => vec![8; arity],
     };
     let parameters_known = prototype.is_none_or(|p| p.parameters_known);
-    let declared_parameters = if declared.is_empty() && parameters_known {
+    let variadic = prototype.is_some_and(|p| p.varargs);
+    let declared_parameters = if variadic {
+        // C needs a fixed parameter before `...`; a function with none (the
+        // spill covers a0-a7) is declared unprototyped instead.
+        if declared.is_empty() {
+            String::new()
+        } else {
+            format!("{}, ...", declared.join(", "))
+        }
+    } else if declared.is_empty() && parameters_known {
         "void".to_string()
     } else if declared.is_empty() {
         String::new()
@@ -410,8 +479,10 @@ pub fn decompile_full(
         text,
         signature,
         arity,
+        variadic,
         parameters_known,
         pointer_parameters,
+        floating_parameters,
         parameter_widths,
         declarations,
         gotos: s.gotos,
@@ -475,6 +546,35 @@ pub fn identifier(name: &str) -> String {
 }
 
 /// True when a name appears in the text as a whole word.
+/// Whether `text` reads `name`: some occurrence of it is not the target of
+/// an assignment. An assignment's target starts the statement or follows `(`
+/// or `,` (a comma expression in a folded condition, fold_or_tests) and is
+/// followed by ` = `; `*(T *)v = x` and `v->f = x` read `v`.
+fn reads(text: &str, name: &str) -> bool {
+    if name.is_empty() {
+        return false;
+    }
+    let word = |c: Option<char>| c.is_some_and(|c| c.is_alphanumeric() || c == '_');
+    let mut at = 0;
+    while let Some(found) = text[at..].find(name) {
+        let start = at + found;
+        let end = start + name.len();
+        let before = text[..start].chars().next_back();
+        let after = text[end..].chars().next();
+        if !word(before) && !word(after) {
+            let lead = text[..start].trim_end().chars().next_back();
+            let target = matches!(lead, None | Some('(') | Some(','))
+                && text[end..].starts_with(" = ")
+                && !text[end..].starts_with(" == ");
+            if !target {
+                return true;
+            }
+        }
+        at = end;
+    }
+    false
+}
+
 fn mentions(text: &str, name: &str) -> bool {
     // An empty name is a substring of every string, and the search would
     // never advance.
@@ -573,7 +673,7 @@ fn result_register(f: &SsaFunction, r: &Rebuilder) -> Option<u64> {
     // actually writes is the one the convention reads first: `x0` before the
     // high half, and either before a vector result nobody computed.
     if let Some(offset) = r.abi.results.iter().copied().find(|o| found.contains(o)) {
-        return Some(offset);
+        return Some(first_half(f, r, offset));
     }
     // Nothing was written in the returning block, so whichever the function
     // writes at all is the answer. A clobber still is not a write.
@@ -587,6 +687,38 @@ fn result_register(f: &SsaFunction, r: &Rebuilder) -> Option<u64> {
             })
         })
     })
+}
+
+/// A second result register (`a1`, `x1`, `fa1`) is a result only as the high
+/// half of a pair, and then the low half is written too. A returning block
+/// that last writes `a1` for its own use (an address it stores through)
+/// otherwise made the function return `a1`: the call result in `a0` was
+/// dropped, and the path where only the call wrote `a0` returned
+/// `__clobbered()`. So when the low half is written anywhere (a call's result
+/// included, a clobber not), it is the result.
+fn first_half(f: &SsaFunction, r: &Rebuilder, offset: u64) -> u64 {
+    // RISC-V's lp64d lists the pairs adjacently, [a0, a1, fa0, fa1]. Other
+    // conventions are left as they were (x86-32's list is [eax, xmm0]: no pair).
+    if r.abi.name != nocompiler_ir::abi::Named::Lp64d {
+        return offset;
+    }
+    let results = &r.abi.results;
+    let Some(i) = results.iter().position(|o| *o == offset) else {
+        return offset;
+    };
+    if i % 2 == 0 {
+        return offset;
+    }
+    let low = results[i - 1];
+    let writes_low = f.blocks.values().any(|b| {
+        b.ops.iter().any(|op| {
+            op.kind != SsaKind::Op(Op::Undefine)
+                && op.out.is_some_and(|v| {
+                    v.location.space == Space::Register && v.location.offset == low
+                })
+        })
+    });
+    if writes_low { low } else { offset }
 }
 
 /// The result register one returning block leaves behind.
@@ -672,6 +804,20 @@ fn parameter_list(f: &SsaFunction, r: &Rebuilder) -> Vec<String> {
 /// predecessor: a guard's only work is often just that copy. A phi of a
 /// clobber is not work. Counting it made every call's guard look as heavy
 /// as the call.
+/// The blocks with a side effect a condition must keep in order: a call
+/// (direct or indirect) or a store.
+fn effect_blocks(f: &SsaFunction) -> BTreeSet<Addr> {
+    f.blocks
+        .iter()
+        .filter(|(_, b)| {
+            b.ops
+                .iter()
+                .any(|op| matches!(op.kind, SsaKind::Op(Op::Call | Op::CallInd | Op::Store)))
+        })
+        .map(|(a, _)| *a)
+        .collect()
+}
+
 fn block_weights(f: &SsaFunction) -> BTreeMap<Addr, u32> {
     let defs = f.definitions();
     let real = |input: &Operand| -> bool {
@@ -843,6 +989,202 @@ struct Emitter<'a> {
     /// this function wrote them first. They are not in any operation's inputs,
     /// so the declarations below would miss the ones that are not parameters.
     entry_reads: std::cell::RefCell<BTreeSet<nocompiler_ir::ssa::Location>>,
+    /// The parameters' names, when there is a prototype.
+    parameters: Option<BTreeSet<String>>,
+    /// Heads whose test continues into later blocks (fold_or_tests).
+    ors: &'a BTreeMap<Addr, OrTest>,
+    /// Whether a computed jump that leaves the function is a tail call
+    /// (decompile_complete).
+    pointer_tails: bool,
+}
+
+/// A head whose test is `A || (S1, B1) || ...`: it goes to `to` when its own
+/// test (taken when `first_taken` says so) or any later block's holds. Each
+/// later block runs its statements first, and goes to `to` when its branch
+/// is taken (`true`) or not taken (`false`).
+#[derive(Debug, Clone)]
+struct OrTest {
+    first_taken: bool,
+    /// A block of statements on the head's own way to the target, run when
+    /// the head's test holds: the test is then `A ? (S, 1) : (rest)`.
+    pass: Option<Addr>,
+    rest: Vec<(Addr, bool)>,
+}
+
+/// Fold a test that needs statements first into the head before it, when
+/// both go to the same place: `if (a) goto L; v = f(x); if (v) { L: ... }`
+/// is `if (a || (v = f(x), v)) { L: ... }`. In the graph the head then
+/// branches to L and to where the second test's other side goes, and the
+/// second block is gone from it; `taken` says the head goes to L when its
+/// (composite) test holds. The SSA is not touched: the emitter writes the
+/// folded block's statements, phi copies included, inside the condition.
+///
+/// Only a block whose one predecessor is the head, with two successors, not a
+/// switch, and not the head itself or L, and only where a side effect must
+/// run before the test: the block, or the head's own way to L, makes a call
+/// or a store (`effect_blocks`). Repeated, so `a || b || c` with statements
+/// before b and c folds into one head.
+fn fold_or_tests(
+    graph: &mut Graph,
+    taken: &mut Taken,
+    switches: &Switches,
+    weights: &BTreeMap<Addr, u32>,
+    effects: &BTreeSet<Addr>,
+) -> BTreeMap<Addr, OrTest> {
+    // A folded block's statements go inside the condition, so only a small
+    // one: past this many, the condition stops being readable. Measured on
+    // micropython base (block_weights, with the fold of de515d5):
+    //   cap  functions with a goto  dump lines  conditions >200 / >400 chars
+    //   4    203                    87651       46 / 2
+    //   8    189                    85049       71 / 3
+    //   16   179                    82929       146 / 13
+    //   none 161                    76995       331 / 76
+    // 16 keeps most of the gotos removed and most conditions short.
+    // NOCOMPILER_OR_FOLD_MAX overrides it, for measuring.
+    let max: u32 = std::env::var("NOCOMPILER_OR_FOLD_MAX")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(16);
+    let small = |b: &Addr| weights.get(b).copied().unwrap_or(0) <= max;
+    let mut ors: BTreeMap<Addr, OrTest> = BTreeMap::new();
+    loop {
+        let mut preds: BTreeMap<Addr, Vec<Addr>> = BTreeMap::new();
+        for (a, succs) in graph.iter() {
+            for s in succs {
+                preds.entry(*s).or_default().push(*a);
+            }
+        }
+        let mut found = None;
+        'heads: for (head, succs) in graph.iter() {
+            if succs.len() != 2 || switches.contains_key(head) || !taken.contains_key(head) {
+                continue;
+            }
+            for (i, m) in succs.iter().enumerate() {
+                let mut l = succs[1 - i];
+                // The head's way to the shared block may run one block of its
+                // own first (mp_obj_gen_resume: `if (a) { s; goto L; }
+                // if (b) { L: ... }`): one predecessor, the head, and one
+                // successor. Only for a head not folded yet.
+                let mut pass = None;
+                if !ors.contains_key(head)
+                    && let Some([y]) = graph.get(&l).map(Vec::as_slice)
+                    && preds.get(&l).is_some_and(|p| p.as_slice() == [*head])
+                    && !switches.contains_key(&l)
+                    && *y != l
+                    && *y != *head
+                    && *y != *m
+                    && graph
+                        .get(m)
+                        .is_some_and(|ms| ms.contains(y) && !ms.contains(&l))
+                {
+                    pass = Some(l);
+                    l = *y;
+                }
+                if *m == *head || *m == l || l == *head {
+                    continue;
+                }
+                let Some(msuccs) = graph.get(m) else { continue };
+                // Only where statements must run before a test (what this
+                // fold is for): the folded block, or the head's own way to
+                // the shared block, makes a call or a store. A plain chain of
+                // comparisons, an AArch64 `&&` at -O1 (datatests ccmp,
+                // orcompare), is left to the structurer's own short-circuit
+                // folding, which writes it as `&&`.
+                if msuccs.len() != 2
+                    || !(effects.contains(m) || pass.is_some_and(|p| effects.contains(&p)))
+                    || !small(m)
+                    || pass.is_some_and(|p| !small(&p))
+                    || switches.contains_key(m)
+                    || !taken.contains_key(m)
+                    || preds.get(m).is_none_or(|p| p.as_slice() != [*head])
+                    || !msuccs.contains(&l)
+                {
+                    continue;
+                }
+                let n = if msuccs[0] == l { msuccs[1] } else { msuccs[0] };
+                if n == *m || n == l || n == *head {
+                    continue;
+                }
+                // A block already folded goes to `taken` on its whole test;
+                // it can join this one's `||` only when that is L.
+                if ors.contains_key(m) && taken.get(m) != Some(&l) {
+                    continue;
+                }
+                // Likewise a head already folded: its `||` is what goes to its
+                // taken side, so only a test that also goes there extends it.
+                if ors.contains_key(head) && taken.get(head) != Some(&l) {
+                    continue;
+                }
+                found = Some((*head, *m, l, n, pass));
+                break 'heads;
+            }
+        }
+        let Some((head, m, l, n, pass)) = found else {
+            return ors;
+        };
+        let head_to_l = taken.get(&head) == Some(&pass.unwrap_or(l));
+        let m_to_l = taken.get(&m) == Some(&l);
+        let entry = ors.entry(head).or_insert(OrTest {
+            first_taken: head_to_l,
+            pass,
+            rest: Vec::new(),
+        });
+        entry.rest.push((m, m_to_l));
+        // A folded block's own `||` goes to L as a whole (checked above),
+        // so its parts join this one's in order: its own test, which goes to
+        // L when its branch goes where it did before folding, then the rest.
+        if let Some(inner) = ors.remove(&m) {
+            let entry = ors.get_mut(&head).expect("just inserted");
+            let last = entry.rest.last_mut().expect("just pushed");
+            last.1 = inner.first_taken;
+            entry.rest.extend(inner.rest);
+        }
+        graph.insert(head, vec![l, n]);
+        graph.remove(&m);
+        if let Some(p) = pass {
+            graph.remove(&p);
+        }
+        taken.insert(head, l);
+        taken.remove(&m);
+    }
+}
+
+/// A float result rendered as its bits, `__bits(x)`, is returned as `x`:
+/// `(double)(__bits(x))` would convert the bit pattern to a number.
+fn float_unbits(value: &str) -> &str {
+    let Some(inner) = value
+        .strip_prefix("__bits32(")
+        .or_else(|| value.strip_prefix("__bits("))
+        .and_then(|v| v.strip_suffix(')'))
+    else {
+        return value;
+    };
+    // Only when the parentheses stripped are one pair: `__bits(a) + __bits(b)`
+    // is not one call.
+    let mut depth = 0i32;
+    for c in inner.chars() {
+        match c {
+            '(' => depth += 1,
+            ')' => {
+                depth -= 1;
+                if depth < 0 {
+                    return value;
+                }
+            }
+            _ => {}
+        }
+    }
+    if depth == 0 { inner } else { value }
+}
+
+/// A call target without RISC-V `jalr`'s clearing of bit 0 (`p & -2`): a
+/// function's address is even, so for the pointer called the mask changes
+/// nothing, and it reads as arithmetic on it.
+fn code_pointer(e: Expr) -> Expr {
+    match e {
+        Expr::Binary("&", a, b) if matches!(*b, Expr::Const(c, _) if c == u64::MAX - 1) => *a,
+        other => other,
+    }
 }
 
 /// Names that occur only on the left of assignments in the emitted body.
@@ -851,13 +1193,7 @@ fn dead_locals<'a>(body: &str, locals: impl Iterator<Item = &'a String>) -> BTre
     for name in locals {
         let mut read = false;
         for line in body.lines().filter(|line| mentions(line, name)) {
-            let line = line.trim();
-            let prefix = format!("{name} = ");
-            let Some(rhs) = line.strip_prefix(&prefix) else {
-                read = true;
-                break;
-            };
-            if mentions(rhs, name) {
+            if reads(line.trim(), name) {
                 read = true;
                 break;
             }
@@ -1907,6 +2243,15 @@ impl Emitter<'_> {
 
     /// The branch condition of a block, inverted if asked.
     fn condition(&mut self, at: Addr, invert: bool) -> Expr {
+        if let Some(or) = self.ors.get(&at).cloned() {
+            let e = self.or_condition(at, &or);
+            return if invert { negate(e) } else { e };
+        }
+        self.branch_condition(at, invert)
+    }
+
+    /// The condition of a block's own branch.
+    fn branch_condition(&mut self, at: Addr, invert: bool) -> Expr {
         let cond = self
             .f
             .blocks
@@ -1929,6 +2274,70 @@ impl Emitter<'_> {
                 self.unmodelled += 1;
                 Expr::Named("__condition", Vec::new())
             }
+        }
+    }
+
+    /// `A || (S1, B1) || ...` for a head fold_or_tests folded: true when the
+    /// head goes to where its taken edge now leads.
+    fn or_condition(&mut self, at: Addr, or: &OrTest) -> Expr {
+        let first = self.branch_condition(at, !or.first_taken);
+        let mut e: Option<Expr> = if or.pass.is_some() {
+            None
+        } else {
+            Some(first.clone())
+        };
+        for (m, m_taken) in &or.rest {
+            let test = self.branch_condition(*m, !*m_taken);
+            let part = self.with_statements(*m, test);
+            e = Some(match e {
+                None => part,
+                Some(e) => Expr::Binary("||", Box::new(e), Box::new(part)),
+            });
+        }
+        let rest = e.unwrap_or(Expr::Const(0, 4));
+        match or.pass {
+            // `A ? (S, 1) : (rest)`: the head's own way runs its block first.
+            Some(p) => {
+                let then = self.with_statements(p, Expr::Const(1, 4));
+                Expr::Text(format!("(({first}) ? {then} : ({rest}))"))
+            }
+            None => rest,
+        }
+    }
+
+    /// `(S, test)`: a block's statements, then a test, as one expression.
+    fn with_statements(&mut self, m: Addr, test: Expr) -> Expr {
+        let mut text = String::new();
+        self.statements(&mut text, m, 0);
+        let lines: Vec<&str> = text
+            .lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty())
+            .collect();
+        // A comma expression when every statement is one: an assignment, a
+        // store or a call. Otherwise a statement expression (GNU C).
+        let simple = lines.iter().all(|l| {
+            l.ends_with(';')
+                && !l.contains('{')
+                && !l.contains('}')
+                && !l.ends_with(':')
+                && ![
+                    "return", "goto ", "break", "continue", "if ", "while ", "switch ",
+                ]
+                .iter()
+                .any(|k| l.starts_with(k))
+        });
+        if lines.is_empty() {
+            test
+        } else if simple {
+            let mut parts: Vec<String> = lines
+                .iter()
+                .map(|l| l.trim_end_matches(';').to_string())
+                .collect();
+            parts.push(format!("{test}"));
+            Expr::Text(format!("({})", parts.join(", ")))
+        } else {
+            Expr::Text(format!("({{ {} {test}; }})", lines.join(" ")))
         }
     }
 
@@ -1966,6 +2375,17 @@ impl Emitter<'_> {
                     continue;
                 };
                 if self.dead.contains(name) {
+                    continue;
+                }
+                // An assignment of what a call clobbered says nothing either:
+                // the variable may hold anything on this path, and keeping
+                // what it held is one of those things. SSA merges such a value
+                // into a phi on every edge out of a call, whether or not the
+                // path reads it (printf_core printed 1221 of these).
+                if input
+                    .as_value()
+                    .is_some_and(|v| self.value_is_clobbered(v, 0))
+                {
                     continue;
                 }
                 // An assignment from itself says nothing.
@@ -2033,6 +2453,39 @@ impl Emitter<'_> {
                         None => false,
                     };
                     let e = match (o, op.inputs.first().and_then(|i| i.as_const())) {
+                        // A system call: its number, then the arguments it
+                        // reads (crate::syscall::trim kept those it takes).
+                        (Op::Call, Some(nocompiler_ir::syscall::SYSCALL)) => {
+                            // Trailing arguments the caller never set are not
+                            // passed: the table gives a call's most (openat's
+                            // mode), and musl's open(path, flags) leaves a3 as
+                            // the last call left it. `__syscall` is variadic,
+                            // so fewer is still C. The number always stays.
+                            // Past the call's least count, so are registers
+                            // that only hold what this function was entered
+                            // with and that are not its parameters (futex's
+                            // a3..a5 in a wake).
+                            let certain =
+                                nocompiler_ir::syscall::certain_inputs(op).saturating_sub(1);
+                            let mut inputs = &op.inputs[1..];
+                            while inputs.len() > 1 {
+                                let last = inputs.last();
+                                let clobbered = last
+                                    .and_then(|i| i.as_value())
+                                    .is_some_and(|v| self.value_is_clobbered(v, 0));
+                                let inherited = inputs.len() > certain
+                                    && matches!(last, Some(Operand::Undefined(l)) if !self.is_parameter(*l));
+                                if !(clobbered || inherited) {
+                                    break;
+                                }
+                                inputs = &inputs[..inputs.len() - 1];
+                            }
+                            let args = inputs
+                                .iter()
+                                .map(|i| self.r.integer(self.r.operand(i), i))
+                                .collect();
+                            Expr::Named("__syscall", args)
+                        }
                         (Op::Call, Some(target)) => {
                             let callee = self.callees.get(&target);
                             let name = callee
@@ -2046,16 +2499,13 @@ impl Emitter<'_> {
                             };
                             self.direct_call(name, args, known)
                         }
-                        (Op::CallInd, _) => {
-                            let mut args = op
-                                .inputs
-                                .first()
-                                .map(|i| self.r.integer(self.r.operand(i), i))
-                                .into_iter()
-                                .collect::<Vec<_>>();
-                            args.extend(self.unknown_arguments(at, index));
-                            Expr::Named("__callind", args)
-                        }
+                        (Op::CallInd, _) => match op.inputs.first() {
+                            Some(i) => {
+                                let target = code_pointer(self.r.integer(self.r.operand(i), i));
+                                self.pointer_call(target, at, index)
+                            }
+                            None => Expr::Named("__callind", self.unknown_arguments(at, index)),
+                        },
                         _ => self.r.expr(op),
                     };
                     match op
@@ -2066,6 +2516,13 @@ impl Emitter<'_> {
                         // The local is an integer and the callee may be
                         // declared to return a pointer, which C will not
                         // assign without being told.
+                        // A float result (fa0) is assigned as it is: the cast would
+                        // convert the value rather than keep it.
+                        Some(name)
+                            if op.out.is_some_and(|v| self.r.floats.contains(&v.location)) =>
+                        {
+                            let _ = writeln!(out, "{pad}{name} = {e};");
+                        }
                         Some(name) => {
                             let _ = writeln!(out, "{pad}{name} = (uint64_t)({e});");
                         }
@@ -2093,8 +2550,18 @@ impl Emitter<'_> {
                         self.unknown_arguments(at, index)
                     };
                     let e = self.direct_call(name, args, known);
-                    let _ = writeln!(out, "{pad}{e};");
-                    let _ = writeln!(out, "{pad}{}", self.return_statement(at));
+                    // A tail call returns what the callee returns, when this
+                    // function returns something and the callee does.
+                    let gives = callee.is_none_or(|c| c.returns_value);
+                    match &self.returns {
+                        Some(ty) if ty != "void" && gives => {
+                            let _ = writeln!(out, "{pad}return ({ty})({e});");
+                        }
+                        _ => {
+                            let _ = writeln!(out, "{pad}{e};");
+                            let _ = writeln!(out, "{pad}{}", self.return_statement(at));
+                        }
+                    }
                 }
                 Op::BranchInd => {
                     // A computed branch that structuring did not turn into a
@@ -2102,6 +2569,29 @@ impl Emitter<'_> {
                     // does not have, so the target is named and the control
                     // transfer is said rather than spelled.
                     if self.switches.contains(&at) {
+                        continue;
+                    }
+                    // A block with nowhere to go after the jump left the
+                    // function: a tail call through a pointer, written as the
+                    // call it is, returning what the callee returns.
+                    let leaves = self.pointer_tails
+                        && self
+                            .f
+                            .blocks
+                            .get(&at)
+                            .is_some_and(|b| b.successors.is_empty());
+                    if leaves && let Some(i) = op.inputs.first() {
+                        let target = code_pointer(self.r.integer(self.r.operand(i), i));
+                        let e = self.pointer_call(target, at, index);
+                        match &self.returns {
+                            Some(ty) if ty != "void" => {
+                                let _ = writeln!(out, "{pad}return ({ty})({e});");
+                            }
+                            _ => {
+                                let _ = writeln!(out, "{pad}{e};");
+                                let _ = writeln!(out, "{pad}{}", self.return_statement(at));
+                            }
+                        }
                         continue;
                     }
                     if let Some(t) = op.inputs.first().map(|i| self.r.operand(i)) {
@@ -2114,6 +2604,13 @@ impl Emitter<'_> {
                     // Anything else that reaches here has a named output.
                     if let Some(name) = op.out.and_then(|v| self.r.locals.get(&v)) {
                         if self.dead.contains(name) {
+                            continue;
+                        }
+                        // A copy of what a call clobbered says nothing, as a
+                        // phi copy of one does not (phi_copies).
+                        if let Some(v) = op.out
+                            && self.value_is_clobbered(v, 0)
+                        {
                             continue;
                         }
                         let _ = writeln!(out, "{pad}{name} = {};", self.r.expr(op));
@@ -2147,6 +2644,10 @@ impl Emitter<'_> {
     /// The `return` a block ends with, converted to the declared type.
     fn return_statement(&self, at: Addr) -> String {
         let value = self.result(at);
+        let value = match &self.returns {
+            Some(ty) if ty == "double" || ty == "float" => float_unbits(&value).to_string(),
+            _ => value,
+        };
         match (&self.returns, value.is_empty()) {
             (Some(ty), _) if ty == "void" => "return;".to_string(),
             // The value is already rendered, so the cast needs its own
@@ -2164,11 +2665,35 @@ impl Emitter<'_> {
     }
 
     fn return_value(&self, value: &str) -> String {
+        let value = match &self.returns {
+            Some(ty) if ty == "double" || ty == "float" => float_unbits(value),
+            _ => value,
+        };
         match &self.returns {
             Some(ty) if ty == "void" => "return;".to_string(),
             Some(ty) => format!("return ({ty})({value});"),
             None => format!("return {value};"),
         }
+    }
+
+    /// A call through a pointer. A constant one that is a function of this
+    /// unit is that function's call, by name and with its parameters (musl's
+    /// __libc_start_main reaches libc_start_main_stage2 through a constant
+    /// address); anything else is `__callind(target, args...)`.
+    fn pointer_call(&self, target: Expr, at: Addr, index: usize) -> Expr {
+        if let Expr::Const(addr, _) = target
+            && let Some(callee) = self.callees.get(&addr)
+        {
+            let args = if callee.parameters_known {
+                self.arguments(at, index, Some(callee))
+            } else {
+                self.unknown_arguments(at, index)
+            };
+            return self.direct_call(callee.name.clone(), args, callee.parameters_known);
+        }
+        let mut args = vec![target];
+        args.extend(self.unknown_arguments(at, index));
+        Expr::Named("__callind", args)
     }
 
     /// A direct call. An unknown prototype is invoked through a cast so the
@@ -2196,7 +2721,25 @@ impl Emitter<'_> {
         let n = callee.arity;
         let pointers = &callee.pointer_parameters;
         let mut out = Vec::new();
-        for (slot, offset) in self.r.abi.integer_arguments.iter().enumerate().take(n) {
+        // Each parameter takes the next register of its class: the integer
+        // ones a0.., the floating ones fa0.. (`double rint(double)` reads fa0).
+        let (mut ints, mut floats) = (0, 0);
+        for slot in 0..n {
+            let floating = callee
+                .floating_parameters
+                .get(slot)
+                .copied()
+                .unwrap_or(false);
+            let register = if floating {
+                floats += 1;
+                self.r.abi.float_arguments.get(floats - 1)
+            } else {
+                ints += 1;
+                self.r.abi.integer_arguments.get(ints - 1)
+            };
+            let Some(offset) = register else {
+                break;
+            };
             let value = match self.value_before(at, index, *offset) {
                 Some(v) => self.r.operand(&v),
                 None => Expr::Const(0, 8),
@@ -2211,11 +2754,33 @@ impl Emitter<'_> {
                 }
                 (v, _) => v,
             };
+            // A floating parameter takes the number, not its bits: a register
+            // copy of fa0 reads as `__bits(farg0)`, and `rint` wants `farg0`.
+            let value = match value {
+                Expr::Named("__bits" | "__bits32", mut inner) if floating && inner.len() == 1 => {
+                    inner.remove(0)
+                }
+                v => v,
+            };
             // A parameter declared as a pointer needs the argument cast to it:
             // the machine passes bits and C wants to be told what they are.
             match pointers.get(slot) {
                 Some(true) => out.push(Expr::Cast("void *", Box::new(value))),
                 _ => out.push(value),
+            }
+        }
+        // A variadic callee takes, after its fixed parameters, the argument
+        // registers this caller set before the call, up to the first it did not
+        // (a clobber or its own entry value is not an argument it passes).
+        if callee.variadic {
+            for offset in self.r.abi.integer_arguments.iter().skip(ints) {
+                match self.value_before(at, index, *offset) {
+                    Some(Operand::Value(v)) if !self.value_is_clobbered(v, 0) => {
+                        out.push(self.r.operand(&Operand::Value(v)))
+                    }
+                    Some(c @ Operand::Const(..)) => out.push(self.r.operand(&c)),
+                    _ => break,
+                }
             }
         }
         // A callee with more parameters than there are argument registers
@@ -2269,6 +2834,16 @@ impl Emitter<'_> {
 
     /// Whether a value is only a call-clobber marker, possibly through the
     /// copies and width-normalizing operations SSA put above it.
+    /// Whether an entry location is one of this function's parameters (any
+    /// argument register, without a prototype).
+    fn is_parameter(&self, l: nocompiler_ir::ssa::Location) -> bool {
+        let name = self.r.name_of(l);
+        match &self.parameters {
+            Some(p) => p.contains(&name),
+            None => name.starts_with("arg") || name.starts_with("farg"),
+        }
+    }
+
     fn value_is_clobbered(&self, value: Value, depth: u8) -> bool {
         if depth >= 16 {
             return false;
@@ -2343,10 +2918,27 @@ impl Emitter<'_> {
                 .filter_map(|op| op.out)
                 .next()
         });
-        // Nothing in this block wrote it, so the value came from wherever it
-        // was last written: the newest version is the one that reaches here.
-        // A clobber is not a version of the result.
-        let value = in_block.or_else(|| {
+        // Nothing in this block wrote it: the value is the one that reaches
+        // this block. The newest version anywhere is not that: in mp_obj_len,
+        // `if (!(n = len_maybe(o))) raise(...); return n;`, it was raise's
+        // result, which nothing assigns.
+        let reaching = || {
+            let end = self.f.blocks.get(&at).map_or(0, |b| b.ops.len());
+            match self.f.reaching(at, end, |v| {
+                v.location.space == Space::Register && v.location.offset == offset
+            }) {
+                Reaching::Defined(v) => self
+                    .r
+                    .definition_site(v)
+                    .and_then(|(b, i)| self.f.blocks.get(&b).and_then(|b| b.ops.get(i)))
+                    .is_some_and(&defined)
+                    .then_some(v),
+                _ => None,
+            }
+        };
+        // Failing that (a clobber reaches, or a cycle), the newest version, as
+        // before. A clobber is not a version of the result.
+        let value = in_block.or_else(reaching).or_else(|| {
             self.f
                 .blocks
                 .values()

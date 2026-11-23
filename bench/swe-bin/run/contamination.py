@@ -1,6 +1,9 @@
 """Does a pilot transcript claim to know the fix? (lead 16:55, item 4)
 
-  contamination.py TRANSCRIPT.jsonl ...
+  contamination.py TRANSCRIPT.jsonl|SESSION_DIR ...
+
+A directory stands for the *.jsonl transcripts in it (a Claude Code project directory also holds
+a `memory` directory, which is skipped). An unreadable path gives an "error" entry, not a crash.
 
 Scans the solver's own text (assistant text and thinking, not tool output) for phrases that say
 it knows the upstream fix: "upstream", "the actual/real/exact fix", "PR #", "pull request",
@@ -11,7 +14,9 @@ gold patch; a reader checks the quotes.
 
 from __future__ import annotations
 
+import glob
 import json
+import os
 import re
 import sys
 
@@ -22,7 +27,7 @@ PAT = re.compile(r"(upstream|actual fix|real fix|exact fix|official fix|known fi
 
 def scan(path):
     hits = []
-    for line in open(path):
+    for line in open(path, encoding="utf-8", errors="replace"):
         try:
             j = json.loads(line)
         except json.JSONDecodeError:
@@ -45,6 +50,27 @@ def scan(path):
     return {"transcript": path, "claims_fix_knowledge": bool(out), "matches": out}
 
 
+def transcripts(paths):
+    for p in paths:
+        if os.path.isdir(p):
+            yield from sorted(glob.glob(os.path.join(p, "*.jsonl")))
+        else:
+            yield p
+
+
+def main(argv):
+    if not argv:
+        print(__doc__.strip(), file=sys.stderr)
+        return 2
+    rc = 0
+    for p in transcripts(argv):
+        try:
+            print(json.dumps(scan(p)))
+        except OSError as e:
+            print(json.dumps({"transcript": p, "error": str(e)}))
+            rc = 1
+    return rc
+
+
 if __name__ == "__main__":
-    for p in sys.argv[1:]:
-        print(json.dumps(scan(p)))
+    sys.exit(main(sys.argv[1:]))

@@ -1,5 +1,8 @@
 import Examples.Libc.SlenImage
+import Examples.Libc.Musl.Memset
 import NoCompiler.Auto
+import NoCompiler.Libc.Mem
+import NoCompiler.Libc.Word
 
 /-!
 `slen` (examples/libc/slen.c, against musl 1.2.5): the functions on its path,
@@ -9,6 +12,13 @@ set_option maxRecDepth 20000
 
 namespace Examples.Libc.Slen
 open NoCompiler Examples.Libc.SlenImage
+-- The library lemmas (NoCompiler/Libc), visible under their old names in this namespace (QUEUE-D P1).
+export NoCompiler.Libc (sext_or_32 ofNat_ne_of_lt ofNat_ne_neg_one slt_ofNat_zero ult_ofNat_false ult_ofNat_true
+  ofNat_sub_ofNat bool64_false' bool64_true' add_ofNat_add byte_of_word word_bytes byte_byte merge8 merge16 merge24
+  and_bitK and_bit1 and_bit2 and_bit4 and_bit8 and_bit16 bne_of_bit bne_of_nbit beq_of_bit beq_of_nbit add_ofNat_assoc
+  and3_mod al_of_mod and3_beq and3_eq0 bool64_or_ne bool64_and_ne ult_and3_one ult_one ult_zero_and3 ult_zero'
+  readLE_writeLE_disj readLE_writeBytes_above read64_congr_on not_mem_of_disj_mem writeLE_apply ofNat32_readLE
+  perm_read_sub perm_write_sub ofNat32_se)
 
 /-- `_Exit(c)`: exit_group(c), never returns. -/
 def exitSpec : Spec Word where
@@ -31,8 +41,6 @@ def errnoSpec : Spec Unit where
 theorem ___errno_location_verified : VerifiedImg code ___errno_location_dom ___errno_location_entry errnoSpec := by
   rintro ⟨⟩ s he _
   nocompiler_auto ___errno_location_func s he
-  all_goals trace_state
-  all_goals sorry
 
 /-- `__syscall_ret(r)`: `r` if it is not an error (`-4095 ≤ r < 0` as a signed value), else `-1` with
     errno set; it may write errno (4 bytes at `tp - 164`, aligned, outside its 16-byte frame) and its frame. -/
@@ -76,9 +84,13 @@ def towriteSpec : Spec Word where
       read64 s'.mem (f + F_wpos) = read64 s.mem (f + F_buf) ∧
       read64 s'.mem (f + F_wbase) = read64 s.mem (f + F_buf) ∧
       read64 s'.mem (f + F_wend) = read64 s.mem (f + F_buf) + read64 s.mem (f + F_buf_size) ∧
-      read64 s'.mem (f + F_rpos) = 0 ∧ read64 s'.mem (f + F_rend) = 0) ∧
+      read64 s'.mem (f + F_rpos) = 0 ∧ read64 s'.mem (f + F_rend) = 0 ∧
+      read64 s'.mem (f + 72#64) = read64 s.mem (f + 72#64) ∧
+      readLE s'.mem (f + 120#64) 4 = readLE s.mem (f + 120#64) 4 ∧
+      read64 s'.mem (f + 88#64) = read64 s.mem (f + 88#64)) ∧
     (read32 s.mem f &&& 8#64 ≠ 0 → s'.reg Reg.a0 = -1)
-  writes := fun f _ => [⟨f, 144⟩]
+  reads := fun f _ => [⟨f + 88#64, 16⟩]
+  writes := fun f _ => [⟨f, 64⟩, ⟨f + 136#64, 4⟩]
 
 /-- An 8-byte load at `f + b` past a store at `f + a` that it does not overlap, the offsets constants. -/
 theorem read64_writeLE_off (m : Word → Byte) (f a b : Word) (v w : Nat)
@@ -90,6 +102,19 @@ theorem read64_writeLE_off (m : Word → Byte) (f a b : Word) (v w : Nat)
   · have : f + a - (f + b) = a - b := by bv_omega
     rw [this]; exact h2
 
+/-- A 4-byte load at `f + b` past a store at `f + a` that it does not overlap, the offsets constants. -/
+theorem readLE4_writeLE_off (m : Word → Byte) (f a b : Word) (v w : Nat)
+    (h1 : w ≤ (b - a).toNat) (h2 : 4 ≤ (a - b).toNat) :
+    readLE (writeLE m (f + a) v w) (f + b) 4 = readLE m (f + b) 4 := by
+  have hd : Region.Disjoint ⟨f + a, w⟩ ⟨f + b, 4⟩ := by
+    refine ⟨?_, ?_⟩
+    · have : f + b - (f + a) = b - a := by bv_omega
+      rw [this]; exact h1
+    · have : f + a - (f + b) = a - b := by bv_omega
+      rw [this]; exact h2
+  apply readLE_congr; intro j hj; apply writeLE_other
+  simp only [Region.Disjoint] at hd; bv_omega
+
 theorem __towrite_verified : VerifiedImg code __towrite_dom __towrite_entry towriteSpec := by
   rintro f s he ⟨ha0, hal⟩
   nocompiler_auto __towrite_func s he [hal]
@@ -100,7 +125,7 @@ theorem __towrite_verified : VerifiedImg code __towrite_dom __towrite_entry towr
     intro _
     refine ⟨trivial, ?_⟩
     simp only [F_wpos, F_wbase, F_wend, F_rpos, F_rend, F_buf, F_buf_size]
-    simp (disch := decide) only [read64_writeLE_off, Auto.read64_writeLE_same', BitVec.ofNat_toNat,
+    simp (disch := decide) only [read64_writeLE_off, readLE4_writeLE_off, Auto.read64_writeLE_same', BitVec.ofNat_toNat,
       BitVec.setWidth_eq]
     simp
 
@@ -165,29 +190,17 @@ theorem toNat_and3 (x : Word) : (x &&& 3#64).toNat = x.toNat % 4 := by
 
 /-- memset's alignment step: `(0 - d) & 3` (in 32 bits, sign-extended) is what rounds `d` up to 4. -/
 theorem subw0_and3 (d : Word) : evalRW RWOp.subw 0#64 d &&& 3#64 = (0#64 - d) &&& 3#64 := by
-  simp only [evalRW, w32]; bv_decide
+  exact NoCompiler.Libc.Musl.Memset.subw0_and3 d
 
 theorem toNat_r (d : Word) : (evalRW RWOp.subw 0#64 d &&& 3#64).toNat = (4 - d.toNat % 4) % 4 := by
   rw [subw0_and3, toNat_and3, BitVec.toNat_sub]; simp; omega
 
-theorem toNat_andneg4 (y : Word) : (y &&& 18446744073709551612#64).toNat = y.toNat - y.toNat % 4 := by
-  have h : y &&& 18446744073709551612#64 = y - (y &&& 3#64) := by bv_decide
-  rw [h, BitVec.toNat_sub_of_le, toNat_and3]
-  rw [BitVec.le_def, toNat_and3]; omega
+theorem toNat_andneg4 (y : Word) : (y &&& 18446744073709551612#64).toNat = y.toNat - y.toNat % 4 :=
+  NoCompiler.Libc.Musl.Memset.toNat_andneg4 y
 
 /-- memset's step to an 8-byte boundary: `(x & 4) | 24` is 24 or 28. -/
-theorem toNat_and4_or24 (x : Word) : ((x &&& 4#64) ||| 24#64).toNat = x.toNat % 8 - x.toNat % 4 + 24 := by
-  have h1 : (x &&& 4#64) ||| 24#64 = (x &&& 4#64) + 24#64 := by bv_decide
-  have h2 : x &&& 4#64 = (x &&& 7#64) - (x &&& 3#64) := by bv_decide
-  have h7 : (x &&& 7#64).toNat = x.toNat % 8 := by
-    rw [BitVec.toNat_and]
-    have : (7#64).toNat = 2 ^ 3 - 1 := by decide
-    rw [this, Nat.and_two_pow_sub_one_eq_mod]
-  rw [h1, BitVec.toNat_add, h2, BitVec.toNat_sub_of_le, h7, toNat_and3]
-  · have := Nat.mod_lt x.toNat (show 8 > 0 by omega)
-    have : x.toNat % 4 ≤ x.toNat % 8 := by omega
-    simp; omega
-  · rw [BitVec.le_def, h7, toNat_and3]; omega
+theorem toNat_and4_or24 (x : Word) : ((x &&& 4#64) ||| 24#64).toNat = x.toNat % 8 - x.toNat % 4 + 24 :=
+  NoCompiler.Libc.Musl.Memset.toNat_and4_or24 x
 
 theorem memset_perm {s : State} {d a : Word} {n w : Nat} (h : (a - d).toNat + w ≤ n) :
     (memsetSpec.perm (d, n) s).canWrite a w :=

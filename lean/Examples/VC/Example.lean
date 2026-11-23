@@ -4,11 +4,11 @@ import NoCompiler.Arith
 import NoCompiler.Tactic
 
 /-
-A loop through cut points, milestone 4c: each cut point's segment is run by
+Examples (moved from NoCompiler/VC/Example.lean, round 9: hand-written programs at fixed addresses are not
+library content; names kept). A loop through cut points, milestone 4c: each cut point's segment is run by
 `vc_run` (kernel-checked), and `Reach.cutpoints` composes them. What is left
 after `vc_run` is the segment's end state as data, and the successors' goals
-over the denotations of its symbolic values (here closed by hand; automating
-that is the next step).
+over the denotations of its symbolic values, closed by hand in this file.
 -/
 namespace NoCompiler.VC.M.Example
 
@@ -216,10 +216,12 @@ theorem sum_reach (a : Word) (xs : List Word) (s : State) (hpc : s.pc = 0x11190#
     have h12' : read64 u.mem (u.reg 10 + 0#64) + u.reg 12 = sumW (xs.take (k + 1)) := by
       rw [hld, h12, sumW_take_succ xs k hk, BitVec.add_comm]
     refine ⟨⟨?_, ?_, trivial⟩, ?_, ?_, trivial⟩
-    · -- the load is aligned
+    · -- the load is aligned (no branch before it: no condition)
+      intro _
       show aligned (u.reg 10 + 0#64) 8
       rw [h10, BitVec.add_zero]; exact aligned_add_ofNat hal (by omega) (by decide)
     · -- and inside the array
+      intro _
       refine .inr ⟨arrRegion a xs, by simp, ?_⟩
       show (u.reg 10 + 0#64 - a).toNat + 8 ≤ 8 * xs.length
       rw [h10, BitVec.add_zero, add_ofNat_sub_toNat a (by omega)]; omega

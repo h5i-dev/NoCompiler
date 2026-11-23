@@ -525,6 +525,8 @@ pub fn run(
                     mem.write(a, rx(rs2), n);
                 }
             }
+            // The process dies with SIGILL (qemu: killed by signal 4).
+            Instr::Unimp => fault = Some(format!("{pc:#x}: unimp (SIGILL)")),
             Instr::Ecall => {
                 r.ecalls += 1;
                 match x[17] {

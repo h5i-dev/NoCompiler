@@ -154,6 +154,11 @@ pub enum Command {
         /// that a theorem needing it takes as a hypothesis.
         #[arg(long)]
         lean_level_check: bool,
+        /// Also what a process-level proof needs: the entry point (`elfEntry`),
+        /// the program headers as the auxiliary vector gives them (`phdrInfo`),
+        /// and their bytes where the binary maps them (`seg_phdrs`).
+        #[arg(long)]
+        process: bool,
         /// Write the Lean file here instead of to standard output.
         #[arg(short = 'o', value_name = "OUT.lean")]
         out: Option<PathBuf>,
@@ -253,6 +258,21 @@ pub enum Command {
         #[arg(short = 'o', value_name = "OUT.o")]
         out: PathBuf,
     },
+    /// Rebuild a patched binary from its patch stack: the base ELF, then each `.s` patch
+    /// assembled and linked in (docs/toolkit/patch-stack.md).
+    Link {
+        /// The stack file (`nocompiler-stack 1`, base, patches, result).
+        stack: PathBuf,
+        /// Write the rebuilt binary here.
+        #[arg(short = 'o', value_name = "OUT.elf")]
+        out: Option<PathBuf>,
+        /// Status 1 unless the rebuilt binary's SHA-256 is the recorded `result`.
+        #[arg(long)]
+        check: bool,
+        /// Write the rebuilt binary's SHA-256 into the stack's `result` line.
+        #[arg(long, conflicts_with = "check")]
+        record: bool,
+    },
     /// A RISC-V binary as text for `git diff`: per function, by name, addresses masked
     /// (docs/toolkit/git-diff.md).
     Textconv {
@@ -263,9 +283,62 @@ pub enum Command {
     Ledger {
         /// The linked RISC-V ELF.
         file: PathBuf,
-        /// `function<TAB>theorem<TAB>spec` lines: the functions with a proof.
-        #[arg(long, value_name = "TSV")]
+        /// The functions with a proof: a proofs file, or
+        /// `function<TAB>theorem<TAB>spec` lines.
+        #[arg(long, value_name = "FILE")]
         proofs: Option<PathBuf>,
+    },
+    /// From a binary to its theorems: check, export, the generator, and a report of the
+    /// functions not proved and why (docs/toolkit/prove.md).
+    Prove {
+        /// The RISC-V ELF.
+        file: PathBuf,
+        /// The specifications the generator tries, in order (Prove.py's: safe, anyread,
+        /// anymem, rodata, offframe, alignargs).
+        #[arg(
+            long,
+            value_name = "LIST",
+            default_value = "safe,anyread,anymem,rodata,offframe,alignargs"
+        )]
+        spec: String,
+        /// Where the image, the theorems and REPORT.md go.
+        #[arg(long, value_name = "DIR")]
+        work: PathBuf,
+        /// Functions proved in parallel (each capped at 6 GB).
+        #[arg(long, default_value_t = 1)]
+        jobs: usize,
+        /// The repository (where lean/ is); default NOCOMPILER_ROOT or the build's.
+        #[arg(long, value_name = "DIR")]
+        root: Option<PathBuf>,
+        /// Only these functions and their callees (comma-separated names).
+        #[arg(long, value_name = "NAMES", value_delimiter = ',')]
+        only: Vec<String>,
+    },
+    /// Which theorems proved about one build still cover another
+    /// (docs/toolkit/proof-status.md). Status 1 unless every proof carries.
+    Status {
+        /// The new build: a linked RISC-V ELF or a patch stack.
+        file: PathBuf,
+        /// The proofs file of the old build.
+        #[arg(long, value_name = "OLD.nocompiler-proofs")]
+        proofs: PathBuf,
+        /// Write the Lean reuse theorems for the proofs that carry.
+        #[arg(long, value_name = "OUT.lean")]
+        lean: Option<PathBuf>,
+        /// What the reuse theorems state: `Verified` in the new module, or
+        /// `Refines` of the two images.
+        #[arg(long, value_parser = ["verified", "refines"], default_value = "verified", requires = "lean")]
+        form: String,
+        /// The Lean namespace of the `--lean` file.
+        #[arg(long, value_name = "NS", default_value = "NoCompilerStatus")]
+        namespace: String,
+        /// Write the new build's proofs file: the proofs that carry, `by-key`.
+        #[arg(long, value_name = "NEW.nocompiler-proofs")]
+        record: Option<PathBuf>,
+        /// The compiled `--lean` file (beside its `.lean`): record the carried
+        /// proofs that were `checked` as `checked`.
+        #[arg(long, value_name = "OUT.olean", requires = "record")]
+        checked: Option<PathBuf>,
     },
     /// Disassemble a function, a range, or everything.
     ///
@@ -772,7 +845,10 @@ impl Command {
             | Command::Export { .. }
             | Command::Module { .. }
             | Command::Ledger { .. }
+            | Command::Status { .. }
+            | Command::Prove { .. }
             | Command::Textconv { .. }
+            | Command::Link { .. }
             | Command::Asm { .. }
             | Command::Sim { .. }
             | Command::Refine { .. } => None,
@@ -809,7 +885,10 @@ impl Command {
             | Command::Export { .. }
             | Command::Module { .. }
             | Command::Ledger { .. }
+            | Command::Status { .. }
+            | Command::Prove { .. }
             | Command::Textconv { .. }
+            | Command::Link { .. }
             | Command::Asm { .. }
             | Command::Sim { .. }
             | Command::Refine { .. } => {
@@ -866,12 +945,14 @@ fn core(cli: &Cli, w: &mut out::Out) -> Option<Result<u8, String>> {
             namespace,
             format,
             lean_level_check,
+            process,
             out,
         } => cmd::export(
             file,
             namespace,
             format == "chunks",
             *lean_level_check,
+            *process,
             out.as_deref(),
             &mut text,
         ),
@@ -888,7 +969,61 @@ fn core(cli: &Cli, w: &mut out::Out) -> Option<Result<u8, String>> {
             &mut text,
         ),
         Command::Ledger { file, proofs } => cmd::ledger(file, proofs.as_deref(), &mut text),
+        Command::Prove {
+            file,
+            spec,
+            work,
+            jobs,
+            root,
+            only,
+        } => nocompiler::prove::prove(
+            file,
+            &nocompiler::prove::Options {
+                work: work.clone(),
+                specs: spec.clone(),
+                jobs: *jobs,
+                root: root.clone(),
+                only: only.clone(),
+            },
+            &mut text,
+        )
+        .map(|rows| {
+            if rows
+                .iter()
+                .all(|r| matches!(r.outcome, nocompiler::prove::Outcome::Proved { .. }))
+            {
+                0
+            } else {
+                1
+            }
+        }),
+        Command::Status {
+            file,
+            proofs,
+            lean,
+            form,
+            namespace,
+            record,
+            checked,
+        } => cmd::status(
+            file,
+            proofs,
+            &cmd::StatusOpts {
+                lean: lean.as_deref(),
+                refines: form == "refines",
+                namespace,
+                record: record.as_deref(),
+                checked: checked.as_deref(),
+            },
+            &mut text,
+        ),
         Command::Textconv { file } => cmd::textconv(file, &mut text),
+        Command::Link {
+            stack,
+            out,
+            check,
+            record,
+        } => cmd::link(stack, out.as_deref(), *check, *record, &mut text),
         Command::Asm { file, out } => cmd::asm(file, out, &mut text),
         Command::Refine {
             a,

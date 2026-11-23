@@ -110,10 +110,9 @@ answer" becomes checkable:
   said, and reporting it faithfully is how a caller sees a truncated file at
   all. What must be true is that nothing was *read* from outside the file.
 
-The gate found three defects in loader arithmetic on its first run. They are
-pinned at the bottom of the file, each with a minimal reproduction, each
-asserting the current wrong behaviour on purpose so that fixing the source
-turns the pin red and the pin comes out with the fix:
+The gate found three defects in loader arithmetic on its first run. All three are fixed; the tests
+at the bottom of crates/nocompiler-ir/tests/nopanic_gate.rs keep a minimal reproduction of each and
+assert the fixed behaviour (each test's comment says what it used to do). The defects were:
 
 1. A Mach-O section that runs off the end of the file is reported at its
    declared size with nothing said about it: the section-body read's failure
@@ -136,9 +135,10 @@ asking whether the sum exists.
 
 ## `unsafe`
 
-Every crate is `#![forbid(unsafe_code)]` except `nocompiler-cli`, which is
-`#![deny(unsafe_code)]` so that one audited call can opt in with a written
-reason. There is exactly one, and this is it:
+Every crate is `#![forbid(unsafe_code)]` except three. `nocompiler` and `nocompiler-sleigh` have no
+such attribute (and no `unsafe` code: a search of their sources finds none); `nocompiler-cli` is
+`#![deny(unsafe_code)]` so that one audited call can opt in with a written reason. There is exactly
+one, and this is it:
 
 ```rust
 #[allow(unsafe_code)]

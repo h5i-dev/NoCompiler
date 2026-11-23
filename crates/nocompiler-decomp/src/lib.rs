@@ -14,8 +14,8 @@ pub mod expr;
 pub mod structure;
 
 pub use emit::{
-    Callee, Output, Param, Prototype, decompile, decompile_full, decompile_in, decompile_with,
-    identifier,
+    Callee, Output, Param, Prototype, decompile, decompile_complete, decompile_full, decompile_in,
+    decompile_with, identifier,
 };
 pub use expr::{Expr, c_type, field_name, slot_name};
 pub use structure::{Case, Region, Structured, Switches};

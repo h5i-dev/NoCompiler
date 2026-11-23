@@ -37,7 +37,7 @@ def sigprocmaskSpec (i : SyscallInput) (o : Outcome) : Prop :=
 
 def ioctlSpec (k : Kern) (i : SyscallInput) (o : Outcome) : Prop :=
   if i.arg 1 = tiocgwinsz then
-    if i.arg 0 ∈ k.fds then
+    if i.fd 0 ∈ k.fds then
       o = .ret { ret := enotty } none ∨
         ∃ ws : List Byte, ws.length = 8 ∧ o = .ret { ret := 0, writes := [(i.arg 2, ws)] } none
     else o = .ret { ret := ebadf } none

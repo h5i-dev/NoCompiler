@@ -45,6 +45,10 @@ pub struct Machine<'a> {
     image: Option<&'a MemoryMap>,
     /// Lifting temporaries, cleared between machine instructions.
     temps: BTreeMap<u64, u64>,
+    /// The temporaries wider than 8 bytes (up to 16): a 128-bit product whose
+    /// high half is the result (RISC-V `mulh`, `mulhsu`, `mulhu`). Kept apart so
+    /// every 64-bit path stays as it was.
+    wide: BTreeMap<u64, u128>,
     /// Addresses read that nothing had written.
     pub unknown_reads: Vec<Addr>,
     /// How many operations may run before [`Stop::Budget`].
@@ -59,6 +63,7 @@ impl<'a> Machine<'a> {
             memory: BTreeMap::new(),
             image: None,
             temps: BTreeMap::new(),
+            wide: BTreeMap::new(),
             unknown_reads: Vec::new(),
             budget: 1 << 22,
         }
@@ -155,6 +160,49 @@ impl<'a> Machine<'a> {
     /// instruction.
     pub fn end_instruction(&mut self) {
         self.temps.clear();
+        self.wide.clear();
+    }
+
+    /// A value of up to 16 bytes.
+    fn read_wide(&mut self, v: Varnode) -> u128 {
+        if v.size <= 8 {
+            return self.read(v) as u128;
+        }
+        let raw = match v.space {
+            Space::Const => v.offset as u128,
+            Space::Unique | Space::Stack => self.wide.get(&v.offset).copied().unwrap_or(0),
+            Space::Register => {
+                (self.reg(v.offset, 8) as u128) | (self.reg(v.offset + 8, v.size - 8) as u128) << 64
+            }
+            Space::Ram => {
+                let lo = self.read_mem(v.offset, 8) as u128;
+                lo | (self.read_mem(v.offset.wrapping_add(8), v.size - 8) as u128) << 64
+            }
+        };
+        raw & mask128(v.size)
+    }
+
+    fn write_wide(&mut self, v: Varnode, value: u128) {
+        if v.size <= 8 {
+            return self.write(v, value as u64);
+        }
+        let value = value & mask128(v.size);
+        match v.space {
+            Space::Const => {}
+            Space::Unique | Space::Stack => {
+                self.wide.insert(v.offset, value);
+            }
+            Space::Register => {
+                self.set_reg(v.offset, 8, value as u64);
+                self.set_reg(v.offset + 8, v.size - 8, (value >> 64) as u64);
+            }
+            Space::Ram => {
+                for i in 0..v.size as u64 {
+                    self.memory
+                        .insert(v.offset.wrapping_add(i), (value >> (i * 8)) as u8);
+                }
+            }
+        }
     }
 }
 
@@ -232,6 +280,11 @@ pub fn step(m: &mut Machine<'_>, ir: &IrOp) -> Step {
         }
         Op::Call | Op::CallInd => {
             let t = a(m);
+            // A system call is not a jump anywhere: the instruction's flow
+            // says it is one, and the runner models the kernel there.
+            if ir.op == Op::Call && t == crate::syscall::SYSCALL {
+                return Step::Next;
+            }
             return Step::Call(Addr(t));
         }
         _ => {}
@@ -254,6 +307,15 @@ pub fn step(m: &mut Machine<'_>, ir: &IrOp) -> Step {
             return Step::Next;
         }
     };
+
+    // Values wider than 8 bytes (at most 16) are computed in 128 bits.
+    let sizes = || std::iter::once(out.size).chain(ir.inputs().iter().map(|v| v.size));
+    if sizes().any(|z| z > 8) && sizes().all(|z| z <= 16) {
+        if let Some(v) = eval_wide(ir, m) {
+            m.write_wide(out, v);
+            return Step::Next;
+        }
+    }
 
     let x = ir.input(0).map(|v| m.read(v)).unwrap_or(0);
     let xs = ir.input(0).map(|v| sext(m.read(v), v.size)).unwrap_or(0);
@@ -526,6 +588,55 @@ pub fn step(m: &mut Machine<'_>, ir: &IrOp) -> Step {
 
     m.write(out, value);
     Step::Next
+}
+
+fn mask128(size: u8) -> u128 {
+    if size >= 16 {
+        u128::MAX
+    } else {
+        (1u128 << (size as u32 * 8)) - 1
+    }
+}
+
+/// The operations lifters use on values wider than 8 bytes, in 128 bits:
+/// widen, multiply, add, shift, take a piece. `None` for anything else, which
+/// then runs (truncated) as before.
+fn eval_wide(ir: &IrOp, m: &mut Machine) -> Option<u128> {
+    let a = ir.input(0)?;
+    let x = m.read_wide(a);
+    let y = ir.input(1).map(|v| m.read_wide(v)).unwrap_or(0);
+    let sx = |v: u128, size: u8| -> u128 {
+        let bits = size as u32 * 8;
+        if bits >= 128 {
+            v
+        } else {
+            let s = 128 - bits;
+            (((v << s) as i128) >> s) as u128
+        }
+    };
+    Some(match ir.op {
+        Op::Copy | Op::IntZExt => x,
+        Op::IntSExt => sx(x, a.size),
+        Op::IntAdd => x.wrapping_add(y),
+        Op::IntSub => x.wrapping_sub(y),
+        Op::IntMul => x.wrapping_mul(y),
+        Op::IntAnd => x & y,
+        Op::IntOr => x | y,
+        Op::IntXor => x ^ y,
+        Op::IntNot => !x,
+        Op::IntLeft => x.checked_shl(y.min(128) as u32).unwrap_or(0),
+        Op::IntRight => x.checked_shr(y.min(128) as u32).unwrap_or(0),
+        Op::IntSRight => {
+            let v = sx(x, a.size) as i128;
+            (v >> (y.min(127) as u32)) as u128
+        }
+        Op::SubPiece => x.checked_shr((y * 8).min(128) as u32).unwrap_or(0),
+        Op::Piece => {
+            let low_bits = ir.input(1)?.size as u32 * 8;
+            x.checked_shl(low_bits).unwrap_or(0) | y
+        }
+        _ => return None,
+    })
 }
 
 /// Read a double-width value as signed. The halves compose into 128 bits but
