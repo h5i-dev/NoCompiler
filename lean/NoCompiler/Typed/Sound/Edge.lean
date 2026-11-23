@@ -10,14 +10,15 @@ variable {f : Fn} {T : TokEnv} {P : Perm} {s0 : State} {ι0 : Val}
 
 /-- What `structOk` gives the proof. -/
 structure Fn.StructSpec (f : Fn) : Prop where
-  take : f.sig.take = []
-  give : f.sig.give = []
+  take : ∀ c ∈ f.sig.take, (∃ x, c.kind = .bytes x) ∧ ∀ y ∈ c.vars, y ∈ f.sig.params
+  give : ∀ c ∈ f.sig.give, (∃ x, c.kind = .bytes x) ∧ c.exclusive = true ∧
+    ∀ y ∈ c.vars, y ∈ f.sig.params ∨ y ∈ f.sig.outVars
   callees : ∀ p ∈ f.callees, Fn.calleeOk p.2 = true
   frameDecl : f.frameDeclOk = true
   borrowBytes : ∀ b ∈ f.sig.borrow, ∃ x, b.cap.kind = .bytes x
   kept : ∀ r ∈ keptRegs, (f.regVar.lookup r).isSome
   protNodup : f.protectedVars.Nodup
-  entryIds : ((List.range f.sig.borrow.length).map f.entryId).Nodup
+  entryIds : ((List.range f.sig.entryCaps.length).map f.entryId).Nodup
   protFresh : ∀ x ∈ f.protectedVars, x < f.fresh
   tau : f.tau = [] ∨ (f.tau.length = f.size ∧ ∀ k < f.size, k ∈ f.tau)
   loopsIn : ∀ L ∈ f.loops, f.pos L.head ≤ f.pos L.last ∧ L.last < f.size
@@ -42,9 +43,17 @@ theorem Fn.structOk_spec (h : f.structOk = true) : f.StructSpec := by
   simp only [and_assoc] at h
   obtain ⟨htake, hgive, hcal, hstack, hbb, hkept, hnd, hei, hpf, htau, hloops, hsorted, hal, hsz, hnest, hin, hpre,
     hbv, hout, hpost, hop, -⟩ := h
-  refine ⟨htake, hgive, hcal, hstack, ?_, fun r hr => by simpa [Option.isSome_iff_exists] using hkept r hr,
+  refine ⟨?_, ?_, hcal, hstack, ?_, fun r hr => by simpa [Option.isSome_iff_exists] using hkept r hr,
     hnd, hei, hpf, ?_, fun L hL => ⟨(hloops L hL).1, (hloops L hL).2.1⟩, fun L hL => (hloops L hL).2.2.2,
     hsorted, hal, hsz, ?_, hin, hpre, ?_, hout, hpost, fun x hx => by simpa using hop x hx⟩
+  · intro c hc
+    obtain ⟨hm, hv⟩ := htake c hc
+    refine ⟨?_, fun y hy => by simpa using hv y hy⟩
+    revert hm; cases c.kind <;> simp
+  · intro c hc
+    obtain ⟨hm, hx, hv⟩ := hgive c hc
+    refine ⟨?_, hx, fun y hy => by simpa using hv y hy⟩
+    revert hm; cases c.kind <;> simp
   · intro b hb
     have := hbb b hb
     split at this

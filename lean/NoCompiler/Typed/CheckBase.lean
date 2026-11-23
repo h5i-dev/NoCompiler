@@ -198,6 +198,12 @@ def ent (S : STy) (ψ : Constr) : Bool :=
 def entEqMod (S : STy) (a b : IExpr) : Bool := a.same b || S.ent (Constr.eqMod a b)
 end STy
 
+/-- The variables a capability mentions. -/
+def Cap.vars (c : Cap) : List Var :=
+  c.guard.vars ++ match c.kind with
+    | .bytes b => b.base.vars ++ b.len.vars ++ b.fields.flatMap (·.ty.vars)
+    | .token _ => []
+
 namespace STy
 /-- The variables of a type (with repetitions). -/
 def vars (S : STy) : List Var :=
@@ -358,8 +364,9 @@ def initTy : STy where
      | some x => [.le (.lit 0) (.var x), .lt (.var x) (.lit (2 ^ 64)), .dvd 16 (.var x),
                   .le (.lit f.sig.stack) (.var x)]
      | none => [])
-  caps := (f.sig.borrow.zipIdx.map fun (b, i) =>
-    ({ id := f.entryId i, cap := b.cap, origin := some i } : HCap))
+  -- borrowed and taken capabilities; the origin is the index in `Sig.entryCaps`
+  caps := (f.sig.entryCaps.zipIdx.map fun (c, i) =>
+    ({ id := f.entryId i, cap := c, origin := some i } : HCap))
 
 /-! ### Edges -/
 

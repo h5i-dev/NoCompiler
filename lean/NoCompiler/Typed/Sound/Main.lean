@@ -118,7 +118,7 @@ theorem zipIdx_snd_nodup {α : Type} : ∀ (l : List α) (k : Nat), ((l.zipIdx k
     omega
 
 theorem Fn.initTy_caps_mem {c : HCap} (h : c ∈ f.initTy.caps) :
-    ∃ i, ∃ hi : i < f.sig.borrow.length, c = ⟨f.entryId i, f.sig.borrow[i].cap, some i⟩ := by
+    ∃ i, ∃ hi : i < f.sig.entryCaps.length, c = ⟨f.entryId i, f.sig.entryCaps[i], some i⟩ := by
   simp only [Fn.initTy, List.mem_map] at h
   obtain ⟨⟨b, i⟩, hm, rfl⟩ := h
   obtain ⟨-, hi, hb⟩ := List.mem_zipIdx hm
@@ -132,23 +132,13 @@ theorem Fn.entry_inv (hst : f.StructSpec) {D : Dom} {a : Val × TokFp} {s0 : Sta
     Inv f T ((f.sig.spec T).perm a s0) s0 (f.entryVal a.1 s0) f.initTy s0 (f.entryVal a.1 s0) a.2 := by
   obtain ⟨hregs, hp, hvalid, hsep, hstk, hsk⟩ := hpre
   have hpar : ∀ x ∈ f.sig.params, f.entryVal a.1 s0 x = a.1 x := fun x hx => f.entryVal_param hst _ _ hx
-  have hentry : f.sig.entryCaps = f.sig.borrow.map (·.cap) := by simp [Sig.entryCaps, hst.take]
-  -- capabilities of the entry type are the borrowed ones, under the same valuation
-  have hcv : ∀ i (hi : i < f.sig.borrow.length), ∀ x ∈ f.sig.borrow[i].cap.vars,
-      a.1 x = f.entryVal a.1 s0 x := by
-    intro i hi x hx
-    obtain ⟨hg, hk⟩ := hst.borrowVars _ (List.getElem_mem hi)
-    refine (hpar x ?_).symm
-    unfold Cap.vars at hx
-    simp only [List.mem_append] at hx
-    rcases hx with hx | hx
-    · exact hg x hx
-    · split at hx
-      · rename_i b hb; exact (hk b hb).1 x (by simpa only [List.mem_append] using hx)
-      · simp at hx
+  -- capabilities of the entry type are the borrowed and taken ones, under the same valuation
+  have hcv : ∀ i (hi : i < f.sig.entryCaps.length), ∀ x ∈ f.sig.entryCaps[i].vars,
+      a.1 x = f.entryVal a.1 s0 x := fun i hi x hx =>
+    (hpar x (f.entryCap_vars hst _ (List.getElem_mem hi) x hx)).symm
   have hcg := fun i hi => Cap.congr_vars (T := T) (F := a.2) (hcv i hi)
-  have hmemE : ∀ i (hi : i < f.sig.borrow.length), f.sig.borrow[i].cap ∈ f.sig.entryCaps := by
-    intro i hi; rw [hentry]; exact List.mem_map.2 ⟨_, List.getElem_mem hi, rfl⟩
+  have hmemE : ∀ i (hi : i < f.sig.entryCaps.length), f.sig.entryCaps[i] ∈ f.sig.entryCaps :=
+    fun i hi => List.getElem_mem hi
   refine ⟨?_, ?_, fun _ _ => rfl, ?_, ?_, ?_, ?_, ?_, by simp [Fn.initTy], he.live,
     .inl (by simp [Fn.initTy]), by simp [Fn.initTy], ?_, he.sp, hsk⟩
   · intro p hp'
@@ -180,12 +170,8 @@ theorem Fn.entry_inv (hst : f.StructSpec) {D : Dom} {a : Val × TokFp} {s0 : Sta
   · intro c hc d hd hne hex x hx hy
     obtain ⟨i, hi, rfl⟩ := f.initTy_caps_mem hc
     obtain ⟨j, hj, rfl⟩ := f.initTy_caps_mem hd
-    have hl : i < f.sig.entryCaps.length := by rw [hentry, List.length_map]; exact hi
-    have hl' : j < f.sig.entryCaps.length := by rw [hentry, List.length_map]; exact hj
     have hij : i ≠ j := fun e => hne (by subst e; rfl)
-    have := hsep i j hl hl' hij
-    simp only [hentry, List.getElem_map] at this
-    exact this hex x (((hcg i hi).1 x).2 hx) (((hcg j hj).1 x).2 hy)
+    exact hsep i j hi hj hij hex x (((hcg i hi).1 x).2 hx) (((hcg j hj).1 x).2 hy)
   · intro c hc x hx
     obtain ⟨i, hi, rfl⟩ := f.initTy_caps_mem hc
     exact fun hm => absurd hm (hstk _ (hmemE i hi) x (((hcg i hi).1 x).2 hx))
@@ -194,7 +180,7 @@ theorem Fn.entry_inv (hst : f.StructSpec) {D : Dom} {a : Val × TokFp} {s0 : Sta
     have hx := ((hcg i hi).1 x).2 hx
     obtain ⟨r, hr, hm⟩ := hx
     simp only
-    by_cases hex : f.sig.borrow[i].cap.exclusive = true
+    by_cases hex : f.sig.entryCaps[i].exclusive = true
     · have hw : (f.sig.spec T |>.perm a s0).writable x := by
         refine ⟨r, ?_, hm⟩
         simp only [Spec.perm, Sig.spec, Sig.writeRegions, List.mem_append, List.mem_flatMap,
@@ -205,7 +191,7 @@ theorem Fn.entry_inv (hst : f.StructSpec) {D : Dom} {a : Val × TokFp} {s0 : Sta
       simp only [Spec.perm, Sig.spec, Sig.readRegions, List.mem_append, List.mem_flatMap,
         List.mem_filter]
       exact .inl ⟨_, ⟨hmemE i hi, by simpa using hex⟩, hr⟩
-  · have : f.initTy.caps.map (·.id) = (f.sig.borrow.zipIdx.map (·.2)).map f.entryId := by
+  · have : f.initTy.caps.map (·.id) = (f.sig.entryCaps.zipIdx.map (·.2)).map f.entryId := by
       simp only [Fn.initTy, List.map_map]; rfl
     rw [this, zipIdx_map_snd, ← List.range_eq_range']; exact hst.entryIds
   · intro x hx
@@ -345,7 +331,7 @@ theorem Fn.tail_step (hst : f.StructSpec) {c : Code} {D : Dom}
   · intro s2 hdone hfr
     rcases hdone with ⟨hlive, hpc2, hpres, hpost⟩ | ⟨hex, -⟩
     · obtain ⟨ι', -, hI'⟩ := f.afterCall_inv hst hI hok hθ hstk hls hregs1 hmem1 hpres hlive hpost hfr
-      obtain ⟨hkept, hpost'⟩ := f.retOkOn_sound (Fα := a.2) hst hI' hret hι0r hι0p
+      obtain ⟨hkept, hpost'⟩ := f.retOkOn_sound (Fα := a.2) hst hI' hret hι0r hι0p rfl rfl
       have hpc2' : s2.pc = s0.reg 1 := by rw [hpc2]; exact hra1
       refine Reach.done ⟨.inl (by rw [hpc2']; exact he.ret), .inl ⟨hlive, hpc2', hkept, hpost'⟩⟩
     · exact Reach.done ⟨.inr hex, .inr ⟨hex, trivial⟩⟩
@@ -469,7 +455,7 @@ theorem Fn.run (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.instr
     clear hk1
     obtain ⟨⟨rfl, rfl⟩, hk1⟩ := hk2
     unfold Fn.ret at hk1
-    obtain ⟨hkept, hpost⟩ := f.retOk_sound (Fα := a.2) hst hI hk1 hι0r hι0p
+    obtain ⟨hkept, hpost⟩ := f.retOk_sound (Fα := a.2) hst hI hk1 hι0r hι0p rfl rfl
     refine Reach.exec_step hd hI.live hi trivial ?_
     have hs0 : s.setReg 0 (s.pc + 4) = s := by simp [State.setReg]
     have hra : s.reg 1 = s0.reg 1 := hkept 1 (by simp [keptRegs])

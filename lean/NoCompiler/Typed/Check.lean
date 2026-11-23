@@ -172,6 +172,16 @@ def branchFacts (S : STy) (op : BrOp) (e1 e2 : IExpr) : List Constr × List Cons
 def target (k : Nat) (off : Int) : Option Nat :=
   if off % 4 = 0 && 0 ≤ (k : Int) + off / 4 then some ((k : Int) + off / 4).toNat else none
 
+/-- Held capabilities for the `give` clauses: each one exclusive, not the one returned for a
+    borrow, distinct from the others (`used`), and covering the given one. -/
+def giveFrom (S : STy) (θ : Subst) : List Cap → List Nat → Option (List HCap)
+  | [], _ => some []
+  | gc :: gs, used =>
+    match S.caps.find? (fun c => !used.contains c.id && !(c.origin.any (· < f.sig.borrow.length)) &&
+        c.cap.exclusive && S.capSub θ c { id := c.id, origin := c.origin, cap := gc }) with
+    | none => none
+    | some c => (giveFrom S θ gs (c.id :: used)).map (c :: ·)
+
 /-- The return check, under an instantiation of the `out` variables. -/
 def retOkOn (rs : List Reg) (S : STy) (θ : Subst) : Bool :=
   let σ := f.sig
@@ -180,6 +190,7 @@ def retOkOn (rs : List Reg) (S : STy) (θ : Subst) : Bool :=
     | _, _ => false) &&
   θ.all (fun p => σ.outVars.contains p.1) &&
   S.sub θ { regs := σ.outRegs, facts := [σ.post] } &&
+  (σ.give.isEmpty || (decide (S.depth = 0) && (f.giveFrom S θ σ.give []).isSome)) &&
   σ.borrow.zipIdx.all fun (b, i) =>
     S.caps.any fun c => c.origin == some i && S.capSub θ c { id := c.id, origin := some i, cap := b.exitCap }
 
@@ -472,13 +483,16 @@ def calleeOk (g : Sig) : Bool :=
 /-- The structural conditions: loops nested, variables apart. -/
 def structOk : Bool :=
   let σ := f.sig
-  σ.take.isEmpty && σ.give.isEmpty &&
+  σ.take.all (fun c => (match c.kind with | .bytes _ => true | .token _ => false) &&
+    c.vars.all σ.params.contains) &&
+  σ.give.all (fun c => (match c.kind with | .bytes _ => true | .token _ => false) && c.exclusive &&
+    c.vars.all (fun y => σ.params.contains y || σ.outVars.contains y)) &&
   (f.callees.all fun p => calleeOk p.2) &&
   f.frameDeclOk &&
   σ.borrow.all (fun b => match b.cap.kind with | .bytes _ => b.cap.guard == .tt | .token _ => false) &&
   (keptRegs.all fun r => (f.regVar.lookup r).isSome) &&
   (f.protectedVars.Nodup) &&
-  ((List.range f.sig.borrow.length).map f.entryId).Nodup &&
+  ((List.range f.sig.entryCaps.length).map f.entryId).Nodup &&
   (f.protectedVars.all (· < f.fresh)) &&
   -- τ: none (address order) or a permutation of the points (I36)
   (f.tau.isEmpty || (f.tau.length == f.size && (List.range f.size).all f.tau.contains)) &&
