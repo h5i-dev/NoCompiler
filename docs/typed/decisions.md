@@ -248,6 +248,20 @@ comments can cite them.
   allocation unit of the `Heap` token's invariant" (the token definition would expose its set of
   live units), so that an unsafe allocator's U1 is a true statement. Until then a `heap` clause in
   an unsafe signature is a promise of the ledger's assumption only.
+  **Part 2 adopted (user decision 2026-11-23), design (T):**
+  * `TokDef.unit : List Region → Region → Prop`, the live allocation units, a function of the
+    token's footprint only. The allocator's token is the one named `Heap`.
+  * A `heap` byte capability is valid only if its range is a unit of `Heap` (under its guard).
+  * Post gains Q5, the unit frame: every unit of `Heap` at entry that misses the Pool and the
+    function's stack region is still a unit at exit. So a true allocator contract reads: `malloc`
+    gives a fresh unit (it lies in the Pool, the borrowed `Heap`), `free` takes a whole live unit
+    (its take clause is valid at entry), and units of others survive both.
+  * Caller side: a held heap block not lent to the callee misses the callee's Pool (`Inv.sep`
+    with the lent take capabilities and tokens), so the callee's Q5 keeps it valid.
+  * Own Q5, by induction over the run, with the token footprint relative to the entry. Two
+    call-rule conditions make it go through: a `take` clause is never lent from a capability that
+    came from one of the function's own borrows, and every borrow of the function is still held
+    at a call. The invariant gains "the capability of borrow i covers borrow i's entry range".
 
 ## Proposals (not adopted: the default checker does not use them)
 
