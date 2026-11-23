@@ -201,10 +201,13 @@ comments can cite them.
   4. *Section flags* decide read-only-ness when given (`.rodata` with `"aw"` is writable).
   5. *Mergeable sections.* The linker deduplicates `M` sections piece by piece: a symbol in
      one is usable only if it is exactly one entry-size piece; in `MS` (strings) never.
-  Known gap, not fixed: **S5 sees one file.** Two files that each check (`f: tail g` with `g`
-  declared, and `g: tail f`) together recurse forever. Theorem D needs the call graph of the
-  whole program acyclic; the ledger of the linked program has to check that across files
-  (not done yet).
+  **S5 sees one file**: two files that each check (`f: tail g` with `g` declared, and
+  `g: tail f`) together recurse forever. Closed by I34.
+- **I34 Whole program (`nocompiler-typed link A.s B.s …`).** Theorem D for a program made of
+  several files: every safe function declared (signature without body) in one file must be
+  defined in exactly one file with the identical signature (as parsed); unsafe/extern
+  declarations stay contracts; S5 is checked on the call graph of all files together. A
+  program is safe when every file checks and `link` reports no error.
 
 ## Proposals (not adopted: the default checker does not use them)
 

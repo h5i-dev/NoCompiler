@@ -8,7 +8,47 @@ use std::process::ExitCode;
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let usage = "usage: nocompiler-typed check FILE.s [--ledger OUT.json] [--states] [--object FILE.o] [--export-lean OUT.lean] [--export-json OUT.json] [--loops natural]";
+    let usage = "usage: nocompiler-typed link FILE.s... | check FILE.s [--ledger OUT.json] [--states] [--object FILE.o] [--export-lean OUT.lean] [--export-json OUT.json] [--loops natural]";
+    if args.first().map(String::as_str) == Some("link") {
+        // nocompiler-typed link A.s B.s ... [--loops natural]: the whole program (Theorem D)
+        let natural = args.iter().any(|a| a == "natural");
+        let mut files = Vec::new();
+        for a in &args[1..] {
+            if a == "--loops" || a == "natural" {
+                continue;
+            }
+            match std::fs::read_to_string(a) {
+                Ok(s) => files.push((a.clone(), s)),
+                Err(e) => {
+                    eprintln!("{a}: {e}");
+                    return ExitCode::from(2);
+                }
+            }
+        }
+        let r = nocompiler_typed::link::link(
+            &files,
+            check::Options {
+                record: false,
+                natural_loops: natural,
+            },
+        );
+        for e in &r.functions {
+            println!("{}: {} ({})", e.name, e.status, e.file);
+        }
+        for (f, e) in &r.errors {
+            println!(
+                "{f}:{}: [{}] {}",
+                e.line,
+                e.rule.as_str(),
+                e.msg.lines().next().unwrap_or("")
+            );
+        }
+        return if r.ok() {
+            ExitCode::SUCCESS
+        } else {
+            ExitCode::from(1)
+        };
+    }
     if args.first().map(String::as_str) != Some("check") || args.len() < 2 {
         eprintln!("{usage}");
         return ExitCode::from(2);

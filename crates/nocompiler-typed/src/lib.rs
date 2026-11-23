@@ -10,6 +10,7 @@ pub mod formula;
 pub mod isa;
 pub mod ledger;
 pub mod lin;
+pub mod link;
 pub mod object;
 pub mod presburger;
 pub mod sig;
