@@ -554,7 +554,56 @@ theorem Fn.arith2_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' :
               rw [hu.1]
               simp only [vs, setFrom_x]
               rw [Int.natCast_ediv]; norm_cast
-      · cases ha
+      · split at ha
+        · rename_i k hk
+          have hk' := List.find?_some hk
+          simp only [Bool.and_eq_true, decide_eq_true_eq, beq_iff_eq] at hk'
+          obtain ⟨hk1, hm⟩ := hk'
+          have hk12 : k < 12 := List.mem_range.1 (List.mem_of_find?_eq_some hk)
+          cases hr : S.reg rs with
+          | none => simp [hr] at ha
+          | some e =>
+            simp only [hr, Option.bind_some] at ha
+            split at ha
+            · rename_i hrange
+              simp only [Option.some.injEq] at ha; subst ha
+              have hre := STy.reg_hasInt hI.regs hr
+              have hem := STy.reg_maxVar' hr
+              have hr' := hI.ent hrange
+              simp only [Constr.holds, Constr.eval, Constr.lt, IExpr.eval_add, IExpr.eval_lit,
+                Bool.and_eq_true, decide_eq_true_eq] at hr'
+              have hn : ((s.reg rs).toNat : Int) = e.eval ι := hre.toNat_eq hr'.1 (by omega)
+              let n := (s.reg rs).toNat
+              have hv : (evalI .andi (s.reg rs) (imm.signExtend 64)).toNat = 2 ^ k * (n / 2 ^ k % 2) := by
+                simp only [evalI, hm, BitVec.and_twoPow]
+                have hb := Nat.mod_two_eq_zero_or_one (n / 2 ^ k)
+                have ht : (s.reg rs).getLsbD k = decide (n / 2 ^ k % 2 = 1) := by
+                  rw [← BitVec.testBit_toNat, Nat.testBit_eq_decide_div_mod_eq]
+                rw [ht]
+                rcases hb with hb | hb
+                · simp [hb]
+                · simp only [hb, decide_true, ite_true, BitVec.toNat_twoPow, Nat.mul_one]
+                  exact Nat.mod_eq_of_lt (Nat.pow_lt_pow_right (by decide) (by omega))
+              have hpk : (0 : Int) < 2 ^ k := by have := Nat.two_pow_pos k; exact_mod_cast this
+              let vs : List Int := [((n / 2 ^ k % 2 : Nat) : Int), ((n / 2 ^ k : Nat) : Int)]
+              refine hI.fresh4 hprot hrd vs ((IExpr.var (f.freshAt S)).smul (2 ^ k)) _
+                (evalI .andi (s.reg rs) (imm.signExtend 64)) ?_ (fun p hp => ?_)
+              · unfold HasInt
+                rw [hv, IExpr.eval_smul, IExpr.eval_var]
+                simp only [vs, setFrom_x]
+                push_cast; rfl
+              · have hev := Fn.eval_setFrom_old (f := f) hem ι vs
+                simp only [List.mem_append] at hp
+                rcases hp with hp | hp
+                · refine quotFacts_holds hpk ?_ p hp
+                  rw [hev, ← hn]
+                  simp only [vs, setFrom_x1]
+                  rw [Int.natCast_ediv]; norm_cast
+                · refine remFacts_holds (by decide) ?_ p hp
+                  simp only [IExpr.eval_var, vs, setFrom_x, setFrom_x1]
+                  rw [Int.natCast_emod]; rfl
+            · cases ha
+        · cases ha
     case sltiu =>
       simp only [Fn.arith2] at ha
       cases hr : S.reg rs with

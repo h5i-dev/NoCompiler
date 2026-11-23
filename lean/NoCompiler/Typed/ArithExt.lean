@@ -114,7 +114,17 @@ def arith2 (S : STy) (i : Instr) : Option STy :=
       (S.reg rs).map fun e =>
         let u := Fn.urep S (x + 1) e
         (S.setReg rd (some ((IExpr.var x).smul (2 ^ k)))).addFacts (u.2 ++ quotFacts x u.1 (2 ^ k))
-    | none => none
+    | none =>
+      -- a single bit 2^k (k ≥ 1; reached once `arith` routes it here): 2^k·b, q = ⌊e / 2^k⌋,
+      -- b = q mod 2, for `e` of known range (the Rust checker's and_const)
+      match (List.range 12).find? (fun k => 1 ≤ k && imm.signExtend 64 == BitVec.twoPow 64 k) with
+      | some k =>
+        (S.reg rs).bind fun e =>
+          if S.ent (.and (.le (.lit 0) e) (.lt e (.lit (2 ^ 64)))) then
+            some ((S.setReg rd (some ((IExpr.var x).smul (2 ^ k)))).addFacts
+              (quotFacts (x + 1) e (2 ^ k) ++ remFacts x (.var (x + 1)) 2))
+          else none
+      | none => none
   | .iop .sltiu rd rs imm =>
     (S.reg rs).map fun e =>
       (S.setReg rd (some (.var x))).addFacts
