@@ -62,9 +62,13 @@ the callee's `give` capabilities (bytes, no fields) are added. In a function's o
 `take` capabilities are held from the entry and each `give` must be covered at the return (depth
 0) by a distinct held exclusive capability not returned for a borrow; the Pool condition follows
 from the invariant (such a capability lies in the entry permission, misses the stack and the
-returned borrows). Syscalls (`ecall`, Lemma 9) are agent U's (`Typed/Ecall.lean`). Still
-rejected: tokens, `partial` (added when a partial function is needed, I19), static data (U,
-I30/I32).
+returned borrows). Syscalls (`ecall`, Lemma 9) are agent U's (`Typed/Ecall.lean`). Static data
+(I30/I32) needs no rule of its own on the linked image: `auipc` gives the exact address, a data
+symbol is a `borrow ℓ_sym ↦ bytes[n]` clause with `ℓ_sym = address` in the entry constraint, and
+at a call such a parameter is instantiated from that equation (`Fn.pinned`). Callee clauses may
+carry fields: each must be a field of the held capability at the same address with an equal
+type, inside the lent length (`Fn.fieldsLent`, I33.1). Still rejected: tokens (agent U),
+`partial` (added when a partial function is needed, I19).
 
 ## Example
 
