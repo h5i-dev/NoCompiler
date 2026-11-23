@@ -75,6 +75,7 @@ theorem Cap.valid_F_congr {T : TokEnv} {c : Cap} {F F' : TokFp}
   | token t => simp [h t hk]
 
 /-- The token footprints after a call: the callee's for the tokens it was lent. -/
-def callF (g : Sig) (Ft Fg : TokFp) : TokFp := fun t => if t ∈ g.tokNames then Fg t else Ft t
+def callF (g : Sig) (Ft Fg : TokFp) : TokFp := fun t =>
+  if t ∈ g.tokNames ∨ t ∈ g.giveToks then Fg t else Ft t
 
 end NoCompiler.Typed

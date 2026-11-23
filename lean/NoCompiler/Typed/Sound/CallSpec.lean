@@ -36,7 +36,7 @@ structure CalleeSpec (g : Sig) : Prop where
   outNodup : g.outVars.Nodup
   outApart : ∀ y ∈ g.outVars, y ∉ g.params
   takeScoped : ∀ c ∈ g.take, ∀ y ∈ c.vars, y ∈ g.params
-  giveBytes : ∀ c ∈ g.give, ∃ x, c.kind = .bytes x ∧ x.fields = []
+  giveKind : ∀ c ∈ g.give, (∃ x, c.kind = .bytes x ∧ x.fields = []) ∨ ∃ t, c.kind = .token t
   giveScoped : ∀ c ∈ g.give, ∀ y ∈ c.vars, y ∈ g.params ∨ y ∈ g.outVars
 
 theorem Fn.calleeOk_spec {g : Sig} (h : Fn.calleeOk g = true) : CalleeSpec g := by
@@ -51,8 +51,8 @@ theorem Fn.calleeOk_spec {g : Sig} (h : Fn.calleeOk g = true) : CalleeSpec g := 
   · intro c hc
     obtain ⟨hk, -⟩ := hgv c hc
     split at hk
-    · rename_i x hx; exact ⟨x, hx, by simpa using hk⟩
-    · cases hk
+    · rename_i x hx; exact .inl ⟨x, hx, by simpa using hk⟩
+    · rename_i t ht; exact .inr ⟨t, ht⟩
 
 theorem Fn.lends_spec {S : STy} {g : Sig} {θ : Subst} {ls : List (BytesCap × HCap)}
     (h : Fn.lends S g θ = some ls) : ls.length = g.entryCaps.length ∧

@@ -158,6 +158,19 @@ theorem Cap.subst_valid {T : TokEnv} {c : Cap} {b : BytesCap} (hk : c.kind = .by
   rw [hk]
   simp [Constr.holds, Constr.eval_subst, IExpr.eval_subst, hf]
 
+theorem Cap.subst_fp_tok {c : Cap} {t : String} (hk : c.kind = .token t) (ρ : Subst) (ι : Val)
+    (F : TokFp) (z : Word) : (c.subst ρ).fp ι F z ↔ c.fp (IExpr.upd ι ρ) F z := by
+  unfold Cap.subst Cap.fp Cap.regions
+  rw [hk]
+  simp only [Constr.eval_subst]
+
+theorem Cap.subst_valid_tok {T : TokEnv} {c : Cap} {t : String} (hk : c.kind = .token t)
+    (ρ : Subst) (ι : Val) (F : TokFp) (m : Word → Byte) :
+    (c.subst ρ).valid T ι F m ↔ c.valid T (IExpr.upd ι ρ) F m := by
+  unfold Cap.subst Cap.valid
+  rw [hk]
+  simp [Constr.holds, Constr.eval_subst]
+
 theorem Cap.subst_exclusive (c : Cap) (ρ : Subst) : (c.subst ρ).exclusive = c.exclusive := by
   unfold Cap.subst Cap.exclusive
   cases c.kind <;> rfl

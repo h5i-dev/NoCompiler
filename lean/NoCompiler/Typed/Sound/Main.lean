@@ -301,8 +301,6 @@ theorem Fn.tail_step (hst : f.StructSpec) {c : Code} {D : Dom}
   rw [hls] at hk
   simp only [Bool.and_eq_true, decide_eq_true_eq] at hk
   obtain ⟨⟨⟨⟨hap, htx⟩, huq⟩, hids⟩, hret⟩ := hk
-  have huniq : ∀ t ∈ g.tokNames, (S.caps.filter fun c => c.cap.kind == .token t).length = 1 := by
-    simpa [List.all_eq_true] using huq
   have hgm := lookup_mem hg
   obtain ⟨hal, Dg, hmeets, hDg, -⟩ := hcall _ hgm
   have hok := Fn.calleeOk_spec (hst.callees _ hgm)
@@ -330,7 +328,7 @@ theorem Fn.tail_step (hst : f.StructSpec) {c : Code} {D : Dom}
     omega
   · intro s2 hdone hfr
     rcases hdone with ⟨hlive, hpc2, hpres, hpost⟩ | ⟨hex, -⟩
-    · obtain ⟨ι', F1, -, hI'⟩ := f.afterCall_inv hst hI hok hθ hstk hls htx huniq hids hregs1 hmem1 hpres
+    · obtain ⟨ι', F1, -, hI'⟩ := f.afterCall_inv hst hI hok hθ hstk hls htx huq hids hregs1 hmem1 hpres
         hlive hpost hfr
       obtain ⟨hkept, hpost'⟩ := f.retOkOn_sound (Fα := a.2) hst hI' hret hι0r hι0p rfl
       have hpc2' : s2.pc = s0.reg 1 := by rw [hpc2]; exact hra1

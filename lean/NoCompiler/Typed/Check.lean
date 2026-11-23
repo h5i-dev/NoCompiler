@@ -361,6 +361,16 @@ def tokSlot : BytesCap := { base := .lit 0, len := .lit 0, mode := .rw }
 def _root_.NoCompiler.Typed.Sig.tokNames (g : Sig) : List String :=
   g.entryCaps.filterMap fun c => match c.kind with | .token t => some t | .bytes _ => none
 
+/-- The token names among a signature's `give` clauses. -/
+def _root_.NoCompiler.Typed.Sig.giveToks (g : Sig) : List String :=
+  g.give.filterMap fun c => match c.kind with | .token t => some t | .bytes _ => none
+
+/-- The tokens at a call: each name lent is held by exactly one capability (its footprint
+    changes with the call), and a name given back is held by none but a lent one. -/
+def tokHeldOk (S : STy) (g : Sig) : Bool :=
+  (g.tokNames.all fun t => (S.caps.filter fun c => c.cap.kind == .token t).length == 1) &&
+  (g.giveToks.all fun t => g.tokNames.contains t || (S.caps.filter fun c => c.cap.kind == .token t).isEmpty)
+
 /-- The callee's `borrow` and `take` clauses (instantiated) and the held capabilities they
     are lent from. -/
 def lends (S : STy) (g : Sig) (θ : Subst) : Option (List (BytesCap × HCap)) :=
@@ -433,7 +443,7 @@ def callAt (k : Nat) (S : STy) (t : Word) : Bool :=
       | some ls =>
         let S' := f.afterCall S g θ ls (f.callIds k S)
         lendsApart S ls && (ls.drop g.borrow.length).all (·.2.cap.exclusive) &&
-        (g.tokNames.all fun t => (S.caps.filter fun c => c.cap.kind == .token t).length == 1) &&
+        tokHeldOk S g &&
         decide ((S'.caps.map (·.id)).Nodup) && f.edge (some k) S' (k + 1)
 
 /-- `jal ra, off` to a callee in the table. -/
@@ -469,7 +479,7 @@ def tailAt (S : STy) (t : Word) : Bool :=
       | some ls =>
         let S' := f.afterCall S g θ ls []
         lendsApart S ls && (ls.drop g.borrow.length).all (·.2.cap.exclusive) &&
-        (g.tokNames.all fun t => (S.caps.filter fun c => c.cap.kind == .token t).length == 1) &&
+        tokHeldOk S g &&
         decide ((S'.caps.map (·.id)).Nodup) &&
         f.retOkOn preservedRegs S'
           (S'.instantiate { regs := f.sig.outRegs, facts := [f.sig.post] } f.sig.outVars)
@@ -547,7 +557,7 @@ def calleeOk (g : Sig) : Bool :=
   (g.inRegs.all fun p => p.1 != 1) &&
   (g.outRegs.all fun p => !preservedRegs.contains p.1) &&
   (g.take.all fun c => c.vars.all g.params.contains) &&
-  (g.give.all fun c => (match c.kind with | .bytes x => x.fields.isEmpty | .token _ => false) &&
+  (g.give.all fun c => (match c.kind with | .bytes x => x.fields.isEmpty | .token _ => true) &&
     c.vars.all (fun y => g.params.contains y || g.outVars.contains y))
 
 /-- The structural conditions: loops nested, variables apart. -/

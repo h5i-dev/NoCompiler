@@ -76,7 +76,7 @@ type, inside the lent length (`Fn.fieldsLent`, I33.1). The arithmetic beyond `ar
 (`Typed/ArithExt.lean`, `Sound/ArithExt.lean`: comparisons, min/max, the `.uw` forms, division
 and remainder by constants and by positive divisors, shifts, masks, single bits, disjoint
 `or`/`xor`, 0/1 bit tables, bit counts) follows decisions.md I23/I29/I35, as the Rust checker
-(`lean/TypedTests/ArithExt.lean`). Tokens are covered: a function may borrow tokens (unguarded), returns them at depth 0 (their footprint lies in the Pool), and lends a held token to a callee whose clause names it (the name held by one capability only); after the call the token's footprint is the callee's (`callF`), and the proof's run is over the changing footprints (`Fn.run` quantifies over them). Still rejected: `partial` (added when a partial function is needed, I19).
+(`lean/TypedTests/ArithExt.lean`). Tokens are covered: a function may borrow tokens (unguarded), returns them at depth 0 (their footprint lies in the Pool), and lends a held token to a callee whose clause names it (the name held by one capability only); after the call the token's footprint is the callee's (`callF`); a callee may also give tokens, whose name no other held capability may carry (`Fn.tokHeldOk`), and the proof's run is over the changing footprints (`Fn.run` quantifies over them). Still rejected: `partial` (added when a partial function is needed, I19).
 
 ## Example
 
