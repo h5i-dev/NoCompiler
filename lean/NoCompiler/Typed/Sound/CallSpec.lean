@@ -19,7 +19,7 @@ theorem Fn.lendFrom_spec {S : STy} {b : BytesCap} {c : HCap} (h : Fn.lendFrom S 
   split at hk
   · rename_i hb hkb
     simp only [Bool.and_eq_true, Bool.or_eq_true, beq_iff_eq] at hk
-    exact ⟨hm, hg, hb, hkb, hk.1, hk.2⟩
+    exact ⟨hm, hg, hb, hkb, hk.1.1, hk.1.2⟩
   · cases hk
 
 /-- What `calleeOk` says about a callee's signature. -/

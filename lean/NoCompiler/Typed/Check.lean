@@ -335,7 +335,9 @@ def lendFrom (S : STy) (b : BytesCap) : Option HCap :=
     match c.cap.kind with
     | .bytes h => (b.mode == .ro || h.mode == .rw) &&
         S.ent (.and (.le h.base b.base) (.and (.le (b.base.add b.len) (h.base.add h.len))
-          (.le (.lit 0) b.len)))
+          (.le (.lit 0) b.len))) &&
+        -- a `heap` clause takes a whole allocation unit (decisions.md I38)
+        (!b.heap || (h.heap && S.ent (.and (.eq h.base b.base) (.eq h.len b.len))))
     | .token _ => false
 
 /-- The clause's fields (its offsets, types in the callee's parameters) are fields of the held
