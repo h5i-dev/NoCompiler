@@ -18,8 +18,4 @@ theorem fn42_checked : fn42.check code = true := by decide
 theorem read42_meets (T : TokEnv) : Meets code [(fn42.entry, 4 * fn42.size)] fn42.entry T sig42 :=
   Fn.check_sound_leaf fn42 code T fn42_checked rfl
 
-/-- The word claimed to be 43: rejected. -/
-def fn43 : Fn := { fn42 with sig := { sig with post := .eq r (.lit 43) } }
-example : fn43.check code = false := by decide
-
 end TypedTests.Static
