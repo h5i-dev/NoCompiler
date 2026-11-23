@@ -309,6 +309,41 @@ theorem Fn.arith2_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' :
           have := (s.reg rs).isLt
           omega
       · cases ha
+    case andi =>
+      simp only [Fn.arith2] at ha
+      split at ha
+      · rename_i k hk
+        have hm : imm.signExtend 64 = BitVec.allOnes 64 <<< k := by
+          have := List.find?_some hk; simpa using this
+        cases hr : S.reg rs with
+        | none => simp [hr] at ha
+        | some e =>
+          simp only [hr, Option.map_some, Option.some.injEq] at ha; subst ha
+          have hre := STy.reg_hasInt hI.regs hr
+          have hem := STy.reg_maxVar' hr
+          have hv : (evalI .andi (s.reg rs) (imm.signExtend 64)).toNat =
+              (s.reg rs).toNat / 2 ^ k * 2 ^ k := by
+            simp only [evalI, hm, ← BitVec.shiftLeft_ushiftRight, BitVec.toNat_shiftLeft,
+              BitVec.toNat_ushiftRight, Nat.shiftLeft_eq, Nat.shiftRight_eq_div_pow]
+            apply Nat.mod_eq_of_lt
+            exact Nat.lt_of_le_of_lt (Nat.div_mul_le_self _ _) (s.reg rs).isLt
+          have hpk : (0 : Int) < 2 ^ k := by have := Nat.two_pow_pos k; exact_mod_cast this
+          let vs : List Int := [(((s.reg rs).toNat / 2 ^ k : Nat) : Int), ((s.reg rs).toNat : Int)]
+          refine hI.fresh4 hprot hrd vs ((IExpr.var (f.freshAt S)).smul (2 ^ k)) _
+            (evalI .andi (s.reg rs) (imm.signExtend 64)) ?_ (fun p hp => ?_)
+          · unfold HasInt
+            rw [hv, IExpr.eval_smul, IExpr.eval_var]
+            simp only [vs, setFrom_x]
+            push_cast; rw [Int.mul_comm]
+          · have hu := Fn.urep_spec (x := f.freshAt S + 1) hI hre hem (hag vs).1 (by simp [vs, setFrom_x1])
+            simp only [List.mem_append] at hp
+            rcases hp with hp | hp
+            · exact hu.2 p hp
+            · refine quotFacts_holds hpk ?_ p hp
+              rw [hu.1]
+              simp only [vs, setFrom_x]
+              rw [Int.natCast_ediv]; norm_cast
+      · cases ha
     case sltiu =>
       simp only [Fn.arith2] at ha
       cases hr : S.reg rs with

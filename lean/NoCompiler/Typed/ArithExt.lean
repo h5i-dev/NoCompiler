@@ -80,6 +80,14 @@ def arith2 (S : STy) (i : Instr) : Option STy :=
   match i with
   | .iop .xori rd rs imm =>
     if imm.toInt = -1 then (S.reg rs).map fun e => S.setReg rd (some ((IExpr.lit (-1)).sub e)) else none
+  -- andi with a mask −2^k: the unsigned representative rounded down to a multiple of 2^k (I23)
+  | .iop .andi rd rs imm =>
+    match (List.range 12).find? (fun k => imm.signExtend 64 == BitVec.allOnes 64 <<< k) with
+    | some k =>
+      (S.reg rs).map fun e =>
+        let u := Fn.urep S (x + 1) e
+        (S.setReg rd (some ((IExpr.var x).smul (2 ^ k)))).addFacts (u.2 ++ quotFacts x u.1 (2 ^ k))
+    | none => none
   | .iop .sltiu rd rs imm =>
     (S.reg rs).map fun e =>
       (S.setReg rd (some (.var x))).addFacts
