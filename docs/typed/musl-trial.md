@@ -165,6 +165,11 @@ so that a checker without I14 reaches the remaining rules. Same source, same sig
 | memccpy-ic | reject: same as memccpy without static data (S2, xor alignment, branch-free `&&`). |
 | strlen-ic | not expressible (as strlen). |
 
+Stage 1 for the variants (expected from reading the code): as predicted. The layout is the same
+as the base build with offsets shifted by the inline constant sequences (memchr-ic: S2 [0x4c,0xf4]
+/[0xf0,0x100]; memccpy-ic: 15 S2 violations; strlen-ic: S2 ok, rejected at the byte loop's back
+edge 0x28). All three parse with U's parser (no `%pcrel_*`), so they reach the typing rules.
+
 ## Files
 
 - `scripts/musl-trial/build.sh` — pinned build (musl tree digest, clang 15.0.7, flags);

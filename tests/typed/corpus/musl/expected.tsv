@@ -16,3 +16,6 @@ examples/musl/strlen.s	strlen	not-expressible	reject:parse:I14	0x2c	static data;
 examples/musl/fwrite.s	fwrite	contract	reject:S2	-	backward edges 0xc4/0xc8 to return blocks; then call 0x60: borrow length is mul (size*nmemb)
 examples/musl/malloc-free.s	malloc	contract	contract	-	body does not compile without A; external
 examples/musl/malloc-free.s	free	contract	contract	-	body does not compile without A; external
+examples/musl/memchr-ic.s	memchr	reject	reject:S2	-	inline constants; non-nested [0x4c,0xf4]/[0xf0,0x100]; then branch-free && (entry of 0x1c)
+examples/musl/memccpy-ic.s	memccpy	reject	reject:S2	-	inline constants; 15 interval violations; then xor alignment (sd at 0x110)
+examples/musl/strlen-ic.s	strlen	not-expressible	reject:inv	0x28	inline constants; back edge of 0x14 cannot re-establish p < s + n

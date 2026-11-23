@@ -1,0 +1,26 @@
+# musl 1.2.5 src/string/memchr.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh
+# with -mllvm -riscv-disable-using-constant-pool-for-large-ints (constants inline, no static data).
+# Instructions as compiled, unchanged (scripts/musl-trial/verify.sh checks the bytes).
+# Annotations are the `#:` lines (provisional syntax of docs/Tab 1.md; see docs/typed/musl-trial.md).
+# Predicted (fixed before compiling this variant): reject (as memchr without static data)
+# Expected now (after reading the compiled code): reject. (1) S2: clang places the return block 0x4c after the head loop and reaches it by backward branches (0x5c, 0xf4), giving loop intervals [0x4c,0xf4] and [0xf0,0x100] that are not nested, and edges entering [0x4c,0xf4] in the middle. (2) Even with S2 fixed: the head-loop conditions '(s&7) && n' are branch-free sltiu/or/sltu/and (0x0-0x14, 0x2c-0x40), so 1 <= m at the head loop is not derivable. (3) The word loop 0xc4 is reached through the join 0x60, also from the 'found' path 0x20 where s is not aligned; that path never reaches the word loop only because it re-reads the same byte (memory contents, not in v0 types), so 8 | p at 0xc4 is not derivable under the coarse join (decision 2).
+#: fn memchr [s, n]
+#:   in     a0: int(s), a2: int(n)
+#:   borrow s |-> bytes[n] ro
+#:   out    a0: int
+#:   stack  0
+[at .Lmemchr_1c]
+#: inv [p, m] a0: int(p), a1: int(p + 1), a2: int(m) where s <= p, p + m = s + n, 1 <= m decreases m
+[at .Lmemchr_4c]
+#: inv a1: int
+# 0x4c is a return block, not a loop: no measure exists, so there is no decreases clause.
+[at .Lmemchr_60]
+#: join [p, m] a0: int(p), a2: int(m) where s <= p, p + m = s + n, 1 <= m
+[at .Lmemchr_c4]
+#: inv [p, m] a0: int(p), a2: int(m) where s <= p, p + m = s + n, 8 <= m, 8 | p decreases m
+[at .Lmemchr_e8]
+#: join [p, m] a0: int(p), a2: int(m) where s <= p, p + m = s + n, 0 <= m
+[at .Lmemchr_ec]
+#: join [p, m] a0: int(p), a2: int(m) where s <= p, p + m = s + n, 1 <= m
+[at .Lmemchr_f0]
+#: inv [q, m] a1: int(q), a2: int(m) where s <= q, q + m = s + n, 1 <= m decreases m

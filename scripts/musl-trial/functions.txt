@@ -1,4 +1,4 @@
-# name  source (relative to musl src/)   symbol
+# name  source (relative to musl src/)   symbol   [extra clang flags]
 labs     stdlib/labs.c      labs
 memcmp   string/memcmp.c    memcmp
 bcmp     string/bcmp.c      bcmp
@@ -16,3 +16,6 @@ strlen   string/strlen.c    strlen
 malloc   malloc/mallocng/malloc.c  malloc
 free     malloc/mallocng/free.c    free
 fwrite   stdio/fwrite.c     fwrite
+memchr-ic  string/memchr.c   memchr   -mllvm -riscv-disable-using-constant-pool-for-large-ints
+memccpy-ic string/memccpy.c  memccpy  -mllvm -riscv-disable-using-constant-pool-for-large-ints
+strlen-ic  string/strlen.c   strlen   -mllvm -riscv-disable-using-constant-pool-for-large-ints

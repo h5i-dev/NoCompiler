@@ -11,7 +11,7 @@ OUT=${1:-/mnt/scratch/ec2-user/musl-trial-build}
 "$HERE/build.sh" "$OUT" > "$OUT.buildlog"
 "$HERE/skeletons.sh" "$OUT"
 fail=0; n=0
-while read -r name src sym; do
+while read -r name src sym extra; do
   [[ -z "$name" || "$name" == \#* ]] && continue
   f="$ROOT/examples/musl/$name.s"; [ -f "$f" ] || continue
   n=$((n+1))

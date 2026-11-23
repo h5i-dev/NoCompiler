@@ -28,10 +28,10 @@ CFLAGS="-O2 -std=c99 -nostdinc -ffreestanding -fno-builtin -frounding-math -fno-
 INC="-I$MUSL/arch/riscv64 -I$MUSL/arch/generic -I$OUT/internal -I$MUSL/src/include -I$MUSL/src/internal -I$OUT/include -I$MUSL/include"
 echo "$CC $ARCHF $CFLAGS -c" > "$OUT/FLAGS"
 
-grep -v '^#' "$HERE/functions.txt" | while read -r name src sym; do
+grep -v '^#' "$HERE/functions.txt" | while read -r name src sym extra; do
   [ -n "$name" ] || continue
   rm -f "$OUT/$name".{o,dis,text,err}
-  if ! $CC $ARCHF $CFLAGS $INC -c -o "$OUT/$name.o" "$MUSL/src/$src" 2> "$OUT/$name.err"; then
+  if ! $CC $ARCHF $CFLAGS $extra $INC -c -o "$OUT/$name.o" "$MUSL/src/$src" 2> "$OUT/$name.err"; then
     echo "$name: COMPILE FAILED (see $OUT/$name.err)"; continue
   fi
   rm -f "$OUT/$name.err"
