@@ -23,7 +23,7 @@ job_check() {
 
 job_core() {
   (cd lean && cap lake build)
-  cargo test -p nocompiler-typed --no-fail-fast
+  cargo test -p nocompiler-rv -p nocompiler-typed --no-fail-fast
 }
 
 # The fixture corpus needs CI's apt packages; a container keeps them off the host.

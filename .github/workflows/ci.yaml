@@ -42,7 +42,7 @@ jobs:
           sh elan-init.sh -y --default-toolchain none
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
       # The Sail RISC-V model's C emulator, pinned by release and checksum:
-      # the oracle for crates/nocompiler/tests/sail.rs.
+      # the oracle for crates/nocompiler-rv/tests/sail.rs.
       - name: Sail RISC-V emulator (2026-11-16-a2ad4b5)
         run: |
           curl -sSfL -o "$RUNNER_TEMP/sail.tar.gz" \
@@ -53,7 +53,8 @@ jobs:
       - name: Lean library (machine model and typed-RISC-V semantics)
         working-directory: lean
         run: lake build
-      - run: cargo test -p nocompiler --no-fail-fast -- --nocapture
+      # the machine model's oracle tests (llvm-mc, qemu, Sail) and the typed-RISC-V checker
+      - run: cargo test -p nocompiler-rv -p nocompiler-typed --no-fail-fast -- --nocapture
 
   # Runners are disposable, so these build the dev profile on purpose. The
   # release-only rule in CONTRIBUTING.md is about the maintainer's machine.
