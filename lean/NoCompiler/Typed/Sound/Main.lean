@@ -401,10 +401,10 @@ theorem Fn.run (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.instr
     simp only [Fn.instrAt, Fn.storeOk] at hk1
     split at hk1
     · rename_i S' hl
-      obtain ⟨hok, s', hx, hI', hpc'⟩ := Fn.store_sound hI hl
+      obtain ⟨hok, s', hx, ι', g1, hI', hpc'⟩ := f.store_sound hprot hI hl
       refine Reach.exec_step hd hI.live hi hok ?_
       rw [hx, Reach.opt_some]
-      exact cont _ _ ι (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' (fun _ _ => rfl) hk1
+      exact cont _ _ ι' (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' g1 hk1
     · cases hk1
   | ecall => simp [Fn.instrAt] at hk1
   | unimp => simp [Fn.instrAt] at hk1

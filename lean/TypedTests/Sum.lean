@@ -72,6 +72,7 @@ example : badInv.check code = false := by decide
 /-- The same code with `ld a3, 8(a0)`: reads one word past the buffer on the last trip. -/
 def code8 : Code := ⟨0x1000#64, #[0x00000613#32, 0x00058c63#32, 0x00853683#32, 0x00c68633#32,
   0xfff58593#32, 0x00850513#32, 0xfe0598e3#32, 0x00060513#32, 0x00008067#32]⟩
+set_option maxRecDepth 100000 in
 example : fn.check code8 = false := by decide
 /-- The same code returning with `a1` in `ra`'s place: `jalr zero, 0(a1)` is not a return. -/
 def codeRet : Code := ⟨0x1000#64, #[0x00000613#32, 0x00058c63#32, 0x00053683#32, 0x00c68633#32,

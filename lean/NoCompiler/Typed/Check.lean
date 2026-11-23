@@ -168,13 +168,23 @@ def hyps (S : STy) : List Constr :=
         (.and (.le (.lit 0) b.base) (.and (.le (.lit 0) b.len) (.le (b.base.add b.len) (.lit (2 ^ 64))))))
     | .token _ => none
 
+/-- The hypotheses that share a variable with the goal, directly or through other kept
+    hypotheses (the rest cannot matter for a satisfiable `Ψ`, and dropping hypotheses is
+    always sound; it keeps the normal form small). -/
+def relevant (hs : List Constr) (ψ : Constr) : List Constr :=
+  let grow (vs : List Var) : List Var :=
+    hs.foldl (fun acc p => if p.vars.any acc.contains then acc ++ p.vars else acc) vs
+  let vs := grow (grow (grow (grow ψ.vars)))
+  hs.filter fun p => p.vars.any vs.contains || p.vars.isEmpty
+
 /-- `Ψ ⊢ ψ`. -/
 def ent (S : STy) (ψ : Constr) : Bool :=
+  let q := Query.mk (relevant S.hyps ψ) ψ
   match ψ with
   | .tt => true
-  | .eq a b => a.same b || (Query.mk S.hyps ψ).decide
-  | .dvd _ e => e.same (.lit 0) || (Query.mk S.hyps ψ).decide
-  | _ => (Query.mk S.hyps ψ).decide
+  | .eq a b => a.same b || q.decide
+  | .dvd _ e => e.same (.lit 0) || q.decide
+  | _ => q.decide
 
 /-- `a ≡ b (mod 2^64)` under Ψ. -/
 def entEqMod (S : STy) (a b : IExpr) : Bool := a.same b || S.ent (Constr.eqMod a b)
@@ -202,9 +212,14 @@ def solveFrom (S S' : STy) (y : Var) (known : List Var) : Option IExpr :=
       | none => none
       | some (a, _) =>
         let rest : IExpr := ⟨e'.const, e'.terms.filter (·.2 != y)⟩
-        if (a == 1 || a == -1) && (e'.terms.filter (·.2 == y)).length == 1 &&
-            rest.vars.all (fun x => known.contains x) then
-          some ((e.sub rest).smul a)
+        if (e'.terms.filter (·.2 == y)).length == 1 && rest.vars.all (fun x => known.contains x) then
+          if a == 1 || a == -1 then some ((e.sub rest).smul a)
+          else
+            -- `a·y = e − rest`: solvable when `a` divides every coefficient of `e − rest`
+            let l := (e.sub rest).toLin
+            if a != 0 && l.c % a == 0 && l.t.all (fun t => t.2 % a == 0) then
+              some ⟨l.c / a, l.t.map fun t => (t.2 / a, t.1)⟩
+            else none
         else none
 
 def instantiate (S S' : STy) (newVars : List Var) : Subst :=
@@ -371,6 +386,11 @@ def srep (S : STy) (x : Var) (e : IExpr) : IExpr × List Constr :=
 def anyWord (S : STy) (rd : Reg) (x : Var) : STy :=
   (S.setReg rd (some (.var x))).addFacts [.le (.lit 0) (.var x), .lt (.var x) (.lit (2 ^ 64))]
 
+/-- `rd` is the sign-extended low 32 bits of `e`: `x ≡ e (mod 2^32)`, `−2^31 ≤ x < 2^31`. -/
+def word32 (S : STy) (rd : Reg) (x : Var) (e : IExpr) : STy :=
+  (S.setReg rd (some (.var x))).addFacts
+    [.dvd (2 ^ 32) (e.sub (.var x)), .le (.lit (-2 ^ 31)) (.var x), .lt (.var x) (.lit (2 ^ 31))]
+
 /-- The type after a register-writing instruction other than a load. -/
 def arith (S : STy) (i : Instr) : Option STy :=
   let x := f.freshAt S
@@ -403,9 +423,18 @@ def arith (S : STy) (i : Instr) : Option STy :=
       | some e1, some ⟨c, []⟩ => S.setReg rd (some (e1.smul c))
       | some ⟨c, []⟩, some e2 => S.setReg rd (some (e2.smul c))
       | _, _ => anyWord S rd x)
-  | .iop .andi rd _ imm =>
+  | .iop .andi rd rs imm =>
     if 0 ≤ imm.toInt then
-      some ((S.setReg rd (some (.var x))).addFacts [.le (.lit 0) (.var x), .le (.var x) (.lit imm.toInt)])
+      -- with a mask `c = 2^k − 1`, also `e ≡ x (mod 2^k)` (the note's table)
+      let mask : List Constr :=
+        match r rs with
+        | some e =>
+          match (List.range 13).find? (fun k => imm.toInt == 2 ^ k - 1) with
+          | some k => [.dvd (2 ^ k) (e.sub (.var x))]
+          | none => []
+        | none => []
+      some ((S.setReg rd (some (.var x))).addFacts
+        ([.le (.lit 0) (.var x), .le (.var x) (.lit imm.toInt)] ++ mask))
     else some (anyWord S rd x)
   | .shift .srli rd rs sh =>
     match r rs with
@@ -416,7 +445,20 @@ def arith (S : STy) (i : Instr) : Option STy :=
          .le (.lit 0) (.var (x + 1)), .lt (.var (x + 1)) (.lit (2 ^ sh.toNat)),
          .le (.lit 0) (.var x)]))
     | none => some (anyWord S rd x)
-  | .auipc rd _ | .iop _ rd _ _ | .addiw rd _ _ | .shift _ rd _ _ | .shiftw _ rd _ _
+  -- 32-bit addition and subtraction: the sign-extended low word `x` (the note's table)
+  | .addiw rd rs imm =>
+    some (match r rs with
+      | some e => word32 S rd x (e.add (.lit imm.toInt))
+      | none => anyWord S rd x)
+  | .rwop .addw rd a b =>
+    some (match r a, r b with
+      | some e1, some e2 => word32 S rd x (e1.add e2)
+      | _, _ => anyWord S rd x)
+  | .rwop .subw rd a b =>
+    some (match r a, r b with
+      | some e1, some e2 => word32 S rd x (e1.sub e2)
+      | _, _ => anyWord S rd x)
+  | .auipc rd _ | .iop _ rd _ _ | .shift _ rd _ _ | .shiftw _ rd _ _
   | .rop _ rd _ _ | .rwop _ rd _ _ | .uop _ rd _ => some (anyWord S rd x)
   | _ => none
 
@@ -446,18 +488,31 @@ def constOff (a base : IExpr) : Option Nat :=
   | ⟨c, []⟩ => if 0 ≤ c then some c.toNat else none
   | _ => none
 
-def load (S : STy) (op : LdOp) (rd rs : Reg) (off : BitVec 12) : Option STy := do
+/-- The address of an access `off(rs)` of `w` bytes and the capability it lies in: first as
+    `e_rs + off`; failing that, as its unsigned representative `u(e_rs + off)` (I20), whose
+    facts are added to the type. -/
+def addr (S : STy) (rs : Reg) (off : BitVec 12) (w : Nat) (needRw : Bool) :
+    Option (STy × IExpr × HCap) := do
   let e ← S.reg rs
   let a := e.add (.lit off.toInt)
-  let c ← S.caps.find? (fun c => inCap S a op.width c false)
-  let x := f.freshAt S
+  match S.caps.find? (fun c => inCap S a w c needRw) with
+  | some c => pure (S, a, c)
+  | none =>
+    let (u, fs) := urep S (f.freshAt S) a
+    let S1 := S.addFacts fs
+    let c ← S1.caps.find? (fun c => inCap S1 u w c needRw)
+    pure (S1, u, c)
+
+def load (S : STy) (op : LdOp) (rd rs : Reg) (off : BitVec 12) : Option STy := do
+  let (S1, a, c) ← f.addr S rs off op.width false
+  let x := f.freshAt S1
   let fieldTy : Option IExpr :=
     match op, c.cap.kind with
     | .ld, .bytes b => (constOff a b.base).bind fun k => (b.fields.find? (·.off == k)).map (·.ty)
     | _, _ => none
   match fieldTy with
-  | some t => pure (S.setReg rd (some t))
-  | none => pure ((S.setReg rd (some (.var x))).addFacts (ldRange x op))
+  | some t => pure (S1.setReg rd (some t))
+  | none => pure ((S1.setReg rd (some (.var x))).addFacts (ldRange x op))
 
 /-- Fields of `b` that the store to `[a, a + w)` may change are dropped; an 8-byte store at
     a constant offset replaces the field there. -/
@@ -470,13 +525,12 @@ def storeFields (S : STy) (b : BytesCap) (a : IExpr) (w : Nat) (v : Option IExpr
   | _, _, _ => keep
 
 def store (S : STy) (op : StOp) (rs1 rs2 : Reg) (off : BitVec 12) : Option STy := do
-  let e ← S.reg rs1
-  let a := e.add (.lit off.toInt)
-  let c ← S.caps.find? (fun c => inCap S a op.width c true)
+  let (S1, a, c) ← f.addr S rs1 off op.width true
   match c.cap.kind with
   | .bytes b =>
-    let b' := { b with fields := storeFields S b a op.width (S.reg rs2) }
-    pure { S with caps := S.caps.map fun d => if d.id == c.id then { d with cap := { d.cap with kind := .bytes b' } } else d }
+    let b' := { b with fields := storeFields S1 b a op.width (S1.reg rs2) }
+    pure { S1 with caps := S1.caps.map fun d =>
+      if d.id == c.id then { d with cap := { d.cap with kind := .bytes b' } } else d }
   | .token _ => none
 
 /-- Branch facts on the taken and fall-through edges. -/
@@ -538,7 +592,7 @@ def loadOk (k : Nat) (S : STy) (op : LdOp) (rd rs : Reg) (off : BitVec 12) : Boo
     | none => false
 
 def storeOk (k : Nat) (S : STy) (op : StOp) (rs1 rs2 : Reg) (off : BitVec 12) : Bool :=
-  match store S op rs1 rs2 off with
+  match f.store S op rs1 rs2 off with
   | some S' => f.edge (some k) S' (k + 1)
   | none => false
 

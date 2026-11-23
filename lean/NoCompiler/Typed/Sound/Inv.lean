@@ -56,7 +56,8 @@ theorem hyps_holds {T : TokEnv} {ι : Val} {F : TokFp} {m : Word → Byte} {S : 
     · cases e
 
 theorem ent_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.ent ψ = true)
-    (hh : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
+    (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
+  have hh : ∀ p ∈ relevant S.hyps ψ, p.holds ι := fun p hp => hh' p (List.mem_filter.1 hp).1
   unfold ent at h
   split at h
   · rfl

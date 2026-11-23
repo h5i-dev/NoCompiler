@@ -87,7 +87,9 @@ def refute (hs : List Lin) (fuel : Nat := 40) (limit : Nat := 400) : Option Cert
   (loop limit fuel { st with items := dedupe st.items }).map (·.steps.toList)
 
 /-- Certificates for every branch of a query. -/
-def prove (q : Query) : Option (List Cert) := q.branches.mapM (refute ·)
+def prove (q : Query) : Option (List Cert) :=
+  let bs := q.branches
+  if bs.length > 256 then none else bs.mapM (refute ·)
 
 end NoCompiler.Typed.Search
 

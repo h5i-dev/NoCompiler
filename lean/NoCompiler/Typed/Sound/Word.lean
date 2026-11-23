@@ -40,6 +40,9 @@ theorem HasInt.word_eq {ι : Val} {w w' : Word} {e : IExpr} (h : HasInt ι w e) 
   apply BitVec.eq_of_toNat_eq
   omega
 
+theorem hasInt_toNat' {ι : Val} {w : Word} {e : IExpr} (h : e.eval ι = w.toNat) : HasInt ι w e := by
+  unfold HasInt; rw [h]
+
 theorem hasInt_toNat (ι : Val) (w : Word) (x : Var) (h : ι x = w.toNat) : HasInt ι w (.var x) := by
   simp [HasInt, h]
 
