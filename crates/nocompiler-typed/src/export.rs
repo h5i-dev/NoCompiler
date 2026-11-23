@@ -131,7 +131,7 @@ pub fn lean_sig(s: &Sig) -> String {
         lean_formula(&conj(&s.post)),
         s.stack,
         // I19: printed only when set, so total signatures read as before
-        if s.partial { ", partial := true" } else { "" }
+        if s.partial { ", isPartial := true" } else { "" }
     )
 }
 

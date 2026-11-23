@@ -230,8 +230,18 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
         if prove {
+            let partial_fns: Vec<&str> = nocompiler_typed::export::callee_first(&prog, &rep)
+                .into_iter()
+                .filter(|n| ck.sigs.get(n).is_some_and(|g| g.partial))
+                .map(|n| ck.sigs.get_key_value(&n).map(|(k, _)| k.as_str()).unwrap_or(""))
+                .collect();
             if !nocompiler_typed::export::closed(&prog, &rep) {
                 println!("prove: not attempted (a callee is not checked here: theorem D needs every callee)");
+            } else if !partial_fns.is_empty() {
+                println!(
+                    "prove: not attempted (partial functions {}: theorem D covers total programs; I19)",
+                    partial_fns.join(", ")
+                );
             } else {
                 let dir = lean_dir
                     .clone()

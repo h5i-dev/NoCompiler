@@ -538,6 +538,7 @@ theorem Fn.runStep (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.i
     whose invariant holds, every run stays in the function, is allowed by the permission,
     ends, and ends returning with the exit conditions. By well-founded induction on the rank. -/
 theorem Fn.run (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.instr c k = true)
+    (hp : f.sig.isPartial = false)
     {D : Dom} (hDf : ∀ k < f.size, D.mem (f.pcOf k))
     (hcall : ∀ p ∈ f.callees, aligned p.1 4 ∧ ∃ Dg, Meets c Dg p.1 T p.2 ∧ Dg.sub D ∧
       ∀ j < f.size, ¬ Dg.mem (f.pcOf j))
@@ -564,7 +565,7 @@ theorem Fn.run (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.instr
       · cases he'
       · rename_i S2 hS2
         obtain ⟨hk', hI2, hrk⟩ := f.edgeOk_sound hst he' hI1 hag
-        exact ih (k', _) (hrk k rfl) F1 S2 s' hS2 hk' hpc' hI2)
+        exact ih (k', _) (hrk hp k rfl) F1 S2 s' hS2 hk' hpc' hI2)
 
 /-- A partial run (`partial` signatures, I19): the same dispatch with `n` steps of fuel in
     place of the rank; no measure is needed. -/
@@ -598,7 +599,8 @@ theorem Fn.runP (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.inst
     meets its signature (⟦σ⟧, total) on the code image it was checked against, for every
     meaning of tokens, on any domain `D` that holds its code and its callees' (each callee
     verified on its own domain, away from this function's code). -/
-theorem Fn.check_sound (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = true) {D : Dom}
+theorem Fn.check_sound (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = true)
+    (hp : f.sig.isPartial = false) {D : Dom}
     (hDf : ∀ k < f.size, D.mem (f.pcOf k))
     (hcall : ∀ p ∈ f.callees, aligned p.1 4 ∧ ∃ Dg, Meets c Dg p.1 T p.2 ∧ Dg.sub D ∧
       ∀ j < f.size, ¬ Dg.mem (f.pcOf j)) :
@@ -614,16 +616,16 @@ theorem Fn.check_sound (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = true) {
   · cases hentry
   · rename_i S0 hS0
     obtain ⟨hk0, hI1, -⟩ := f.edgeOk_sound hst hentry hI0 (ιpre := f.entryVal a.1 s0) (fun _ _ => rfl)
-    exact f.run hst hinstr hDf hcall he (fun r x h => f.entryVal_reg hst a.1 s0 h)
+    exact f.run hst hinstr hp hDf hcall he (fun r x h => f.entryVal_reg hst a.1 s0 h)
       (fun x h => f.entryVal_param hst a.1 s0 h) (0, _) a.2 S0 s0 hS0 hk0
       (by simp [Fn.pcOf, he.pc]) hI1
 
 /-- A function with no calls, on its own code. -/
 theorem Fn.check_sound_leaf (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = true)
-    (hnc : f.callees = []) : Meets c [(f.entry, 4 * f.size)] f.entry T f.sig := by
+    (hnc : f.callees = []) (hp : f.sig.isPartial = false := by decide) : Meets c [(f.entry, 4 * f.size)] f.entry T f.sig := by
   have hso : f.structOk = true := by
     unfold Fn.check at h; simp only [Bool.and_eq_true] at h; exact h.1.1
-  exact f.check_sound c T h (fun k hk => f.pcOf_mem (Fn.structOk_spec hso) hk) (by simp [hnc])
+  exact f.check_sound c T h hp (fun k hk => f.pcOf_mem (Fn.structOk_spec hso) hk) (by simp [hnc])
 
 /-- **Partial soundness** (I19): a function the checker accepts meets its signature's partial
     meaning (⟦σ⟧ without termination); callees may be partial. -/

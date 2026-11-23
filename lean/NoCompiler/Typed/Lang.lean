@@ -150,6 +150,8 @@ structure Sig where
   post : Constr := .tt
   /-- `stack`: bytes below the entry `sp` the function may use. -/
   stack : Nat := 0
+  /-- `partial` (I19): termination is not promised; the meaning is `MeetsP`. -/
+  isPartial : Bool := false
   deriving DecidableEq, Repr
 
 end NoCompiler.Typed

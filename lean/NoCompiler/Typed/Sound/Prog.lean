@@ -38,15 +38,15 @@ theorem Prog.check_sound {c : Code} {T : TokEnv} : ∀ (fs : List Fn) (E : Env),
     ∀ e ∈ Prog.env E fs, Meets c e.2.2 e.1 T e.2.1
   | [], _, hE, _ => hE
   | f :: fs, E, hE, h => by
-    simp only [Prog.check, Bool.and_eq_true] at h
-    obtain ⟨⟨hc, hcalls⟩, hrest⟩ := h
+    simp only [Prog.check, Bool.and_eq_true, Bool.not_eq_true'] at h
+    obtain ⟨⟨⟨hc, hnp⟩, hcalls⟩, hrest⟩ := h
     refine Prog.check_sound fs _ ?_ hrest
     intro e he
     rcases List.mem_cons.1 he with rfl | he
     · have hso : f.structOk = true := by
         unfold Fn.check at hc; simp only [Bool.and_eq_true] at hc; exact hc.1.1
       have hst := Fn.structOk_spec hso
-      refine f.check_sound c T hc (fun k hk => Dom.mem_head (f.pcOf_mem hst hk)) ?_
+      refine f.check_sound c T hc hnp (fun k hk => Dom.mem_head (f.pcOf_mem hst hk)) ?_
       intro p hp
       have hq := List.all_eq_true.1 hcalls p hp
       cases hl : E.lookup p.1 with

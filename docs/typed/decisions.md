@@ -107,6 +107,14 @@ comments can cite them.
 - **I19 Total meaning first.** ⟦σ⟧ is `VerifiedImg c D entry (σ.spec Tok)`: the existing
   total judgment. The partial judgment is added only when a `partial` function is needed
   (note decision 1).
+  **Partial meaning added (2026-11-23, U, at T's hand-over):** `Typed.MeetsP` (Typed/SemPartial.lean):
+  `VerifiedImgP`, every prefix of every run is safe and stops only where the exit conditions
+  hold (step-indexed `ReachP`); a total proof is a partial one (`Meets.toP`). `Sig.isPartial`
+  (Lang.lean); a partial signature's back edges need no measure (edgeOk); a non-partial function
+  calls no partial one (structOk); `Fn.check_soundP` gives `MeetsP`, `Fn.check_sound` needs
+  `partial = false`, and theorem D's `Prog.check` admits only non-partial functions for now. The
+  run is proved once over a `Runner` (Sound/Runner.lean): `Reach` with the rank for total runs,
+  `ReachP` with fuel for partial ones.
 
 ## Rust checker (agent U)
 

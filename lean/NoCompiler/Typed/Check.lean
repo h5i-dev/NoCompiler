@@ -596,7 +596,9 @@ def structOk : Bool :=
     | .token _ => true) &&
   (σ.outRegs.all fun p => p.2.vars.all (fun y => σ.params.contains y || σ.outVars.contains y)) &&
   (σ.post.vars.all (fun y => σ.params.contains y || σ.outVars.contains y)) &&
-  (σ.outVars.all fun y => !f.protectedVars.contains y) && σ.outVars.Nodup
+  (σ.outVars.all fun y => !f.protectedVars.contains y) && σ.outVars.Nodup &&
+  -- a function that is not `partial` calls no `partial` function (I19)
+  (σ.isPartial || f.callees.all fun p => !p.2.isPartial)
 
 /-- The whole function. -/
 def check (c : Code) : Bool :=

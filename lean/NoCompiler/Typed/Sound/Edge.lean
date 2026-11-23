@@ -88,7 +88,7 @@ theorem Fn.edgeOk_sound (hst : f.StructSpec) {k : Option Nat} {S S' : STy} {k' :
     (he : f.edgeOk k S S' k' θ = true) {s : State} {ι ιpre : Val} {F : TokFp}
     (hI : Inv f T P s0 ι0 S s ι F) (hag : ∀ y : Nat, y < f.fresh → ι y = ιpre y) :
     k' < f.size ∧ Inv f T P s0 ι0 S' s (IExpr.upd ι θ) F ∧
-      ∀ kk, k = some kk → LexN (f.rank k' (IExpr.upd ι θ)) (f.rank kk ιpre) := by
+      (f.sig.isPartial = false → ∀ kk, k = some kk → LexN (f.rank k' (IExpr.upd ι θ)) (f.rank kk ιpre)) := by
   unfold Fn.edgeOk at he
   simp only [Bool.and_eq_true, decide_eq_true_eq, List.all_eq_true, Bool.not_eq_true',
     List.contains_iff_mem] at he
@@ -96,7 +96,7 @@ theorem Fn.edgeOk_sound (hst : f.StructSpec) {k : Option Nat} {S S' : STy} {k' :
   have hprot : ∀ p ∈ θ, p.1 ∉ f.protectedVars := by
     intro p hp h; have := (hθ p hp).1; simp_all
   refine ⟨hk', hI.sub hsub hprot, ?_⟩
-  intro kk hkk
+  intro hp kk hkk
   subst hkk
   -- measure variables untouched by θ keep their values
   have hmeas : ∀ K ∈ f.loops, (∀ p ∈ θ, p.1 ∉ K.meas.vars) →
@@ -119,8 +119,8 @@ theorem Fn.edgeOk_sound (hst : f.StructSpec) {k : Option Nat} {S S' : STy} {k' :
     split at hback
     · rename_i L kk' hL hkk
       cases hkk
-      simp only [Bool.and_eq_true, decide_eq_true_eq] at hback
-      obtain ⟨⟨hlast, h0⟩, hlt⟩ := hback
+      simp only [Bool.and_eq_true, decide_eq_true_eq, hp, Bool.false_or] at hback
+      obtain ⟨hlast, h0, hlt⟩ := hback
       obtain ⟨hLm, hLh⟩ := Fn.loopAt_spec hL
       have h0 := hI.ent h0
       have hlt := hI.ent hlt

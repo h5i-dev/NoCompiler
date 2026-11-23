@@ -41,7 +41,8 @@ namespace Prog
 /-- Check the functions in order; each one is added to the environment of the next. -/
 def check (c : Code) : Env → List Fn → Bool
   | _, [] => true
-  | E, f :: fs => f.check c && f.callsOk E && check c ((f.entry, f.sig, f.domIn E) :: E) fs
+  | E, f :: fs => f.check c && !f.sig.isPartial && f.callsOk E &&
+      check c ((f.entry, f.sig, f.domIn E) :: E) fs
 
 /-- The environment after the functions: theirs and the external ones. -/
 def env : Env → List Fn → Env

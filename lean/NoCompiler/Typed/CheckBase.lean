@@ -438,8 +438,9 @@ def edgeOk (k : Option Nat) (S S' : STy) (k' : Nat) (θ : Subst) : Bool :=
   S.sub θ S' &&
   (if back then
     match f.loopAt k', k with
-    | some L, some k => decide (f.pos k ≤ f.pos L.last) && S.ent (.le (.lit 0) L.meas) &&
-        S.ent (.lt (L.meas.subst θ) L.meas)
+    | some L, some k => decide (f.pos k ≤ f.pos L.last) &&
+        -- the measure, unless the function is `partial` (I19)
+        (f.sig.isPartial || (S.ent (.le (.lit 0) L.meas) && S.ent (.lt (L.meas.subst θ) L.meas)))
     | _, _ => false
    else true)
 

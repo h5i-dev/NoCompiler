@@ -123,7 +123,9 @@ the repository's `lean/`) and reads `#print axioms prog_meets`. Only if that suc
 standard axioms (propext, Classical.choice, Quot.sound) does the ledger say `proved` for those
 functions, with the module, the theorem, its axioms and each function's callees as evidence;
 otherwise they stay `checked` and the reason is printed. `xorBits := [k, …]` in `fn_*` lists the
-bit counts of the masks the xor-then-mask rule used (a hint for the Lean xor rule).
+bit counts of the masks the xor-then-mask rule used (a hint for the Lean xor rule). A partial
+signature is exported with `isPartial := true` (I19); theorem D covers total programs only, so
+`--prove` is not attempted when an exported function is partial.
 
 ### θ per edge (2026-11-23, T's ask 4)
 
