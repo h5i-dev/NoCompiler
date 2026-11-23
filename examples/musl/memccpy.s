@@ -9,8 +9,8 @@ memccpy:
 	beq	a4, zero, .Lmemccpy_3c  # c: 02070863
 .Lmemccpy_10:
 	#: inv [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 0 <= m <= n
-	#: # 0x10, 0x14, 0x34, 0x9c are targets of backward edges only because of block layout; they are
-	#: # not loops, so no decreases clause is given.
+	# 0x10, 0x14, 0x34, 0x9c are targets of backward edges only because of block layout; they are
+	# not loops, so no decreases clause is given.
 	beq	a3, zero, .Lmemccpy_34  # 10: 02068263
 .Lmemccpy_14:
 	#: inv [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 1 <= m <= n

@@ -25,7 +25,7 @@ strncmp:
 	addi	a0, a0, 1               # 44: 00150513
 	bne	a3, zero, .Lstrncmp_14  # 48: fc0696e3
 .Lstrncmp_4c:
-	#: inv [q] a1: int(q) where r <= q <= r + n - 1
+	#: join [q] a1: int(q) where r <= q <= r + n - 1
 	lbu	a0, 0(a1)               # 4c: 0005c503
 	andi	a1, a3, 255             # 50: 0ff6f593
 	sub	a0, a1, a0              # 54: 40a58533

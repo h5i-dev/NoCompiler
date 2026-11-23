@@ -81,7 +81,7 @@ memcpy:
 	andi	a1, a3, 3               # 118: 0036f593
 	bne	a1, zero, .Lmemcpy_58   # 11c: f2059ee3
 .Lmemcpy_120:
-	#: inv [k] a4: int(s + n - k), a3: int(d + n - k), a2: int(k) where 0 <= k <= n, 4 | d + n - k, (k = 0 || 4 | s + n - k)
+	#: join [k] a4: int(s + n - k), a3: int(d + n - k), a2: int(k) where 0 <= k <= n, 4 | d + n - k, (k = 0 || 4 | s + n - k)
 	addi	a1, zero, 16            # 120: 01000593
 	bltu	a2, a1, .Lmemcpy_15c    # 124: 02b66c63
 	addi	a1, zero, 15            # 128: 00f00593
@@ -100,7 +100,7 @@ memcpy:
 	addi	a3, a3, 16              # 154: 01068693
 	bltu	a1, a2, .Lmemcpy_12c    # 158: fcc5eae3
 .Lmemcpy_15c:
-	#: inv [k] a4: int(s + n - k), a3: int(d + n - k), a2: int(k) where 0 <= k <= 15, k <= n, 4 | d + n - k, (k = 0 || 4 | s + n - k)
+	#: join [k] a4: int(s + n - k), a3: int(d + n - k), a2: int(k) where 0 <= k <= 15, k <= n, 4 | d + n - k, (k = 0 || 4 | s + n - k)
 	andi	a1, a2, 8               # 15c: 00867593
 	beq	a1, zero, .Lmemcpy_17c  # 160: 00058e63
 	lw	a1, 0(a4)               # 164: 00072583

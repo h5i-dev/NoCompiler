@@ -12,8 +12,8 @@
 [at .Lmemcpy_1c]
 #: inv [m] a1: int(s + n - m), a5: int(s + n - m + 1), a6: int(d + n - m), a2: int(m) where 1 <= m <= n decreases m
 [at .Lmemcpy_120]
-#: inv [k] a4: int(s + n - k), a3: int(d + n - k), a2: int(k) where 0 <= k <= n, 4 | d + n - k, (k = 0 || 4 | s + n - k)
+#: join [k] a4: int(s + n - k), a3: int(d + n - k), a2: int(k) where 0 <= k <= n, 4 | d + n - k, (k = 0 || 4 | s + n - k)
 [at .Lmemcpy_12c]
 #: inv [k] a4: int(s + n - k), a3: int(d + n - k), a2: int(k) where 16 <= k <= n, 4 | s + n - k, 4 | d + n - k decreases k
 [at .Lmemcpy_15c]
-#: inv [k] a4: int(s + n - k), a3: int(d + n - k), a2: int(k) where 0 <= k <= 15, k <= n, 4 | d + n - k, (k = 0 || 4 | s + n - k)
+#: join [k] a4: int(s + n - k), a3: int(d + n - k), a2: int(k) where 0 <= k <= 15, k <= n, 4 | d + n - k, (k = 0 || 4 | s + n - k)

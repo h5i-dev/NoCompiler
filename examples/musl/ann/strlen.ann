@@ -8,7 +8,7 @@
 #:   borrow s |-> bytes[n] ro
 #:   out    a0: int
 #:   stack  0
-#: # Not the C contract: C needs "a NUL at some s+k with s..s+k readable", not a v0 signature.
+# Not the C contract: C needs "a NUL at some s+k with s..s+k readable", not a v0 signature.
 [at .Lstrlen_14]
 #: inv [p] a1: int(p), a2: int(p + 1) where s <= p < s + n decreases s + n - p
 [at .Lstrlen_48]

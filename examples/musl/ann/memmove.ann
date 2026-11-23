@@ -9,15 +9,15 @@
 #:   borrow s |-> bytes[n] ro
 #:   out    a0: int(d)
 #:   stack  0
-#: fn memmove [d, s, n, b, L]
+#: fn memmove [d, s, n, b, len]
 #:   in     a0: int(d), a1: int(s), a2: int(n)
-#:   borrow b |-> bytes[L] rw
-#:   where  b <= d, d + n <= b + L, b <= s, s + n <= b + L
+#:   borrow b |-> bytes[len] rw
+#:   where  b <= d, d + n <= b + len, b <= s, s + n <= b + len
 #:   out    a0: int(d)
 #:   stack  0
 [at .Lmemmove_2c]
 #: inv [m] a1: int(s + n - m), a3: int(d + n - m), a2: int(m) where 0 <= m <= n
-#: # 0x2c, 0x5c, 0x80 are backward-edge targets only because of block layout (no decreases).
+# 0x2c, 0x5c, 0x80 are backward-edge targets only because of block layout (no decreases).
 [at .Lmemmove_30]
 #: inv [m] a1: int(s + n - m), a3: int(d + n - m), a2: int(m) where 1 <= m <= n decreases m
 [at .Lmemmove_5c]

@@ -26,7 +26,7 @@ memchr:
 	bne	a4, zero, .Lmemchr_60   # 48: 00071c63
 .Lmemchr_4c:
 	#: inv a1: int
-	#: # 0x4c is a return block, not a loop: no measure exists, so there is no decreases clause.
+	# 0x4c is a return block, not a loop: no measure exists, so there is no decreases clause.
 	addi	a0, a1, 0               # 4c: 00058513
 	jalr	zero, 0(ra)             # 50: 00008067
 .Lmemchr_54:
@@ -34,7 +34,7 @@ memchr:
 	addi	a1, zero, 0             # 58: 00000593
 	beq	a4, zero, .Lmemchr_4c   # 5c: fe0708e3
 .Lmemchr_60:
-	#: inv [p, m] a0: int(p), a2: int(m) where s <= p, p + m = s + n, 1 <= m
+	#: join [p, m] a0: int(p), a2: int(m) where s <= p, p + m = s + n, 1 <= m
 	lbu	a1, 0(a0)               # 60: 00054583
 	beq	a1, a3, .Lmemchr_c0     # 64: 04d58e63
 	addi	a1, zero, 8             # 68: 00800593
@@ -65,10 +65,10 @@ memchr:
 	addi	a0, a0, 8               # b8: 00850513
 	bltu	a6, a2, .Lmemchr_9c     # bc: fec860e3
 .Lmemchr_c0:
-	#: inv [p, m] a0: int(p), a2: int(m) where s <= p, p + m = s + n, 0 <= m
+	#: join [p, m] a0: int(p), a2: int(m) where s <= p, p + m = s + n, 0 <= m
 	beq	a2, zero, .Lmemchr_dc   # c0: 00060e63
 .Lmemchr_c4:
-	#: inv [p, m] a0: int(p), a2: int(m) where s <= p, p + m = s + n, 1 <= m
+	#: join [p, m] a0: int(p), a2: int(m) where s <= p, p + m = s + n, 1 <= m
 	addi	a1, a0, 0               # c4: 00050593
 .Lmemchr_c8:
 	#: inv [q, m] a1: int(q), a2: int(m) where s <= q, q + m = s + n, 1 <= m decreases m

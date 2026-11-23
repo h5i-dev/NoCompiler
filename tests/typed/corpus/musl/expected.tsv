@@ -1,0 +1,18 @@
+file	function	predicted	expected	at	note
+examples/musl/labs.s	labs	accept	accept	-	max (Zbb) gives int
+examples/musl/memcmp.s	memcmp	accept	accept	-	byte loop
+examples/musl/bcmp.s	bcmp	accept	accept	-	tail call pair (I21) to memcmp's signature
+examples/musl/memrchr.s	__memrchr	accept	accept	-	index loop
+examples/musl/memchr.s	memchr	accept	reject:parse:I14	0x70	static data; without I14 first S2 (non-nested [0x4c,0xcc]/[0xc8,0xd8])
+examples/musl/strnlen.s	strnlen	accept	accept	-	call pair (I21) to memchr's signature; frame 32
+examples/musl/strncmp.s	strncmp	accept	reject:memory	0x38	branch-free && loop test: no m >= 1 on the fall-through of 0x34
+examples/musl/swab.s	swab	accept	accept	-	signed n with 0 <= n < 2^63
+examples/musl/bzero.s	bzero	accept	accept	-	tail call pair (I21) to memset's signature
+examples/musl/memset.s	memset	reject	reject:memory	0x70	andi a2, a2, -4 at 0x50 loses n
+examples/musl/memcpy.s	memcpy	reject	reject:S2	-	33 interval violations; then branch-free && at 0x1c entry, andi n,8 at 0x15c
+examples/musl/memccpy.s	memccpy	reject	reject:parse:I14	0xa4	static data; then S2; then xor alignment (sd at 0xe8)
+examples/musl/memmove.s	memmove	reject	reject:S2	-	non-nested [0x2c,0x130]/[0x5c,0x170]; then xor alignment (sd at 0x11c)
+examples/musl/strlen.s	strlen	not-expressible	reject:parse:I14	0x2c	static data; then no bound on the byte loop address (0x14)
+examples/musl/fwrite.s	fwrite	contract	reject:S2	-	backward edges 0xc4/0xc8 to return blocks; then call 0x60: borrow length is mul (size*nmemb)
+examples/musl/malloc-free.s	malloc	contract	contract	-	body does not compile without A; external
+examples/musl/malloc-free.s	free	contract	contract	-	body does not compile without A; external

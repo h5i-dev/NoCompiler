@@ -16,7 +16,7 @@ memmove:
 	addi	a3, a0, 0               # 28: 00050693
 .Lmemmove_2c:
 	#: inv [m] a1: int(s + n - m), a3: int(d + n - m), a2: int(m) where 0 <= m <= n
-	#: # 0x2c, 0x5c, 0x80 are backward-edge targets only because of block layout (no decreases).
+	# 0x2c, 0x5c, 0x80 are backward-edge targets only because of block layout (no decreases).
 	beq	a2, zero, .Lmemmove_80  # 2c: 04060a63
 .Lmemmove_30:
 	#: inv [m] a1: int(s + n - m), a3: int(d + n - m), a2: int(m) where 1 <= m <= n decreases m

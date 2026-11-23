@@ -11,8 +11,8 @@
 #:   stack  0
 [at .Lmemccpy_10]
 #: inv [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 0 <= m <= n
-#: # 0x10, 0x14, 0x34, 0x9c are targets of backward edges only because of block layout; they are
-#: # not loops, so no decreases clause is given.
+# 0x10, 0x14, 0x34, 0x9c are targets of backward edges only because of block layout; they are
+# not loops, so no decreases clause is given.
 [at .Lmemccpy_14]
 #: inv [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 1 <= m <= n
 [at .Lmemccpy_18]

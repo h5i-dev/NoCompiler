@@ -12,4 +12,4 @@
 [at .Lstrncmp_14]
 #: inv [m] a0: int(l + n - m), a1: int(r + n - m - 1), a2: int(m) where 0 <= m <= n - 1 decreases m
 [at .Lstrncmp_4c]
-#: inv [q] a1: int(q) where r <= q <= r + n - 1
+#: join [q] a1: int(q) where r <= q <= r + n - 1
