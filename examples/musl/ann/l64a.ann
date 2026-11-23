@@ -1,0 +1,10 @@
+# musl 1.2.5 src/misc/a64l.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh.
+# Instructions as compiled, unchanged (scripts/musl-trial/verify.sh checks the bytes).
+# Annotations are the lines that start with hash-colon (docs/typed/syntax.md).
+# Predicted (batch 3, fixed before compiling): reject static-data
+# Expected now (after reading the compiled code): reject static-data: auipc to l64a.s in .bss (writable) at 0x8; I30 supports read-only data only. The read of digits[x & 63] would be fine (I30).
+#! expect l64a: reject static-data
+#: fn l64a [x]
+#:   in     a0: int(x)
+#:   out    a0: int
+#:   stack  0

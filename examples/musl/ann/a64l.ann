@@ -1,0 +1,12 @@
+# musl 1.2.5 src/misc/a64l.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh.
+# Instructions as compiled, unchanged (scripts/musl-trial/verify.sh checks the bytes).
+# Annotations are the lines that start with hash-colon (docs/typed/syntax.md).
+# Predicted (batch 3, fixed before compiling): not expressible
+# Expected now (after reading the compiled code): not expressible, as predicted, but the reason narrowed: clang unrolled the loop completely (at most 6 characters, each read guarded by the previous one being non-zero), so a64l itself is fine with 'borrow s |-> bytes[6] ro' (narrower than C, where the string may be shorter). What is missing is strchr's contract: 'reads d up to its NUL' is not a v0 signature, so no contract is given and the call is rejected.
+#! expect a64l: reject call-sig
+#: fn a64l [s]
+#:   in     a0: int(s)
+#:   borrow s |-> bytes[6] ro
+#:   out    a0: int
+#:   stack  32
+#:   frame  32 slots 0, 8, 16, 24

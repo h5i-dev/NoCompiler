@@ -345,6 +345,24 @@ maximal-suffix loops would be a large piece of work on their own.
 | a64l | not expressible | loops on `*s` until NUL and calls `strchr` (NUL-terminated, the strlen problem). Reads the read-only `digits` table, which I30 now supports. |
 | l64a | reject `static-data` | writes `static char s[7]` (writable data; I30 supports read-only only). |
 
+Results for batch 3 (Rust checker, with `--object`): **8 of 8 verdicts as predicted.** _Exit,
+__towrite, ffsl and div are accepted (0–28 queries, at most 5 ms). __fwritex and bsearch are
+rejected `profile` at their register calls. a64l is rejected `call-sig` (no contract for strchr)
+and l64a `static-data` (writable `.bss`). Two things I had not predicted:
+- **a64l was fully unrolled** (at most 6 characters), so it has no loop. Its only obstacle is
+  strchr's NUL-terminated contract. The strlen problem reaches a64l only through its callee.
+- **ffsl does not use Zbb `ctz`.** musl's generic `a_ctz_64` is a De Bruijn multiply and a lookup
+  in a 64-byte read-only table. The index comes from `srli 58`, so I30 and the `srli` rule
+  accept the lookup with no comparison: the note's "追加なし" case, on static data.
+_Exit's unreachable exit loop is annotated `inv where false decreases 0`. The checker accepts
+it with 0 queries, since no edge reaches the head (I17: no successor after `ecall 94`).
+The qemu harness covers all of batch 3 (a64l with a reference strchr as scaffolding), and
+_Exit is now the harness's own exit.
+
+Totals after batch 3, 29 functions compiled with the pinned flags: **18 accepted**, 11 rejected
+(6 `cfg`/S2, 2 `profile` function pointers, 1 `loop-inv` strlen, 1 `call-sig` a64l→strchr,
+1 `static-data` writable). malloc/free external.
+
 ## Files
 
 - `scripts/musl-trial/build.sh` — pinned build (musl tree digest, clang 15.0.7, flags);

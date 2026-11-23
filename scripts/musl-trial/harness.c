@@ -14,7 +14,10 @@ typedef int wchar_t;
 wchar_t *wmemcpy(wchar_t *, const wchar_t *, size_t); wchar_t *wmemset(wchar_t *, wchar_t, size_t);
 int wmemcmp(const wchar_t *, const wchar_t *, size_t); wchar_t *wmemchr(const wchar_t *, wchar_t, size_t);
 char *stpncpy(char *, const char *, size_t); char *strncpy(char *, const char *, size_t);
-typedef struct FILE FILE; size_t fwrite(const void *, size_t, size_t, FILE *);
+typedef struct FILE FILE;
+int ffsl(long); typedef struct { int quot, rem; } div_t; div_t div(int, int); char *l64a(long);
+void *bsearch(const void *, const void *, size_t, size_t, int (*)(const void *, const void *));
+int __towrite(FILE *); size_t __fwritex(const unsigned char *, size_t, FILE *); _Noreturn void _Exit(int); size_t fwrite(const void *, size_t, size_t, FILE *);
 
 static long sys3(long n, long a, long b, long c) {
   register long a0 asm("a0") = a, a1 asm("a1") = b, a2 asm("a2") = c, a7 asm("a7") = n;
@@ -35,9 +38,21 @@ static int ref_cmp(const unsigned char *l, const unsigned char *r, size_t n) {
 static int sgn(int x) { return (x > 0) - (x < 0); }
 
 /* Stubs for fwrite's callees (unsafe contracts in the trial). FILE layout: lock at +140. */
-struct FILE { char pad[140]; int lock; };
+struct FILE { unsigned flags; unsigned char *rpos, *rend; int (*close)(FILE *);
+  unsigned char *wend, *wpos, *mustbezero_1, *wbase; size_t (*read)(FILE *, unsigned char *, size_t);
+  size_t (*write)(FILE *, const unsigned char *, size_t); long (*seek)(FILE *, long, int);
+  unsigned char *buf; size_t buf_size; FILE *prev, *next; int fd, pipe_pid; long lockcount;
+  int mode; volatile int lock; int lbf; void *cookie; long off; char *getln_buf; void *mustbezero_2;
+  unsigned char *shend; long shlim, shcnt; FILE *prev_locked, *next_locked; void *locale; };
+_Static_assert(sizeof(FILE) == 232, "FILE size"); _Static_assert(__builtin_offsetof(FILE, lock) == 140, "lock");
+static unsigned char sink[64]; static size_t sunk;
+static size_t wr(FILE *f, const unsigned char *s, size_t l) { (void)f; for (size_t i = 0; i < l && sunk < 64; i++) sink[sunk++] = s[i]; return l; }
+/* Scaffolding for a64l (strchr is not part of the trial). */
+char *strchr(const char *s, int c) { for (;; s++) { if (*s == (char)c) return (char *)s; if (!*s) return NULL; } }
+long a64l(const char *);
+static int icmp(const void *a, const void *b) { return *(const int *)a - *(const int *)b; }
 static size_t stub_ret;
-size_t __fwritex(const unsigned char *s, size_t l, FILE *f) { (void)s; (void)f; return stub_ret < l ? stub_ret : l; }
+static size_t wr_lim(FILE *f, const unsigned char *s, size_t l) { (void)f; (void)s; return stub_ret < l ? stub_ret : l; }
 int __lockfile(FILE *f) { (void)f; return 1; }
 void __unlockfile(FILE *f) { (void)f; }
 
@@ -109,12 +124,25 @@ void _start_c(void) {
     for (size_t i = 0; i < sizeof C; i++) if (i < ob || i >= ob + n) B[i] = C[i];
     check(strncpy((char *)C + ob, (char *)A + oa, n) == (char *)C + ob && !ref_cmp(B, C, sizeof C), "strncpy");
   }
-  FILE f = {0}; f.lock = -1; stub_ret = 1000;
+  check(ffsl(0) == 0 && ffsl(1) == 1 && ffsl(8) == 4 && ffsl(1L << 63) == 64 && ffsl(-4) == 3, "ffsl");
+  { div_t q = div(-7, 2); check(q.quot == -3 && q.rem == -1, "div"); q = div(9, 3); check(q.quot == 3 && q.rem == 0, "div"); }
+  { const char *t = l64a(64 * 3 + 1); check(t[0] == '/' && t[1] == '1' && t[2] == 0, "l64a"); check(l64a(0)[0] == 0, "l64a 0");
+    check(a64l("/1") == 64 * 3 + 1 && a64l("") == 0 && a64l("zzzzzz") == (long)(int)0xffffffff && a64l("1!") == 3, "a64l"); }
+  { static int arr[] = {1, 3, 5, 7, 9, 11}; int k;
+    for (k = 0; k <= 12; k++) { int *r = bsearch(&k, arr, 6, sizeof(int), icmp);
+      check(r == ((k & 1) && k <= 11 ? arr + k / 2 : NULL), "bsearch"); } }
+  { static unsigned char fb[16]; FILE g = {0}; g.buf = fb; g.buf_size = 16; g.write = wr; g.lbf = -1;
+    check(__towrite(&g) == 0 && g.wpos == fb && g.wend == fb + 16, "__towrite");
+    check(__fwritex((const unsigned char *)"abc", 3, &g) == 3 && fb[0] == 'a' && g.wpos == fb + 3, "__fwritex buffered");
+    check(__fwritex(A, 40, &g) == 40 && sunk == 40, "__fwritex direct");
+    g.flags = 8; g.wend = 0; check(__towrite(&g) == -1 && (g.flags & 32), "__towrite NOWR"); }
+  /* fwrite through the real __fwritex (unbuffered FILE, write callback returns at most stub_ret) */
+  FILE f = {0}; f.lock = -1; f.write = wr_lim; f.lbf = -1; stub_ret = 1000;
   check(fwrite(A, 4, 10, &f) == 10, "fwrite full");
-  stub_ret = 13; check(fwrite(A, 4, 10, &f) == 3, "fwrite partial");
+  stub_ret = 13; f.wend = 0; check(fwrite(A, 4, 10, &f) == 3, "fwrite partial");
   f.lock = 0; check(fwrite(A, 4, 0, &f) == 0 && fwrite(A, 0, 9, &f) == 0, "fwrite zero");
   put(fails ? "harness: FAILED\n" : "harness: all checks passed\n");
-  sys3(93, fails != 0, 0, 0);
+  _Exit(fails != 0);
 }
 asm(".globl _start\n_start:\n la sp, stack_top\n call _start_c\n"
     ".bss\n.balign 16\n.space 65536\nstack_top:\n.text\n");

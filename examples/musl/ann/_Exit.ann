@@ -1,0 +1,11 @@
+# musl 1.2.5 src/exit/_Exit.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh.
+# Instructions as compiled, unchanged (scripts/musl-trial/verify.sh checks the bytes).
+# Annotations are the lines that start with hash-colon (docs/typed/syntax.md).
+# Predicted (batch 3, fixed before compiling): accept
+# Expected now (after reading the compiled code): accept: ecall 94 has no successor (I17); the exit loop after it is unreachable, so its head is annotated 'where false' (true of an unreachable point).
+#! expect _Exit: accept
+#: fn _Exit [c]
+#:   in     a0: int(c)
+#:   stack  0
+[at .L_Exit_10]
+#: inv where false decreases 0

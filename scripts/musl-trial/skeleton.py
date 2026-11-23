@@ -61,19 +61,28 @@ out.append(f"\t.size {sym}, .-{sym}")
 if datasyms:
     # Copy the data sections holding the referenced local symbols, with their labels.
     syms = subprocess.run(['llvm-readelf', '-s', '-S', '--wide', obj], capture_output=True, text=True).stdout
-    secs = {int(m[1]): m[2] for m in re.finditer(r'\[\s*(\d+)\]\s+(\S+)\s+PROGBITS', syms)}
+    secs = {int(m[1]): (m[2], m[3], int(m[4], 16)) for m in re.finditer(
+        r'\[\s*(\d+)\]\s+(\S+)\s+(PROGBITS|NOBITS)\s+[0-9a-f]+\s+[0-9a-f]+\s+([0-9a-f]+)', syms)}
     where = {}
     for m in re.finditer(r'\d+:\s+([0-9a-f]+)\s+\d+\s+\w+\s+\w+\s+\w+\s+(\d+)\s+(\S+)', syms):
-        if m[3] in datasyms: where[m[3]] = (secs[int(m[2])], int(m[1], 16))
-    for sec in sorted({v[0] for v in where.values()}):
-        assert sec.startswith('.rodata'), f"data in writable section {sec}"
+        if m[3] in datasyms: where[m[3]] = (int(m[2]), int(m[1], 16))
+    for si in sorted({v[0] for v in where.values()}):
+        sec, kind, size = secs[si]
+        labels = {o: n for n, (s2, o) in where.items() if s2 == si}
+        if kind == 'NOBITS':
+            out += ['', f'\t.section {sec},"aw",@nobits']
+            for o in range(size):
+                if o in labels: out.append(f"{labels[o]}:")
+                out.append('\t.zero\t1')
+            continue
         tmp = obj + '.sec'
         subprocess.run(['llvm-objcopy', '-O', 'binary', f'--only-section={sec}', obj, tmp], check=True)
         raw = open(tmp, 'rb').read()
-        flags = '"aM",@progbits,8' if sec.endswith('cst8') else '"a",@progbits'
-        out += ['', f'\t.section {sec},{flags}', '\t.p2align 3']
-        labels = {o: n for n, (s2, o) in where.items() if s2 == sec}
-        for o in range(0, len(raw), 8):
+        writable = not sec.startswith('.rodata')
+        flags = '"aw",@progbits' if writable else ('"aM",@progbits,8' if sec.endswith('cst8') else '"a",@progbits')
+        out += ['', f'\t.section {sec},{flags}', '\t.p2align 3' if len(raw) % 8 == 0 else '']
+        step = 8 if len(raw) % 8 == 0 and all(o % 8 == 0 for o in labels) else 1
+        for o in range(0, len(raw), step):
             if o in labels: out.append(f"{labels[o]}:")
-            out.append(f"\t.quad\t{int.from_bytes(raw[o:o+8], 'little'):#018x}")
+            out.append(f"\t.quad\t{int.from_bytes(raw[o:o+8], 'little'):#018x}" if step == 8 else f"\t.byte\t{raw[o]:#04x}")
 print('\n'.join(out))
