@@ -201,9 +201,11 @@ comments can cite them.
   with "an edge into L's body from outside L" replaced by "an edge into the natural loop",
   which only the head receives. Lemmas 2–10 do not mention addresses.
   Implemented in the Rust checker as an opt-in (`--loops natural`, `Options::natural_loops`).
-  With it, all 8 musl files move past `cfg` to an ordinary typing obligation (an `inv`
-  constraint, a call's lent length, a missing measure, …) where V's annotations, written for
-  S2, stop. Adopting it needs: T's agreement (the Lean checker uses S2), the proof's S2 and
+  With it, all 8 musl files move past `cfg` to an ordinary typing obligation. With V's
+  annotations as of 2026-11-23 18:50 UTC, of the 38 files of `tests/typed/corpus/musl`
+  (functions + variants) the default rules accept 19 and P1 accepts 25 (`memcpy`, `memmove`,
+  `__stpncpy` and the `-x` variants of `memcpy`, `memccpy`, `stpncpy`); every function P1
+  accepts also passes tests/exec.rs (300 random runs each, no fault). Adopting it needs: T's agreement (the Lean checker uses S2), the proof's S2 and
   Theorem C text updated, and the export to carry the back-edge set instead of intervals.
 - **I31 Syscall signatures follow Env.lean.** `read` and `write` return
   `int(r)` with `−4095 ≤ r ≤ −1 ∨ (0 ≤ r ≤ n ∧ r ≤ 0x7ffff000)`, and for `write` also
