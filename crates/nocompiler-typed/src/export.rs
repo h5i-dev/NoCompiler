@@ -437,7 +437,14 @@ pub fn to_lean_image(
         let _ = writeln!(o, "  loops := [{}]", loops.join(", "));
         // a permutation of all word indices: the checking order, then the rest (unreached
         // points, second words of call pairs) in address order
-        let mut tw: Vec<usize> = ex.tau.iter().map(|i| wi[*i]).collect();
+        // a call pair's second word comes right after its first (one step in the order)
+        let mut tw: Vec<usize> = Vec::new();
+        for i in &ex.tau {
+            tw.push(wi[*i]);
+            if matches!(func.instrs[*i].instr, Instr::CallPair { .. }) {
+                tw.push(wi[*i] + 1);
+            }
+        }
         for w in 0..size {
             if !tw.contains(&w) {
                 tw.push(w);
@@ -689,7 +696,10 @@ pub fn to_json_image(
                 "to": wi[*t],
                 "theta": m.iter().map(|(v, e)| json!([v.0, j_lin(e)])).collect::<Vec<_>>(),
             })).collect::<Vec<_>>(),
-            "tau": ex.tau.iter().map(|i| wi[*i]).collect::<Vec<_>>(),
+            "tau": ex.tau.iter().flat_map(|i| {
+                let pair = matches!(func.instrs[*i].instr, Instr::CallPair { .. });
+                std::iter::once(wi[*i]).chain(pair.then_some(wi[*i] + 1))
+            }).collect::<Vec<_>>(),
             "fresh": ex.fresh,
         }));
     }
