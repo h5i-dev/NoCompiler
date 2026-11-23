@@ -81,8 +81,7 @@ theorem Inv.writeInside {S : STy} {s : State} {ι : Val} {F : TokFp} (hI : Inv f
     simp only [State.setMem_mem, STy.dropFields]
     have : read64 m' (s0.reg Reg.sp - BitVec.ofNat 64 S.depth + BitVec.ofNat 64 p.1) =
         read64 s.mem (s0.reg Reg.sp - BitVec.ofNat 64 S.depth + BitVec.ofNat 64 p.1) := by
-      unfold read64; congr 1
-      exact readLE_congr fun i hi => hm _ (fun hcx => (hb i hi).2 (hI.stack c hc _ hcx (hb i hi).1))
+      exact read64_congr fun i hi => hm _ (fun hcx => (hb i hi).2 (hI.stack c hc _ hcx (hb i hi).1))
     rw [this]; exact h2
 
 /-- The invariant does not look at the trace. -/
