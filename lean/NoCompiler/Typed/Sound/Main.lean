@@ -301,8 +301,8 @@ theorem Fn.tail_step (hst : f.StructSpec) {c : Code} {D : Dom}
   | none => rw [hls] at hk; cases hk
   | some ls =>
   rw [hls] at hk
-  simp only [Bool.and_eq_true] at hk
-  obtain ⟨hap, hret⟩ := hk
+  simp only [Bool.and_eq_true, decide_eq_true_eq] at hk
+  obtain ⟨⟨⟨hap, htx⟩, hids⟩, hret⟩ := hk
   have hgm := lookup_mem hg
   obtain ⟨hal, Dg, hmeets, hDg, -⟩ := hcall _ hgm
   have hok := Fn.calleeOk_spec (hst.callees _ hgm)
@@ -330,7 +330,7 @@ theorem Fn.tail_step (hst : f.StructSpec) {c : Code} {D : Dom}
     omega
   · intro s2 hdone hfr
     rcases hdone with ⟨hlive, hpc2, hpres, hpost⟩ | ⟨hex, -⟩
-    · obtain ⟨ι', -, hI'⟩ := f.afterCall_inv hst hI hok hθ hstk hls hregs1 hmem1 hpres hlive hpost hfr
+    · obtain ⟨ι', -, hI'⟩ := f.afterCall_inv hst hI hok hθ hstk hls htx hids hregs1 hmem1 hpres hlive hpost hfr
       obtain ⟨hkept, hpost'⟩ := f.retOkOn_sound (Fα := a.2) hst hI' hret hι0r hι0p rfl rfl
       have hpc2' : s2.pc = s0.reg 1 := by rw [hpc2]; exact hra1
       refine Reach.done ⟨.inl (by rw [hpc2']; exact he.ret), .inl ⟨hlive, hpc2', hkept, hpost'⟩⟩

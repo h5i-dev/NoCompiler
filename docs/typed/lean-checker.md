@@ -55,10 +55,16 @@ address-taken ranges as `rw` capabilities, 8-byte save slots, the epilogue; see
 `lean/TypedTests/Frame.lean`. Calls are covered (Lemma 8): `jal ra, f` and clang's
 `call f` = `auipc t, hi` + `jalr ra, lo(t)` (I21; `auipc` gets its exact value, since the
 checked image fixes the address of each instruction), and `tail f` = `auipc t1` +
-`jalr zero, lo(t1)` at depth 0 with `ra` the entry's. The callee's `borrow` clauses are lent
-from held capabilities; the fields of capabilities lent `rw` are forgotten after the call.
-Still rejected: `ecall` (the hook `Fn.ecallOk` is agent U's, Lemma 9), tokens, `take`/`give`,
-`partial` (added when a partial function is needed, I19), static data (U, I30/I32).
+`jalr zero, lo(t1)` at depth 0 with `ra` the entry's. The callee's `borrow` and `take` clauses are
+lent from held capabilities; the fields of capabilities lent `rw` are forgotten after the call;
+a capability a `take` clause was lent from (it must be exclusive) is gone after the call, and
+the callee's `give` capabilities (bytes, no fields) are added. In a function's own signature,
+`take` capabilities are held from the entry and each `give` must be covered at the return (depth
+0) by a distinct held exclusive capability not returned for a borrow; the Pool condition follows
+from the invariant (such a capability lies in the entry permission, misses the stack and the
+returned borrows). Syscalls (`ecall`, Lemma 9) are agent U's (`Typed/Ecall.lean`). Still
+rejected: tokens, `partial` (added when a partial function is needed, I19), static data (U,
+I30/I32).
 
 ## Example
 

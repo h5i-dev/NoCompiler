@@ -319,10 +319,11 @@ def lendFrom (S : STy) (b : BytesCap) : Option HCap :=
           (.le (.lit 0) b.len)))
     | .token _ => false
 
-/-- The borrow clauses (instantiated) and the held capabilities they are lent from. -/
+/-- The callee's `borrow` and `take` clauses (instantiated) and the held capabilities they
+    are lent from. -/
 def lends (S : STy) (g : Sig) (θ : Subst) : Option (List (BytesCap × HCap)) :=
-  g.borrow.mapM fun b =>
-    match b.cap.kind with
+  g.entryCaps.mapM fun c =>
+    match c.kind with
     | .bytes x =>
       let x' : BytesCap := { x with base := x.base.subst θ, len := x.len.subst θ }
       (lendFrom S x').map fun c => (x', c)
@@ -343,17 +344,30 @@ def clearLent (ls : List (BytesCap × HCap)) (c : HCap) : HCap :=
     | .token _ => c
   else c
 
+/-- The held capabilities `take` clauses are lent from: the callee keeps them. -/
+def takenIds (g : Sig) (ls : List (BytesCap × HCap)) : List Nat :=
+  (ls.drop g.borrow.length).map (·.2.id)
+
+/-- Identities for the capabilities a callee gives, from the record at `k + 1`. -/
+def callIds (k : Nat) (S : STy) : List Nat :=
+  match f.tyAt (k + 1) with
+  | some S' => (S'.caps.filter (fun (c : HCap) => !S.caps.any (fun d => d.id == c.id))).map (·.id)
+  | none => []
+
 /-- The type after the call returns: preserved registers kept, the `out` registers with the
     callee's `out` variables renamed to fresh ones, its exit constraint, the fields of
     capabilities lent `rw` forgotten. -/
-def afterCall (S : STy) (g : Sig) (θ : Subst) (ls : List (BytesCap × HCap)) : STy :=
+def afterCall (S : STy) (g : Sig) (θ : Subst) (ls : List (BytesCap × HCap)) (ids : List Nat) : STy :=
   let x := f.freshAt S
   let ρ := θ ++ g.outVars.zipIdx.map fun (p : Var × Nat) => (p.1, IExpr.var (x + p.2))
+  let base := S.caps.foldr (fun (c : HCap) m => max (c.id + 1) m) 0
   { S with
     regs := S.regs.filter (fun p => preservedRegs.contains p.1) ++
       g.outRegs.map fun p => (p.1, p.2.subst ρ)
     facts := g.post.subst ρ :: S.facts
-    caps := S.caps.map (clearLent ls) }
+    caps := (S.caps.filter (fun c => !(takenIds g ls).contains c.id)).map (clearLent ls) ++
+      g.give.zipIdx.map fun (p : Cap × Nat) =>
+        { id := ids.getD p.2 (base + p.2), origin := none, cap := p.1.subst ρ } }
 
 /-- A call from point `k` of the callee at `t` (in the table), returning to `k + 1`. -/
 def callAt (k : Nat) (S : STy) (t : Word) : Bool :=
@@ -370,7 +384,10 @@ def callAt (k : Nat) (S : STy) (t : Word) : Bool :=
       decide (S.depth + g.stack ≤ f.sig.stack) &&
       match lends S g θ with
       | none => false
-      | some ls => lendsApart S ls && f.edge (some k) (f.afterCall S g θ ls) (k + 1)
+      | some ls =>
+        let S' := f.afterCall S g θ ls (f.callIds k S)
+        lendsApart S ls && (ls.drop g.borrow.length).all (·.2.cap.exclusive) &&
+        decide ((S'.caps.map (·.id)).Nodup) && f.edge (some k) S' (k + 1)
 
 /-- `jal ra, off` to a callee in the table. -/
 def callOk (k : Nat) (S : STy) (off : BitVec 21) : Bool := f.callAt k S (f.pcOf k + off.signExtend 64)
@@ -403,8 +420,9 @@ def tailAt (S : STy) (t : Word) : Bool :=
       match lends S g θ with
       | none => false
       | some ls =>
-        lendsApart S ls &&
-        let S' := f.afterCall S g θ ls
+        let S' := f.afterCall S g θ ls []
+        lendsApart S ls && (ls.drop g.borrow.length).all (·.2.cap.exclusive) &&
+        decide ((S'.caps.map (·.id)).Nodup) &&
         f.retOkOn preservedRegs S'
           (S'.instantiate { regs := f.sig.outRegs, facts := [f.sig.post] } f.sig.outVars)
 
@@ -474,11 +492,14 @@ def Sig.scoped (σ : Sig) : Bool :=
 /-- What the call rule needs of a callee's signature (v0 of the Lean checker): byte
     capabilities without entry fields, no take/give/tokens, `out` registers caller-saved. -/
 def calleeOk (g : Sig) : Bool :=
-  Sig.scoped g && g.take.isEmpty && g.give.isEmpty && g.params.Nodup &&
-  (g.borrow.all fun b => b.cap.guard == .tt &&
-    match b.cap.kind with | .bytes x => x.fields.isEmpty | .token _ => false) &&
+  Sig.scoped g && g.params.Nodup &&
+  (g.entryCaps.all fun c => c.guard == .tt &&
+    match c.kind with | .bytes x => x.fields.isEmpty | .token _ => false) &&
   (g.inRegs.all fun p => p.1 != 1) &&
-  (g.outRegs.all fun p => !preservedRegs.contains p.1)
+  (g.outRegs.all fun p => !preservedRegs.contains p.1) &&
+  (g.take.all fun c => c.vars.all g.params.contains) &&
+  (g.give.all fun c => (match c.kind with | .bytes x => x.fields.isEmpty | .token _ => false) &&
+    c.vars.all (fun y => g.params.contains y || g.outVars.contains y))
 
 /-- The structural conditions: loops nested, variables apart. -/
 def structOk : Bool :=

@@ -25,44 +25,44 @@ theorem Fn.lendFrom_spec {S : STy} {b : BytesCap} {c : HCap} (h : Fn.lendFrom S 
 
 /-- What `calleeOk` says about a callee's signature. -/
 structure CalleeSpec (g : Sig) : Prop where
-  take : g.take = []
-  give : g.give = []
   params : g.params.Nodup
-  borrow : ∀ b ∈ g.borrow, b.cap.guard = .tt ∧ ∃ x, b.cap.kind = .bytes x ∧ x.fields = []
+  clauses : ∀ c ∈ g.entryCaps, c.guard = .tt ∧ ∃ x, c.kind = .bytes x ∧ x.fields = []
   inRegs : ∀ p ∈ g.inRegs, p.1 ≠ 1
   outRegs : ∀ p ∈ g.outRegs, p.1 ∉ preservedRegs
   inScoped : ∀ p ∈ g.inRegs, ∀ x ∈ p.2.vars, x ∈ g.params
   preScoped : ∀ x ∈ g.pre.vars, x ∈ g.params
-  borrowScoped : ∀ b ∈ g.borrow, ∀ x, b.cap.kind = .bytes x →
-    ∀ y ∈ x.base.vars ++ x.len.vars, y ∈ g.params
   outScoped : ∀ p ∈ g.outRegs, ∀ x ∈ p.2.vars, x ∈ g.params ∨ x ∈ g.outVars
   postScoped : ∀ x ∈ g.post.vars, x ∈ g.params ∨ x ∈ g.outVars
   outNodup : g.outVars.Nodup
   outApart : ∀ y ∈ g.outVars, y ∉ g.params
+  takeScoped : ∀ c ∈ g.take, ∀ y ∈ c.vars, y ∈ g.params
+  giveBytes : ∀ c ∈ g.give, ∃ x, c.kind = .bytes x ∧ x.fields = []
+  giveScoped : ∀ c ∈ g.give, ∀ y ∈ c.vars, y ∈ g.params ∨ y ∈ g.outVars
 
 theorem Fn.calleeOk_spec {g : Sig} (h : Fn.calleeOk g = true) : CalleeSpec g := by
   unfold Fn.calleeOk Fn.Sig.scoped at h
   simp only [Bool.and_eq_true, List.all_eq_true, List.isEmpty_iff, beq_iff_eq, decide_eq_true_eq,
     Bool.or_eq_true, List.contains_iff_mem, Bool.not_eq_true', bne_iff_ne, ne_eq] at h
   simp only [and_assoc] at h
-  obtain ⟨hin, hpre, hbor, hout, hpost, hond, hoap, htake, hgive, hpnd, hbb, hir, hor⟩ := h
-  refine ⟨htake, hgive, hpnd, ?_, hir, fun p hp => by simpa using hor p hp, hin, hpre, ?_, hout, hpost,
-    hond, fun y hy => by simpa using hoap y hy⟩
-  · intro b hb
-    obtain ⟨hg, hk⟩ := hbb b hb
+  obtain ⟨hin, hpre, -, hout, hpost, hond, hoap, hpnd, hcl, hir, hor, htk, hgv⟩ := h
+  refine ⟨hpnd, ?_, hir, fun p hp => by simpa using hor p hp, hin, hpre, hout, hpost,
+    hond, fun y hy => by simpa using hoap y hy, fun c hc y hy => by simpa using htk c hc y hy, ?_,
+    fun c hc y hy => by simpa using (hgv c hc).2 y hy⟩
+  · intro c hc
+    obtain ⟨hg, hk⟩ := hcl c hc
     refine ⟨hg, ?_⟩
     split at hk
     · rename_i x hx; exact ⟨x, hx, by simpa using hk⟩
     · cases hk
-  · intro b hb x hx y hy
-    have := (hbor b hb).2
-    rw [hx] at this
-    simp only [Bool.and_eq_true, List.all_eq_true, List.contains_iff_mem] at this
-    exact this.1 y (by simp only [List.mem_append] at hy ⊢; rcases hy with h | h <;> simp [h])
+  · intro c hc
+    obtain ⟨hk, -⟩ := hgv c hc
+    split at hk
+    · rename_i x hx; exact ⟨x, hx, by simpa using hk⟩
+    · cases hk
 
 theorem Fn.lends_spec {S : STy} {g : Sig} {θ : Subst} {ls : List (BytesCap × HCap)}
-    (h : Fn.lends S g θ = some ls) : ls.length = g.borrow.length ∧
-      ∀ i (hi : i < g.borrow.length) (hl : i < ls.length), ∃ x, g.borrow[i].cap.kind = .bytes x ∧
+    (h : Fn.lends S g θ = some ls) : ls.length = g.entryCaps.length ∧
+      ∀ i (hi : i < g.entryCaps.length) (hl : i < ls.length), ∃ x, g.entryCaps[i].kind = .bytes x ∧
         ls[i].1 = { x with base := x.base.subst θ, len := x.len.subst θ } ∧
         Fn.lendFrom S ls[i].1 = some ls[i].2 := by
   obtain ⟨hlen, hget⟩ := mapM_some h
@@ -119,11 +119,11 @@ theorem Inv.sp_toNat (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {Ft :
     of its instantiated range, which lies in the held capability it is lent from. -/
 theorem clause_fp {ι : Val} {F : TokFp} {S : STy} {g : Sig} {θ : Subst}
     {ls : List (BytesCap × HCap)} (hok : CalleeSpec g) (hls : Fn.lends S g θ = some ls)
-    {i : Nat} (hi : i < g.borrow.length) (hl : i < ls.length) (x : Word) :
-    g.borrow[i].cap.fp (IExpr.upd ι θ) F x ↔ (ls[i].1.region ι).mem x := by
+    {i : Nat} (hi : i < g.entryCaps.length) (hl : i < ls.length) (x : Word) :
+    g.entryCaps[i].fp (IExpr.upd ι θ) F x ↔ (ls[i].1.region ι).mem x := by
   obtain ⟨-, hget⟩ := Fn.lends_spec hls
   obtain ⟨xb, hk, he, -⟩ := hget i hi hl
-  have hg := (hok.borrow _ (List.getElem_mem hi)).1
+  have hg := (hok.clauses _ (List.getElem_mem hi)).1
   unfold Cap.fp Cap.regions
   rw [hg, he, hk]
   simp [Constr.eval, BytesCap.region]
@@ -141,17 +141,16 @@ theorem Fn.callee_pre (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {Ft 
     (g.spec T).pre (IExpr.upd ι θ, Ft) s1 ∧ ((g.spec T).perm (IExpr.upd ι θ, Ft) s1).le P := by
   have hh := hI.hyps
   obtain ⟨hlen, hget⟩ := Fn.lends_spec hls
-  have hentry : g.entryCaps = g.borrow.map (·.cap) := by simp [Sig.entryCaps, hok.take]
   have hspn := hI.sp_toNat hst
   have hsp1 : (s1.reg Reg.sp).toNat = (s0.reg Reg.sp).toNat - S.depth := by
     rw [hregs _ (by decide)]; exact hspn.1
   have hK := hI.stackLe
   -- clause i: its footprint is its instantiated range, inside the held capability
-  have hcl : ∀ i (hi : i < g.borrow.length), ∃ hl : i < ls.length,
-      (∀ x, g.borrow[i].cap.fp (IExpr.upd ι θ) Ft x → ls[i].2.cap.fp ι Ft x) ∧
+  have hcl : ∀ i (hi : i < g.entryCaps.length), ∃ hl : i < ls.length,
+      (∀ x, g.entryCaps[i].fp (IExpr.upd ι θ) Ft x → ls[i].2.cap.fp ι Ft x) ∧
       ls[i].2 ∈ S.caps ∧
-      (g.borrow[i].cap.exclusive = true → ls[i].2.cap.exclusive = true) ∧
-      (∃ x, g.borrow[i].cap.kind = .bytes x ∧ x.fields = [] ∧
+      (g.entryCaps[i].exclusive = true → ls[i].2.cap.exclusive = true) ∧
+      (∃ x, g.entryCaps[i].kind = .bytes x ∧ x.fields = [] ∧
         0 ≤ (x.base.subst θ).eval ι ∧ 0 ≤ (x.len.subst θ).eval ι ∧
         (x.base.subst θ).eval ι + (x.len.subst θ).eval ι ≤ 2 ^ 64) := by
     intro i hi
@@ -159,7 +158,7 @@ theorem Fn.callee_pre (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {Ft 
     obtain ⟨xb, hk, he, hlf⟩ := hget i hi hl
     obtain ⟨hm, -⟩ := Fn.lendFrom_spec hlf
     obtain ⟨hb, hkb, hmode, -, r0, r1, r2, hfp⟩ := lend_region hh (hI.valid _ hm) hlf
-    obtain ⟨hgt, xb', hk', hf0⟩ := hok.borrow _ (List.getElem_mem hi)
+    obtain ⟨hgt, xb', hk', hf0⟩ := hok.clauses _ (List.getElem_mem hi)
     rw [hk] at hk'; cases hk'
     refine ⟨hl, fun x hx => hfp x ((clause_fp hok hls hi hl x).1 hx), hm, ?_, ⟨xb, hk, hf0, ?_⟩⟩
     · intro hex
@@ -187,16 +186,11 @@ theorem Fn.callee_pre (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {Ft 
       (by rw [← hd]; exact hI.stack c hc x hx h0)
     rw [← hd] at h2
     omega
-  have hentryGet : ∀ i (hi : i < g.entryCaps.length), ∃ hb : i < g.borrow.length,
-      g.entryCaps[i] = g.borrow[i].cap := by
-    intro i hi
-    have hb : i < g.borrow.length := by simpa [hentry] using hi
-    exact ⟨hb, by simp [hentry]⟩
-  have hentryMem : ∀ c ∈ g.entryCaps, ∃ i, ∃ hi : i < g.borrow.length, c = g.borrow[i].cap := by
+  have hentryGet : ∀ i (hi : i < g.entryCaps.length), ∃ hb : i < g.entryCaps.length,
+      g.entryCaps[i] = g.entryCaps[i] := fun i hi => ⟨hi, rfl⟩
+  have hentryMem : ∀ c ∈ g.entryCaps, ∃ i, ∃ hi : i < g.entryCaps.length, c = g.entryCaps[i] := by
     intro c hc
-    rw [hentry] at hc
-    obtain ⟨b, hb, rfl⟩ := List.mem_map.1 hc
-    obtain ⟨i, hi, rfl⟩ := List.getElem_of_mem hb
+    obtain ⟨i, hi, rfl⟩ := List.getElem_of_mem hc
     exact ⟨i, hi, rfl⟩
   refine ⟨⟨?_, ?_, ?_, ?_, ?_, ?_⟩, ?_⟩
   · -- registers
@@ -418,17 +412,37 @@ theorem upd_rename {θ : Subst} {S : STy} {g : Sig}
     rw [setFrom_at i (by simpa using hi)]
     simp [List.getElem?_eq_getElem hi]
 
+theorem Cap.subst_fp {c : Cap} {b : BytesCap} (hk : c.kind = .bytes b) (ρ : Subst) (ι : Val)
+    (F F' : TokFp) (z : Word) : (c.subst ρ).fp ι F z ↔ c.fp (IExpr.upd ι ρ) F' z := by
+  unfold Cap.subst Cap.fp Cap.regions
+  rw [hk]
+  simp only [Constr.eval_subst]
+  simp [BytesCap.region, IExpr.eval_subst]
+
+theorem Cap.subst_valid {T : TokEnv} {c : Cap} {b : BytesCap} (hk : c.kind = .bytes b) (hf : b.fields = [])
+    (ρ : Subst) (ι : Val) (F F' : TokFp) (m : Word → Byte) :
+    (c.subst ρ).valid T ι F m ↔ c.valid T (IExpr.upd ι ρ) F' m := by
+  unfold Cap.subst Cap.valid
+  rw [hk]
+  simp [Constr.holds, Constr.eval_subst, IExpr.eval_subst, hf]
+
+theorem Cap.subst_exclusive (c : Cap) (ρ : Subst) : (c.subst ρ).exclusive = c.exclusive := by
+  unfold Cap.subst Cap.exclusive
+  cases c.kind <;> rfl
+
 /-- Lemma 8.3: when the callee returns, the type after the call holds. -/
 theorem Fn.afterCall_inv (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {Ft : TokFp}
     (hI : Inv f T P s0 ι0 S s ι Ft) {g : Sig} (hok : CalleeSpec g) {θ : Subst}
     (hθ : Fn.callInst S g = some θ) (hstk : S.depth + g.stack ≤ f.sig.stack)
     {ls : List (BytesCap × HCap)} (hls : Fn.lends S g θ = some ls)
+    (htx : (ls.drop g.borrow.length).all (·.2.cap.exclusive) = true) {ids : List Nat}
+    (hids : ((f.afterCall S g θ ls ids).caps.map (·.id)).Nodup)
     {s1 s2 : State} (hregs : ∀ r : Reg, r ≠ 1 → s1.reg r = s.reg r) (hmem : s1.mem = s.mem)
     (hpres : Preserved s1 s2) (hlive : s2.exit = none)
     (hpost : g.Post T (IExpr.upd ι θ) Ft s1 s2)
     (hframe : ∀ x, ¬ ((g.spec T).perm (IExpr.upd ι θ, Ft) s1).writable x → s2.mem x = s1.mem x) :
-    ∃ ι', (∀ y : Nat, y < f.fresh → ι' y = ι y) ∧ Inv f T P s0 ι0 (f.afterCall S g θ ls) s2 ι' Ft := by
-  obtain ⟨ιg', Fg', hag, hregs', hpost', -, -, -⟩ := hpost
+    ∃ ι', (∀ y : Nat, y < f.fresh → ι' y = ι y) ∧ Inv f T P s0 ι0 (f.afterCall S g θ ls ids) s2 ι' Ft := by
+  obtain ⟨ιg', Fg', hag, hregs', hpost', hgval, hgsep, hgpool⟩ := hpost
   obtain ⟨hθ1, hθ2⟩ := Fn.callInst_spec hθ
   have hh := hI.hyps
   obtain ⟨hlen, hget⟩ := Fn.lends_spec hls
@@ -451,10 +465,7 @@ theorem Fn.afterCall_inv (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {
     · left
       simp only [Sig.writeRegions, List.mem_flatMap, List.mem_filter] at hr
       obtain ⟨c, ⟨hc, hex⟩, hrc⟩ := hr
-      have hentry : g.entryCaps = g.borrow.map (·.cap) := by simp [Sig.entryCaps, hok.take]
-      rw [hentry] at hc
-      obtain ⟨b, hb, rfl⟩ := List.mem_map.1 hc
-      obtain ⟨i, hi, rfl⟩ := List.getElem_of_mem hb
+      obtain ⟨i, hi, rfl⟩ := List.getElem_of_mem hc
       have hl : i < ls.length := by omega
       obtain ⟨xb, hk, he, hlf⟩ := hget i hi hl
       obtain ⟨hmc, -⟩ := Fn.lendFrom_spec hlf
@@ -523,6 +534,70 @@ theorem Fn.afterCall_inv (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {
         (Cap.valid_congr (hI.valid c0 hc0) (fun z hz => (hcapw c0 hc0 ?_ z hz).symm))⟩
       intro p hp hrw e
       exact hl p hp e hrw
+  -- the given capabilities: renamed, valid, inside the held capabilities `take` was lent from
+  have htx' : ∀ i (hi : g.borrow.length ≤ i) (hl : i < ls.length), ls[i].2.cap.exclusive = true ∧
+      ls[i].2.id ∈ Fn.takenIds g ls := by
+    intro i hi hl
+    have hm : ls[i] ∈ ls.drop g.borrow.length := by
+      rw [List.mem_iff_getElem]
+      refine ⟨i - g.borrow.length, by simp; omega, ?_⟩
+      rw [List.getElem_drop]; simp only [Nat.add_sub_cancel' hi]
+    exact ⟨List.all_eq_true.1 htx _ hm, List.mem_map.2 ⟨_, hm, rfl⟩⟩
+  have hgivenFp : ∀ j (hj : j < g.give.length) z,
+      ((g.give[j]).subst (θ ++ g.outVars.zipIdx.map fun (p : Var × Nat) => (p.1, IExpr.var (x + p.2)))).fp
+        ι' Ft z ↔ g.give[j].fp ιg' Fg' z := by
+    intro j hj z
+    obtain ⟨xb, hk, -⟩ := hok.giveBytes _ (List.getElem_mem hj)
+    rw [Cap.subst_fp hk _ _ _ Fg']
+    exact (Cap.congr_vars (T := T) (F := Fg')
+      (fun y hy => hupd y (hok.giveScoped _ (List.getElem_mem hj) y hy))).1 z
+  have hgivenValid : ∀ j (hj : j < g.give.length),
+      ((g.give[j]).subst (θ ++ g.outVars.zipIdx.map fun (p : Var × Nat) => (p.1, IExpr.var (x + p.2)))).valid
+        T ι' Ft s2.mem := by
+    intro j hj
+    obtain ⟨xb, hk, hf0⟩ := hok.giveBytes _ (List.getElem_mem hj)
+    rw [Cap.subst_valid hk hf0 _ _ _ Fg']
+    refine (((Cap.congr_vars (T := T) (F := Fg')
+      (fun y hy => hupd y (hok.giveScoped _ (List.getElem_mem hj) y hy))).2 _).2 ?_)
+    exact hgval _ (by simp [Sig.exitCaps, List.getElem_mem hj])
+  have hgivenIn : ∀ j (hj : j < g.give.length) z,
+      ((g.give[j]).subst (θ ++ g.outVars.zipIdx.map fun (p : Var × Nat) => (p.1, IExpr.var (x + p.2)))).fp
+        ι' Ft z →
+      ∃ i, ∃ hl : i < ls.length, ls[i].2 ∈ S.caps ∧ ls[i].2.cap.exclusive = true ∧
+        ls[i].2.id ∈ Fn.takenIds g ls ∧ ls[i].2.cap.fp ι Ft z := by
+    intro j hj z hz
+    have hz' := (hgivenFp j hj z).1 hz
+    have hpool := hgpool _ (by simp [Sig.fresh, List.getElem_mem hj]) z hz'
+    rcases hpool with ⟨t, ht, htz⟩ | ⟨b, hb, htok, -⟩
+    · obtain ⟨i', hi', rfl⟩ := List.getElem_of_mem ht
+      have hi : g.borrow.length + i' < g.entryCaps.length := by simp [Sig.entryCaps]; omega
+      have hl : g.borrow.length + i' < ls.length := by omega
+      have e : g.entryCaps[g.borrow.length + i'] = g.take[i'] := by
+        simp only [Sig.entryCaps]; rw [List.getElem_append_right (by simp)]; simp
+      have hzr := (clause_fp hok hls hi hl z).1 (by rw [e]; exact htz)
+      obtain ⟨xb, hk, he, hlf⟩ := hget _ hi hl
+      obtain ⟨hmc, -⟩ := Fn.lendFrom_spec hlf
+      obtain ⟨-, -, -, -, -, -, -, hfp⟩ := lend_region hh (hI.valid _ hmc) hlf
+      obtain ⟨hex, htk⟩ := htx' _ (by omega) hl
+      exact ⟨_, hl, hmc, hex, htk, hfp z hzr⟩
+    · obtain ⟨-, xb, hk, -⟩ := hok.clauses b.cap (by simp [Sig.entryCaps]; exact .inl ⟨b, hb, rfl⟩)
+      simp [hk] at htok
+  have hcaps' : ∀ c ∈ (f.afterCall S g θ ls ids).caps,
+      (∃ c0 ∈ S.caps, c0.id ∉ Fn.takenIds g ls ∧ c = Fn.clearLent ls c0) ∨
+      (∃ j, ∃ hj : j < g.give.length, c.id = ids.getD j (S.caps.foldr (fun (c : HCap) m => max (c.id + 1) m) 0 + j) ∧
+        c.cap = (g.give[j]).subst (θ ++ g.outVars.zipIdx.map fun (p : Var × Nat) => (p.1, IExpr.var (x + p.2)))) := by
+    intro c hc
+    simp only [Fn.afterCall, List.mem_append, List.mem_map, List.mem_filter, Bool.not_eq_true',
+      List.contains_iff_mem] at hc
+    rcases hc with ⟨c0, ⟨hc0, hn⟩, rfl⟩ | ⟨⟨gc, j⟩, hm, rfl⟩
+    · left
+      refine ⟨c0, hc0, fun h => ?_, rfl⟩
+      simp [List.elem_iff, h] at hn
+    · right
+      obtain ⟨-, hj, hgj⟩ := List.mem_zipIdx hm
+      refine ⟨j, by simpa using hj, rfl, ?_⟩
+      simp only [hgj, Nat.sub_zero]
+      rfl
   refine ⟨ι', g3, ?_, ?_, fun z hz => (g2 z hz).trans (hI.prot z hz), ?_, ?_, ?_, ?_, ?_, ?_, hlive,
     hI.depth, ?_, hI.stackW, hI.spAl, hI.stackLe⟩
   · -- facts: the callee's exit constraint, and the old facts
@@ -546,30 +621,47 @@ theorem Fn.afterCall_inv (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {
     · refine (hregs' q hq).of_eq ?_
       rw [IExpr.eval_subst, IExpr.eval_congr _ (fun y hy => hupd y (hok.outScoped q hq y hy))]
   · intro c hc
-    simp only [Fn.afterCall, List.mem_map] at hc
-    obtain ⟨c0, hc0, rfl⟩ := hc
-    exact (hclr c0 hc0).2.2.2
+    rcases hcaps' c hc with ⟨c0, hc0, -, rfl⟩ | ⟨j, hj, -, hcj⟩
+    · exact (hclr c0 hc0).2.2.2
+    · rw [hcj]; exact hgivenValid j hj
   · intro c hc d hd hne hex z hz hy
-    simp only [Fn.afterCall, List.mem_map] at hc hd
-    obtain ⟨c0, hc0, rfl⟩ := hc
-    obtain ⟨d0, hd0, rfl⟩ := hd
-    obtain ⟨i1, e1, f1, -⟩ := hclr c0 hc0
-    obtain ⟨i2, -, f2, -⟩ := hclr d0 hd0
-    exact hI.sep c0 hc0 d0 hd0 (by rw [← i1, ← i2]; exact hne) (e1 ▸ hex) z ((f1 z).1 hz) ((f2 z).1 hy)
+    rcases hcaps' c hc with ⟨c0, hc0, hn0, rfl⟩ | ⟨j, hj, hidc, hcj⟩ <;>
+      rcases hcaps' d hd with ⟨d0, hd0, hn1, rfl⟩ | ⟨j', hj', hidd, hdj⟩
+    · obtain ⟨i1, e1, f1, -⟩ := hclr c0 hc0
+      obtain ⟨i2, -, f2, -⟩ := hclr d0 hd0
+      exact hI.sep c0 hc0 d0 hd0 (by rw [← i1, ← i2]; exact hne) (e1 ▸ hex) z ((f1 z).1 hz) ((f2 z).1 hy)
+    · rw [hdj] at hy
+      obtain ⟨i, hl, hm, hexi, htk, hfz⟩ := hgivenIn j' hj' z hy
+      exact hI.sep _ hm c0 hc0 (fun e => hn0 (e ▸ htk)) hexi z hfz (((hclr c0 hc0).2.2.1 z).1 hz)
+    · rw [hcj] at hz
+      obtain ⟨i, hl, hm, hexi, htk, hfz⟩ := hgivenIn j hj z hz
+      exact hI.sep _ hm d0 hd0 (fun e => hn1 (e ▸ htk)) hexi z hfz (((hclr d0 hd0).2.2.1 z).1 hy)
+    · have hjj : j ≠ j' := fun e => hne (by rw [hidc, hidd, e])
+      rw [hcj] at hz hex; rw [hdj] at hy
+      have hb : ∀ j (hj : j < g.give.length), g.borrow.length + j < g.exitCaps.length := by
+        intro j hj; simp [Sig.exitCaps]; omega
+      have he : ∀ j (hj : j < g.give.length), g.exitCaps[g.borrow.length + j]'(hb j hj) = g.give[j] := by
+        intro j hj; simp only [Sig.exitCaps]; rw [List.getElem_append_right (by simp)]; simp
+      have := hgsep _ _ (hb j hj) (hb j' hj') (by omega)
+      rw [he j hj, he j' hj'] at this
+      exact this (by rw [← Cap.subst_exclusive]; exact hex) z ((hgivenFp j hj z).1 hz)
+        ((hgivenFp j' hj' z).1 hy)
   · intro c hc z hz hm
-    simp only [Fn.afterCall, List.mem_map] at hc
-    obtain ⟨c0, hc0, rfl⟩ := hc
-    exact hI.stack c0 hc0 z (((hclr c0 hc0).2.2.1 z).1 hz) hm
+    rcases hcaps' c hc with ⟨c0, hc0, -, rfl⟩ | ⟨j, hj, -, hcj⟩
+    · exact hI.stack c0 hc0 z (((hclr c0 hc0).2.2.1 z).1 hz) hm
+    · rw [hcj] at hz
+      obtain ⟨i, hl, hmi, -, -, hfz⟩ := hgivenIn j hj z hz
+      exact hI.stack _ hmi z hfz hm
   · intro c hc z hz
-    simp only [Fn.afterCall, List.mem_map] at hc
-    obtain ⟨c0, hc0, rfl⟩ := hc
-    obtain ⟨-, e1, f1, -⟩ := hclr c0 hc0
-    obtain ⟨r1, r2⟩ := hI.perm c0 hc0 z ((f1 z).1 hz)
-    exact ⟨r1, fun h => r2 (e1 ▸ h)⟩
-  · have : (f.afterCall S g θ ls).caps.map (·.id) = S.caps.map (·.id) := by
-      simp only [Fn.afterCall, List.map_map]
-      exact List.map_congr_left (fun c0 hc0 => (hclr c0 hc0).1)
-    rw [this]; exact hI.ids
+    rcases hcaps' c hc with ⟨c0, hc0, -, rfl⟩ | ⟨j, hj, -, hcj⟩
+    · obtain ⟨-, e1, f1, -⟩ := hclr c0 hc0
+      obtain ⟨r1, r2⟩ := hI.perm c0 hc0 z ((f1 z).1 hz)
+      exact ⟨r1, fun h => r2 (e1 ▸ h)⟩
+    · rw [hcj] at hz
+      obtain ⟨i, hl, hmi, hexi, -, hfz⟩ := hgivenIn j hj z hz
+      obtain ⟨r1, r2⟩ := hI.perm _ hmi z hfz
+      exact ⟨r1, fun _ => r2 hexi⟩
+  · exact hids
   · simp only [Fn.afterCall]
     rw [hpres 2 (by simp [preservedRegs]), hregs _ (by decide)]; exact hI.sp
   · -- slots: not written
@@ -661,8 +753,8 @@ theorem Fn.callAt_step (hst : f.StructSpec) {c : Code} {D : Dom} {Q : State → 
   | none => rw [hls] at hk; cases hk
   | some ls =>
   rw [hls] at hk
-  simp only [Bool.and_eq_true] at hk
-  obtain ⟨hap, hedge⟩ := hk
+  simp only [Bool.and_eq_true, decide_eq_true_eq] at hk
+  obtain ⟨⟨⟨hap, htx⟩, hids⟩, hedge⟩ := hk
   have hgm := lookup_mem hg
   obtain ⟨hal, Dg, hmeets, hDg, hret⟩ := hcall _ hgm
   have hok := Fn.calleeOk_spec (hst.callees _ hgm)
@@ -689,7 +781,7 @@ theorem Fn.callAt_step (hst : f.StructSpec) {c : Code} {D : Dom} {Q : State → 
     omega
   · intro s2 hdone hfr
     rcases hdone with ⟨hlive, hpc2, hpres, hpost⟩ | ⟨hex, -⟩
-    · obtain ⟨ι', g1, hI'⟩ := f.afterCall_inv hst hI hok hθ hstk hls hregs1 hmem1 hpres hlive hpost hfr
+    · obtain ⟨ι', g1, hI'⟩ := f.afterCall_inv hst hI hok hθ hstk hls htx hids hregs1 hmem1 hpres hlive hpost hfr
       refine cont _ _ ι' ?_ hI' g1 hedge
       rw [hpc2]; exact hra
     · exact hexit s2 hex

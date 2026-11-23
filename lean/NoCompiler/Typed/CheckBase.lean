@@ -198,6 +198,13 @@ def ent (S : STy) (ψ : Constr) : Bool :=
 def entEqMod (S : STy) (a b : IExpr) : Bool := a.same b || S.ent (Constr.eqMod a b)
 end STy
 
+/-- A byte capability without fields, renamed by `θ` (a callee's `give`, at the caller). -/
+def Cap.subst (θ : Subst) (c : Cap) : Cap :=
+  { guard := c.guard.subst θ
+    kind := match c.kind with
+      | .bytes b => .bytes { b with base := b.base.subst θ, len := b.len.subst θ, fields := [] }
+      | .token t => .token t }
+
 /-- The variables a capability mentions. -/
 def Cap.vars (c : Cap) : List Var :=
   c.guard.vars ++ match c.kind with
