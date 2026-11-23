@@ -228,7 +228,7 @@ comments can cite them.
 
 ## Proposals (not adopted: the default checker does not use them)
 
-- **P1 Natural loops instead of address intervals** (adopted as I36) (from the musl trial, docs/typed/musl-trial.md
+- **P1 Natural loops instead of address intervals** (adopted as I36, 2026-11-23, user; docs/Tab 1.md decision 11, docs/健全性の証明.md S2 and Theorem C) (from the musl trial, docs/typed/musl-trial.md
   "Stage 2"). S2 asks that every edge to a lower address goes to an `inv` head and that loops
   be nested address intervals entered at the head. clang's block layout breaks this in 8 of 29
   musl files (backward jumps to return blocks; interleaved loops) although every compiled CFG
