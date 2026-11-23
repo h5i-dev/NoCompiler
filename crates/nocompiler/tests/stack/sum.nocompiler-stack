@@ -1,5 +1,0 @@
-nocompiler-stack 1
-# refine-sum-a.elf with sum replaced by refine-sum-b.elf's (one add's operands swapped)
-base 751554eceaa0cd0f5324733c5d72de7c9b2c505041f49bcaf69093464211428b ../../../../examples/elf/refine-sum-a.elf
-patch 3918eff4ebac946980a96724f6bda1d53513577461e2f7092030a0e69665b9df sum-from-b.s
-result e5c9b8c6c89eff9b7d9784466ab755769f3b054dc5dfe4554688fa5b03cbb824
