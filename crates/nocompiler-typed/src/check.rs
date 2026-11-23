@@ -1644,7 +1644,6 @@ impl<'a> FnCheck<'a> {
                         let s = self.srep(&mut st, &e)?;
                         self.set_less(&mut st, &s, &Lin::konst(imm as i128))?
                     }
-                    _ => self.unknown_word(&mut st, "x"),
                 };
                 self.set(&mut st, rd, v)?;
                 Ok(vec![(next, st)])
