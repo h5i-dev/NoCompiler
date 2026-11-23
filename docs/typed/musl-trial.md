@@ -327,6 +327,24 @@ On the annotation side, the `inv` blocks without `decreases` at non-loop targets
 blocks (listed under finding 1). That is mechanical in `examples/musl/ann/`, and I will make the
 change when the rule changes.
 
+### Batch 3 (predictions written before compiling, 2026-11-23, after stage 3)
+
+Chosen to reach rules the first batches did not: syscalls, a struct capability, calls through
+function pointers, `div`/`ctz`, a NUL-terminated loop calling another string function, and
+writable static data. memmem was considered and left out: honest invariants for twoway's
+maximal-suffix loops would be a large piece of work on their own.
+
+| function | predicted | why |
+|----------|-----------|-----|
+| _Exit | accept | `ecall` with `a7 = 94` (exit_group): the checker gives it no successor (I17), so the `for (;;) exit` loop after it is unreachable. Risk: if the checker still demands an `inv`/`decreases` on that loop's back edge, reject `cfg`/`loop-decreases`. |
+| __towrite | accept | `borrow f ↦ bytes[232] rw` (sizeof FILE), fixed-offset loads and stores of fields; values only `int`. |
+| __fwritex | reject `profile` | `f->write(...)` is a call through a function pointer (`jalr` to a register, S1). Even without it, `memcpy(f->wpos, s, l)` writes to a buffer whose pointer is read from memory, and no capability for it is held. |
+| bsearch | reject `profile` | `cmp(key, try)` is a call through a function pointer. |
+| ffsl | accept | `ctz` (Zbb) or a branch-free sequence: only `int`. |
+| div | accept | `divw`/`remw` give `int`; the result is a struct in `a0`/`a1`, both just `int`. |
+| a64l | not expressible | loops on `*s` until NUL and calls `strchr` (NUL-terminated, the strlen problem). Reads the read-only `digits` table, which I30 now supports. |
+| l64a | reject `static-data` | writes `static char s[7]` (writable data; I30 supports read-only only). |
+
 ## Files
 
 - `scripts/musl-trial/build.sh` — pinned build (musl tree digest, clang 15.0.7, flags);
