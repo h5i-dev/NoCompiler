@@ -67,29 +67,36 @@ theorem Fn.regVar_prot {r : Reg} {x : Var} (h : (r, x) ∈ f.regVar) : x ∈ f.p
 theorem Fn.param_prot {x : Var} (h : x ∈ f.sig.params) : x ∈ f.protectedVars := by
   unfold Fn.protectedVars; exact List.mem_append.2 (.inl h)
 
-/-- Lemma 10 (Q1–Q4). -/
-theorem Fn.retOk_sound (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {F : TokFp} {θ : Subst}
-    (hI : Inv f T P s0 ι0 S s ι F) (hr : f.retOk S θ = true)
+/-- A register whose type is its entry variable holds its entry value. -/
+theorem Fn.kept_reg_sound {S : STy} {s : State} {ι : Val} {F : TokFp}
+    (hI : Inv f T P s0 ι0 S s ι F) (hι0r : ∀ r x, (r, x) ∈ f.regVar → ι0 x = (s0.reg r).toNat)
+    {r : Reg} (h : (match S.reg r, f.regVar.lookup r with
+      | some e, some x => S.entEqMod e (.var x)
+      | _, _ => false) = true) : s.reg r = s0.reg r := by
+  split at h
+  · rename_i e x he hx
+    have h1 := STy.reg_hasInt hI.regs he
+    have h2 := STy.entEqMod_sound h hI.hyps
+    have h3 : HasInt ι (s.reg r) (.var x) := h1.congr h2
+    have hxm := lookup_mem hx
+    have h4 : HasInt ι (s0.reg r) (.var x) := by
+      refine hasInt_toNat _ _ _ ?_
+      rw [hI.prot x (f.regVar_prot hxm), hι0r r x hxm]
+    exact h3.word_eq h4
+  · cases h
+
+/-- Lemma 10 (Q1–Q4), for the registers `rs`. -/
+theorem Fn.retOkOn_sound (hst : f.StructSpec) {rs : List Reg} {S : STy} {s : State} {ι : Val}
+    {F : TokFp} {θ : Subst}
+    (hI : Inv f T P s0 ι0 S s ι F) (hr : f.retOkOn rs S θ = true)
     (hι0r : ∀ r x, (r, x) ∈ f.regVar → ι0 x = (s0.reg r).toNat)
     {ια : Val} {Fα : TokFp} (hι0p : ∀ x ∈ f.sig.params, ι0 x = ια x) :
-    (∀ r ∈ keptRegs, s.reg r = s0.reg r) ∧ f.sig.Post T ια Fα s0 s := by
-  unfold Fn.retOk at hr
+    (∀ r ∈ rs, s.reg r = s0.reg r) ∧ f.sig.Post T ια Fα s0 s := by
+  unfold Fn.retOkOn at hr
   simp only [Bool.and_eq_true, List.all_eq_true, List.any_eq_true, List.contains_iff_mem] at hr
   obtain ⟨⟨⟨hkept, hθ⟩, hsub⟩, hb⟩ := hr
   have hh := hI.hyps
-  refine ⟨fun r hr => ?_, ?_⟩
-  · have := hkept r hr
-    split at this
-    · rename_i e x he hx
-      have h1 := STy.reg_hasInt hI.regs he
-      have h2 := STy.entEqMod_sound this hh
-      have h3 : HasInt ι (s.reg r) (.var x) := h1.congr h2
-      have hxm := lookup_mem hx
-      have h4 : HasInt ι (s0.reg r) (.var x) := by
-        refine hasInt_toNat _ _ _ ?_
-        rw [hI.prot x (f.regVar_prot hxm), hι0r r x hxm]
-      exact h3.word_eq h4
-    · cases this
+  refine ⟨fun r hr => f.kept_reg_sound hI hι0r (hkept r hr), ?_⟩
   -- the exit valuation
   have hprot' : ∀ p ∈ θ, p.1 ∉ f.protectedVars := fun p hp => hst.outProt _ (hθ p hp)
   have hS' := hI.sub (S' := { regs := f.sig.outRegs, facts := [f.sig.post] }) hsub hprot'
@@ -156,5 +163,12 @@ theorem Fn.retOk_sound (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {F 
     obtain ⟨⟨b, hb', rfl⟩, ht⟩ := hc
     obtain ⟨x, hx⟩ := hst.borrowBytes b hb'
     simp [hx] at ht
+
+theorem Fn.retOk_sound (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {F : TokFp} {θ : Subst}
+    (hI : Inv f T P s0 ι0 S s ι F) (hr : f.retOk S θ = true)
+    (hι0r : ∀ r x, (r, x) ∈ f.regVar → ι0 x = (s0.reg r).toNat)
+    {ια : Val} {Fα : TokFp} (hι0p : ∀ x ∈ f.sig.params, ι0 x = ια x) :
+    (∀ r ∈ keptRegs, s.reg r = s0.reg r) ∧ f.sig.Post T ια Fα s0 s :=
+  f.retOkOn_sound hst hI hr hι0r hι0p
 
 end NoCompiler.Typed

@@ -173,9 +173,9 @@ def target (k : Nat) (off : Int) : Option Nat :=
   if off % 4 = 0 && 0 ≤ (k : Int) + off / 4 then some ((k : Int) + off / 4).toNat else none
 
 /-- The return check, under an instantiation of the `out` variables. -/
-def retOk (S : STy) (θ : Subst) : Bool :=
+def retOkOn (rs : List Reg) (S : STy) (θ : Subst) : Bool :=
   let σ := f.sig
-  keptRegs.all (fun r => match S.reg r, f.regVar.lookup r with
+  rs.all (fun r => match S.reg r, f.regVar.lookup r with
     | some e, some x => S.entEqMod e (.var x)
     | _, _ => false) &&
   θ.all (fun p => σ.outVars.contains p.1) &&
@@ -184,6 +184,8 @@ def retOk (S : STy) (θ : Subst) : Bool :=
     S.caps.any fun c => c.origin == some i && S.capSub θ c { id := c.id, origin := some i, cap := b.exitCap }
 
 /-- The return check. -/
+def retOk (S : STy) (θ : Subst) : Bool := f.retOkOn keptRegs S θ
+
 def ret (S : STy) : Bool :=
   f.retOk S (S.instantiate { regs := f.sig.outRegs, facts := [f.sig.post] } f.sig.outVars)
 
@@ -342,9 +344,9 @@ def afterCall (S : STy) (g : Sig) (θ : Subst) (ls : List (BytesCap × HCap)) : 
     facts := g.post.subst ρ :: S.facts
     caps := S.caps.map (clearLent ls) }
 
-/-- `jal ra, off` to a callee in the table. -/
-def callOk (k : Nat) (S : STy) (off : BitVec 21) : Bool :=
-  match f.callees.lookup (f.pcOf k + off.signExtend 64) with
+/-- A call from point `k` of the callee at `t` (in the table), returning to `k + 1`. -/
+def callAt (k : Nat) (S : STy) (t : Word) : Bool :=
+  match f.callees.lookup t with
   | none => false
   | some g =>
     match callInst S g with
@@ -359,17 +361,66 @@ def callOk (k : Nat) (S : STy) (off : BitVec 21) : Bool :=
       | none => false
       | some ls => lendsApart S ls && f.edge (some k) (f.afterCall S g θ ls) (k + 1)
 
+/-- `jal ra, off` to a callee in the table. -/
+def callOk (k : Nat) (S : STy) (off : BitVec 21) : Bool := f.callAt k S (f.pcOf k + off.signExtend 64)
+
+/-- `jalr ra, off(rs)` with `rs` holding a known constant: clang's `call f`, the pair
+    `auipc t, %pcrel_hi(f)` + `jalr ra, %pcrel_lo(f)(t)` (I21), with `auipcOk`'s exact rule. -/
+def callRegOk (k : Nat) (S : STy) (rs : Reg) (off : BitVec 12) : Bool :=
+  match S.reg rs with
+  | some e => e.terms.isEmpty && f.callAt k S ((BitVec.ofInt 64 e.const + off.signExtend 64) &&& ~~~1)
+  | none => false
+
+/-- A tail call of the callee at `t` (I21 `tail`, 健全性の証明 末尾呼出し): the call's check, at
+    depth 0 with `ra` still the entry's, and the type after the callee returns passes this
+    function's return check (without `ra`: the callee returned through it). -/
+def tailAt (S : STy) (t : Word) : Bool :=
+  match f.callees.lookup t with
+  | none => false
+  | some g =>
+    match callInst S g with
+    | none => false
+    | some θ =>
+      (g.inRegs.all fun p => match S.reg p.1 with
+        | some e => S.entEqMod e (p.2.subst θ)
+        | none => false) &&
+      S.ent (g.pre.subst θ) &&
+      decide (S.depth = 0) && decide (g.stack ≤ f.sig.stack) &&
+      (match S.reg 1, f.regVar.lookup 1 with
+        | some e, some x => S.entEqMod e (.var x)
+        | _, _ => false) &&
+      match lends S g θ with
+      | none => false
+      | some ls =>
+        lendsApart S ls &&
+        let S' := f.afterCall S g θ ls
+        f.retOkOn preservedRegs S'
+          (S'.instantiate { regs := f.sig.outRegs, facts := [f.sig.post] } f.sig.outVars)
+
+/-- `jalr zero, off(rs)` with `rs` a known constant: clang's `tail f`. -/
+def tailRegOk (S : STy) (rs : Reg) (off : BitVec 12) : Bool :=
+  match S.reg rs with
+  | some e => e.terms.isEmpty && f.tailAt S ((BitVec.ofInt 64 e.const + off.signExtend 64) &&& ~~~1)
+  | none => false
+
+/-- `auipc rd, imm`: the address is known, since the checked image fixes where point `k` is. -/
+def auipcOk (k : Nat) (S : STy) (rd : Reg) (imm : BitVec 20) : Bool :=
+  rd != 2 && f.edge (some k)
+    (S.setReg rd (some (.lit ((f.pcOf k + (imm.setWidth 32 <<< 12).signExtend 64).toNat : Int)))) (k + 1)
+
 /-- Check instruction `k`, decoded as `i`, at a point of type `S`. -/
 def instrAt (k : Nat) (S : STy) : Instr → Bool
   | .branch op rs1 rs2 off => f.branchOk k S op rs1 rs2 off
   | .jal rd off => if rd == 1 then f.callOk k S off else rd == 0 && f.jalOk k S off
-  | .jalr rd rs1 off => rd == 0 && rs1 == 1 && off == 0 && f.ret S
+  | .jalr rd rs1 off =>
+    if rd == 1 then f.callRegOk k S rs1 off
+    else rd == 0 && ((rs1 == 1 && off == 0 && f.ret S) || f.tailRegOk S rs1 off)
   | .load op rd rs off => f.loadOk k S op rd rs off
   | .store op rs1 rs2 off => f.storeOk k S op rs1 rs2 off
   | .ecall => f.ecallOk k S
   | .unimp => false
   | .lui rd imm => f.arithOk k S (.lui rd imm)
-  | .auipc rd imm => f.arithOk k S (.auipc rd imm)
+  | .auipc rd imm => f.auipcOk k S rd imm
   | .iop op rd rs imm => if rd == 2 then f.frameOk k S op rs imm else f.arithOk k S (.iop op rd rs imm)
   | .addiw rd rs imm => f.arithOk k S (.addiw rd rs imm)
   | .shift op rd rs sh => f.arithOk k S (.shift op rd rs sh)

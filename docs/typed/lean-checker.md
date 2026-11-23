@@ -5,9 +5,23 @@ and run on the **decoded code image** (`Code`, the `.text` words of the binary).
 `lean/NoCompiler/Typed/Sound/` proves it sound:
 
 ```lean
-theorem NoCompiler.Typed.Fn.check_sound (f : Fn) (c : Code) (T : TokEnv)
-    (h : f.check c = true) : Meets c [(f.entry, 4 * f.size)] f.entry T f.sig
+theorem NoCompiler.Typed.Fn.check_sound (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = true)
+    {D : Dom} (hDf : ∀ k < f.size, D.mem (f.pcOf k))
+    (hcall : ∀ p ∈ f.callees, aligned p.1 4 ∧ ∃ Dg, Meets c Dg p.1 T p.2 ∧ Dg.sub D ∧
+      ∀ j < f.size, ¬ Dg.mem (f.pcOf j)) :
+    Meets c D f.entry T f.sig
 ```
+
+`D` holds the function's code and its callees' domains; each callee (entry address and
+signature in `f.callees`) meets its signature on its own domain, away from `f`'s code.
+Without calls this is `Fn.check_sound_leaf`: `Meets c [(f.entry, 4 * f.size)] f.entry T f.sig`.
+
+**Theorem D** (`lean/NoCompiler/Typed/Prog.lean`, `Sound/Prog.lean`): `Prog.check c E fs`
+checks the functions `fs` in order, each one's callees earlier in `fs` or in `E`, the
+external functions with their signature and domain (assumed or proved by hand: `U1`).
+`Prog.check_sound`: if everything in `E` meets its signature, so does every function in
+`fs`, on the domain `Fn.domIn` (its code plus its callees' domains). The order is S5 (no
+recursion).
 
 `Meets` is ⟦σ⟧, total (`lean/NoCompiler/Typed/Sem.lean`): from every entry satisfying the
 signature, every run stays in the function, faults never, accesses only the signature's
@@ -27,18 +41,24 @@ when the image is loaded and the writable memory does not overlap the code.
   a false theorem. The Presburger entailments are decided by an untrusted search whose
   cutting-plane certificates are checked (`Query.check_sound`).
 - The proof follows docs/健全性の証明.md: Lemma 2 (`Fn.arith_sound`), 3 (`Fn.branch_sound`),
-  4 (`Inv.sub`), 5 (`Fn.load_sound`), 6 (`Fn.store_sound`), 10 (`Fn.retOk_sound`), entry T0
+  4 (`Inv.sub`), 5 (`Fn.load_sound`), 6 (`Fn.store_sound`), 7 (`Sound/Frame.lean`),
+  8 (`Sound/Call.lean`: `Fn.callee_pre`, `Fn.afterCall_inv`, `Fn.callAt_step` over
+  `VerifiedImg.call`), 10 (`Fn.retOk_sound`), tail calls (`Fn.tail_step`), entry T0
   (`Fn.entry_inv`), Theorems A–C together in `Fn.run`. Termination uses a ranking function
   (`Sound/Rank.lean`: one lexicographic component per loop, by increasing head) instead of
   the proof's outermost-loop argument.
 
-## Scope (milestone 1), stated as what the checker rejects
+## Scope, stated as what the checker rejects
 
 Frames are covered (Lemma 7, `Sound/Frame.lean`): the prologue `addi sp, sp, -F`, the
 address-taken ranges as `rw` capabilities, 8-byte save slots, the epilogue; see
-`lean/TypedTests/Frame.lean`. Still rejected: calls (`jal ra`), `ecall`, tokens, `take`/`give`, `partial`, static
-data: a function using any of them is rejected (`Fn.structOk`, `Fn.instrAt`). The code
-region `D` of the theorem is the function's own instructions. Calls and syscalls are next.
+`lean/TypedTests/Frame.lean`. Calls are covered (Lemma 8): `jal ra, f` and clang's
+`call f` = `auipc t, hi` + `jalr ra, lo(t)` (I21; `auipc` gets its exact value, since the
+checked image fixes the address of each instruction), and `tail f` = `auipc t1` +
+`jalr zero, lo(t1)` at depth 0 with `ra` the entry's. The callee's `borrow` clauses are lent
+from held capabilities; the fields of capabilities lent `rw` are forgotten after the call.
+Still rejected: `ecall` (the hook `Fn.ecallOk` is agent U's, Lemma 9), tokens, `take`/`give`,
+`partial` (added when a partial function is needed, I19), static data (U, I30/I32).
 
 ## Example
 

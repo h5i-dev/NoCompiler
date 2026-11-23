@@ -258,6 +258,98 @@ theorem Fn.arith_step (hst : f.StructSpec) {c : Code} {P : Perm} {D : Dom} {Q : 
       exact cont _ _ ι' (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' g1 hk
     · cases hk
 
+/-- `auipc rd, imm` with its exact address. -/
+theorem Fn.auipc_step (hst : f.StructSpec) {c : Code} {P : Perm} {D : Dom} {Q : State → Prop}
+    {s0 : State} {ι0 : Val} {F : TokFp} {k : Nat} {S : STy} {s : State} {ι : Val}
+    {rd : Reg} {imm : BitVec 20}
+    (cont : ∀ (S1 : STy) (s' : State) (ι1 : Val) (k' : Nat), s'.pc = f.pcOf k' →
+      Inv f T P s0 ι0 S1 s' ι1 F → (∀ y : Nat, y < f.fresh → ι1 y = ι y) →
+      f.edge (some k) S1 k' = true → Reach c P D Q s')
+    (hd : D.mem s.pc) (hI : Inv f T P s0 ι0 S s ι F) (hi : c.instr s.pc = some (.auipc rd imm))
+    (hpc : s.pc = f.pcOf k) (hk : f.auipcOk k S rd imm = true) : Reach c P D Q s := by
+  unfold Fn.auipcOk at hk
+  simp only [Bool.and_eq_true, bne_iff_ne, ne_eq] at hk
+  obtain ⟨hrd, hk⟩ := hk
+  refine Reach.exec_step hd hI.live hi trivial ?_
+  simp only [exec, Reach.opt_some]
+  refine cont _ _ ι (k + 1) (by simp only [State.setPc_pc]; rw [hpc, f.pcOf_succ])
+    (hI.exact hrd ?_ _) (fun _ _ => rfl) hk
+  rw [hpc]; unfold HasInt; simp [IExpr.eval_lit]
+
+/-- A tail call (I21 `tail`): the callee returns to this function's caller. -/
+theorem Fn.tail_step (hst : f.StructSpec) {c : Code} {D : Dom}
+    (hcall : ∀ p ∈ f.callees, aligned p.1 4 ∧ ∃ Dg, Meets c Dg p.1 T p.2 ∧ Dg.sub D ∧
+      ∀ j < f.size, ¬ Dg.mem (f.pcOf j))
+    {a : Val × TokFp} {s0 : State} (he : Entry D f.entry s0)
+    (hι0r : ∀ r x, (r, x) ∈ f.regVar → f.entryVal a.1 s0 x = (s0.reg r).toNat)
+    (hι0p : ∀ x ∈ f.sig.params, f.entryVal a.1 s0 x = a.1 x)
+    {S : STy} {s : State} {ι : Val} {rs : Reg} {off : BitVec 12}
+    (hI : Inv f T ((f.sig.spec T).perm a s0) s0 (f.entryVal a.1 s0) S s ι a.2)
+    (hd : D.mem s.pc) (hi : c.instr s.pc = some (.jalr 0 rs off)) (hk : f.tailRegOk S rs off = true) :
+    Exec c ((f.sig.spec T).perm a s0) D ((f.sig.spec T).Done a s0) s := by
+  unfold Exec
+  unfold Fn.tailRegOk at hk
+  cases hr : S.reg rs with
+  | none => rw [hr] at hk; cases hk
+  | some e =>
+  rw [hr] at hk
+  simp only [Bool.and_eq_true] at hk
+  obtain ⟨hnil, hk⟩ := hk
+  have hv : BitVec.ofInt 64 e.const = s.reg rs :=
+    ofInt_const_eq (STy.reg_hasInt hI.regs hr) hnil
+  rw [hv] at hk
+  generalize ht : (s.reg rs + off.signExtend 64) &&& ~~~1 = t at hk
+  unfold Fn.tailAt at hk
+  cases hg : f.callees.lookup t with
+  | none => rw [hg] at hk; cases hk
+  | some g =>
+  rw [hg] at hk
+  simp only at hk
+  cases hθ : Fn.callInst S g with
+  | none => rw [hθ] at hk; cases hk
+  | some θ =>
+  rw [hθ] at hk
+  simp only [Bool.and_eq_true, List.all_eq_true, decide_eq_true_eq] at hk
+  obtain ⟨⟨⟨⟨⟨hin, hpre⟩, hd0⟩, hgs⟩, hra⟩, hk⟩ := hk
+  cases hls : Fn.lends S g θ with
+  | none => rw [hls] at hk; cases hk
+  | some ls =>
+  rw [hls] at hk
+  simp only [Bool.and_eq_true] at hk
+  obtain ⟨hap, hret⟩ := hk
+  have hgm := lookup_mem hg
+  obtain ⟨hal, Dg, hmeets, hDg, -⟩ := hcall _ hgm
+  have hok := Fn.calleeOk_spec (hst.callees _ hgm)
+  have hra0 : s.reg 1 = s0.reg 1 := f.kept_reg_sound hI hι0r hra
+  have hstk : S.depth + g.stack ≤ f.sig.stack := by omega
+  refine Reach.exec_step hd hI.live hi trivial ?_
+  have hs0 : s.setReg 0 (s.pc + 4) = s := by simp [State.setReg]
+  have hx : exec (.jalr 0 rs off) s = some (s.setPc t) := by
+    simp only [exec, hs0, ht, jumpTo, hal, if_true]
+  rw [hx, Reach.opt_some]
+  have hregs1 : ∀ r : Reg, r ≠ 1 → (s.setPc t).reg r = s.reg r := fun r _ => by simp
+  have hmem1 : (s.setPc t).mem = s.mem := by simp
+  obtain ⟨hpre', hle⟩ := f.callee_pre hst hI hok
+    (fun p hp => by have := hin p hp; revert this; cases S.reg p.1 <;> simp) hpre hstk hls hap _
+    hregs1 hmem1
+  have hspn := hI.sp_toNat hst
+  have hra1 : (s.setPc t).reg 1 = s0.reg 1 := by simp [hra0]
+  refine VerifiedImg.call hmeets (IExpr.upd ι θ, a.2) ⟨by simp, by simp [hI.live], ?_, ?_, ?_⟩
+    hpre' hDg hle ?_
+  · rw [hra1]; exact fun hm => he.ret (hDg _ hm)
+  · rw [hra1]; exact he.retAligned
+  · unfold aligned
+    rw [hregs1 2 (by decide), hspn.1]
+    have := hI.spAl; have := hspn.2.2; have := hspn.2.1; have := hI.stackLe
+    omega
+  · intro s2 hdone hfr
+    rcases hdone with ⟨hlive, hpc2, hpres, hpost⟩ | ⟨hex, -⟩
+    · obtain ⟨ι', -, hI'⟩ := f.afterCall_inv hst hI hok hθ hstk hls hregs1 hmem1 hpres hlive hpost hfr
+      obtain ⟨hkept, hpost'⟩ := f.retOkOn_sound (Fα := a.2) hst hI' hret hι0r hι0p
+      have hpc2' : s2.pc = s0.reg 1 := by rw [hpc2]; exact hra1
+      refine Reach.done ⟨.inl (by rw [hpc2']; exact he.ret), .inl ⟨hlive, hpc2', hkept, hpost'⟩⟩
+    · exact Reach.done ⟨.inr hex, .inr ⟨hex, trivial⟩⟩
+
 /-- Theorems A, B and C together, for the instructions of `f`: from any point of the record
     whose invariant holds, every run stays in the function, is allowed by the permission,
     ends, and ends returning with the exit conditions. By well-founded induction on the rank. -/
@@ -361,8 +453,21 @@ theorem Fn.run (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.instr
     simp only [exec, hs0, jumpTo, hpc, htgt, if_pos (f.pcOf_aligned hst k'), Reach.opt_some]
     exact cont _ _ ι k' (by simp) (hI.setPc _) (fun _ _ => rfl) hk1
   | jalr rd rs1 off =>
-    simp only [Fn.instrAt, Bool.and_eq_true, beq_iff_eq] at hk1
-    obtain ⟨⟨⟨rfl, rfl⟩, rfl⟩, hk1⟩ := hk1
+    simp only [Fn.instrAt] at hk1
+    by_cases hr1 : rd = 1
+    · subst hr1
+      simp only [beq_self_eq_true, if_true] at hk1
+      exact f.callReg_step hst hI hd hpc hi hk1 hcall
+        (fun s' hx => Reach.done ⟨Or.inr hx, Or.inr ⟨hx, trivial⟩⟩)
+        (fun S1 s' ι1 hpc' hI1 hag he' => cont S1 s' ι1 (k + 1) hpc' hI1 hag he')
+    rw [if_neg (by simpa using hr1)] at hk1
+    simp only [Bool.and_eq_true, Bool.or_eq_true, beq_iff_eq] at hk1
+    obtain ⟨rfl, hk1⟩ := hk1
+    by_cases htl : f.tailRegOk S rs1 off = true
+    · exact f.tail_step hst hcall he hι0r hι0p hI hd hi htl
+    have hk2 := hk1.resolve_right htl
+    clear hk1
+    obtain ⟨⟨rfl, rfl⟩, hk1⟩ := hk2
     unfold Fn.ret at hk1
     obtain ⟨hkept, hpost⟩ := f.retOk_sound (Fα := a.2) hst hI hk1 hι0r hι0p
     refine Reach.exec_step hd hI.live hi trivial ?_
@@ -449,6 +554,9 @@ theorem Fn.run (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.instr
           · cases hk1
       · cases hk1
     · exact f.arith_step hst cont hd hI hi hpc hk1
+  | auipc rd imm =>
+    simp only [Fn.instrAt] at hk1
+    exact f.auipc_step hst cont hd hI hi hpc hk1
   | ecall =>
     simp only [Fn.instrAt] at hk1
     exact f.ecall_step hst hI hd hpc hi hk1
