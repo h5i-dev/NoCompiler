@@ -236,9 +236,51 @@ def solveFrom (S S' : STy) (y : Var) (known : List Var) : Option IExpr :=
             else none
         else none
 
+/-- Solve `a = b` for `y` (`a` mentions `y` once after normalising, `b` does not). -/
+def solveLin (a b : IExpr) (y : Var) : Option IExpr :=
+  let la := a.toLin
+  match la.t.find? (·.1 == y) with
+  | none => none
+  | some (_, k) =>
+    let rest : IExpr := ⟨la.c, (la.t.filter (·.1 != y)).map fun t => (t.2, t.1)⟩
+    let l := (b.sub rest).toLin
+    if k != 0 && l.c % k == 0 && l.t.all (fun t => t.2 % k == 0) then
+      some ⟨l.c / k, l.t.map fun t => (t.2 / k, t.1)⟩
+    else none
+
+/-- Candidates for `y` from a target fact `p` matched against the source facts of the same
+    shape: divisibility with the same modulus, or equations (either orientation). -/
+def factCands (S : STy) (θ : Subst) (y : Var) (p : Constr) : List IExpr :=
+  match p with
+  | .dvd c a =>
+    S.facts.filterMap fun q => match q with
+      | .dvd c' b => if c == c' then solveLin (a.subst θ) b y else none
+      | _ => none
+  | .eq a1 a2 =>
+    S.facts.flatMap fun q => match q with
+      | .eq b1 b2 =>
+        [solveLin ((a1.sub a2).subst θ) (b1.sub b2) y,
+         solveLin ((a1.sub a2).subst θ) (b2.sub b1) y].filterMap id
+      | _ => []
+  | _ => []
+
 /-- **Owned by agent U** (STATUS.md): more of `θ` after the register passes, e.g. from the
-    target's facts. Untrusted like the rest of instantiation: `sub` re-checks any `θ`. -/
-def instantiateExt (_S _S' : STy) (_newVars : List Var) (θ : Subst) : Subst := θ
+    target's facts. Untrusted like the rest of instantiation: `sub` re-checks any `θ`.
+    A variable the registers leave open (an `urep`/`srep` representative, a quotient) is
+    matched through the facts it occurs in; the simplest candidate wins. -/
+def instantiateExt (S S' : STy) (newVars : List Var) (θ : Subst) : Subst :=
+  let pass (θ : Subst) : Subst :=
+    newVars.foldl (fun θ y =>
+      if (θ.lookup y).isSome then θ else
+      let cands := (S'.facts.flatMap fun p =>
+        if p.vars.contains y then factCands S θ y p else []).filter
+          (fun e => e.vars.all (fun x => !newVars.contains x || (θ.lookup x).isSome))
+      match cands.foldl (fun best e => match best with
+          | none => some e
+          | some b => if e.terms.length < b.terms.length then some e else some b) none with
+      | some e => (y, e) :: θ
+      | none => θ) θ
+  pass (pass θ)
 
 def instantiate (S S' : STy) (newVars : List Var) : Subst :=
   -- passes: each may make more variables known

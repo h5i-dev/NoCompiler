@@ -371,6 +371,84 @@ theorem Inv.word32' (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S : STy} {
       simp only [Constr.holds, Constr.eval, Constr.lt, decide_eq_true_eq, IExpr.eval_var,
         IExpr.eval_lit, IExpr.eval_add, IExpr.eval_sub, setFrom_x, hev] <;> split at hc <;> omega
 
+theorem nat_and_eq_zero {a b j : Nat} (ha : a < 2 ^ j) (hb : b % 2 ^ j = 0) : a &&& b = 0 := by
+  have h1 : a = a &&& (2 ^ j - 1) := (Nat.and_two_pow_sub_one_of_lt_two_pow ha).symm
+  rw [h1, Nat.and_assoc, Nat.and_comm (2 ^ j - 1) b, Nat.and_two_pow_sub_one_eq_mod, hb, Nat.and_zero]
+
+theorem bv_disjoint {w c : Word} (h : w &&& c = 0#64) : w ||| c = w + c ∧ w ^^^ c = w + c := by
+  have ho := (BitVec.add_eq_or_of_and_eq_zero w c h).symm
+  refine ⟨ho, ?_⟩
+  rw [← ho]
+  ext i hi
+  have := congrArg (fun z => z.getLsbD i) h
+  simp only [BitVec.getLsbD_and, BitVec.getLsbD_zero] at this
+  simp only [BitVec.getElem_xor, BitVec.getElem_or]
+  rw [← BitVec.getLsbD_eq_getElem, ← BitVec.getLsbD_eq_getElem]
+  cases hw : w.getLsbD i <;> cases hc : c.getLsbD i <;> simp_all
+
+/-- The result of `disjConst`: under the invariant, `w op c` for `op` or/xor is `e + cu`. -/
+theorem disjConst_val {ι : Val} {S : STy} (hh : ∀ p ∈ S.hyps, p.holds ι) {e : IExpr} {w c : Word}
+    (hw : HasInt ι w e) {cu : Nat} (hc : c.toNat = cu) (hcu : cu ≠ 0)
+    (hr : S.ent (.and (.le (.lit 0) e) (.lt e (.lit (2 ^ 64)))) = true)
+    (hd : ((cu % 2 ^ Fn.tz cu == 0 && S.ent (.lt e (.lit (2 ^ Fn.tz cu)))) ||
+       (decide (cu < 2 ^ (cu.log2 + 1)) && S.ent (.dvd (2 ^ (cu.log2 + 1)) e))) = true) :
+    HasInt ι (w ||| c) (e.add (.lit cu)) ∧ HasInt ι (w ^^^ c) (e.add (.lit cu)) := by
+  have hr := STy.ent_sound hr hh
+  simp only [Constr.holds, Constr.eval, Constr.lt, IExpr.eval_add, IExpr.eval_lit, Bool.and_eq_true,
+    decide_eq_true_eq] at hr
+  have hwn : (w.toNat : Int) = e.eval ι := hw.toNat_eq hr.1 (by omega)
+  have hand : w &&& c = 0#64 := by
+    apply BitVec.eq_of_toNat_eq
+    rw [BitVec.toNat_and, hc, BitVec.toNat_zero]
+    simp only [Bool.or_eq_true, Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at hd
+    rcases hd with ⟨h1, h2⟩ | ⟨h1, h2⟩
+    · have h2 := STy.ent_sound h2 hh
+      simp only [Constr.holds, Constr.eval, Constr.lt, IExpr.eval_add, IExpr.eval_lit,
+        decide_eq_true_eq] at h2
+      exact nat_and_eq_zero (by have : ((2 ^ Fn.tz cu : Nat) : Int) = 2 ^ Fn.tz cu := by norm_cast
+                                omega) h1
+    · have h2 := STy.ent_sound h2 hh
+      simp only [Constr.holds, Constr.eval, decide_eq_true_eq] at h2
+      rw [Nat.and_comm]
+      refine nat_and_eq_zero h1 ?_
+      have : ((2 ^ (cu.log2 + 1) : Nat) : Int) ∣ (w.toNat : Int) := by
+        rw [hwn]; exact Int.dvd_of_emod_eq_zero (by exact_mod_cast h2)
+      exact Nat.mod_eq_zero_of_dvd (Int.natCast_dvd_natCast.1 this)
+  obtain ⟨ho, hx⟩ := bv_disjoint hand
+  have hs : HasInt ι (w + c) (e.add (.lit cu)) :=
+    hasInt_add hw (by unfold HasInt; rw [hc, IExpr.eval_lit])
+  exact ⟨ho ▸ hs, hx ▸ hs⟩
+
+theorem Fn.disjConst_sound {S S' : STy} {s : State} {ι : Val} {F : TokFp}
+    (hI : Inv f T P s0 ι0 S s ι F) {rd : Reg} (hrd : rd ≠ 2) {e : IExpr} {w c : Word}
+    (hw : HasInt ι w e) {cu : Nat} (hc : c.toNat = cu) (ha : Fn.disjConst S rd e cu = some S')
+    {v : Word} (hv : v = w ||| c ∨ v = w ^^^ c) :
+    ∃ ι', (∀ y : Nat, y < f.fresh → ι' y = ι y) ∧
+      Inv f T P s0 ι0 S' ((s.setReg rd v).setPc (s.pc + 4)) ι' F ∧
+      ((s.setReg rd v).setPc (s.pc + 4)).pc = s.pc + 4 := by
+  unfold Fn.disjConst at ha
+  by_cases h0 : cu = 0
+  · rw [if_pos h0] at ha
+    simp only [Option.some.injEq] at ha; subst ha
+    refine ⟨ι, fun _ _ => rfl, hI.exact hrd ?_ _, by simp⟩
+    have : c = 0#64 := BitVec.eq_of_toNat_eq (by rw [hc, h0]; rfl)
+    subst this
+    rcases hv with rfl | rfl <;> simpa using hw
+  · rw [if_neg h0] at ha
+    split at ha
+    · rename_i hr
+      dsimp only at ha
+      split at ha
+      · rename_i hd
+        simp only [Option.some.injEq] at ha; subst ha
+        have hval := disjConst_val hI.hyps hw hc h0 hr hd
+        refine ⟨ι, fun _ _ => rfl, hI.exact hrd ?_ _, by simp⟩
+        rcases hv with rfl | rfl
+        · exact hval.1
+        · exact hval.2
+      · cases ha
+    · cases ha
+
 /-- The comparisons (`slt`, `sltu`, `slti`, `sltiu`) and `xori rd, rs, −1`. -/
 theorem Fn.arith2_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' : STy} {s s' : State}
     {ι : Val} {F : TokFp} (hI : Inv f T P s0 ι0 S s ι F) {i : Instr} {rd : Reg}
@@ -402,7 +480,18 @@ theorem Fn.arith2_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' :
           simp only [IExpr.eval_sub, IExpr.eval_lit]
           have := (s.reg rs).isLt
           omega
-      · cases ha
+      · cases hr : S.reg rs with
+        | none => simp [hr] at ha
+        | some e =>
+          simp only [hr, Option.bind_some] at ha
+          exact Fn.disjConst_sound hI hrd (STy.reg_hasInt hI.regs hr) rfl ha (Or.inr rfl)
+    case ori =>
+      simp only [Fn.arith2] at ha
+      cases hr : S.reg rs with
+      | none => simp [hr] at ha
+      | some e =>
+        simp only [hr, Option.bind_some] at ha
+        exact Fn.disjConst_sound hI hrd (STy.reg_hasInt hI.regs hr) rfl ha (Or.inl rfl)
     case andi =>
       simp only [Fn.arith2] at ha
       split at ha

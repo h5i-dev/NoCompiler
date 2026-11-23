@@ -64,6 +64,22 @@ def quotFacts (x : Var) (u : IExpr) (c : Int) : List Constr :=
 def remFacts (x : Var) (u : IExpr) (c : Int) : List Constr :=
   [.dvd c.toNat (u.sub (.var x)), .le (.lit 0) (.var x), .lt (.var x) (.lit c)]
 
+/-- The number of trailing zero bits of `n > 0` (below 64; untrusted: the rule re-checks). -/
+def tz (n : Nat) : Nat := ((List.range 64).find? (fun j => n / 2 ^ j % 2 == 1)).getD 0
+
+/-- `or`/`xor` with a constant `cu` whose bits miss those of `e` (I23): `e + cu`. Needs
+    `0 ≤ e < 2^64` and either `e < 2^j` with `2^j ∣ cu`, or `2^t ∣ e` with `cu < 2^t`. -/
+def disjConst (S : STy) (rd : Reg) (e : IExpr) (cu : Nat) : Option STy :=
+  if cu = 0 then some (S.setReg rd (some e))
+  else if S.ent (.and (.le (.lit 0) e) (.lt e (.lit (2 ^ 64)))) then
+    let j := tz cu
+    let t := cu.log2 + 1
+    if (cu % 2 ^ j == 0 && S.ent (.lt e (.lit (2 ^ j)))) ||
+       (decide (cu < 2 ^ t) && S.ent (.dvd (2 ^ t) e)) then
+      some (S.setReg rd (some (e.add (.lit cu))))
+    else none
+  else none
+
 /-- `0 ≤ x ≤ b`. -/
 def boundFacts (x : Var) (b : Int) : List Constr := [.le (.lit 0) (.var x), .le (.var x) (.lit b)]
 
@@ -82,7 +98,10 @@ def arith2 (S : STy) (i : Instr) : Option STy :=
   let x := f.freshAt S
   match i with
   | .iop .xori rd rs imm =>
-    if imm.toInt = -1 then (S.reg rs).map fun e => S.setReg rd (some ((IExpr.lit (-1)).sub e)) else none
+    if imm.toInt = -1 then (S.reg rs).map fun e => S.setReg rd (some ((IExpr.lit (-1)).sub e))
+    else (S.reg rs).bind fun e => disjConst S rd e (imm.signExtend 64).toNat
+  | .iop .ori rd rs imm =>
+    (S.reg rs).bind fun e => disjConst S rd e (imm.signExtend 64).toNat
   -- andi with a mask −2^k: the unsigned representative rounded down to a multiple of 2^k (I23)
   | .iop .andi rd rs imm =>
     match (List.range 12).find? (fun k => imm.signExtend 64 == BitVec.allOnes 64 <<< k) with
