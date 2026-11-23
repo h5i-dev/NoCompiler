@@ -1,8 +1,13 @@
 name = "nocompiler"
 version = "0.1.0"
-defaultTargets = ["NoCompiler"]
+defaultTargets = ["NoCompiler", "TypedTests"]
 
 # No dependencies on purpose: the trusted base of a nocompiler proof is the Lean
 # kernel plus the definitions docs/isa/trust.md lists.
 [[lean_lib]]
 name = "NoCompiler"
+
+# Tests of the core library; not part of it.
+[[lean_lib]]
+name = "TypedTests"
+globs = ["TypedTests.+"]

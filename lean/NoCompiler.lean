@@ -7,5 +7,9 @@ import NoCompiler.Adequacy
 import NoCompiler.Spec
 import NoCompiler.Arith
 import NoCompiler.Mem
+import NoCompiler.Run
 import NoCompiler.Typed.Lang
 import NoCompiler.Typed.Sem
+import NoCompiler.Typed.Lin
+import NoCompiler.Typed.Presburger
+import NoCompiler.Typed.Search

@@ -70,7 +70,8 @@ comments can cite them.
   invariant is a predicate on (footprint, memory), with a proof that it depends only on
   the bytes in the footprint (U1). Footprints of entry tokens are parameters of ⟦σ⟧ (chosen
   with the valuation); footprints of returned tokens are existential.
-- **I11 Valuation.** Index variables are strings; a valuation is `String → Int`.
+- **I11 Valuation.** Index variables are natural numbers (cheap to compare when the Lean
+  kernel evaluates the checker); a valuation is `Nat → Int`. Names are for display only.
   `int` without an index in a signature is sugar for a fresh variable.
 - **I12 Capability identity in the checker.** The return check matches each `borrow`
   obligation to the capability that came from that clause at entry (by identity), not to

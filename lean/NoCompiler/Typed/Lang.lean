@@ -5,7 +5,7 @@ The type language of typed RISC-V assembly, v0 (docs/Tab 1.md, "型の言語 v0"
 implementation choices in docs/typed/decisions.md).
 
 * Index variables range over the mathematical integers; a valuation gives each one a
-  value (I11: variables are strings).
+  value (I11: variables are numbers).
 * Index expressions are linear: `c0 + c1·x1 + …`.
 * Constraints are quantifier-free Presburger formulas: `≤`, `=`, `c ∣ e` under `∧ ∨ ¬`.
 * A value type is `int(e)`: the 64-bit word is `e` modulo 2^64.
@@ -20,7 +20,8 @@ NoCompiler/Typed/Sem.lean. Both are part of what one reads to trust a result
 -/
 namespace NoCompiler.Typed
 
-abbrev Var := String
+/-- Index variables are numbered (I11). -/
+abbrev Var := Nat
 /-- A valuation of the index variables. -/
 abbrev Val := Var → Int
 

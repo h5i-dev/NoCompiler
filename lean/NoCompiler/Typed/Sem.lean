@@ -125,7 +125,7 @@ def Pre (T : TokEnv) (ι : Val) (F : TokFp) (s : State) : Prop :=
     σ.stack ≤ (s.reg Reg.sp).toNat
 
 /-- The exit conditions Q2–Q4 (Q1 is `Spec.Done`'s `Preserved`). -/
-X : Prop :=
+def Post (T : TokEnv) (ι : Val) (F : TokFp) (_s : State) (s' : State) : Prop :=
   ∃ ι' : Val, ∃ F' : TokFp, (∀ x, x ∉ σ.outVars → ι' x = ι x) ∧
     RegsHave ι' s' σ.outRegs ∧ σ.post.holds ι' ∧
     (∀ c ∈ σ.exitCaps, c.valid T ι' F' s'.mem) ∧ Separated ι' F' σ.exitCaps ∧
