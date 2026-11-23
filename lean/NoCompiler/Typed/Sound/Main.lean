@@ -1,4 +1,4 @@
-import NoCompiler.Typed.Sound.Ret
+import NoCompiler.Typed.Sound.Frame
 
 /-
 The soundness theorem of the Lean checker (Theorems A–C of docs/健全性の証明.md for the
@@ -172,7 +172,8 @@ theorem Fn.entry_inv (hst : f.StructSpec) {D : Dom} {a : Val × TokFp} {s0 : Sta
   have hcg := fun i hi => Cap.congr_vars (T := T) (F := a.2) (hcv i hi)
   have hmemE : ∀ i (hi : i < f.sig.borrow.length), f.sig.borrow[i].cap ∈ f.sig.entryCaps := by
     intro i hi; rw [hentry]; exact List.mem_map.2 ⟨_, List.getElem_mem hi, rfl⟩
-  refine ⟨?_, ?_, fun _ _ => rfl, ?_, ?_, ?_, ?_, ?_, rfl, he.live⟩
+  refine ⟨?_, ?_, fun _ _ => rfl, ?_, ?_, ?_, ?_, ?_, by simp [Fn.initTy], he.live,
+    .inl (by simp [Fn.initTy]), by simp [Fn.initTy], ?_, he.sp, hsk⟩
   · intro p hp'
     simp only [Fn.initTy, List.mem_cons] at hp'
     rcases hp' with rfl | hp'
@@ -210,7 +211,7 @@ theorem Fn.entry_inv (hst : f.StructSpec) {D : Dom} {a : Val × TokFp} {s0 : Sta
     exact this hex x (((hcg i hi).1 x).2 hx) (((hcg j hj).1 x).2 hy)
   · intro c hc x hx
     obtain ⟨i, hi, rfl⟩ := f.initTy_caps_mem hc
-    exact hstk _ (hmemE i hi) x (((hcg i hi).1 x).2 hx)
+    exact fun hm => absurd hm (hstk _ (hmemE i hi) x (((hcg i hi).1 x).2 hx))
   · intro c hc x hx
     obtain ⟨i, hi, rfl⟩ := f.initTy_caps_mem hc
     have hx := ((hcg i hi).1 x).2 hx
@@ -230,6 +231,8 @@ theorem Fn.entry_inv (hst : f.StructSpec) {D : Dom} {a : Val × TokFp} {s0 : Sta
   · have : f.initTy.caps.map (·.id) = (f.sig.borrow.zipIdx.map (·.2)).map f.entryId := by
       simp only [Fn.initTy, List.map_map]; rfl
     rw [this, zipIdx_map_snd, ← List.range_eq_range']; exact hst.entryIds
+  · intro x hx
+    exact ⟨_, List.mem_append.2 (.inr (List.mem_singleton_self _)), hx⟩
 
 /-! ## Theorems A–C -/
 
@@ -391,21 +394,73 @@ theorem Fn.run (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.instr
     simp only [Fn.instrAt, Fn.loadOk, Bool.and_eq_true, bne_iff_ne, ne_eq] at hk1
     obtain ⟨hrd, hk1⟩ := hk1
     split at hk1
-    · rename_i S' hl
-      obtain ⟨hok, s', hx, ι', g1, hI', hpc'⟩ := f.load_sound hprot hI hl hrd
+    · -- a frame slot
+      rename_i j hj
+      obtain ⟨hok, s', hx, hI', hpc'⟩ := f.slotLoad_sound hst hI hrd hj
       refine Reach.exec_step hd hI.live hi hok ?_
       rw [hx, Reach.opt_some]
-      exact cont _ _ ι' (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' g1 hk1
-    · cases hk1
+      exact cont _ _ ι (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' (fun _ _ => rfl) hk1
+    · split at hk1
+      · rename_i S' hl
+        obtain ⟨hok, s', hx, ι', g1, hI', hpc'⟩ := f.load_sound hprot hI hl hrd
+        refine Reach.exec_step hd hI.live hi hok ?_
+        rw [hx, Reach.opt_some]
+        exact cont _ _ ι' (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' g1 hk1
+      · cases hk1
   | store op rs1 rs2 off =>
     simp only [Fn.instrAt, Fn.storeOk] at hk1
     split at hk1
-    · rename_i S' hl
-      obtain ⟨hok, s', hx, ι', g1, hI', hpc'⟩ := f.store_sound hprot hI hl
+    · -- a frame slot
+      rename_i j hj
+      obtain ⟨hok, s', hx, hI', hpc'⟩ := f.slotStore_sound (rs2 := rs2) hst hI hj
       refine Reach.exec_step hd hI.live hi hok ?_
       rw [hx, Reach.opt_some]
-      exact cont _ _ ι' (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' g1 hk1
-    · cases hk1
+      exact cont _ _ ι (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' (fun _ _ => rfl) hk1
+    · split at hk1
+      · rename_i S' hl
+        obtain ⟨hok, s', hx, ι', g1, hI', hpc'⟩ := f.store_sound hprot hI hl
+        refine Reach.exec_step hd hI.live hi hok ?_
+        rw [hx, Reach.opt_some]
+        exact cont _ _ ι' (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' g1 hk1
+      · cases hk1
+  | iop op rd rs imm =>
+    simp only [Fn.instrAt] at hk1
+    split at hk1
+    · -- `sp` moves: the prologue or the epilogue
+      rename_i hrd2
+      simp only [beq_iff_eq] at hrd2; subst hrd2
+      unfold Fn.frameOk at hk1
+      simp only [Bool.and_eq_true, beq_iff_eq] at hk1
+      obtain ⟨⟨hop, hrs⟩, hk1⟩ := hk1
+      subst hop; subst hrs
+      split at hk1
+      · rename_i Fr e hfr he
+        split at hk1
+        · rename_i hc
+          simp only [Bool.and_eq_true, beq_iff_eq, bne_iff_ne, ne_eq] at hc hk1
+          obtain ⟨⟨hd0, hF0⟩, himm⟩ := hc
+          obtain ⟨⟨⟨hids, h1⟩, h2⟩, hedge⟩ := hk1
+          obtain ⟨s', hx, hI', hpc'⟩ := f.framePush_sound (k := k) hst hI hfr hd0 hF0 he himm h1 h2
+            (of_decide_eq_true hids)
+          refine Reach.exec_step hd hI.live hi trivial ?_
+          rw [hx, Reach.opt_some]
+          exact cont _ _ ι (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' (fun _ _ => rfl) hedge
+        · split at hk1
+          · rename_i _ hc
+            simp only [Bool.and_eq_true, beq_iff_eq, bne_iff_ne, ne_eq] at hc
+            obtain ⟨⟨hd1, hF0⟩, himm⟩ := hc
+            split at hk1
+            · rename_i cs hcs
+              simp only [Bool.and_eq_true] at hk1
+              obtain ⟨-, hedge⟩ := hk1
+              obtain ⟨s', hx, hI', hpc'⟩ := f.framePop_sound hst hI hfr hd1 hF0 he himm hcs
+              refine Reach.exec_step hd hI.live hi trivial ?_
+              rw [hx, Reach.opt_some]
+              exact cont _ _ ι (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' (fun _ _ => rfl) hedge
+            · cases hk1
+          · cases hk1
+      · cases hk1
+    · exact f.arith_step hst cont hd hI hi hpc hk1
   | ecall => simp [Fn.instrAt] at hk1
   | unimp => simp [Fn.instrAt] at hk1
   | _ =>

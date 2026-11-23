@@ -27,3 +27,4 @@ import NoCompiler.Typed.Sound.Mem
 import NoCompiler.Typed.Sound.Edge
 import NoCompiler.Typed.Sound.Ret
 import NoCompiler.Typed.Sound.Main
+import NoCompiler.Typed.Sound.Frame

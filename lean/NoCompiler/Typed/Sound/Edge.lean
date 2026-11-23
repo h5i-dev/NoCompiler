@@ -12,7 +12,7 @@ variable {f : Fn} {T : TokEnv} {P : Perm} {s0 : State} {ι0 : Val}
 structure Fn.StructSpec (f : Fn) : Prop where
   take : f.sig.take = []
   give : f.sig.give = []
-  stack : f.sig.stack = 0
+  frameDecl : f.frameDeclOk = true
   borrowBytes : ∀ b ∈ f.sig.borrow, ∃ x, b.cap.kind = .bytes x
   kept : ∀ r ∈ keptRegs, (f.regVar.lookup r).isSome
   protNodup : f.protectedVars.Nodup

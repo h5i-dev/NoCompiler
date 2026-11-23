@@ -11,11 +11,13 @@ variable {f : Fn} {T : TokEnv} {P : Perm} {s0 : State} {ι0 : Val}
 theorem Inv.setPc {S : STy} {s : State} {ι : Val} {F : TokFp} (hI : Inv f T P s0 ι0 S s ι F)
     (pc : Word) : Inv f T P s0 ι0 S (s.setPc pc) ι F :=
   ⟨hI.facts, by simpa using hI.regs, hI.prot, by simpa using hI.valid, hI.sep, hI.stack,
-    hI.perm, hI.ids, by simpa using hI.sp, by simpa using hI.live⟩
+    hI.perm, hI.ids, by simpa using hI.sp, by simpa using hI.live, hI.depth, by simpa using hI.slots,
+    hI.stackW, hI.spAl, hI.stackLe⟩
 
 theorem Inv.addFacts {S : STy} {s : State} {ι : Val} {F : TokFp} (hI : Inv f T P s0 ι0 S s ι F)
     {ps : List Constr} (hps : ∀ p ∈ ps, p.holds ι) : Inv f T P s0 ι0 (S.addFacts ps) s ι F := by
-  refine ⟨?_, hI.regs, hI.prot, hI.valid, hI.sep, hI.stack, hI.perm, hI.ids, hI.sp, hI.live⟩
+  refine ⟨?_, hI.regs, hI.prot, hI.valid, hI.sep, hI.stack, hI.perm, hI.ids, hI.sp, hI.live,
+    hI.depth, hI.slots, hI.stackW, hI.spAl, hI.stackLe⟩
   intro p hp; rcases List.mem_append.1 hp with h | h
   · exact hps p h
   · exact hI.facts p h

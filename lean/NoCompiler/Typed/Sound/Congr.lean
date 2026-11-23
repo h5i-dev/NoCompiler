@@ -69,6 +69,9 @@ theorem le_maxVar_reg {S : STy} {p : Reg × IExpr} (hp : p ∈ S.regs) : p.2.max
 theorem le_maxVar_fact {S : STy} {p : Constr} (hp : p ∈ S.facts) : p.maxVar ≤ S.maxVar := by
   unfold maxVar; have := foldr_max_le Constr.maxVar _ p hp; omega
 
+theorem le_maxVar_slot {S : STy} {p : Nat × IExpr} (hp : p ∈ S.slots) : p.2.maxVar ≤ S.maxVar := by
+  unfold maxVar; have := foldr_max_le (fun p : Nat × IExpr => p.2.maxVar) _ p hp; omega
+
 theorem le_maxVar_cap {S : STy} {c : HCap} (hc : c ∈ S.caps) : capMaxVar c ≤ S.maxVar := by
   unfold maxVar; have := foldr_max_le capMaxVar _ c hc; omega
 
@@ -126,7 +129,8 @@ theorem Inv.congr {f : Fn} {T : TokEnv} {P : Perm} {s0 : State} {ι0 : Val} {S :
   have hcap : ∀ c ∈ S.caps, (∀ x, c.cap.fp ι F x ↔ c.cap.fp ι' F x) ∧
       (∀ m, c.cap.valid T ι F m ↔ c.cap.valid T ι' F m) := fun c hc =>
     Cap.congr (fun x hx => (h x (Nat.le_trans hx (STy.le_maxVar_cap hc))).symm)
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, hI.ids, hI.sp, hI.live⟩
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, hI.ids, hI.sp, hI.live, hI.depth, ?_, hI.stackW, hI.spAl,
+    hI.stackLe⟩
   · intro p hp'
     exact (Constr.holds_congr (fun x hx => (h x (Nat.le_trans hx (STy.le_maxVar_fact hp'))).symm)).1
       (hI.facts p hp')
@@ -139,5 +143,9 @@ theorem Inv.congr {f : Fn} {T : TokEnv} {P : Perm} {s0 : State} {ι0 : Val} {S :
     exact hI.sep c hc d hd hne hex x (((hcap c hc).1 x).2 hx) (((hcap d hd).1 x).2 hy)
   · intro c hc x hx; exact hI.stack c hc x (((hcap c hc).1 x).2 hx)
   · intro c hc x hx; exact hI.perm c hc x (((hcap c hc).1 x).2 hx)
+  · intro p hp'
+    obtain ⟨h1, h3, h2⟩ := hI.slots p hp'
+    exact ⟨h1, h3, h2.of_eq (IExpr.eval_congr_max
+      (fun x hx => (h x (Nat.le_trans hx (STy.le_maxVar_slot hp'))).symm))⟩
 
 end NoCompiler.Typed

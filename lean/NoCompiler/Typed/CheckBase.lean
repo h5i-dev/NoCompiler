@@ -138,6 +138,10 @@ structure STy where
   regs : List (Reg × IExpr)
   facts : List Constr
   caps : List HCap := []
+  /-- Φ: the saved words in the frame's slots, by offset from the lowered `sp`. -/
+  slots : List (Nat × IExpr) := []
+  /-- How far `sp` is below its entry value: 0 or the frame size (S3). -/
+  depth : Nat := 0
   deriving DecidableEq, Repr
 
 namespace STy
@@ -160,7 +164,8 @@ def capMaxVar (c : HCap) : Nat :=
 
 def maxVar (S : STy) : Nat :=
   max (S.regs.foldr (fun p m => max p.2.maxVar m) 0)
-    (max (S.facts.foldr (fun p m => max p.maxVar m) 0) (S.caps.foldr (fun c m => max (capMaxVar c) m) 0))
+    (max (S.facts.foldr (fun p m => max p.maxVar m) 0)
+      (max (S.caps.foldr (fun c m => max (capMaxVar c) m) 0) (S.slots.foldr (fun p m => max p.2.maxVar m) 0)))
 
 /-- The facts every held capability gives (`0 ≤ b`, `0 ≤ n`, `b + n ≤ 2^64` when its guard
     holds), with the recorded facts: the hypotheses of every query. -/
@@ -196,7 +201,7 @@ end STy
 namespace STy
 /-- The variables of a type (with repetitions). -/
 def vars (S : STy) : List Var :=
-  S.regs.flatMap (·.2.vars) ++ S.facts.flatMap Constr.vars ++
+  S.regs.flatMap (·.2.vars) ++ S.slots.flatMap (·.2.vars) ++ S.facts.flatMap Constr.vars ++
     S.caps.flatMap fun c => c.cap.guard.vars ++
       match c.cap.kind with
       | .bytes b => b.base.vars ++ b.len.vars ++ b.fields.flatMap (·.ty.vars)
@@ -255,7 +260,11 @@ def sub (S : STy) (θ : Subst) (S' : STy) : Bool :=
     | some e => S.entEqMod e (e'.subst θ)
     | none => false) &&
   (S'.caps.map (·.id)).Nodup && (S.caps.map (·.id)).Nodup &&
-  S'.caps.all (fun c' => S.caps.any fun c => S.capSub θ c c')
+  S'.caps.all (fun c' => S.caps.any fun c => S.capSub θ c c') &&
+  S'.depth == S.depth &&
+  S'.slots.all (fun (k, e') => match S.slots.lookup k with
+    | some e => S.entEqMod e (e'.subst θ)
+    | none => false)
 
 end STy
 
@@ -272,6 +281,14 @@ structure Loop where
   meas : IExpr
   deriving DecidableEq, Repr
 
+/-- The frame (I8): `addi sp, sp, -size` in the prologue; 8-byte save slots and
+    address-taken ranges `[o, o + l)`, all as offsets from the lowered `sp`. -/
+structure Frame where
+  size : Nat
+  slots : List Nat := []
+  addr : List (Nat × Nat) := []
+  deriving DecidableEq, Repr
+
 /-- What the checker needs about one function. -/
 structure Fn where
   sig : Sig
@@ -286,6 +303,7 @@ structure Fn where
   types : List (Nat × STy)
   /-- Fresh variables are allocated from here up. -/
   fresh : Nat
+  frame : Option Frame := none
   deriving Repr
 
 /-- The instructions whose only effect is a register write, and the register. -/

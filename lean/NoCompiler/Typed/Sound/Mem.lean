@@ -352,6 +352,7 @@ theorem storeFields_sound {S : STy} {ι : Val} {b : BytesCap} {a : IExpr} {w : N
   · have := List.mem_filter.1 hfd
     exact hkeep fd this.1 this.2
 
+set_option maxHeartbeats 1000000 in
 /-- Lemma 6. -/
 theorem Fn.store_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' : STy} {s : State}
     {ι : Val} {F : TokFp} (hI0 : Inv f T P s0 ι0 S s ι F)
@@ -403,7 +404,7 @@ theorem Fn.store_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' : 
           simp [Cap.fp, Cap.regions, hk, BytesCap.region, nb]
         · simp [upd, hdc]
       refine ⟨hI.facts, by simpa using hI.regs, hI.prot, ?_, ?_, ?_, ?_, ?_, by simpa using hI.sp,
-        by simpa using hI.live⟩
+        by simpa using hI.live, hI.depth, ?_, hI.stackW, hI.spAl, hI.stackLe⟩
       · intro d' hd'
         obtain ⟨d, hd, rfl⟩ := List.mem_map.1 hd'
         simp only [State.setPc_mem, State.setMem_mem]
@@ -435,5 +436,18 @@ theorem Fn.store_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' : 
       · have : (S1.caps.map upd).map (·.id) = S1.caps.map (·.id) := by
           rw [List.map_map]; exact List.map_congr_left (fun d hd => (hupd d hd).1)
         simp only; rw [this]; exact hI.ids
+      · -- slots are not in any capability, so the store leaves them alone
+        intro p hp
+        obtain ⟨h1, hb, h2⟩ := hI.slots p hp
+        refine ⟨h1, hb, ?_⟩
+        simp only [State.setPc_mem, State.setMem_mem]
+        have : read64 m' (s0.reg Reg.sp - BitVec.ofNat 64 S1.depth + BitVec.ofNat 64 p.1) =
+            read64 s.mem (s0.reg Reg.sp - BitVec.ofNat 64 S1.depth + BitVec.ofNat 64 p.1) := by
+          unfold read64; congr 1
+          refine readLE_congr fun i hi => writeLE_other _ _ _ _ _ (Nat.le_of_not_lt fun hlt => ?_)
+          have := hfp _ hlt
+          rw [add_ofNat_sub] at this
+          exact (hb i hi).2 (hI.stack c hcm _ this (hb i hi).1)
+        rw [this]; exact h2
 
 end NoCompiler.Typed

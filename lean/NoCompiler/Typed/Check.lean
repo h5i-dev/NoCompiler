@@ -202,15 +202,81 @@ def jalOk (k : Nat) (S : STy) (off : BitVec 21) : Bool :=
   | some k' => f.edge (some k) S k'
   | none => false
 
+/-- The frame slot of an access `off(sp)` inside the frame, if it is one. -/
+def slotAt (S : STy) (rs : Reg) (off : BitVec 12) : Option Nat :=
+  match f.frame with
+  | some F =>
+    if rs == 2 && S.depth == F.size && F.size != 0 && 0 ≤ off.toInt && F.slots.contains off.toInt.toNat
+    then some off.toInt.toNat else none
+  | none => none
+
 def loadOk (k : Nat) (S : STy) (op : LdOp) (rd rs : Reg) (off : BitVec 12) : Bool :=
-  rd != 2 && match f.load S op rd rs off with
+  rd != 2 && match op, f.slotAt S rs off with
+    | .ld, some j => f.edge (some k) (S.setReg rd (S.slots.lookup j)) (k + 1)
+    | _, _ => match f.load S op rd rs off with
+      | some S' => f.edge (some k) S' (k + 1)
+      | none => false
+
+def storeOk (k : Nat) (S : STy) (op : StOp) (rs1 rs2 : Reg) (off : BitVec 12) : Bool :=
+  match op, f.slotAt S rs1 off with
+  | .sd, some j =>
+    f.edge (some k) { S with slots := (match S.reg rs2 with
+      | some e => [(j, e)]
+      | none => []) ++ S.slots.filter (·.1 != j) } (k + 1)
+  | _, _ => match f.store S op rs1 rs2 off with
     | some S' => f.edge (some k) S' (k + 1)
     | none => false
 
-def storeOk (k : Nat) (S : STy) (op : StOp) (rs1 rs2 : Reg) (off : BitVec 12) : Bool :=
-  match f.store S op rs1 rs2 off with
-  | some S' => f.edge (some k) S' (k + 1)
-  | none => false
+/-- The prologue (Lemma 7 a): `sp` down by the frame size, a `rw` capability per
+    address-taken range, with identities from the record at the next point when it has new
+    ones. -/
+def framePushNew (k : Nat) (S : STy) (F : Frame) (e : IExpr) : List HCap :=
+  let newIds := match f.tyAt (k + 1) with
+    | some S' => (S'.caps.filter (fun (c : HCap) => !S.caps.any (fun d => d.id == c.id))).map (fun (c : HCap) => c.id)
+    | none => []
+  let base := S.caps.foldr (fun (c : HCap) m => max (c.id + 1) m) 0
+  F.addr.zipIdx.map fun (r, j) =>
+    { id := newIds.getD j (base + j), origin := none,
+      cap := { kind := .bytes { base := e.add (.lit ((r.1 : Int) - F.size)), len := .lit r.2,
+                                mode := .rw } } }
+
+def framePush (k : Nat) (S : STy) (F : Frame) (e : IExpr) : STy :=
+  { S with
+    regs := (2, e.add (.lit (-(F.size : Int)))) :: S.regs.filter (·.1 != 2)
+    depth := F.size
+    slots := []
+    caps := S.caps ++ f.framePushNew k S F e }
+
+/-- The capabilities the epilogue needs back: one per address-taken range, exactly. -/
+def framePopCaps (S : STy) (F : Frame) (e : IExpr) : Option (List HCap) :=
+  F.addr.mapM fun (o, l) => S.caps.find? fun c =>
+    c.origin == none && c.cap.guard == .tt &&
+    match c.cap.kind with
+    | .bytes b => b.mode == .rw && S.ent (.eq b.base (e.add (.lit o))) && S.ent (.eq b.len (.lit l))
+    | .token _ => false
+
+/-- The epilogue (Lemma 7 b): the frame's capabilities and slots are dropped, `sp` back. -/
+def framePop (S : STy) (F : Frame) (e : IExpr) (cs : List HCap) : STy :=
+  { S with
+    regs := (2, e.add (.lit F.size)) :: S.regs.filter (·.1 != 2)
+    depth := 0
+    slots := []
+    caps := S.caps.filter fun c => !cs.any (·.id == c.id) }
+
+def frameOk (k : Nat) (S : STy) (op : IOp) (rs : Reg) (imm : BitVec 12) : Bool :=
+  op == .addi && rs == 2 &&
+  match f.frame, S.reg 2 with
+  | some F, some e =>
+    if S.depth == 0 && F.size != 0 && imm.toInt == -(F.size : Int) then
+      ((f.framePush k S F e).caps.map (·.id)).Nodup &&
+      S.ent (.le (.lit F.size) e) && S.ent (.lt e (.lit (2 ^ 64))) &&
+      f.edge (some k) (f.framePush k S F e) (k + 1)
+    else if S.depth == F.size && F.size != 0 && imm.toInt == (F.size : Int) then
+      match framePopCaps S F e with
+      | some cs => (cs.map (·.id)).Nodup && f.edge (some k) (framePop S F e cs) (k + 1)
+      | none => false
+    else false
+  | _, _ => false
 
 /-- A register write; `sp` is written only by the frame rules (not yet supported). -/
 def arithOk (k : Nat) (S : STy) (i : Instr) : Bool :=
@@ -231,7 +297,7 @@ def instrAt (k : Nat) (S : STy) : Instr → Bool
   | .unimp => false
   | .lui rd imm => f.arithOk k S (.lui rd imm)
   | .auipc rd imm => f.arithOk k S (.auipc rd imm)
-  | .iop op rd rs imm => f.arithOk k S (.iop op rd rs imm)
+  | .iop op rd rs imm => if rd == 2 then f.frameOk k S op rs imm else f.arithOk k S (.iop op rd rs imm)
   | .addiw rd rs imm => f.arithOk k S (.addiw rd rs imm)
   | .shift op rd rs sh => f.arithOk k S (.shift op rd rs sh)
   | .shiftw op rd rs sh => f.arithOk k S (.shiftw op rd rs sh)
@@ -245,10 +311,23 @@ def instr (c : Code) (k : Nat) : Bool :=
   | some S, some i => f.instrAt k S i
   | _, _ => false
 
+/-- The frame fits the stack; its slots and ranges lie inside it and apart (S4). -/
+def frameDeclOk : Bool :=
+  match f.frame with
+  | none => true
+  | some F =>
+    F.size % 16 == 0 && F.size ≤ f.sig.stack && F.slots.Nodup &&
+    F.slots.all (fun j => j % 8 == 0 && j + 8 ≤ F.size) &&
+    F.addr.all (fun r => r.1 + r.2 ≤ F.size) &&
+    (F.slots.map (fun j => (j, 8)) ++ F.addr).zipIdx.all fun (r, i) =>
+      (F.slots.map (fun j => (j, 8)) ++ F.addr).zipIdx.all fun (q, j) =>
+        i == j || r.1 + r.2 ≤ q.1 || q.1 + q.2 ≤ r.1
+
 /-- The structural conditions: loops nested, variables apart. -/
 def structOk : Bool :=
   let σ := f.sig
-  σ.take.isEmpty && σ.give.isEmpty && σ.stack == 0 &&
+  σ.take.isEmpty && σ.give.isEmpty &&
+  f.frameDeclOk &&
   σ.borrow.all (fun b => match b.cap.kind with | .bytes _ => b.cap.guard == .tt | .token _ => false) &&
   (keptRegs.all fun r => (f.regVar.lookup r).isSome) &&
   (f.protectedVars.Nodup) &&

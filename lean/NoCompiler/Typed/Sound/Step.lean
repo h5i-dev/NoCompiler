@@ -36,11 +36,12 @@ theorem Inv.write {S : STy} {s : State} {ι ι' : Val} {F : TokFp} (hI : Inv f T
     have hs : s.setReg 0 v = s := by simp [State.setReg]
     have hS : S.setReg 0 e = S := by simp [STy.setReg]
     rw [hs, hS]
-    refine ⟨?_, hI'.regs, hI'.prot, hI'.valid, hI'.sep, hI'.stack, hI'.perm, hI'.ids, hI'.sp, hI'.live⟩
+    refine ⟨?_, hI'.regs, hI'.prot, hI'.valid, hI'.sep, hI'.stack, hI'.perm, hI'.ids, hI'.sp, hI'.live,
+      hI'.depth, hI'.slots, hI'.stackW, hI'.spAl, hI'.stackLe⟩
     intro p hp'; rcases List.mem_append.1 hp' with h | h
     · exact hps p h
     · exact hI'.facts p h
-  · refine ⟨?_, ?_, hI'.prot, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · refine ⟨?_, ?_, hI'.prot, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, hI'.stackW, hI'.spAl, hI'.stackLe⟩
     · intro p hp'; rcases List.mem_append.1 hp' with h | h
       · exact hps p h
       · exact hI'.facts p (by simp only [STy.setReg, if_neg h0] at h; exact h)
@@ -82,8 +83,10 @@ theorem Inv.write {S : STy} {s : State} {ι ι' : Val} {F : TokFp} (hI : Inv f T
     · simpa [STy.addFacts, STy.setReg, h0] using hI'.perm
     · simpa [STy.addFacts, STy.setReg, h0] using hI'.ids
     · simp only [State.setPc_reg]; rw [State.reg_setReg_other _ _ _ _ (Ne.symm hrd |> fun h => by
-        intro e; exact hrd e.symm)]; exact hI.sp
+        intro e; exact hrd e.symm)]; simpa [STy.addFacts, STy.setReg, h0] using hI.sp
     · simp [hI.live]
+    · simpa [STy.addFacts, STy.setReg, h0] using hI'.depth
+    · simpa [STy.addFacts, STy.setReg, h0] using hI'.slots
 
 theorem Fn.freshAt_gt (f : Fn) (S : STy) : S.maxVar < f.freshAt S := by
   unfold Fn.freshAt; omega

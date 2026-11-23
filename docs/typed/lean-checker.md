@@ -34,10 +34,11 @@ when the image is loaded and the writable memory does not overlap the code.
 
 ## Scope (milestone 1), stated as what the checker rejects
 
-Calls (`jal ra`), frames (`sp` writes), `ecall`, tokens, `take`/`give`, `partial`, static
+Frames are covered (Lemma 7, `Sound/Frame.lean`): the prologue `addi sp, sp, -F`, the
+address-taken ranges as `rw` capabilities, 8-byte save slots, the epilogue; see
+`lean/TypedTests/Frame.lean`. Still rejected: calls (`jal ra`), `ecall`, tokens, `take`/`give`, `partial`, static
 data: a function using any of them is rejected (`Fn.structOk`, `Fn.instrAt`). The code
-region `D` of the theorem is the function's own instructions. These are the next steps,
-in that order (calls and frames are what the note's `read_sum` needs).
+region `D` of the theorem is the function's own instructions. Calls and syscalls are next.
 
 ## Example
 

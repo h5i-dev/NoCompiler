@@ -90,6 +90,16 @@ theorem reg_hasInt {ι : Val} {S : STy} {s : State} (hr : ∀ p ∈ S.regs, HasI
 
 end STy
 
+/-- `x` is in one of the frame's address-taken ranges, the frame being allocated at depth
+    `d` (the proof's `A`; empty at depth 0). -/
+def Fn.inFrame (f : Fn) (s0 : State) (d : Nat) (x : Word) : Prop :=
+  ∃ F, f.frame = some F ∧ d = F.size ∧ d ≠ 0 ∧
+    ∃ r ∈ F.addr, r.1 ≤ (x - (s0.reg Reg.sp - BitVec.ofNat 64 d)).toNat ∧
+      (x - (s0.reg Reg.sp - BitVec.ofNat 64 d)).toNat < r.1 + r.2
+
+/-- The frame is allocated at depth `d`, or not at all (S3). -/
+def Fn.depthOk (f : Fn) (d : Nat) : Prop := d = 0 ∨ ∃ F, f.frame = some F ∧ d = F.size ∧ F.size ≠ 0
+
 /-- The invariant at a point of type `S` (D6), relative to the entry state `s0`, the
     entry valuation `ι0` and the function's permission `P`. -/
 structure Inv (f : Fn) (T : TokEnv) (P : Perm) (s0 : State) (ι0 : Val)
@@ -100,12 +110,23 @@ structure Inv (f : Fn) (T : TokEnv) (P : Perm) (s0 : State) (ι0 : Val)
   valid : ∀ c ∈ S.caps, c.cap.valid T ι F s.mem
   sep : ∀ c ∈ S.caps, ∀ d ∈ S.caps, c.id ≠ d.id → c.cap.exclusive = true →
     ∀ x, c.cap.fp ι F x → ¬ d.cap.fp ι F x
-  stack : ∀ c ∈ S.caps, ∀ x, c.cap.fp ι F x → ¬ (Spec.stackRegion s0 f.sig.stack).mem x
+  stack : ∀ c ∈ S.caps, ∀ x, c.cap.fp ι F x → (Spec.stackRegion s0 f.sig.stack).mem x →
+    f.inFrame s0 S.depth x
   perm : ∀ c ∈ S.caps, ∀ x, c.cap.fp ι F x →
     P.readable x ∧ (c.cap.exclusive = true → P.writable x)
   ids : (S.caps.map (·.id)).Nodup
-  sp : s.reg Reg.sp = s0.reg Reg.sp
+  sp : s.reg Reg.sp = s0.reg Reg.sp - BitVec.ofNat 64 S.depth
   live : s.exit = none
+  depth : f.depthOk S.depth
+  slots : ∀ p ∈ S.slots, (∃ Fr, f.frame = some Fr ∧ S.depth = Fr.size ∧ p.1 ∈ Fr.slots) ∧
+    (∀ i, i < 8 → (Spec.stackRegion s0 f.sig.stack).mem
+        (s0.reg Reg.sp - BitVec.ofNat 64 S.depth + BitVec.ofNat 64 p.1 + BitVec.ofNat 64 i) ∧
+      ¬ f.inFrame s0 S.depth
+        (s0.reg Reg.sp - BitVec.ofNat 64 S.depth + BitVec.ofNat 64 p.1 + BitVec.ofNat 64 i)) ∧
+    HasInt ι (read64 s.mem (s0.reg Reg.sp - BitVec.ofNat 64 S.depth + BitVec.ofNat 64 p.1)) p.2
+  stackW : ∀ x, (Spec.stackRegion s0 f.sig.stack).mem x → P.writable x
+  spAl : (s0.reg Reg.sp).toNat % 16 = 0
+  stackLe : f.sig.stack ≤ (s0.reg Reg.sp).toNat
 
 namespace Inv
 variable {f : Fn} {T : TokEnv} {P : Perm} {s0 : State} {ι0 : Val} {S : STy} {s : State} {ι : Val}
@@ -206,7 +227,8 @@ theorem Inv.sub {f : Fn} {T : TokEnv} {P : Perm} {s0 : State} {ι0 : Val} {S S' 
     (hθ : ∀ p ∈ θ, p.1 ∉ f.protectedVars) : Inv f T P s0 ι0 S' s (IExpr.upd ι θ) F := by
   unfold STy.sub at hs
   simp only [Bool.and_eq_true, List.all_eq_true, List.any_eq_true] at hs
-  obtain ⟨⟨⟨⟨hfacts, hregs⟩, hid'⟩, hid⟩, hcaps⟩ := hs
+  obtain ⟨⟨⟨⟨⟨⟨hfacts, hregs⟩, hid'⟩, hid⟩, hcaps⟩, hdep⟩, hslots⟩ := hs
+  simp only [beq_iff_eq] at hdep
   have hh := hI.hyps
   -- every capability of S' comes from one of S
   have hcap : ∀ c' ∈ S'.caps, ∃ c ∈ S.caps, c.id = c'.id ∧ c'.cap.exclusive = c.cap.exclusive ∧
@@ -215,7 +237,8 @@ theorem Inv.sub {f : Fn} {T : TokEnv} {P : Perm} {s0 : State} {ι0 : Val} {S S' 
     intro c' hc'
     obtain ⟨c, hc, h⟩ := hcaps c' hc'
     exact ⟨c, hc, STy.capSub_sound h hh⟩
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, hI.sp, hI.live⟩
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, hdep ▸ hI.sp, hI.live, hdep ▸ hI.depth, ?_, hI.stackW,
+    hI.spAl, hI.stackLe⟩
   · intro p hp
     have := hI.ent (hfacts p hp)
     simpa [Constr.holds] using this
@@ -239,11 +262,19 @@ theorem Inv.sub {f : Fn} {T : TokEnv} {P : Perm} {s0 : State} {ι0 : Val} {S S' 
     exact hI.sep c hc d hd (by rw [hic, hid]; exact hne) (hec ▸ hex) x (hfc x hx) (hfd x hy)
   · intro c' hc' x hx
     obtain ⟨c, hc, -, -, hfc, -⟩ := hcap c' hc'
-    exact hI.stack c hc x (hfc x hx)
+    rw [hdep]; exact hI.stack c hc x (hfc x hx)
   · intro c' hc' x hx
     obtain ⟨c, hc, -, hec, hfc, -⟩ := hcap c' hc'
     obtain ⟨h1, h2⟩ := hI.perm c hc x (hfc x hx)
     exact ⟨h1, fun he => h2 (hec ▸ he)⟩
   · simpa using hid'
+  · intro p hp
+    have := hslots p hp
+    split at this
+    · rename_i e he
+      obtain ⟨h1, h3, h2⟩ := hI.slots _ (lookup_mem he)
+      rw [hdep]
+      refine ⟨h1, h3, h2.congr' (by simpa using STy.entEqMod_sound this hh)⟩
+    · cases this
 
 end NoCompiler.Typed
