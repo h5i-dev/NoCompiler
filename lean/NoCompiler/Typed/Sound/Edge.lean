@@ -18,9 +18,10 @@ structure Fn.StructSpec (f : Fn) : Prop where
   protNodup : f.protectedVars.Nodup
   entryIds : ((List.range f.sig.borrow.length).map f.entryId).Nodup
   protFresh : ∀ x ∈ f.protectedVars, x < f.fresh
-  loopsIn : ∀ L ∈ f.loops, L.head ≤ L.last ∧ L.last < f.size
+  tau : f.tau = [] ∨ (f.tau.length = f.size ∧ ∀ k < f.size, k ∈ f.tau)
+  loopsIn : ∀ L ∈ f.loops, f.pos L.head ≤ f.pos L.last ∧ L.last < f.size
   measFresh : ∀ L ∈ f.loops, ∀ x ∈ L.meas.vars, x < f.fresh
-  sorted : (f.loops.map (·.head)).Pairwise (· < ·)
+  sorted : (f.loops.map (f.pos ·.head)).Pairwise (· < ·)
   entryAligned : f.entry.toNat % 4 = 0
   size : 4 * f.size < 2 ^ 64
   nested : f.Nested
@@ -38,16 +39,19 @@ theorem Fn.structOk_spec (h : f.structOk = true) : f.StructSpec := by
   simp only [Bool.and_eq_true, List.all_eq_true, List.isEmpty_iff, beq_iff_eq, decide_eq_true_eq,
     Bool.or_eq_true, List.contains_iff_mem, Bool.not_eq_true', Option.isSome_iff_exists] at h
   simp only [and_assoc] at h
-  obtain ⟨htake, hgive, hstack, hbb, hkept, hnd, hei, hpf, hloops, hsorted, hal, hsz, hnest, hin, hpre,
+  obtain ⟨htake, hgive, hstack, hbb, hkept, hnd, hei, hpf, htau, hloops, hsorted, hal, hsz, hnest, hin, hpre,
     hbv, hout, hpost, hop, -⟩ := h
   refine ⟨htake, hgive, hstack, ?_, fun r hr => by simpa [Option.isSome_iff_exists] using hkept r hr,
-    hnd, hei, hpf, fun L hL => ⟨(hloops L hL).1, (hloops L hL).2.1⟩, fun L hL => (hloops L hL).2.2.2,
+    hnd, hei, hpf, ?_, fun L hL => ⟨(hloops L hL).1, (hloops L hL).2.1⟩, fun L hL => (hloops L hL).2.2.2,
     hsorted, hal, hsz, ?_, hin, hpre, ?_, hout, hpost, fun x hx => by simpa using hop x hx⟩
   · intro b hb
     have := hbb b hb
     split at this
     · rename_i x hx; exact ⟨x, hx⟩
     · cases this
+  · rcases htau with h | ⟨hl, hall⟩
+    · exact .inl h
+    · exact .inr ⟨hl, fun k hk => hall k (List.mem_range.2 hk)⟩
   · intro K hK L hL
     rcases hnest K hK L hL with (((h | h) | h) | h) | h
     · exact .inl h
@@ -61,6 +65,15 @@ theorem Fn.structOk_spec (h : f.structOk = true) : f.StructSpec := by
     rw [hx] at hk
     simp only [Bool.and_eq_true, List.all_eq_true, List.contains_iff_mem, Bool.or_eq_true] at hk
     exact ⟨hk.1, hk.2⟩
+
+/-- Points of the function have positions inside it. -/
+theorem Fn.pos_lt (hst : f.StructSpec) {k : Nat} (hk : k < f.size) : f.pos k < f.size := by
+  unfold Fn.pos
+  split
+  · exact hk
+  · rcases hst.tau with h | ⟨hl, hall⟩
+    · contradiction
+    · rw [← hl]; exact List.idxOf_lt_length_of_mem (hall k hk)
 
 theorem Fn.loopAt_spec {L : Loop} {k : Nat} (h : f.loopAt k = some L) : L ∈ f.loops ∧ L.head = k := by
   unfold Fn.loopAt at h
@@ -88,8 +101,8 @@ theorem Fn.edgeOk_sound (hst : f.StructSpec) {k : Option Nat} {S S' : STy} {k' :
     intro K hK hK' x hx
     rw [upd_of_not_mem (fun p hp e => hK' p hp (e ▸ hx))]
     exact hag x (hst.measFresh K hK x hx)
-  have hfree : ∀ K ∈ f.loops, Fn.inside K kk = true → Fn.inside K k' = true →
-      ¬ (k' ≤ kk ∧ K.head = k') → ∀ p ∈ θ, p.1 ∉ K.meas.vars := by
+  have hfree : ∀ K ∈ f.loops, f.inside K kk = true → f.inside K k' = true →
+      ¬ (f.pos k' ≤ f.pos kk ∧ K.head = k') → ∀ p ∈ θ, p.1 ∉ K.meas.vars := by
     intro K hK h1 h2 hn p hp hm
     have := (hθ p hp).2 K hK
     simp only [h1, h2, Bool.true_and, Bool.or_eq_true, Bool.not_eq_true', Bool.and_eq_false_imp,
@@ -98,7 +111,7 @@ theorem Fn.edgeOk_sound (hst : f.StructSpec) {k : Option Nat} {S S' : STy} {k' :
     · simp only [Bool.not_eq_false', Bool.and_eq_true, decide_eq_true_eq, beq_iff_eq] at h
       exact hn h
     · simp_all
-  by_cases hb : k' ≤ kk
+  by_cases hb : f.pos k' ≤ f.pos kk
   · simp only [hb, decide_true, ite_true] at hback
     split at hback
     · rename_i L kk' hL hkk
@@ -115,7 +128,7 @@ theorem Fn.edgeOk_sound (hst : f.StructSpec) {k : Option Nat} {S S' : STy} {k' :
       refine f.rank_back hLm hLh hb hlast hst.sorted hst.nested (fun K hK hne h1 h2 x hx =>
         hmeas K hK (hfree K hK h1 h2 (fun ⟨_, h⟩ => hne h)) x hx) (by omega) (by omega)
     · simp at hback
-  · refine f.rank_fwd (by omega) hk' (fun K hK h1 h2 x hx =>
+  · refine f.rank_fwd (by omega) (f.pos_lt hst hk') (fun K hK h1 h2 x hx =>
       hmeas K hK (hfree K hK h1 h2 (fun ⟨h, _⟩ => hb h)) x hx)
 
 end NoCompiler.Typed

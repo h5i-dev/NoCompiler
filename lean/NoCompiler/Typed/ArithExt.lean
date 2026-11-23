@@ -45,6 +45,17 @@ def fold (S : STy) (i : Instr) : Option STy :=
 def lessFact (x : Var) (a b : IExpr) : Constr :=
   .or (.and (.eq (.var x) (.lit 1)) (.lt a b)) (.and (.eq (.var x) (.lit 0)) (.le b a))
 
+/-- `x` is the larger (`isMax`) or the smaller of `a` and `b`, and one of them. -/
+def minMaxFact (isMax : Bool) (x : Var) (a b : IExpr) : Constr :=
+  let le (p q : IExpr) : Constr := .le p q
+  .and (if isMax then le a (.var x) else le (.var x) a)
+    (.and (if isMax then le b (.var x) else le (.var x) b)
+      (.or (.eq (.var x) a) (.eq (.var x) b)))
+
+/-- `x` is `e` modulo `2^n`: `2^n ∣ e − x`, `0 ≤ x < 2^n`. -/
+def lowFacts (x : Var) (e : IExpr) (n : Nat) : List Constr :=
+  [.dvd (2 ^ n) (e.sub (.var x)), .le (.lit 0) (.var x), .lt (.var x) (.lit (2 ^ n))]
+
 /-- The rules of decisions.md I23 not in `arith`. `x = f.freshAt S` is the result, `x+1`,
     `x+2` the representatives' variables. -/
 def arith2 (S : STy) (i : Instr) : Option STy :=
@@ -74,6 +85,27 @@ def arith2 (S : STy) (i : Instr) : Option STy :=
         ((Fn.srep S (x + 1) e1).2 ++ (Fn.srep S (x + 2) e2).2 ++
           [lessFact x (Fn.srep S (x + 1) e1).1 (Fn.srep S (x + 2) e2).1]))
     | _, _ => none
+  | .rop .max rd a b | .rop .min rd a b | .rop .maxu rd a b | .rop .minu rd a b =>
+    let uns := match i with | .rop .maxu .. | .rop .minu .. => true | _ => false
+    let isMax := match i with | .rop .max .. | .rop .maxu .. => true | _ => false
+    match S.reg a, S.reg b with
+    | some e1, some e2 =>
+      let r1 := if uns then Fn.urep S (x + 1) e1 else Fn.srep S (x + 1) e1
+      let r2 := if uns then Fn.urep S (x + 2) e2 else Fn.srep S (x + 2) e2
+      some ((S.setReg rd (some (.var x))).addFacts (r1.2 ++ r2.2 ++ [minMaxFact isMax x r1.1 r2.1]))
+    | _, _ => none
+  -- zero-extension of the low word: `z` with `2^32 ∣ e − z`, `0 ≤ z < 2^32`
+  | .rwop .adduw rd a b | .rwop .sh1adduw rd a b | .rwop .sh2adduw rd a b | .rwop .sh3adduw rd a b =>
+    let n : Nat := match i with | .rwop .sh1adduw .. => 1 | .rwop .sh2adduw .. => 2 | .rwop .sh3adduw .. => 3 | _ => 0
+    match S.reg a, S.reg b with
+    | some e1, some e2 =>
+      some ((S.setReg rd (some (((IExpr.var x).smul (2 ^ n)).add e2))).addFacts (lowFacts x e1 32))
+    | _, _ => none
+  | .shift .slliuw rd rs sh =>
+    (S.reg rs).map fun e =>
+      (S.setReg rd (some ((IExpr.var x).smul (2 ^ sh.toNat)))).addFacts (lowFacts x e 32)
+  | .uop .zexth rd rs =>
+    (S.reg rs).map fun e => (S.setReg rd (some (.var x))).addFacts (lowFacts x e 16)
   | _ => none
 
 /-- In order: constant folding, the rules above, the fresh-word default. -/

@@ -308,7 +308,15 @@ pub fn to_lean(prog: &Program, ck: &Checker, rep: &Report, module: &str) -> Stri
             })
             .collect();
         let _ = writeln!(o, "  loops := [{}]", loops.join(", "));
-        let tau: Vec<String> = ex.tau.iter().map(|i| wi[*i].to_string()).collect();
+        // a permutation of all word indices: the checking order, then the rest (unreached
+        // points, second words of call pairs) in address order
+        let mut tw: Vec<usize> = ex.tau.iter().map(|i| wi[*i]).collect();
+        for w in 0..size {
+            if !tw.contains(&w) {
+                tw.push(w);
+            }
+        }
+        let tau: Vec<String> = tw.iter().map(|w| w.to_string()).collect();
         let _ = writeln!(o, "  tau := [{}]", tau.join(", "));
         let types: Vec<String> = ex
             .snapshots

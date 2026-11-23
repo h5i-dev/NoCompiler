@@ -333,14 +333,17 @@ def structOk : Bool :=
   (f.protectedVars.Nodup) &&
   ((List.range f.sig.borrow.length).map f.entryId).Nodup &&
   (f.protectedVars.all (· < f.fresh)) &&
-  (f.loops.all fun L => L.head ≤ L.last && L.last < f.size &&
+  -- τ: none (address order) or a permutation of the points (I36)
+  (f.tau.isEmpty || (f.tau.length == f.size && (List.range f.size).all f.tau.contains)) &&
+  (f.loops.all fun L => f.pos L.head ≤ f.pos L.last && L.last < f.size &&
      L.vars.all (fun x => x < f.fresh && !f.protectedVars.contains x) &&
      L.meas.vars.all (· < f.fresh)) &&
-  decide ((f.loops.map (·.head)).Pairwise (· < ·)) &&
+  decide ((f.loops.map (f.pos ·.head)).Pairwise (· < ·)) &&
   decide (f.entry.toNat % 4 = 0) && decide (4 * f.size < 2 ^ 64) &&
   (f.loops.all fun K => f.loops.all fun L =>
-    K.head == L.head || L.last < K.head || K.last < L.head ||
-    (K.head < L.head && L.last ≤ K.last) || (L.head < K.head && K.last ≤ L.last)) &&
+    K.head == L.head || f.pos L.last < f.pos K.head || f.pos K.last < f.pos L.head ||
+    (f.pos K.head < f.pos L.head && f.pos L.last ≤ f.pos K.last) ||
+    (f.pos L.head < f.pos K.head && f.pos K.last ≤ f.pos L.last)) &&
   -- the signature mentions parameters on entry and parameters and `out` variables on exit
   (σ.inRegs.all fun p => p.2.vars.all σ.params.contains) &&
   (σ.pre.vars.all σ.params.contains) &&

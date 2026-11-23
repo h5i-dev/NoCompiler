@@ -328,7 +328,11 @@ def loopAt (k : Nat) : Option Loop := f.loops.find? (·.head == k)
 /-- Parameters and entry values: never rebound. -/
 def protectedVars : List Var := f.sig.params ++ f.regVar.map (·.2)
 
-def inside (L : Loop) (k : Nat) : Bool := L.head ≤ k && k ≤ L.last
+/-- The position of point `k` in the recorded order τ (I36; the address itself when the
+    record has no order). `structOk` requires τ empty or a permutation of the points. -/
+def pos (k : Nat) : Nat := if f.tau = [] then k else f.tau.idxOf k
+
+def inside (L : Loop) (k : Nat) : Bool := f.pos L.head ≤ f.pos k && f.pos k ≤ f.pos L.last
 
 /-- The identity of the entry capability of `borrow` clause `i`: the record's at the entry, if
     it lists one with that origin (a hint; `structOk` requires them distinct). -/
@@ -356,19 +360,19 @@ def initTy : STy where
 /-- Check the edge from instruction `k` (or the entry, `k = none`) to `k'`, the type after
     the instruction being `S`. -/
 def edgeOk (k : Option Nat) (S S' : STy) (k' : Nat) (θ : Subst) : Bool :=
-  let back := match k with | some k => decide (k' ≤ k) | none => false
+  let back := match k with | some k => decide (f.pos k' ≤ f.pos k) | none => false
   decide (k' < f.size) &&
   -- θ never binds a protected variable, nor a measure variable of a loop containing both
   -- ends of the edge (other than at the loop's own backward edge)
   θ.all (fun p => !f.protectedVars.contains p.1 &&
     f.loops.all fun K =>
       (match k with
-       | some k => !(inside K k && inside K k' && !(back && K.head == k'))
+       | some k => !(f.inside K k && f.inside K k' && !(back && K.head == k'))
        | none => true) || !K.meas.vars.contains p.1) &&
   S.sub θ S' &&
   (if back then
     match f.loopAt k', k with
-    | some L, some k => decide (k ≤ L.last) && S.ent (.le (.lit 0) L.meas) &&
+    | some L, some k => decide (f.pos k ≤ f.pos L.last) && S.ent (.le (.lit 0) L.meas) &&
         S.ent (.lt (L.meas.subst θ) L.meas)
     | _, _ => false
    else true)
@@ -379,7 +383,7 @@ def edge (k : Option Nat) (S : STy) (k' : Nat) : Bool :=
   match f.tyAt k' with
   | none => false
   | some S' =>
-    let back := match k with | some k => decide (k' ≤ k) | none => false
+    let back := match k with | some k => decide (f.pos k' ≤ f.pos k) | none => false
     let sv := S.vars
     -- new: the loop's variables at a backward edge, the target's variables the source does
     -- not have, and the target's bare register variables whose register changed

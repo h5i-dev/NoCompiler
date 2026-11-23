@@ -172,6 +172,59 @@ theorem setFrom_x2 {ι : Val} {x : Nat} {v w z : Int} {vs : List Int} :
   have := setFrom_at (ι := ι) (x := x) (vs := v :: w :: z :: vs) 2 (by simp)
   simpa using this
 
+
+theorem minMaxFact_holds {ι : Val} {isMax : Bool} {x : Var} {a b : IExpr} {v : Int}
+    (hx : ι x = v) (hor : v = a.eval ι ∨ v = b.eval ι)
+    (hord : if isMax then a.eval ι ≤ v ∧ b.eval ι ≤ v else v ≤ a.eval ι ∧ v ≤ b.eval ι) :
+    (Fn.minMaxFact isMax x a b).holds ι := by
+  unfold Fn.minMaxFact
+  cases isMax <;>
+    simp only [Constr.holds, Constr.eval, Bool.and_eq_true, Bool.or_eq_true, decide_eq_true_eq,
+      IExpr.eval_var, hx, if_true, if_false, Bool.false_eq_true] at hord ⊢ <;> omega
+
+theorem hasInt_toInt (ι : Val) (w : Word) (x : Var) (h : ι x = w.toInt) : HasInt ι w (.var x) := by
+  unfold HasInt
+  simp only [IExpr.eval_var, h]
+  have hc := BitVec.toInt_eq_toNat_cond w
+  have := w.isLt
+  split at hc <;> omega
+
+theorem zext32_toNat (w : Word) : (zext32 w).toNat = w.toNat % 2 ^ 32 := by
+  unfold zext32
+  rw [BitVec.toNat_setWidth, BitVec.toNat_setWidth]
+  exact Nat.mod_eq_of_lt (Nat.lt_of_lt_of_le (Nat.mod_lt _ (by decide)) (by decide))
+
+theorem zexth_toNat (w : Word) : ((w.setWidth 16).setWidth 64).toNat = w.toNat % 2 ^ 16 := by
+  rw [BitVec.toNat_setWidth, BitVec.toNat_setWidth]
+  exact Nat.mod_eq_of_lt (Nat.lt_of_lt_of_le (Nat.mod_lt _ (by decide)) (by decide))
+
+/-- The low-bits facts hold for `x := w mod 2^n`. -/
+theorem lowFacts_holds {ι : Val} {x : Var} {e : IExpr} {n : Nat} (hn : n ≤ 64) {w : Word}
+    (hre : HasInt ι w e) (hx : ι x = ((w.toNat % 2 ^ n : Nat) : Int)) :
+    ∀ p ∈ Fn.lowFacts x e n, p.holds ι := by
+  intro p hp
+  unfold Fn.lowFacts at hp
+  unfold HasInt at hre
+  generalize hM : ((2 ^ n : Nat) : Int) = M
+  have hd : M ∣ (2 ^ 64 : Int) := by
+    rw [← hM, show (2 ^ 64 : Int) = ((2 ^ 64 : Nat) : Int) by norm_cast]
+    exact Int.natCast_dvd_natCast.2 (Nat.pow_dvd_pow 2 hn)
+  have hW : ((w.toNat : Int) % M) = e.eval ι % M := by
+    rw [← Int.emod_emod_of_dvd _ hd, ← Int.emod_emod_of_dvd (e.eval ι) hd, hre]
+  have hx' : ι x = (w.toNat : Int) % M := by rw [hx, ← hM, Int.natCast_emod]
+  have hpos : (0 : Int) < M := by rw [← hM]; exact_mod_cast Nat.two_pow_pos n
+  simp only [List.mem_cons, List.not_mem_nil, or_false] at hp
+  rcases hp with rfl | rfl | rfl
+  · simp only [Constr.holds, Constr.eval, decide_eq_true_eq, IExpr.eval_sub, IExpr.eval_var, hM]
+    rw [hx', Int.sub_emod, Int.emod_emod_of_dvd _ (Int.dvd_refl _), ← hW, Int.sub_self, Int.zero_emod]
+  · simp only [Constr.holds, Constr.eval, decide_eq_true_eq, IExpr.eval_var, IExpr.eval_lit, hx']
+    exact Int.emod_nonneg _ (by omega)
+  · simp only [Constr.holds, Constr.eval, Constr.lt, decide_eq_true_eq, IExpr.eval_var,
+      IExpr.eval_lit, IExpr.eval_add, hx']
+    have := Int.emod_lt_of_pos (w.toNat : Int) hpos
+    have hM' : ((2 : Int) ^ n) = M := by rw [← hM]; norm_cast
+    rw [hM']; omega
+
 /-- The comparisons (`slt`, `sltu`, `slti`, `sltiu`) and `xori rd, rs, −1`. -/
 theorem Fn.arith2_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' : STy} {s s' : State}
     {ι : Val} {F : TokFp} (hI : Inv f T P s0 ι0 S s ι F) {i : Instr} {rd : Reg}
@@ -298,6 +351,170 @@ theorem Fn.arith2_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' :
         · refine lessFact_holds (p := (s.reg a).toInt < (s.reg b).toInt) ?_ ?_
           · simp only [vs, setFrom_x, evalR, bool64_toNat, BitVec.slt, decide_eq_true_eq]
           · simp [u1.1, u2.1]
+    case max =>
+      simp only [Fn.arith2] at ha
+      cases h1 : S.reg a with
+      | none => simp [h1] at ha
+      | some e1 =>
+      cases h2 : S.reg b with
+      | none => simp [h1, h2] at ha
+      | some e2 =>
+        simp only [h1, h2, Option.some.injEq, ite_true, ite_false, Bool.false_eq_true] at ha; subst ha
+        let vs : List Int := [(evalR .max (s.reg a) (s.reg b)).toInt, (s.reg a).toInt, (s.reg b).toInt]
+        refine hI.fresh4 hprot hrd vs (.var (f.freshAt S)) _ (evalR .max (s.reg a) (s.reg b))
+          (hasInt_toInt _ _ _ (by simp [vs, setFrom_x])) (fun p hp => ?_)
+        have u1 := Fn.srep_spec (x := f.freshAt S + 1) hI (STy.reg_hasInt hI.regs h1) (STy.reg_maxVar' h1)
+          (hag vs).1 (by simp [vs, setFrom_x1])
+        have u2 := Fn.srep_spec (x := f.freshAt S + 2) hI (STy.reg_hasInt hI.regs h2) (STy.reg_maxVar' h2)
+          (hag vs).1 (by simp [vs, setFrom_x2])
+        simp only [List.mem_append, List.mem_singleton] at hp
+        rcases hp with (hp | hp) | rfl
+        · exact u1.2 p hp
+        · exact u2.2 p hp
+        · refine minMaxFact_holds (v := (evalR .max (s.reg a) (s.reg b)).toInt) (by simp [vs, setFrom_x]) ?_ ?_
+          · rw [u1.1, u2.1]; simp only [evalR]; split <;> simp
+          · rw [u1.1, u2.1]; simp only [evalR, BitVec.slt, decide_eq_true_eq]
+            have hc : (s.reg a).toInt < (s.reg b).toInt ∨ ¬ ((s.reg a).toInt < (s.reg b).toInt) := Classical.em _
+            rcases hc with hc | hc <;> simp [hc] <;> omega
+    case min =>
+      simp only [Fn.arith2] at ha
+      cases h1 : S.reg a with
+      | none => simp [h1] at ha
+      | some e1 =>
+      cases h2 : S.reg b with
+      | none => simp [h1, h2] at ha
+      | some e2 =>
+        simp only [h1, h2, Option.some.injEq, ite_true, ite_false, Bool.false_eq_true] at ha; subst ha
+        let vs : List Int := [(evalR .min (s.reg a) (s.reg b)).toInt, (s.reg a).toInt, (s.reg b).toInt]
+        refine hI.fresh4 hprot hrd vs (.var (f.freshAt S)) _ (evalR .min (s.reg a) (s.reg b))
+          (hasInt_toInt _ _ _ (by simp [vs, setFrom_x])) (fun p hp => ?_)
+        have u1 := Fn.srep_spec (x := f.freshAt S + 1) hI (STy.reg_hasInt hI.regs h1) (STy.reg_maxVar' h1)
+          (hag vs).1 (by simp [vs, setFrom_x1])
+        have u2 := Fn.srep_spec (x := f.freshAt S + 2) hI (STy.reg_hasInt hI.regs h2) (STy.reg_maxVar' h2)
+          (hag vs).1 (by simp [vs, setFrom_x2])
+        simp only [List.mem_append, List.mem_singleton] at hp
+        rcases hp with (hp | hp) | rfl
+        · exact u1.2 p hp
+        · exact u2.2 p hp
+        · refine minMaxFact_holds (v := (evalR .min (s.reg a) (s.reg b)).toInt) (by simp [vs, setFrom_x]) ?_ ?_
+          · rw [u1.1, u2.1]; simp only [evalR]; split <;> simp
+          · rw [u1.1, u2.1]; simp only [evalR, BitVec.slt, decide_eq_true_eq]
+            have hc : (s.reg a).toInt < (s.reg b).toInt ∨ ¬ ((s.reg a).toInt < (s.reg b).toInt) := Classical.em _
+            rcases hc with hc | hc <;> simp [hc] <;> omega
+    case maxu =>
+      simp only [Fn.arith2] at ha
+      cases h1 : S.reg a with
+      | none => simp [h1] at ha
+      | some e1 =>
+      cases h2 : S.reg b with
+      | none => simp [h1, h2] at ha
+      | some e2 =>
+        simp only [h1, h2, Option.some.injEq, ite_true, ite_false, Bool.false_eq_true] at ha; subst ha
+        let vs : List Int := [((evalR .maxu (s.reg a) (s.reg b)).toNat : Int), ((s.reg a).toNat : Int), ((s.reg b).toNat : Int)]
+        refine hI.fresh4 hprot hrd vs (.var (f.freshAt S)) _ (evalR .maxu (s.reg a) (s.reg b))
+          (hasInt_toNat _ _ _ (by simp [vs, setFrom_x])) (fun p hp => ?_)
+        have u1 := Fn.urep_spec (x := f.freshAt S + 1) hI (STy.reg_hasInt hI.regs h1) (STy.reg_maxVar' h1)
+          (hag vs).1 (by simp [vs, setFrom_x1])
+        have u2 := Fn.urep_spec (x := f.freshAt S + 2) hI (STy.reg_hasInt hI.regs h2) (STy.reg_maxVar' h2)
+          (hag vs).1 (by simp [vs, setFrom_x2])
+        simp only [List.mem_append, List.mem_singleton] at hp
+        rcases hp with (hp | hp) | rfl
+        · exact u1.2 p hp
+        · exact u2.2 p hp
+        · refine minMaxFact_holds (v := ((evalR .maxu (s.reg a) (s.reg b)).toNat : Int)) (by simp [vs, setFrom_x]) ?_ ?_
+          · rw [u1.1, u2.1]; simp only [evalR]; split <;> simp
+          · rw [u1.1, u2.1]; simp only [evalR, BitVec.ult, decide_eq_true_eq]
+            have hc : (s.reg a).toNat < (s.reg b).toNat ∨ ¬ ((s.reg a).toNat < (s.reg b).toNat) := Classical.em _
+            rcases hc with hc | hc <;> simp [hc] <;> omega
+    case minu =>
+      simp only [Fn.arith2] at ha
+      cases h1 : S.reg a with
+      | none => simp [h1] at ha
+      | some e1 =>
+      cases h2 : S.reg b with
+      | none => simp [h1, h2] at ha
+      | some e2 =>
+        simp only [h1, h2, Option.some.injEq, ite_true, ite_false, Bool.false_eq_true] at ha; subst ha
+        let vs : List Int := [((evalR .minu (s.reg a) (s.reg b)).toNat : Int), ((s.reg a).toNat : Int), ((s.reg b).toNat : Int)]
+        refine hI.fresh4 hprot hrd vs (.var (f.freshAt S)) _ (evalR .minu (s.reg a) (s.reg b))
+          (hasInt_toNat _ _ _ (by simp [vs, setFrom_x])) (fun p hp => ?_)
+        have u1 := Fn.urep_spec (x := f.freshAt S + 1) hI (STy.reg_hasInt hI.regs h1) (STy.reg_maxVar' h1)
+          (hag vs).1 (by simp [vs, setFrom_x1])
+        have u2 := Fn.urep_spec (x := f.freshAt S + 2) hI (STy.reg_hasInt hI.regs h2) (STy.reg_maxVar' h2)
+          (hag vs).1 (by simp [vs, setFrom_x2])
+        simp only [List.mem_append, List.mem_singleton] at hp
+        rcases hp with (hp | hp) | rfl
+        · exact u1.2 p hp
+        · exact u2.2 p hp
+        · refine minMaxFact_holds (v := ((evalR .minu (s.reg a) (s.reg b)).toNat : Int)) (by simp [vs, setFrom_x]) ?_ ?_
+          · rw [u1.1, u2.1]; simp only [evalR]; split <;> simp
+          · rw [u1.1, u2.1]; simp only [evalR, BitVec.ult, decide_eq_true_eq]
+            have hc : (s.reg a).toNat < (s.reg b).toNat ∨ ¬ ((s.reg a).toNat < (s.reg b).toNat) := Classical.em _
+            rcases hc with hc | hc <;> simp [hc] <;> omega
+    all_goals simp [Fn.arith2] at ha
+  | rwop op rd' a b =>
+    simp only [writesReg, Option.some.injEq] at hw; subst hw
+    simp only [exec, Option.some.injEq] at hx; subst hx
+    have zx : ∀ (n : Nat) (vs : List Int), vs = [(((s.reg a).toNat % 2 ^ 32 : Nat) : Int)] →
+        HasInt (setFrom ι (f.freshAt S) vs) (zext32 (s.reg a)) (.var (f.freshAt S)) := by
+      intro n vs h; subst h; exact hasInt_toNat _ _ _ (by simp [setFrom_x, zext32_toNat])
+    cases op
+    case adduw | sh1adduw | sh2adduw | sh3adduw =>
+      simp only [Fn.arith2] at ha
+      cases h1 : S.reg a with
+      | none => simp [h1] at ha
+      | some e1 =>
+      cases h2 : S.reg b with
+      | none => simp [h1, h2] at ha
+      | some e2 =>
+        simp only [h1, h2, Option.some.injEq] at ha; subst ha
+        let vs : List Int := [(((s.reg a).toNat % 2 ^ 32 : Nat) : Int)]
+        have hz := zx 0 vs rfl
+        have he2 : HasInt (setFrom ι (f.freshAt S) vs) (s.reg b) e2 :=
+          (STy.reg_hasInt hI.regs h2).of_eq (Fn.eval_setFrom_old (STy.reg_maxVar' h2) ι vs).symm
+        refine hI.fresh4 hprot hrd vs _ _ _ ?_
+          (lowFacts_holds (by omega) (STy.reg_hasInt hI.regs h1 |>.of_eq
+            (Fn.eval_setFrom_old (STy.reg_maxVar' h1) ι vs).symm) (by simp [vs, setFrom_x]))
+        simp only [evalRW]
+        first
+          | exact hasInt_add (by simpa using hasInt_shl hz 0) he2
+          | exact hasInt_add (hasInt_shl hz _) he2
+    all_goals simp [Fn.arith2] at ha
+  | shift op rd' rs sh =>
+    simp only [writesReg, Option.some.injEq] at hw; subst hw
+    simp only [exec, Option.some.injEq] at hx; subst hx
+    cases op
+    case slliuw =>
+      simp only [Fn.arith2] at ha
+      cases hr : S.reg rs with
+      | none => simp [hr] at ha
+      | some e =>
+        simp only [hr, Option.map_some, Option.some.injEq] at ha; subst ha
+        let vs : List Int := [(((s.reg rs).toNat % 2 ^ 32 : Nat) : Int)]
+        have hz : HasInt (setFrom ι (f.freshAt S) vs) (zext32 (s.reg rs)) (.var (f.freshAt S)) :=
+          hasInt_toNat _ _ _ (by simp [vs, setFrom_x, zext32_toNat])
+        refine hI.fresh4 hprot hrd vs _ _ _ ?_
+          (lowFacts_holds (by omega) (STy.reg_hasInt hI.regs hr |>.of_eq
+            (Fn.eval_setFrom_old (STy.reg_maxVar' hr) ι vs).symm) (by simp [vs, setFrom_x]))
+        simp only [evalSh]
+        exact hasInt_shl hz _
+    all_goals simp [Fn.arith2] at ha
+  | uop op rd' rs =>
+    simp only [writesReg, Option.some.injEq] at hw; subst hw
+    simp only [exec, Option.some.injEq] at hx; subst hx
+    cases op
+    case zexth =>
+      simp only [Fn.arith2] at ha
+      cases hr : S.reg rs with
+      | none => simp [hr] at ha
+      | some e =>
+        simp only [hr, Option.map_some, Option.some.injEq] at ha; subst ha
+        let vs : List Int := [(((s.reg rs).toNat % 2 ^ 16 : Nat) : Int)]
+        refine hI.fresh4 hprot hrd vs _ _ _ ?_
+          (lowFacts_holds (by omega) (STy.reg_hasInt hI.regs hr |>.of_eq
+            (Fn.eval_setFrom_old (STy.reg_maxVar' hr) ι vs).symm) (by simp [vs, setFrom_x]))
+        simp only [evalU]
+        exact hasInt_toNat _ _ _ (by simp [vs, setFrom_x, zexth_toNat]; omega)
     all_goals simp [Fn.arith2] at ha
   | _ => simp [Fn.arith2] at ha
 

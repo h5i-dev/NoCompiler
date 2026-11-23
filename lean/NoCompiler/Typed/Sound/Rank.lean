@@ -78,30 +78,31 @@ theorem lexN_at {α : Type} (g h : α → Nat × Nat) (x y : Nat × Nat) (post :
 
 namespace Fn
 
-/-- The component of loop `L` at instruction `k`. -/
-def comp (L : Loop) (k : Nat) (ι : Val) : Nat × Nat :=
-  if k < L.head then (2, 0) else if k ≤ L.last then (1, (L.meas.eval ι + 1).toNat) else (0, 0)
+/-- The component of loop `L` at instruction `k`, by positions in the order τ (I36). -/
+def comp (f : Fn) (L : Loop) (k : Nat) (ι : Val) : Nat × Nat :=
+  if f.pos k < f.pos L.head then (2, 0) else if f.pos k ≤ f.pos L.last then (1, (L.meas.eval ι + 1).toNat)
+  else (0, 0)
 
 def rank (f : Fn) (k : Nat) (ι : Val) : List (Nat × Nat) :=
-  f.loops.map (fun L => comp L k ι) ++ [(0, f.size - k)]
+  f.loops.map (fun L => f.comp L k ι) ++ [(0, f.size - f.pos k)]
 
-/-- A forward edge: no component grows (measures of loops containing both ends are
+/-- A forward edge (up in τ): no component grows (measures of loops containing both ends are
     unchanged), and the distance to the end shrinks. -/
-theorem rank_fwd (f : Fn) {k k' : Nat} {ι ι' : Val} (hk : k < k') (hk' : k' < f.size)
-    (hag : ∀ L ∈ f.loops, Fn.inside L k = true → Fn.inside L k' = true →
+theorem rank_fwd (f : Fn) {k k' : Nat} {ι ι' : Val} (hk : f.pos k < f.pos k') (hk' : f.pos k' < f.size)
+    (hag : ∀ L ∈ f.loops, f.inside L k = true → f.inside L k' = true →
       ∀ x ∈ L.meas.vars, ι' x = ι x) : LexN (f.rank k' ι') (f.rank k ι) := by
   unfold rank
   refine lexN_of_le _ _ _ (fun L hL => ?_) (Prod.Lex.right _ (by omega))
   unfold comp PLe PLt
-  by_cases h1 : k' < L.head
+  by_cases h1 : f.pos k' < f.pos L.head
   · rw [if_pos h1, if_pos (by omega)]; exact .inr rfl
   · rw [if_neg h1]
-    by_cases h2 : k < L.head
+    by_cases h2 : f.pos k < f.pos L.head
     · rw [if_pos h2]; split
       · exact .inl (Prod.Lex.left _ _ (by omega))
       · exact .inl (Prod.Lex.left _ _ (by omega))
     · rw [if_neg h2]
-      by_cases h3 : k' ≤ L.last
+      by_cases h3 : f.pos k' ≤ f.pos L.last
       · rw [if_pos h3, if_pos (by omega)]
         have := hag L hL (by simp only [inside, Bool.and_eq_true, decide_eq_true_eq]; omega)
           (by simp only [inside, Bool.and_eq_true, decide_eq_true_eq]; omega)
@@ -111,17 +112,18 @@ theorem rank_fwd (f : Fn) {k k' : Nat} {ι ι' : Val} (hk : k < k') (hk' : k' < 
         · exact .inl (Prod.Lex.left _ _ (by omega))
         · exact .inr rfl
 
-/-- Loop intervals nest (what `structOk` checks). -/
+/-- Loop intervals nest in τ (what `structOk` checks). -/
 def Nested (f : Fn) : Prop :=
-  ∀ K ∈ f.loops, ∀ L ∈ f.loops, K.head = L.head ∨ L.last < K.head ∨ K.last < L.head ∨
-    (K.head < L.head ∧ L.last ≤ K.last) ∨ (L.head < K.head ∧ K.last ≤ L.last)
+  ∀ K ∈ f.loops, ∀ L ∈ f.loops, K.head = L.head ∨ f.pos L.last < f.pos K.head ∨
+    f.pos K.last < f.pos L.head ∨ (f.pos K.head < f.pos L.head ∧ f.pos L.last ≤ f.pos K.last) ∨
+    (f.pos L.head < f.pos K.head ∧ f.pos K.last ≤ f.pos L.last)
 
 /-- A backward edge to the head of `L` from inside it: the components of the loops with
-    smaller heads (enclosing or finished) are unchanged, and `L`'s measure decreases. -/
+    earlier heads (enclosing or finished) are unchanged, and `L`'s measure decreases. -/
 theorem rank_back (f : Fn) {k k' : Nat} {ι ι' : Val} {L : Loop} (hL : L ∈ f.loops)
-    (hh : L.head = k') (hk : k' ≤ k) (hkl : k ≤ L.last)
-    (hsorted : (f.loops.map (·.head)).Pairwise (· < ·)) (hnest : f.Nested)
-    (hag : ∀ K ∈ f.loops, K.head ≠ k' → Fn.inside K k = true → Fn.inside K k' = true →
+    (hh : L.head = k') (hk : f.pos k' ≤ f.pos k) (hkl : f.pos k ≤ f.pos L.last)
+    (hsorted : (f.loops.map (f.pos ·.head)).Pairwise (· < ·)) (hnest : f.Nested)
+    (hag : ∀ K ∈ f.loops, K.head ≠ k' → f.inside K k = true → f.inside K k' = true →
       ∀ x ∈ K.meas.vars, ι' x = ι x)
     (h0 : 0 ≤ L.meas.eval ι) (hlt : L.meas.eval ι' < L.meas.eval ι) :
     LexN (f.rank k' ι') (f.rank k ι) := by
@@ -129,22 +131,27 @@ theorem rank_back (f : Fn) {k k' : Nat} {ι ι' : Val} {L : Loop} (hL : L ∈ f.
   unfold rank
   rw [he]
   refine lexN_at _ _ _ _ post L pre (fun K hK => ?_) ?_
-  · have hKL : K.head < L.head := by
+  · have hKL : f.pos K.head < f.pos L.head := by
       rw [he] at hsorted
       simp only [List.map_append, List.map_cons, List.pairwise_append] at hsorted
-      exact hsorted.2.2 K.head (List.mem_map.2 ⟨K, hK, rfl⟩) L.head (by simp)
+      exact hsorted.2.2 (f.pos K.head) (List.mem_map.2 ⟨K, hK, rfl⟩) (f.pos L.head) (by simp)
     have hK' : K ∈ f.loops := by rw [he]; simp [hK]
+    have hne : K.head ≠ k' := fun e => by
+      have h' : K.head = L.head := e.trans hh.symm
+      rw [h'] at hKL; omega
+    subst hh
     unfold comp
     rcases hnest K hK' L hL with e | e | e | ⟨-, e⟩ | ⟨e, -⟩
-    · omega
+    · exact absurd e hne
     · omega
     · rw [if_neg (by omega), if_neg (by omega), if_neg (by omega), if_neg (by omega)]
     · rw [if_neg (by omega), if_pos (by omega), if_neg (by omega), if_pos (by omega)]
-      have := hag K hK' (by omega) (by simp only [inside, Bool.and_eq_true, decide_eq_true_eq]; omega)
+      have := hag K hK' hne (by simp only [inside, Bool.and_eq_true, decide_eq_true_eq]; omega)
         (by simp only [inside, Bool.and_eq_true, decide_eq_true_eq]; omega)
       rw [IExpr.eval_congr K.meas (fun x hx => (this x hx).symm)]
     · omega
-  · unfold comp PLt
+  · subst hh
+    unfold comp PLt
     rw [if_neg (by omega), if_pos (by omega), if_neg (by omega), if_pos (by omega)]
     exact Prod.Lex.right _ (by omega)
 
