@@ -1,0 +1,12 @@
+# musl 1.2.5 src/string/memset.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh.
+# Instructions as compiled, unchanged (scripts/musl-trial/verify.sh checks the bytes).
+# Annotations are the `#:` lines (provisional syntax of docs/Tab 1.md; see docs/typed/musl-trial.md).
+# Predicted (fixed before compiling): reject (v0 rules: andi -4, andi 4)
+# Expected now (after reading the compiled code): reject (v0 rules), as predicted. 0x50 andi a2, a2, -4 (negative constant: not in the table, a2 becomes an unrelated int), so the store sw a5, -4(a1) at 0x70 (a1 = a3 + a2) is not provably inside s..s+n. Later 0xb0/0xb4 andi 4 + ori 24 lose the offset again.
+#: fn memset [s, n]
+#:   in     a0: int(s), a2: int(n)
+#:   borrow s |-> bytes[n] rw
+#:   out    a0: int(s)
+#:   stack  0
+[at .Lmemset_dc]
+#: inv [p, m] a3: int(p), a2: int(m) where s <= p, p + m <= s + n, 32 <= m, 8 | p decreases m

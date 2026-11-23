@@ -1,0 +1,34 @@
+# musl 1.2.5 src/stdio/fwrite.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh.
+# Instructions as compiled, unchanged (scripts/musl-trial/verify.sh checks the bytes).
+# Annotations are the `#:` lines (provisional syntax of docs/Tab 1.md; see docs/typed/musl-trial.md).
+# Predicted (fixed before compiling): unsafe contract (function pointer)
+# Expected now (after reading the compiled code): reject. Prediction was wrong about the reason: in this build fwrite is only a wrapper (the f->write call is in __fwritex, a separate unsafe contract), but (1) the buffer length is size*nmemb, not a linear index expression, so the signature cannot say how much of b is borrowed, and the call to __fwritex at 0x60/0xb8 cannot match borrow b |-> bytes[l] with l = a1 = mul s2 (a product of two variables: int); (2) S2: the return block 0x84 and the divu block 0x80 are placed before the second __fwritex call and reached by backward branches (0xc4, 0xc8): non-nested intervals, no real loop. divu is not in the table (int) - harmless.
+#: unsafe fn __lockfile [f]
+#:   in     a0: int(f)
+#:   borrow f |-> bytes[232] rw
+#:   borrow Stdio
+#:   out    a0: int
+#:   where  8 | f
+#: unsafe fn __unlockfile [f]
+#:   in     a0: int(f)
+#:   borrow f |-> bytes[232] rw
+#:   borrow Stdio
+#:   where  8 | f
+#: unsafe fn __fwritex [b, l, f]
+#:   in     a0: int(b), a1: int(l), a2: int(f)
+#:   borrow b |-> bytes[l] ro
+#:   borrow f |-> bytes[232] rw
+#:   borrow Stdio
+#:   where  8 | f
+#:   out    a0: int(r)
+#:   where  0 <= r <= l
+#: fn fwrite [b, size, nmemb, f, L]
+#:   in     a0: int(b), a1: int(size), a2: int(nmemb), a3: int(f)
+#:   borrow b |-> bytes[L] ro
+#:   borrow f |-> bytes[232] rw
+#:   borrow Stdio
+#:   where  8 | f
+#:   out    a0: int
+#:   stack  64
+#:   frame  64 slots 8, 16, 24, 32, 40, 48, 56
+#: # L should be size*nmemb; v0 index expressions are linear, so L is left unrelated.

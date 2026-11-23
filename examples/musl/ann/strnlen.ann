@@ -1,0 +1,16 @@
+# musl 1.2.5 src/string/strnlen.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh.
+# Instructions as compiled, unchanged (scripts/musl-trial/verify.sh checks the bytes).
+# Annotations are the `#:` lines (provisional syntax of docs/Tab 1.md; see docs/typed/musl-trial.md).
+# Predicted (fixed before compiling): accept (signature stronger than C: n bytes readable)
+# Expected now (after reading the compiled code): accept iff auipc/jalr (R_RISCV_CALL) is taken as a call; uses memchr's signature (memchr itself is expected to be rejected).
+#: fn memchr [s, n]
+#:   in     a0: int(s), a2: int(n)
+#:   borrow s |-> bytes[n] ro
+#:   out    a0: int
+#:   stack  0
+#: fn strnlen [s, n]
+#:   in     a0: int(s), a1: int(n)
+#:   borrow s |-> bytes[n] ro
+#:   out    a0: int
+#:   stack  32
+#:   frame  32 slots 8, 16, 24

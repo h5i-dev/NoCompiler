@@ -1,0 +1,36 @@
+# musl 1.2.5 src/string/memmove.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh.
+# Instructions as compiled, unchanged (scripts/musl-trial/verify.sh checks the bytes).
+# Annotations are the `#:` lines (provisional syntax of docs/Tab 1.md; see docs/typed/musl-trial.md).
+# Predicted (fixed before compiling): reject (v0 rules: xor alignment test)
+# Expected now (after reading the compiled code): reject. (1) S2: the two copy directions share entry blocks 0x2c and 0x5c that are reached backwards from the word loops (0x110, 0x130, 0x168, 0x170) and the return 0x80 is reached backwards from 0xdc: intervals [0x2c,0x130]/[0x5c,0x170] and [0x80,0xdc]/[0xdc,0x100] are not nested. (2) As predicted, 's % 8 == d % 8' is xor + andi 7 (0x18-0x1c): the fact is lost and the sd at 0x11c / 0x15c fails 8 | a. The signature (one region, two offsets) and the tail call to memcpy with two disjoint sub-borrows are expressible; disjointness follows from the bgeu at 0x14 (u(-2n) >= u(s - d - n)) and d != s.
+#: fn memcpy [d, s, n]
+#:   in     a0: int(d), a1: int(s), a2: int(n)
+#:   borrow d |-> bytes[n] rw
+#:   borrow s |-> bytes[n] ro
+#:   out    a0: int(d)
+#:   stack  0
+#: fn memmove [d, s, n, b, L]
+#:   in     a0: int(d), a1: int(s), a2: int(n)
+#:   borrow b |-> bytes[L] rw
+#:   where  b <= d, d + n <= b + L, b <= s, s + n <= b + L
+#:   out    a0: int(d)
+#:   stack  0
+[at .Lmemmove_2c]
+#: inv [m] a1: int(s + n - m), a3: int(d + n - m), a2: int(m) where 0 <= m <= n
+#: # 0x2c, 0x5c, 0x80 are backward-edge targets only because of block layout (no decreases).
+[at .Lmemmove_30]
+#: inv [m] a1: int(s + n - m), a3: int(d + n - m), a2: int(m) where 1 <= m <= n decreases m
+[at .Lmemmove_5c]
+#: inv [m] a1: int(s), a2: int(m) where 0 <= m <= n
+[at .Lmemmove_64]
+#: inv [m] a1: int(s - 1), a2: int(m) where 1 <= m <= n decreases m
+[at .Lmemmove_80]
+#: inv a0: int(d)
+[at .Lmemmove_94]
+#: inv [i] a4: int(i), a3: int(d + 1) where 0 <= i <= n decreases n - i
+[at .Lmemmove_dc]
+#: inv [m] a2: int(m), a4: int(d - 1), a5: int(s - 1) where 0 <= m <= n decreases m
+[at .Lmemmove_118]
+#: inv [m] a1: int(s + n - m), a3: int(d + n - m), a2: int(m) where 8 <= m <= n, 8 | s + n - m, 8 | d + n - m decreases m
+[at .Lmemmove_14c]
+#: inv [m] a3: int(m), a4: int(s - 8), a5: int(d - 8) where 8 <= m <= n, 8 | s + m, 8 | d + m decreases m

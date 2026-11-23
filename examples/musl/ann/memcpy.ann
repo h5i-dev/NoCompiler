@@ -1,0 +1,19 @@
+# musl 1.2.5 src/string/memcpy.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh.
+# Instructions as compiled, unchanged (scripts/musl-trial/verify.sh checks the bytes).
+# Annotations are the `#:` lines (provisional syntax of docs/Tab 1.md; see docs/typed/musl-trial.md).
+# Predicted (fixed before compiling): reject (v0 rules: andi n, 2^k tails)
+# Expected now (after reading the compiled code): reject. (1) As predicted, the tails 'if (n&8)', 'if (n&4)', ... are andi a1, a2, 8 + beq (0x15c, 0x17c, ...): x != 0 does not give k >= 8, so lw 4(a4) at 0x168 fails. (2) S2: 33 violations (11 backward-edge targets; the misaligned cases share tail blocks reached backwards). (3) The head loop test '(uintptr_t)s % 4 && n' is branch-free (0x0-0x10, 0x30-0x4c). Only the signature, the head loop, the aligned 16-byte loop and the joins around it are annotated; the misaligned paths 0x58-0x11c, 0x198-0x410 are not, since (1)-(3) already reject the file.
+#: fn memcpy [d, s, n]
+#:   in     a0: int(d), a1: int(s), a2: int(n)
+#:   borrow d |-> bytes[n] rw
+#:   borrow s |-> bytes[n] ro
+#:   out    a0: int(d)
+#:   stack  0
+[at .Lmemcpy_1c]
+#: inv [m] a1: int(s + n - m), a5: int(s + n - m + 1), a6: int(d + n - m), a2: int(m) where 1 <= m <= n decreases m
+[at .Lmemcpy_120]
+#: inv [k] a4: int(s + n - k), a3: int(d + n - k), a2: int(k) where 0 <= k <= n, 4 | d + n - k, (k = 0 || 4 | s + n - k)
+[at .Lmemcpy_12c]
+#: inv [k] a4: int(s + n - k), a3: int(d + n - k), a2: int(k) where 16 <= k <= n, 4 | s + n - k, 4 | d + n - k decreases k
+[at .Lmemcpy_15c]
+#: inv [k] a4: int(s + n - k), a3: int(d + n - k), a2: int(k) where 0 <= k <= 15, k <= n, 4 | d + n - k, (k = 0 || 4 | s + n - k)

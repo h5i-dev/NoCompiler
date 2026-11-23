@@ -1,0 +1,18 @@
+# name  source (relative to musl src/)   symbol
+labs     stdlib/labs.c      labs
+memcmp   string/memcmp.c    memcmp
+bcmp     string/bcmp.c      bcmp
+memrchr  string/memrchr.c   __memrchr
+memchr   string/memchr.c    memchr
+strnlen  string/strnlen.c   strnlen
+strncmp  string/strncmp.c   strncmp
+swab     string/swab.c      swab
+bzero    string/bzero.c     bzero
+memset   string/memset.c    memset
+memcpy   string/memcpy.c    memcpy
+memccpy  string/memccpy.c   memccpy
+memmove  string/memmove.c   memmove
+strlen   string/strlen.c    strlen
+malloc   malloc/mallocng/malloc.c  malloc
+free     malloc/mallocng/free.c    free
+fwrite   stdio/fwrite.c     fwrite
