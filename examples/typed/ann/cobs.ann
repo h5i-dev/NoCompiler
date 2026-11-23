@@ -1,0 +1,24 @@
+# examples/typed/src/cobs.c (bcb19fed), compiled by scripts/typed-trial/build.sh, unchanged;
+# annotations are the '#:' lines (docs/typed/note-trial.md). The outer loop is entered at
+# .LBB0_8, in the middle of the address interval that starts at .LBB0_7: S2 rejects it.
+# The annotations are for the natural loops (proposal P1, --loops natural).
+#! expect cobs_decode: reject cfg
+#: fn cobs_decode [r, b, len]
+#:   in     a0: int(r), a1: int(b), a2: int(len)
+#:   borrow r ↦ bytes[24] rw
+#:   borrow b ↦ bytes[len] rw
+#:   where  8 ∣ r
+#:   stack  0
+[at .LBB0_2]
+#: inv [i] a3: int(i) where 0 ≤ i < len decreases len − i
+[at .LBB0_5]
+#: join [n] a3: int(n) where 0 ≤ n ≤ len
+[at .LBB0_7]
+#: join [s2, d2] a5: int(s2), a2: int(d2) where s + 1 ≤ s2 ≤ n, 0 ≤ d2 ≤ s2
+[at .LBB0_8]
+#: inv [s, d, n] a5: int(s), a2: int(d), a3: int(n) where 0 ≤ d ≤ s < n ≤ len decreases n − s
+[at .LBB0_11]
+#: inv [k, c] a6: int(c), a7: int(s + c), t0: int(k), a5: int(b + s + c − k),
+#:     a2: int(d + c − 1 − k) where 1 ≤ k ≤ c − 1, s + c ≤ n decreases k
+[at .LBB0_14]
+#: join [s1, d1] a5: int(s1), a2: int(d1) where s + 1 ≤ s1 ≤ n, 0 ≤ d1, d1 + 1 ≤ s1

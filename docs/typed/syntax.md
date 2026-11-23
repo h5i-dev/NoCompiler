@@ -27,7 +27,8 @@ assembler comments that start with `#:`, so the same file assembles unchanged (I
 - Directives: `.text`, `.section` (any section whose name starts with `.text` is code),
   `.p2align`/`.align`/`.balign` (padding in code is `nop`s, which run and are checked),
   `.type f,@function`; everything else (`.globl`, `.size`, `.file`, `.cfi_*`, …) is ignored.
-- Comments: `#` to end of line. clang's `# %bb.0:` etc. are comments.
+- Comments: `#` to end of line. clang's `# %bb.0:` etc. are comments. A comment is an annotation only if it
+  starts with `#:`; a `#:` later inside an ordinary comment is text.
 
 ### Functions
 

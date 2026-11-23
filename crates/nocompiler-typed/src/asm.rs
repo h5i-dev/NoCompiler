@@ -101,13 +101,12 @@ struct Line<'a> {
 }
 
 fn split_line(no: usize, raw: &str) -> Line<'_> {
-    let (body, annot) = match raw.find("#:") {
-        Some(i) => (&raw[..i], Some(raw[i + 2..].trim())),
+    // A comment starts at the first `#`; it is an annotation when it starts with `#:`
+    // (a `#:` later inside an ordinary comment is just text).
+    let (body, annot) = match raw.find('#') {
+        Some(i) if raw[i..].starts_with("#:") => (&raw[..i], Some(raw[i + 2..].trim())),
+        Some(i) => (&raw[..i], None),
         None => (raw, None),
-    };
-    let body = match body.find('#') {
-        Some(i) => &body[..i],
-        None => body,
     };
     let mut rest = body.trim();
     let mut labels = Vec::new();

@@ -682,8 +682,8 @@ fn run_case(
 
 fn files() -> Vec<PathBuf> {
     let mut out = Vec::new();
-    let mut stack =
-        vec![PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/typed/corpus")];
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut stack = vec![root.join("tests/typed/corpus"), root.join("examples/typed")];
     if let Ok(extra) = std::env::var("NC_TYPED_EXEC_DIR") {
         stack.push(PathBuf::from(extra));
     }
@@ -713,9 +713,19 @@ fn accepted_functions_do_not_get_stuck() {
     for p in files() {
         let src = std::fs::read_to_string(&p).unwrap();
         let Ok(prog) = asm::parse(&src) else { continue };
+        // functions accepted with the default rules or with proposal P1 (natural loops)
         let (ck, rep) = check::check_program(&prog, false);
+        let p1 = check::Options {
+            record: false,
+            natural_loops: true,
+        };
+        let (_, rep_p1) = check::check_program_opts(&prog, p1);
         for fr in &rep.funcs {
-            if fr.error.is_some() || fr.kind != Some(FnKind::Safe) {
+            let ok_p1 = rep_p1
+                .funcs
+                .iter()
+                .any(|g| g.name == fr.name && g.error.is_none());
+            if (fr.error.is_some() && !ok_p1) || fr.kind != Some(FnKind::Safe) {
                 continue;
             }
             let f = prog.funcs.iter().find(|g| g.name == fr.name).unwrap();
