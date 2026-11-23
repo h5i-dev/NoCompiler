@@ -429,6 +429,57 @@ pub fn to_lean_image(
             th.join(",\n  ")
         );
     }
+    if image.is_some() {
+        // theorem D (T's ask 8): the exported functions, each after the ones it calls (S5)
+        let exported: Vec<&str> = rep
+            .funcs
+            .iter()
+            .filter(|f| f.export.is_some())
+            .map(|f| f.name.as_str())
+            .collect();
+        let calls = |name: &str| -> Vec<String> {
+            prog.funcs
+                .iter()
+                .find(|g| g.name == name)
+                .map(|g| {
+                    g.instrs
+                        .iter()
+                        .filter_map(|pi| match &pi.instr {
+                            Instr::Jal {
+                                target: Target::Symbol(s),
+                                ..
+                            }
+                            | Instr::CallPair {
+                                target: Target::Symbol(s),
+                                ..
+                            } => Some(s.clone()),
+                            _ => None,
+                        })
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
+        let mut order: Vec<&str> = Vec::new();
+        while order.len() < exported.len() {
+            let next = exported.iter().find(|n| {
+                !order.contains(n)
+                    && calls(n)
+                        .iter()
+                        .all(|c| !exported.contains(&c.as_str()) || order.contains(&c.as_str()))
+            });
+            match next {
+                Some(n) => order.push(n),
+                // a cycle (S5 rejects it): keep the rest in file order
+                None => order.extend(exported.iter().filter(|n| !order.contains(n)).collect::<Vec<_>>()),
+            }
+        }
+        let names: Vec<String> = order
+            .iter()
+            .map(|n| format!("fn_{}", lean_ident(n).trim_matches(['«', '»'])))
+            .collect();
+        let _ = writeln!(o, "/-- Callee-first (S5): `Prog.check code [] prog`. -/");
+        let _ = writeln!(o, "def prog : List Fn := [{}]\n", names.join(", "));
+    }
     let _ = writeln!(o, "end {module}");
     o
 }
