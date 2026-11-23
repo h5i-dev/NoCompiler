@@ -206,7 +206,7 @@ fn main() -> ExitCode {
         }
     }
     if let Some(out) = export_json {
-        let j = nocompiler_typed::export::to_json(&prog, &ck, &rep);
+        let j = nocompiler_typed::export::to_json_image(&prog, &ck, &rep, image.as_ref());
         if let Err(e) = std::fs::write(&out, serde_json::to_string_pretty(&j).unwrap()) {
             eprintln!("{out}: {e}");
             return ExitCode::from(2);

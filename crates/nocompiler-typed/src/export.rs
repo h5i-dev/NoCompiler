@@ -495,14 +495,14 @@ fn j_sig(s: &Sig) -> Value {
     })
 }
 
-fn j_state(st: &State, ex: &FnExport) -> Value {
+fn j_state(st: &State, ex: &FnExport, extra: &[Formula]) -> Value {
     let regs: Vec<(Reg, Lin)> = Reg::all()
         .skip(1)
         .map(|r| (r, st.regs[r.0 as usize].clone()))
         .collect();
     json!({
         "regs": j_regs(&regs),
-        "facts": st.facts.iter().map(|(_, f)| j_formula(f)).collect::<Vec<_>>(),
+        "facts": st.facts.iter().map(|(_, f)| j_formula(f)).chain(extra.iter().map(j_formula)).collect::<Vec<_>>(),
         "slots": st.slots.iter().map(|(k, e)| json!([k.to_string(), j_lin(e)])).collect::<Vec<_>>(),
         "caps": st.caps.iter().map(|c| json!({"id": c.id, "guard": j_formula(&c.guard), "kind": j_kind(&c.kind),
             "origin": ex.borrow_ids.iter().position(|i| *i == c.id)})).collect::<Vec<_>>(),
@@ -512,13 +512,25 @@ fn j_state(st: &State, ex: &FnExport) -> Value {
 
 /// The same content as JSON. Integers that may exceed 2^53 are strings.
 pub fn to_json(prog: &Program, ck: &Checker, rep: &Report) -> Value {
+    to_json_image(prog, ck, rep, None)
+}
+
+/// `to_json` against a linked image, as `to_lean_image`: `entry` (the linked address, or
+/// null), `ℓ_sym = address` in the signatures and every point's facts.
+pub fn to_json_image(
+    prog: &Program,
+    ck: &Checker,
+    rep: &Report,
+    image: Option<&BTreeMap<String, u64>>,
+) -> Value {
+    let eqs = sym_eqs(ck, image);
     let names: Vec<Value> = (0..ck.names.len())
         .map(|i| json!(ck.names.name(crate::lin::Var(i as u32))))
         .collect();
     let sigs: serde_json::Map<String, Value> = ck
         .sigs
         .iter()
-        .map(|(n, s)| (n.clone(), j_sig(&exported_sig(s, ck))))
+        .map(|(n, s)| (n.clone(), j_sig(&exported_sig_at(s, ck, image))))
         .collect();
     let mut fns = Vec::new();
     for f in &rep.funcs {
@@ -531,10 +543,11 @@ pub fn to_json(prog: &Program, ck: &Checker, rep: &Report) -> Value {
             "name": f.name,
             "section": func.section,
             "offset": func.instrs[0].addr,
+            "entry": image.and_then(|img| img.get(&f.name)),
             "words": func.instrs.iter().map(|p| p.instr.words()).sum::<usize>(),
             "regVar": ex.reg_var.iter().map(|(r, v)| json!([r.0, v.0])).collect::<Vec<_>>(),
             "loops": ex.loops.iter().map(|(h, l, vs, m)| json!({"head": wi[*h], "last": wi[*l], "vars": vs.iter().map(|v| v.0).collect::<Vec<_>>(), "meas": m.as_ref().map(j_lin)})).collect::<Vec<_>>(),
-            "types": ex.snapshots.iter().map(|(ix, st)| json!([wi[*ix], j_state(st, ex)])).collect::<Vec<_>>(),
+            "types": ex.snapshots.iter().map(|(ix, st)| json!([wi[*ix], j_state(st, ex, &eqs)])).collect::<Vec<_>>(),
             "thetas": ex.thetas.iter().map(|(src, t, m)| json!({
                 "from": if *src == usize::MAX { Value::Null } else { json!(wi[*src]) },
                 "to": wi[*t],
