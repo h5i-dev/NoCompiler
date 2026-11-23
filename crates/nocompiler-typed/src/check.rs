@@ -208,6 +208,9 @@ pub struct Checker {
     pub statics: Vec<Static>,
     /// Writable data symbols (not supported yet: they belong in signatures).
     pub writable_data: BTreeSet<String>,
+    /// Loops as natural loops of a reducible CFG (proposal P1) instead of address
+    /// intervals (S2). Off by default.
+    pub natural_loops: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -221,14 +224,34 @@ pub struct Static {
     pub fields: BTreeMap<i128, Lin>,
 }
 
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Options {
+    /// Record states, instantiations and queries (ledger, export).
+    pub record: bool,
+    /// Proposal P1: natural loops instead of S2's address intervals.
+    pub natural_loops: bool,
+}
+
 /// Checks every safe function of a parsed program.
 pub fn check_program(p: &Program, record: bool) -> (Checker, Report) {
+    check_program_opts(
+        p,
+        Options {
+            record,
+            natural_loops: false,
+        },
+    )
+}
+
+pub fn check_program_opts(p: &Program, opts: Options) -> (Checker, Report) {
+    let record = opts.record;
     let mut ck = Checker {
         names: Names::default(),
         sigs: BTreeMap::new(),
         record,
         statics: vec![],
         writable_data: BTreeSet::new(),
+        natural_loops: opts.natural_loops,
     };
     for (name, d) in &p.data {
         if !d.ro {
@@ -425,6 +448,7 @@ struct Head {
 struct Loop {
     head: usize,
     end: usize,
+    body: BTreeSet<usize>,
     written: BTreeSet<Reg>,
 }
 
@@ -452,6 +476,10 @@ struct FnCheck<'a> {
     xor_defs: BTreeMap<Var, (Lin, Lin)>,
     /// The `%pcrel_lo` value of each `auipc %pcrel_hi` (by instruction index), I30.
     lo_vars: BTreeMap<usize, Var>,
+    /// The order points are checked in, the back edges, and each loop head's body.
+    order: Vec<usize>,
+    back: BTreeSet<(usize, usize)>,
+    loop_bodies: Vec<(usize, BTreeSet<usize>)>,
     line: usize,
 }
 
@@ -492,6 +520,9 @@ impl<'a> FnCheck<'a> {
             nqueries: 0,
             xor_defs: BTreeMap::new(),
             lo_vars: BTreeMap::new(),
+            order: vec![],
+            back: BTreeSet::new(),
+            loop_bodies: vec![],
             line: f.line,
         }
     }
@@ -853,7 +884,47 @@ impl<'a> FnCheck<'a> {
                 _ => {}
             }
         }
-        // S2: back edges go to `inv` heads; loops nest; loops are entered at the head.
+        if self.ck.natural_loops {
+            self.structure_natural()?;
+        } else {
+            self.structure_s2()?;
+        }
+        for (h, body) in self.loop_bodies.clone() {
+            let mut written = BTreeSet::new();
+            for &k in &body {
+                let pi = &self.f.instrs[k];
+                if let Some(r) = pi.instr.rd() {
+                    written.insert(r);
+                }
+                let is_call = matches!(&pi.instr, Instr::Jal { rd, target: Target::Symbol(_) } if *rd == RA)
+                    || matches!(&pi.instr, Instr::CallPair { rd, .. } if *rd == RA);
+                if is_call {
+                    written.extend(Reg::all().filter(|r| caller_saved(*r)));
+                }
+            }
+            let end = *body.iter().next_back().unwrap();
+            self.loops.push(Loop {
+                head: h,
+                end,
+                body,
+                written,
+            });
+        }
+        for (ix, (inv, line)) in &self.f.invs {
+            // P1: an `inv` that is not a loop head is a `join` (its measure is unused)
+            if inv.is_loop && !self.ck.natural_loops && !self.loops.iter().any(|l| l.head == *ix) {
+                self.line = *line;
+                return self.err(Rule::Cfg, "'inv' on a label that no backward jump reaches (use 'join' for a forward join)");
+            }
+        }
+        Ok(())
+    }
+
+    /// S2 as the note and the proof state it: an edge to a lower or equal address is a back
+    /// edge and goes to an `inv` head; a loop is the interval from its head to its last back
+    /// edge; intervals nest; no edge enters an interval except at its head.
+    fn structure_s2(&mut self) -> F<()> {
+        let n = self.f.instrs.len();
         let mut ends: BTreeMap<usize, usize> = BTreeMap::new();
         for ix in 0..n {
             for t in self.static_succs(ix) {
@@ -868,15 +939,10 @@ impl<'a> FnCheck<'a> {
                             );
                         }
                     }
+                    self.back.insert((ix, t));
                     let e = ends.entry(t).or_insert(ix);
                     *e = (*e).max(ix);
                 }
-            }
-        }
-        for (ix, (inv, line)) in &self.f.invs {
-            if inv.is_loop && !ends.contains_key(ix) {
-                self.line = *line;
-                return self.err(Rule::Cfg, "'inv' on a label that no backward jump reaches (use 'join' for a forward join)");
             }
         }
         let ivs: Vec<(usize, usize)> = ends.iter().map(|(h, e)| (*h, *e)).collect();
@@ -900,24 +966,162 @@ impl<'a> FnCheck<'a> {
                 }
             }
         }
-        for (h, e) in ivs {
-            let mut written = BTreeSet::new();
-            for pi in &self.f.instrs[h..=e] {
-                if let Some(r) = pi.instr.rd() {
-                    written.insert(r);
+        self.order = (0..n).collect();
+        self.loop_bodies = ivs
+            .into_iter()
+            .map(|(h, e)| (h, (h..=e).collect()))
+            .collect();
+        Ok(())
+    }
+
+    /// The natural-loop reading of S2 (proposal P1, opt-in): a back edge is an edge u → h
+    /// where h dominates u, and goes to an `inv` head; the graph without back edges must be
+    /// acyclic (the CFG is reducible); a loop is h's natural loop. Points are checked in a
+    /// topological order of the acyclic graph.
+    fn structure_natural(&mut self) -> F<()> {
+        let n = self.f.instrs.len();
+        let succ: Vec<Vec<usize>> = (0..n)
+            .map(|i| {
+                self.static_succs(i)
+                    .into_iter()
+                    .filter(|t| *t < n)
+                    .collect()
+            })
+            .collect();
+        // reverse postorder from the entry
+        let mut post = Vec::new();
+        let mut seen = vec![false; n];
+        let mut stack: Vec<(usize, usize)> = vec![(0, 0)];
+        seen[0] = true;
+        while let Some((u, k)) = stack.pop() {
+            if k < succ[u].len() {
+                stack.push((u, k + 1));
+                let v = succ[u][k];
+                if !seen[v] {
+                    seen[v] = true;
+                    stack.push((v, 0));
                 }
-                let is_call = matches!(&pi.instr, Instr::Jal { rd, target: Target::Symbol(_) } if *rd == RA)
-                    || matches!(&pi.instr, Instr::CallPair { rd, .. } if *rd == RA);
-                if is_call {
-                    written.extend(Reg::all().filter(|r| caller_saved(*r)));
+            } else {
+                post.push(u);
+            }
+        }
+        let rpo: Vec<usize> = post.iter().rev().copied().collect();
+        let mut num = vec![usize::MAX; n];
+        for (i, u) in rpo.iter().enumerate() {
+            num[*u] = i;
+        }
+        let mut preds: Vec<Vec<usize>> = vec![vec![]; n];
+        for u in 0..n {
+            if seen[u] {
+                for &v in &succ[u] {
+                    preds[v].push(u);
                 }
             }
-            self.loops.push(Loop {
-                head: h,
-                end: e,
-                written,
-            });
         }
+        // dominators (Cooper, Harvey, Kennedy)
+        let mut idom = vec![usize::MAX; n];
+        idom[0] = 0;
+        let intersect = |idom: &Vec<usize>, mut a: usize, mut b: usize| {
+            while a != b {
+                while num[a] > num[b] {
+                    a = idom[a];
+                }
+                while num[b] > num[a] {
+                    b = idom[b];
+                }
+            }
+            a
+        };
+        let mut changed = true;
+        while changed {
+            changed = false;
+            for &u in rpo.iter().skip(1) {
+                let mut new = usize::MAX;
+                for &p in &preds[u] {
+                    if idom[p] != usize::MAX {
+                        new = if new == usize::MAX {
+                            p
+                        } else {
+                            intersect(&idom, p, new)
+                        };
+                    }
+                }
+                if new != idom[u] {
+                    idom[u] = new;
+                    changed = true;
+                }
+            }
+        }
+        let dominates = |h: usize, mut u: usize| loop {
+            if u == h {
+                return true;
+            }
+            if u == 0 || idom[u] == usize::MAX {
+                return false;
+            }
+            u = idom[u];
+        };
+        for &u in &rpo {
+            for &t in &succ[u] {
+                if dominates(t, u) {
+                    self.line = self.f.instrs[u].line;
+                    match self.f.invs.get(&t) {
+                        Some((inv, _)) if inv.is_loop => {}
+                        _ => return self.err(
+                            Rule::Cfg,
+                            "back edge (to a dominating label) without an 'inv' annotation (P1)",
+                        ),
+                    }
+                    self.back.insert((u, t));
+                }
+            }
+        }
+        // the graph without back edges is acyclic: Kahn's algorithm over reached points
+        let mut indeg = vec![0usize; n];
+        for &u in &rpo {
+            for &t in &succ[u] {
+                if !self.back.contains(&(u, t)) {
+                    indeg[t] += 1;
+                }
+            }
+        }
+        let mut ready: Vec<usize> = vec![0];
+        let mut order = Vec::new();
+        while let Some(u) = ready.pop() {
+            order.push(u);
+            // keep address order among ready points (stable output)
+            let mut next: Vec<usize> = Vec::new();
+            for &t in &succ[u] {
+                if !self.back.contains(&(u, t)) {
+                    indeg[t] -= 1;
+                    if indeg[t] == 0 {
+                        next.push(t);
+                    }
+                }
+            }
+            ready.extend(next);
+            ready.sort_unstable_by(|a, b| b.cmp(a));
+        }
+        if order.len() != rpo.len() {
+            self.line = self.f.line;
+            return self.err(
+                Rule::Cfg,
+                "the control-flow graph is irreducible: a cycle without a dominating head (P1)",
+            );
+        }
+        // natural loops
+        let mut bodies: BTreeMap<usize, BTreeSet<usize>> = BTreeMap::new();
+        for &(u, h) in &self.back {
+            let body = bodies.entry(h).or_insert_with(|| BTreeSet::from([h]));
+            let mut work = vec![u];
+            while let Some(x) = work.pop() {
+                if body.insert(x) {
+                    work.extend(preds[x].iter().copied());
+                }
+            }
+        }
+        self.order = order;
+        self.loop_bodies = bodies.into_iter().collect();
         Ok(())
     }
 
@@ -1008,7 +1212,7 @@ impl<'a> FnCheck<'a> {
         let mut incoming: Vec<Vec<(usize, State)>> = vec![Vec::new(); n];
         let entry = self.entry_state()?;
         incoming[0].push((usize::MAX, entry));
-        for ix in 0..n {
+        for ix in self.order.clone() {
             let edges = std::mem::take(&mut incoming[ix]);
             self.line = self.f.instrs[ix].line;
             let st = if let Some((inv, line)) = self.f.invs.get(&ix).cloned() {
@@ -1033,7 +1237,7 @@ impl<'a> FnCheck<'a> {
                 if t >= n {
                     return self.err(Rule::Cfg, "control falls off the end of the function");
                 }
-                if t > ix {
+                if !self.back.contains(&(ix, t)) {
                     incoming[t].push((ix, s));
                 } else {
                     self.back_edge(ix, t, s)?;
@@ -1105,8 +1309,8 @@ impl<'a> FnCheck<'a> {
             sc.insert(n, v);
         }
         for l in &self.loops {
-            if l.head < ix
-                && ix <= l.end
+            if l.head != ix
+                && l.body.contains(&ix)
                 && let Some(h) = self.heads.get(&l.head)
             {
                 for (n, v) in &h.inv_vars {

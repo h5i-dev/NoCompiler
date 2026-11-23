@@ -177,3 +177,23 @@ comments can cite them.
   **For ⟦σ⟧ (T):** the meaning must then include, on entry, that each read-only symbol's
   range is readable in the permission, holds its bytes, and is disjoint from every `rw`
   capability and token footprint (P4/P5 extended to the implicit capabilities).
+
+## Proposals (not adopted: the default checker does not use them)
+
+- **P1 Natural loops instead of address intervals** (from the musl trial, docs/typed/musl-trial.md
+  "Stage 2"). S2 asks that every edge to a lower address goes to an `inv` head and that loops
+  be nested address intervals entered at the head. clang's block layout breaks this in 8 of 29
+  musl files (backward jumps to return blocks; interleaved loops) although every compiled CFG
+  is reducible. Proposal: a back edge is an edge u → h where h dominates u, and goes to an `inv`
+  head; the CFG without back edges must be acyclic; a loop is h's natural loop; points are
+  checked in a topological order of the acyclic graph; an `inv` on a label that heads no loop
+  acts as a `join`. What Theorem C uses still holds: every cycle contains a back edge (the rest
+  is acyclic), natural loops of a reducible graph are nested or disjoint, and a loop is entered
+  only through its head (it dominates the body), so the outermost-loop argument goes through
+  with "an edge into L's body from outside L" replaced by "an edge into the natural loop",
+  which only the head receives. Lemmas 2–10 do not mention addresses.
+  Implemented in the Rust checker as an opt-in (`--loops natural`, `Options::natural_loops`).
+  With it, all 8 musl files move past `cfg` to an ordinary typing obligation (an `inv`
+  constraint, a call's lent length, a missing measure, …) where V's annotations, written for
+  S2, stop. Adopting it needs: T's agreement (the Lean checker uses S2), the proof's S2 and
+  Theorem C text updated, and the export to carry the back-edge set instead of intervals.

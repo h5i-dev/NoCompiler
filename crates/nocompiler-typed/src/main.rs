@@ -8,7 +8,7 @@ use std::process::ExitCode;
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let usage = "usage: nocompiler-typed check FILE.s [--ledger OUT.json] [--states] [--object FILE.o] [--export-lean OUT.lean] [--export-json OUT.json]";
+    let usage = "usage: nocompiler-typed check FILE.s [--ledger OUT.json] [--states] [--object FILE.o] [--export-lean OUT.lean] [--export-json OUT.json] [--loops natural]";
     if args.first().map(String::as_str) != Some("check") || args.len() < 2 {
         eprintln!("{usage}");
         return ExitCode::from(2);
@@ -17,6 +17,7 @@ fn main() -> ExitCode {
     let mut ledger_out = None;
     let mut object = None;
     let mut states = false;
+    let mut natural = false;
     let mut export_lean: Option<String> = None;
     let mut export_json: Option<String> = None;
     let mut i = 2;
@@ -31,6 +32,10 @@ fn main() -> ExitCode {
                 i += 1;
             }
             "--states" => states = true,
+            "--loops" if i + 1 < args.len() && args[i + 1] == "natural" => {
+                natural = true;
+                i += 1;
+            }
             "--export-lean" if i + 1 < args.len() => {
                 export_lean = Some(args[i + 1].clone());
                 i += 1;
@@ -60,9 +65,15 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    let (ck, mut rep) = check::check_program(
+    let (ck, mut rep) = check::check_program_opts(
         &prog,
-        ledger_out.is_some() || states || export_lean.is_some() || export_json.is_some(),
+        check::Options {
+            record: ledger_out.is_some()
+                || states
+                || export_lean.is_some()
+                || export_json.is_some(),
+            natural_loops: natural,
+        },
     );
     if let Some(o) = &object {
         match std::fs::read(o) {
