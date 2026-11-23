@@ -679,6 +679,59 @@ fn run_case(
                     return Err(format!("{}: {} not preserved", f.name, Reg(r as u8)));
                 }
             }
+            // Q2: some choice of the result variables (from bare out-registers, either
+            // representative) satisfies the out types and the exit constraint
+            let mut cands: Vec<BTreeMap<Var, i128>> = vec![v.clone()];
+            for (r, e) in &s.outs {
+                if let Some(x) = e.as_var().filter(|x| s.out_vars.contains(x)) {
+                    let u = m.regs[r.0 as usize] as i128;
+                    let mut next = Vec::new();
+                    for c in &cands {
+                        for val in [u, u - TWO64] {
+                            let mut c2 = c.clone();
+                            c2.insert(x, val);
+                            next.push(c2);
+                        }
+                    }
+                    cands = next;
+                    cands.truncate(64);
+                }
+            }
+            let post = Formula::and(s.post.clone());
+            let decided: Vec<bool> = cands
+                .iter()
+                .filter_map(|c| {
+                    let outs_ok = s.outs.iter().all(|(r, e)| {
+                        eval_lin(e, c)
+                            .is_none_or(|x| x.rem_euclid(TWO64) as u64 == m.regs[r.0 as usize])
+                    });
+                    eval_f(&post, c).map(|p| p && outs_ok)
+                })
+                .collect();
+            if !decided.is_empty() && !decided.iter().any(|b| *b) {
+                return Err(format!(
+                    "{}: returned registers violate 'out'/the exit constraint",
+                    f.name
+                ));
+            }
+            // Q3: borrowed capabilities' exit fields
+            for cl in &s.borrow {
+                if let CapKind::Bytes { base, .. } = &cl.kind
+                    && let Some(b) = eval_lin(base, &v)
+                {
+                    for (k, e) in cl.exit_fields() {
+                        let Some(c) = cands.first() else { continue };
+                        if let Some(x) = eval_lin(&e, c)
+                            && m.load((b + k) as u64, 8) != x.rem_euclid(TWO64) as u64
+                        {
+                            return Err(format!(
+                                "{}: exit field {k} of a borrowed capability is wrong",
+                                f.name
+                            ));
+                        }
+                    }
+                }
+            }
             Ok(true)
         }
     }
@@ -778,6 +831,8 @@ fn tester_finds_the_known_holes() {
         ("neg_static_oob.s", "lookup"),
         ("neg_null_unchecked.s", "no_null_check"),
         ("neg_ret_s0.s", "f"),
+        ("neg_out.s", "inc"),
+        ("neg_exit_field.s", "set_one"),
     ];
     let mut rng = Rng(0x9e37_79b9_7f4a_7c15);
     let mut missed = Vec::new();
