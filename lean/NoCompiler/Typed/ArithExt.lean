@@ -56,6 +56,23 @@ def minMaxFact (isMax : Bool) (x : Var) (a b : IExpr) : Constr :=
 def lowFacts (x : Var) (e : IExpr) (n : Nat) : List Constr :=
   [.dvd (2 ^ n) (e.sub (.var x)), .le (.lit 0) (.var x), .lt (.var x) (.lit (2 ^ n))]
 
+/-- `x = ⌊u / c⌋`: `0 ≤ u − c·x < c` (no remainder variable, I37). -/
+def quotFacts (x : Var) (u : IExpr) (c : Int) : List Constr :=
+  [.le (.lit 0) (u.sub ((IExpr.var x).smul c)), .lt (u.sub ((IExpr.var x).smul c)) (.lit c)]
+
+/-- `x = u mod c`: `c ∣ u − x`, `0 ≤ x < c`. -/
+def remFacts (x : Var) (u : IExpr) (c : Int) : List Constr :=
+  [.dvd c.toNat (u.sub (.var x)), .le (.lit 0) (.var x), .lt (.var x) (.lit c)]
+
+/-- `0 ≤ e ≤ 1`. -/
+def isBit (e : IExpr) : Constr := .and (.le (.lit 0) e) (.le e (.lit 1))
+
+/-- The table of a bitwise operation on 0/1 operands `a`, `b`, result `x` (I29). -/
+def bitTable (g : Nat → Nat → Nat) (x : Var) (a b : IExpr) : Constr :=
+  let row (p q : Nat) : Constr :=
+    .and (.eq a (.lit p)) (.and (.eq b (.lit q)) (.eq (.var x) (.lit (g p q))))
+  .or (row 0 0) (.or (row 0 1) (.or (row 1 0) (row 1 1)))
+
 /-- The rules of decisions.md I23 not in `arith`. `x = f.freshAt S` is the result, `x+1`,
     `x+2` the representatives' variables. -/
 def arith2 (S : STy) (i : Instr) : Option STy :=
@@ -106,6 +123,51 @@ def arith2 (S : STy) (i : Instr) : Option STy :=
       (S.setReg rd (some ((IExpr.var x).smul (2 ^ sh.toNat)))).addFacts (lowFacts x e 32)
   | .uop .zexth rd rs =>
     (S.reg rs).map fun e => (S.setReg rd (some (.var x))).addFacts (lowFacts x e 16)
+  -- unsigned division and remainder by a constant `c` (mod 2^64) > 0 (I23)
+  | .rop .divu rd a b | .rop .remu rd a b =>
+    let isDiv := match i with | .rop .divu .. => true | _ => false
+    match S.reg a, S.reg b with
+    | some e1, some ⟨c, []⟩ =>
+      let cu := c % 2 ^ 64
+      if 0 < cu then
+        let u := Fn.urep S (x + 1) e1
+        if isDiv then
+          some ((S.setReg rd (some (.var x))).addFacts (u.2 ++ quotFacts x u.1 cu))
+        else
+          some ((S.setReg rd (some (.var x))).addFacts (u.2 ++ remFacts x u.1 cu))
+      else none
+    | _, _ => none
+  -- arithmetic right shift: the signed representative divided by 2^sh, rounded down
+  | .shift .srai rd rs sh =>
+    (S.reg rs).map fun e =>
+      let r := Fn.srep S (x + 1) e
+      (S.setReg rd (some (.var x))).addFacts (r.2 ++ quotFacts x r.1 (2 ^ sh.toNat))
+  -- srliw by sh ≥ 1: the low word (zero-extended) divided by 2^sh; below 2^31, so the sign
+  -- extension keeps it (I35)
+  | .shiftw .srliw rd rs sh =>
+    if 1 ≤ sh.toNat then
+      (S.reg rs).map fun e =>
+        (S.setReg rd (some (.var x))).addFacts
+          (lowFacts (x + 1) e 32 ++ quotFacts x (.var (x + 1)) (2 ^ sh.toNat))
+    else none
+  -- xor: a fresh word that is 0 exactly when the operands are equal mod 2^64 (I35)
+  | .rop .xor rd a b =>
+    match S.reg a, S.reg b with
+    | some e1, some e2 =>
+      some ((S.setReg rd (some (.var x))).addFacts
+        [.le (.lit 0) (.var x), .lt (.var x) (.lit (2 ^ 64)),
+         .or (.and (.eq (.var x) (.lit 0)) (Constr.eqMod e1 e2))
+             (.and (.not (.eq (.var x) (.lit 0))) (.not (Constr.eqMod e1 e2)))])
+    | _, _ => none
+  -- and/or/xor of two values provably in {0, 1}: exact (I29)
+  | .rop .and rd a b | .rop .or rd a b =>
+    let g : Nat → Nat → Nat := match i with | .rop .and .. => (· &&& ·) | _ => (· ||| ·)
+    match S.reg a, S.reg b with
+    | some e1, some e2 =>
+      if S.ent (isBit e1) && S.ent (isBit e2) then
+        some ((S.setReg rd (some (.var x))).addFacts [bitTable g x e1 e2])
+      else none
+    | _, _ => none
   | _ => none
 
 /-- In order: constant folding, the rules above, the fresh-word default. -/
