@@ -1,22 +1,17 @@
 # nocompiler
 
 This is the command reference for `nocompiler`, the binary analysis toolkit that
-serves as development infrastructure for the nocompiler Lean 4 verifier. The
-verifier, `nocompiler`, is documented in
-[verification-ptx.md](../../experiment/docs/ptx.md) for PTX kernels and
-[firmware-verification.md](../../experiment/docs/firmware.md) for firmware binaries.
+lives beside the typed-RISC-V checker (see the [README](../../README.md)). Nothing it
+computes is an input to a guarantee.
 
 Reverse engineering from the command line. Load a binary, recover its
 functions, disassemble them, decompile them, and ask questions about what is
 there.
 
 Most analysis commands take `--json` and print the same information in a form a
-script can read; `nocompiler <command> --help` says which. `export`, `textconv`,
-`link`, `asm`, `status`, `ledger`, `prove`, `completions`, `ui` and the
+script can read; `nocompiler <command> --help` says which. `completions`, `ui` and the
 `project new/add/import/dashboard` subcommands do not. Exit codes (from
-`nocompiler --help`): `0` ok; `1` a function violates the profile (`check`,
-`annotate`, `cc`) or nothing was found; `2` bad usage, and for the core commands
-also an unreadable or unsupported input; `3` bad input (toolkit commands).
+`nocompiler --help`): `0` ok; `1` nothing was found; `2` bad usage; `3` bad input.
 
 ```
 cargo build --release

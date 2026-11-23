@@ -2,7 +2,7 @@
 
 `ecall` hands control to the Linux kernel, and the ISA says nothing about
 what happens next. `lean/NoCompiler/Env.lean` says what nocompiler assumes happens, for
-the four syscalls the profile admits. It is a relation, not a function: the
+the four syscalls it admits. It is a relation, not a function: the
 kernel's choices are left open, and a proof has to hold for every one of
 them. It is part of the trusted base ([trust.md](trust.md)).
 
@@ -37,8 +37,7 @@ states what a function adds to it, for example that the bytes of every
 `write` to fd 1, concatenated, are the message, or that an error was
 returned. A short write is one of the outcomes, so a function that prints a
 buffer has to loop until it is all written, and its proof has to show that
-the loop terminates. That is what `r >= 1` gives. `write_all` in
-`lean/Examples/Hello.lean` is that loop, proved.
+the loop terminates. That is what `r >= 1` gives.
 
 ## Assumptions
 
@@ -52,8 +51,17 @@ Each of these is an assumption about the kernel, not something proved:
   this process's memory;
 - the four numbers above are the only syscalls.
 
+## In the type system
+
+The design note's syscall rule ("システムコール") checks an `ecall` like a call, against one
+signature per syscall number. `a7` must be the constant 63, 64, 93 or 94. `write` borrows
+its buffer `ro`, `read` borrows it `rw`, and the result is `a0: int(r)` with
+`−4095 ≤ r ≤ n` and `r ≤ 0x7ffff000`. Every other register is preserved, and `exit` does not
+return. The note says these signatures should follow from `Env.lean`, but that has not
+been checked yet.
+
 ## Not modelled yet
 
-`mmap`, `brk` and other memory management (so a verified function cannot
-allocate), files as named objects (a file descriptor is only a stream of
+`mmap`, `brk` and other memory management (so allocation is an unsafe contract, not
+something a safe function does through a syscall), files as named objects (a file descriptor is only a stream of
 bytes in and out), signals, threads, and the vDSO.

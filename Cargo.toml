@@ -1,10 +1,9 @@
-# nocompiler: a formal-verification-friendly RISC-V profile, with Lean 4 proofs.
+# nocompiler: typed RISC-V assembly with a memory-safety checker, and a binary analysis toolkit.
 #
-# crates/nocompiler    the core: profile checker, metadata, Lean exporter (library `nocompiler`); lean/ has the proofs
-# crates/nocompiler-*  the binary analysis toolkit (loaders, decoders, IR, decompiler, differ, ...)
+# crates/nocompiler-typed  the typed-RISC-V checker (lean/ has the machine model and the Lean side)
+# crates/nocompiler-*      the binary analysis toolkit (loaders, decoders, IR, decompiler, differ, ...)
 #
-# The core library depends on no other crate. Toolkit crate boundaries are
-# documented in docs/toolkit/ROADMAP-toolkit.md.
+# Toolkit crate boundaries are documented in docs/toolkit/boundaries.md.
 [workspace]
 members = ["crates/*"]
 resolver = "3"

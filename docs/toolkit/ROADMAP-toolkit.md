@@ -1,10 +1,14 @@
 # Roadmap
 
-> **A plan and milestone record, not a description of the code.** Milestones, scopes and "will" sentences
-> below are plans unless the text says they shipped. What exists now: [MANUAL.md](MANUAL.md) (the commands
-> and their options, `nocompiler --help`), [prove.md](prove.md), [proof-status.md](proof-status.md) and the
-> code itself. Commands named here that `nocompiler --help` does not list (e.g. `nocompiler bundle`,
-> `nocompiler ptx`) do not exist. (Note added 2026-11-23, round 9 freeze.)
+> **A historical milestone record, not a description of the code.** Milestones, scopes and "will"
+> sentences below are plans unless the text says they shipped. What exists now: [MANUAL.md](MANUAL.md)
+> (the commands and their options, `nocompiler --help`) and the code itself. Commands named here that
+> `nocompiler --help` does not list (e.g. `nocompiler bundle`, `nocompiler ptx`) do not exist.
+>
+> **2026-11-23 restart.** The project now centres on typed RISC-V assembly ([../ROADMAP.md](../ROADMAP.md)).
+> The verifier scopes below (PTX, RV32 firmware, the old RISC-V profile), `experiment/` and the proof
+> commands were removed from the tree. They remain in git history before commit e21a7662. Links to
+> them below are kept as plain text.
 
 Status: in progress, 2026-09-13. This file is the scope authority for nocompiler:
 what it is, what gets built in what order, and what will be refused in review
@@ -782,7 +786,7 @@ or decompiler roadmap or authorize a firmware framework.
 
 The supported subset, exact statements, build commands, assumptions, provenance
 and trusted computing base are together in
-[`verification-rv32.md`](../../experiment/docs/rv32-research.md). Implementation is isolated in
+``verification-rv32.md`` (removed). Implementation is isolated in
 `nocompiler` and `verification/rv32`; no empty firmware crate or CI profile change.
 
 ## F. Scoped firmware verification (2026-10-28 owner authorization)
@@ -791,7 +795,7 @@ The owner expanded V0 into a production tool for one scope: a binary-level,
 Lean-kernel-checked safety guarantee for firmware on one RISC-V board. This is
 the only architecture exception; it does not reorder M1-M12 or the decoder
 priorities, and nothing in it trusts nocompiler's decompiler, CFG recovery or IR.
-Product documentation is [`firmware-verification.md`](../../experiment/docs/firmware.md).
+Product documentation is ``firmware-verification.md`` (removed).
 Each item is checked only when its acceptance criterion has been run.
 
 - [x] **F1. Stable baseline.** V0 committed as inherited, its fixture-corpus
@@ -869,7 +873,7 @@ Each item is checked only when its acceptance criterion has been run.
 
 ## R. RMK on RISC-V (2026-10-29 owner authorization)
 
-Integrated checkpoint and replay instructions: [RMK checkpoint](../../experiment/docs/rmk-checkpoint.md).
+Integrated checkpoint and replay instructions: `RMK checkpoint` (removed).
 This preserves partial results; `SessionSafe` and reproducible R0 remain open.
 
 The next product target is upstream [RMK](https://github.com/rmk-rs/rmk),
@@ -1066,7 +1070,7 @@ no equivalence check is part of the proof. The question the scope answers:
 can these properties of LLM-generated PTX be proved automatically in Lean 4
 without trusting the LLM or a high-level compiler? Design, theorem statements,
 assumptions and the trusted base are in
-[`verification-ptx.md`](../../experiment/docs/ptx.md). The Lean project is
+``verification-ptx.md`` (removed). The Lean project is
 `verification/ptx` (core Lean v4.35.0, no Mathlib); the parser and exporter are
 `crates/nocompiler-ptx`, reached through `nocompiler ptx`. It does not reorder M1-M12
 and adds nothing to nocompiler's disassembler, lifter or decompiler. Each item is
