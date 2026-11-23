@@ -15,7 +15,7 @@
 #:   borrow f |-> bytes[232] rw
 #:   borrow Stdio
 #:   where  8 | f
-#: unsafe fn __fwritex [b, l, f]
+#: fn __fwritex [b, l, f]
 #:   in     a0: int(b), a1: int(l), a2: int(f)
 #:   borrow b |-> bytes[l] ro
 #:   borrow f |-> bytes[232] rw
@@ -23,6 +23,8 @@
 #:   where  8 | f
 #:   out    a0: int(r)
 #:   where  0 <= r <= l
+#:   stack  64
+#:   frame  64 slots 8, 16, 24, 32, 40, 48, 56
 #: fn fwrite [b, size, nmemb, f, len]
 #:   in     a0: int(b), a1: int(size), a2: int(nmemb), a3: int(f)
 #:   borrow b |-> bytes[len] ro
@@ -30,6 +32,6 @@
 #:   borrow Stdio
 #:   where  8 | f
 #:   out    a0: int
-#:   stack  64
+#:   stack  128
 #:   frame  64 slots 8, 16, 24, 32, 40, 48, 56
 # len should be size*nmemb; v0 index expressions are linear, so len is left unrelated.

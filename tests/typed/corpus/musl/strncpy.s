@@ -10,6 +10,7 @@
 #:   borrow s |-> bytes[n] ro
 #:   out    a0: int
 #:   stack  16
+#:   frame  16 slots 0, 8
 #: fn strncpy [d, s, n]
 #:   in     a0: int(d), a1: int(s), a2: int(n)
 #:   borrow d |-> bytes[n] rw

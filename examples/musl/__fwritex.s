@@ -10,12 +10,14 @@
 #:   where  8 | f
 #:   out    a0: int
 #:   stack  0
-#: fn __fwritex [s, l, f]
-#:   in     a0: int(s), a1: int(l), a2: int(f)
-#:   borrow s |-> bytes[l] ro
+#: fn __fwritex [b, l, f]
+#:   in     a0: int(b), a1: int(l), a2: int(f)
+#:   borrow b |-> bytes[l] ro
 #:   borrow f |-> bytes[232] rw
+#:   borrow Stdio
 #:   where  8 | f
-#:   out    a0: int
+#:   out    a0: int(r)
+#:   where  0 <= r <= l
 #:   stack  64
 #:   frame  64 slots 8, 16, 24, 32, 40, 48, 56
 	.section .text.__fwritex,"ax",@progbits

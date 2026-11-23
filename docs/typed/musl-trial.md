@@ -440,6 +440,32 @@ verdict changed. Totals for the 29 compiled functions: **18 accepted by default,
 loops** (memcpy, memmove and stpncpy added). Still open from stage 4/5: `sltu` of an `xor`
 (memccpy), `srliw` (l64a), per-mode corpus expectations.
 
+### Stage 7: the trial as one program (U's I34, `nocompiler-typed link`) (2026-11-23T20:14Z)
+
+Checker at origin/typed 34812159. `scripts/musl-trial/link.sh` links all 29 base files plus the
+malloc/free contracts, then finds the largest closed safe subset: accepted functions whose
+declared safe callees are accepted too.
+
+The first link found **three declarations that differed from their definitions**. Each file had
+been checked alone against its own copy of the callee's signature:
+- memmove declared memcpy with `int(n)` after memcpy's definition moved to `u64(n)` (stage 4).
+- fwrite declared `__fwritex` as an `unsafe fn` with `borrow Stdio` and `0 ≤ r ≤ l`, while
+  `__fwritex.s` defined it as a safe `fn` without them.
+- strncpy declared `__stpncpy` without its `frame` clause.
+Fixed by making every declaration a verbatim copy of the definition. For `__fwritex`, the fuller
+contract was kept in both files (the real function also writes the FILE's buffer, which only a
+token like `Stdio` can stand for), and fwrite's `stack` went from 64 to 128 to cover
+`__fwritex`'s 64. No single-file verdict changed.
+
+| mode | closed safe subset (link reports no error) |
+|------|--------------------------------------------|
+| default | **16 functions**: labs, memcmp, bcmp, memrchr, strncmp, swab, bzero, memset, wmemcpy, wmemset, wmemcmp, wmemchr, _Exit, __towrite, ffsl, div |
+| `--loops natural` | **20 functions**: the 16 plus memcpy, memmove, stpncpy, strncpy |
+
+strnlen is accepted alone but falls out of both subsets, because it calls memchr, which is
+rejected. strncpy falls out by default because `__stpncpy` is rejected there. No recursion
+across files (S5 over the whole call graph).
+
 ## Files
 
 - `scripts/musl-trial/build.sh` — pinned build (musl tree digest, clang 15.0.7, flags);
