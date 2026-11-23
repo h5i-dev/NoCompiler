@@ -185,6 +185,11 @@ block layout; branch-free `&&`), so they test whether that understanding general
 | stpncpy | reject | xor alignment test as in memccpy; likely S2 layout; branch-free `&&` in the head loop. Calls memset (call pair). |
 | strncpy | accept | one call to `__stpncpy` with the same borrows; `d` kept in a callee-saved register. Signature stronger than C (s readable for n bytes). |
 
+Stage 1 for batch 2 (expected from reading the code): 5 of 6 as predicted. The four `wmem*`
+are single loops with branches (accept); strncpy is a frame + one call (accept with I21).
+stpncpy is rejected for all three predicted reasons, plus one I did not predict: it also loads its
+word constants from a constant pool (static data, I14). All six pass the qemu harness.
+
 ## Files
 
 - `scripts/musl-trial/build.sh` — pinned build (musl tree digest, clang 15.0.7, flags);

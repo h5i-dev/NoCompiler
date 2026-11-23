@@ -10,6 +10,10 @@ size_t strnlen(const char *, size_t); int strncmp(const char *, const char *, si
 void swab(const void *, void *, ssize_t); void bzero(void *, size_t); void *memset(void *, int, size_t);
 void *memcpy(void *, const void *, size_t); void *memccpy(void *, const void *, int, size_t);
 void *memmove(void *, const void *, size_t); size_t strlen(const char *);
+typedef int wchar_t;
+wchar_t *wmemcpy(wchar_t *, const wchar_t *, size_t); wchar_t *wmemset(wchar_t *, wchar_t, size_t);
+int wmemcmp(const wchar_t *, const wchar_t *, size_t); wchar_t *wmemchr(const wchar_t *, wchar_t, size_t);
+char *stpncpy(char *, const char *, size_t); char *strncpy(char *, const char *, size_t);
 typedef struct FILE FILE; size_t fwrite(const void *, size_t, size_t, FILE *);
 
 static long sys3(long n, long a, long b, long c) {
@@ -80,6 +84,30 @@ void _start_c(void) {
     check(memmove(C + d, C + s, n) == C + d && !ref_cmp(B, C, sizeof C), "memmove");
     for (size_t i = 0; i < n; i++) A[oa + i] = 1 + r8() % 200; A[oa + n] = 0;
     check(strlen((char *)A + oa) == n, "strlen");
+  }
+  static wchar_t W[64], X[64], Y[64];
+  for (int t = 0; t < 200; t++) {
+    size_t n = lens[t % NL] % 40, o = r8() % 8;
+    for (int i = 0; i < 64; i++) { W[i] = (int)(r8() % 3) - 1; X[i] = (t & 1) ? W[i] : (int)(r8() % 3) - 1; Y[i] = r8(); }
+    if (t & 2 && n) X[o + r8() % n] += 1 - 2 * (r8() & 1) * 0x40000000;   /* sign matters */
+    int rc = 0; for (size_t i = 0; i < n; i++) if (W[o+i] != X[o+i]) { rc = W[o+i] < X[o+i] ? -1 : 1; break; }
+    check(wmemcmp(W + o, X + o, n) == rc, "wmemcmp");
+    wchar_t c = (int)(r8() % 3) - 1, *e = NULL; for (size_t i = 0; i < n; i++) if (W[o+i] == c) { e = W + o + i; break; }
+    check(wmemchr(W + o, c, n) == e, "wmemchr");
+    for (int i = 0; i < 64; i++) X[i] = Y[i]; for (size_t i = 0; i < n; i++) X[o+i] = W[o+i];
+    check(wmemcpy(Y + o, W + o, n) == Y + o && !ref_cmp((void *)X, (void *)Y, sizeof X), "wmemcpy");
+    for (size_t i = 0; i < n; i++) X[o+i] = c;
+    check(wmemset(Y + o, c, n) == Y + o && !ref_cmp((void *)X, (void *)Y, sizeof X), "wmemset");
+    /* stpncpy / strncpy: source with a NUL somewhere (or none within n) */
+    size_t oa = r8() % 9, ob = r8() % 9, z = r8() % 50;
+    for (size_t i = 0; i < 100; i++) A[oa + i] = 1 + r8() % 200; A[oa + z] = 0;
+    fill(C, sizeof C); for (size_t i = 0; i < sizeof C; i++) B[i] = C[i];
+    size_t k = 0; for (; k < n && A[oa+k]; k++) B[ob+k] = A[oa+k];
+    for (size_t i = k; i < n; i++) B[ob+i] = 0;
+    check(stpncpy((char *)C + ob, (char *)A + oa, n) == (char *)C + ob + k && !ref_cmp(B, C, sizeof C), "stpncpy");
+    fill(C, sizeof C); for (size_t i = 0; i < sizeof C; i++) { unsigned char v = C[i]; C[i] = v; }
+    for (size_t i = 0; i < sizeof C; i++) if (i < ob || i >= ob + n) B[i] = C[i];
+    check(strncpy((char *)C + ob, (char *)A + oa, n) == (char *)C + ob && !ref_cmp(B, C, sizeof C), "strncpy");
   }
   FILE f = {0}; f.lock = -1; stub_ret = 1000;
   check(fwrite(A, 4, 10, &f) == 10, "fwrite full");

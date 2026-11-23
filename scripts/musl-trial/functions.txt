@@ -19,3 +19,9 @@ fwrite   stdio/fwrite.c     fwrite
 memchr-ic  string/memchr.c   memchr   -mllvm -riscv-disable-using-constant-pool-for-large-ints
 memccpy-ic string/memccpy.c  memccpy  -mllvm -riscv-disable-using-constant-pool-for-large-ints
 strlen-ic  string/strlen.c   strlen   -mllvm -riscv-disable-using-constant-pool-for-large-ints
+wmemcpy  string/wmemcpy.c   wmemcpy
+wmemset  string/wmemset.c   wmemset
+wmemcmp  string/wmemcmp.c   wmemcmp
+wmemchr  string/wmemchr.c   wmemchr
+stpncpy  string/stpncpy.c   __stpncpy
+strncpy  string/strncpy.c   strncpy

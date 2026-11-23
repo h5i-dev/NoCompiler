@@ -14,7 +14,7 @@ base=$(for n in $names; do case $n in *-*) ;; *) echo "$n";; esac; done)
 link_run() { # $1 = label, rest = names
   local label=$1; shift; local objs=""
   for n in "$@"; do [ -f "$OUT/$n.ann.o" ] && objs="$objs $OUT/$n.ann.o"; done
-  "$LLD" -static -nostdlib -e _start -o "$OUT/harness-$label.elf" "$OUT/harness.o" $objs --defsym=memrchr=__memrchr
+  "$LLD" -static -nostdlib -e _start -o "$OUT/harness-$label.elf" "$OUT/harness.o" $objs --defsym=memrchr=__memrchr --defsym=stpncpy=__stpncpy
   echo -n "[$label] "; "$QEMU" "$OUT/harness-$label.elf"
 }
 link_run base $base
