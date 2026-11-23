@@ -41,7 +41,9 @@ def arith (S : STy) (i : Instr) : Option STy :=
       | some ⟨c, []⟩, some e2 => S.setReg rd (some (e2.smul c))
       | _, _ => anyWord S rd x)
   | .iop .andi rd rs imm =>
-    if 0 ≤ imm.toInt then
+    -- a single bit `2^k` (k ≥ 1) and a negative mask go to `arithExt` (agent U's rules)
+    if 0 ≤ imm.toInt ∧
+        ((List.range 12).any fun k => 1 ≤ k && imm.signExtend 64 == BitVec.twoPow 64 k) = false then
       -- with a mask `c = 2^k − 1`, also `e ≡ x (mod 2^k)` (the note's table)
       let mask : List Constr :=
         match r rs with
@@ -347,6 +349,18 @@ def fieldsLent (S : STy) (θ : Subst) (b : BytesCap) (c : HCap) : Bool :=
         S.entEqMod fh.ty (fl.ty.subst θ)
     | .token _ => false
 
+/-- The held token a token clause is lent from: one of the same name, without a guard. -/
+def lendTok (S : STy) (t : String) : Option HCap :=
+  S.caps.find? fun c => c.cap.kind == .token t && c.cap.guard == .tt
+
+/-- What stands for a token clause in `lends`: an empty `rw` range (the token is lent
+    exclusively; its footprint is the held token's). -/
+def tokSlot : BytesCap := { base := .lit 0, len := .lit 0, mode := .rw }
+
+/-- The token names among a signature's clauses. -/
+def _root_.NoCompiler.Typed.Sig.tokNames (g : Sig) : List String :=
+  g.entryCaps.filterMap fun c => match c.kind with | .token t => some t | .bytes _ => none
+
 /-- The callee's `borrow` and `take` clauses (instantiated) and the held capabilities they
     are lent from. -/
 def lends (S : STy) (g : Sig) (θ : Subst) : Option (List (BytesCap × HCap)) :=
@@ -355,7 +369,7 @@ def lends (S : STy) (g : Sig) (θ : Subst) : Option (List (BytesCap × HCap)) :=
     | .bytes x =>
       let x' : BytesCap := { x with base := x.base.subst θ, len := x.len.subst θ }
       (lendFrom S x').bind fun c => if fieldsLent S θ x' c then some (x', c) else none
-    | .token _ => none
+    | .token t => (lendTok S t).map fun c => (tokSlot, c)
 
 /-- Two clauses lent from the same capability do not overlap if either is `rw`. -/
 def lendsApart (S : STy) (ls : List (BytesCap × HCap)) : Bool :=
@@ -390,8 +404,12 @@ def afterCall (S : STy) (g : Sig) (θ : Subst) (ls : List (BytesCap × HCap)) (i
   let ρ := θ ++ g.outVars.zipIdx.map fun (p : Var × Nat) => (p.1, IExpr.var (x + p.2))
   let base := S.caps.foldr (fun (c : HCap) m => max (c.id + 1) m) 0
   { S with
+    -- preserved registers kept; the `out` ones typed by the callee; every other one a fresh
+    -- word (after the renamed `out` variables)
     regs := S.regs.filter (fun p => preservedRegs.contains p.1) ++
-      g.outRegs.map fun p => (p.1, p.2.subst ρ)
+      g.outRegs.map (fun p => (p.1, p.2.subst ρ)) ++
+      ((List.finRange 32).filter fun r => !preservedRegs.contains r && !g.outRegs.any (·.1 == r)).map
+        fun r => (r, IExpr.var (x + g.outVars.length + r.val))
     facts := g.post.subst ρ :: S.facts
     caps := (S.caps.filter (fun c => !(takenIds g ls).contains c.id)).map (clearLent ls) ++
       g.give.zipIdx.map fun (p : Cap × Nat) =>
@@ -415,6 +433,7 @@ def callAt (k : Nat) (S : STy) (t : Word) : Bool :=
       | some ls =>
         let S' := f.afterCall S g θ ls (f.callIds k S)
         lendsApart S ls && (ls.drop g.borrow.length).all (·.2.cap.exclusive) &&
+        (g.tokNames.all fun t => (S.caps.filter fun c => c.cap.kind == .token t).length == 1) &&
         decide ((S'.caps.map (·.id)).Nodup) && f.edge (some k) S' (k + 1)
 
 /-- `jal ra, off` to a callee in the table. -/
@@ -450,6 +469,7 @@ def tailAt (S : STy) (t : Word) : Bool :=
       | some ls =>
         let S' := f.afterCall S g θ ls []
         lendsApart S ls && (ls.drop g.borrow.length).all (·.2.cap.exclusive) &&
+        (g.tokNames.all fun t => (S.caps.filter fun c => c.cap.kind == .token t).length == 1) &&
         decide ((S'.caps.map (·.id)).Nodup) &&
         f.retOkOn preservedRegs S'
           (S'.instantiate { regs := f.sig.outRegs, facts := [f.sig.post] } f.sig.outVars)
@@ -523,8 +543,7 @@ def Sig.scoped (σ : Sig) : Bool :=
     capabilities without entry fields, no take/give/tokens, `out` registers caller-saved. -/
 def calleeOk (g : Sig) : Bool :=
   Sig.scoped g && g.params.Nodup &&
-  (g.entryCaps.all fun c => c.guard == .tt &&
-    match c.kind with | .bytes _ => true | .token _ => false) &&
+  (g.entryCaps.all fun c => c.guard == .tt) && g.tokNames.Nodup &&
   (g.inRegs.all fun p => p.1 != 1) &&
   (g.outRegs.all fun p => !preservedRegs.contains p.1) &&
   (g.take.all fun c => c.vars.all g.params.contains) &&

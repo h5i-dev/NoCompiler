@@ -158,7 +158,7 @@ theorem Fn.arith_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' : 
         simp only [Nat.add_zero, List.getElem?_cons_zero, Option.getD_some] at hx
         have hse := hasInt_signExtend (by omega) ι imm
         have hlt := (imm.signExtend 64).isLt
-        have hv := hse.toNat_eq (by simpa using hpos) (by
+        have hv := hse.toNat_eq (by simpa using hpos.1) (by
           simp only [IExpr.eval_lit]; have := BitVec.toInt_lt (x := imm); omega)
         simp only [IExpr.eval_lit] at hv
         have hand : (s.reg rs &&& imm.signExtend 64).toNat ≤ (imm.signExtend 64).toNat := by
