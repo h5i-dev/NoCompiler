@@ -53,7 +53,7 @@ theorem fn_checked : fn.check code = true := by decide
 
 /-- So `sum` meets its signature, for every meaning of tokens: the note's ⟦σ⟧, total. -/
 theorem sum_meets (T : TokEnv) : Meets code [(fn.entry, 4 * fn.size)] fn.entry T sig :=
-  Fn.check_sound fn code T fn_checked
+  Fn.check_sound_leaf fn code T fn_checked rfl
 
 /-! Rejected variants. -/
 /-- The buffer one word too short: the last load is out of range. -/

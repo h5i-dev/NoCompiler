@@ -230,6 +230,10 @@ def solveFrom (S S' : STy) (y : Var) (known : List Var) : Option IExpr :=
             else none
         else none
 
+/-- **Owned by agent U** (STATUS.md): more of `θ` after the register passes, e.g. from the
+    target's facts. Untrusted like the rest of instantiation: `sub` re-checks any `θ`. -/
+def instantiateExt (_S _S' : STy) (_newVars : List Var) (θ : Subst) : Subst := θ
+
 def instantiate (S S' : STy) (newVars : List Var) : Subst :=
   -- passes: each may make more variables known
   let known0 := (S.vars ++ S'.vars).filter (fun x => !newVars.contains x)
@@ -239,7 +243,7 @@ def instantiate (S S' : STy) (newVars : List Var) : Subst :=
       match S.solveFrom S' y kn with
       | some e => ((y, e.subst θ) :: θ, y :: kn)
       | none => (θ, kn)) acc
-  (step (step (step ([], known0)))).1
+  S.instantiateExt S' newVars (step (step (step ([], known0)))).1
 
 /-! ### Subtyping (D7) -/
 
@@ -307,6 +311,9 @@ structure Fn where
   /-- The order τ of the points (word indices) from the export (decisions.md I36); not used by
       the checker yet. -/
   tau : List Nat := []
+  /-- The functions it calls: entry address and signature (each must meet it; `check_sound`'s
+      hypotheses). -/
+  callees : List (Word × Sig) := []
   deriving Repr
 
 /-- The instructions whose only effect is a register write, and the register. -/

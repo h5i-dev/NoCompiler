@@ -1,4 +1,4 @@
-import NoCompiler.Typed.ArithExt
+import NoCompiler.Typed.Ecall
 
 /-
 The type checker, part 2: the rules for each instruction, frames, returns, the whole function.
@@ -52,7 +52,7 @@ def arith (S : STy) (i : Instr) : Option STy :=
         | none => []
       some ((S.setReg rd (some (.var x))).addFacts
         ([.le (.lit 0) (.var x), .le (.var x) (.lit imm.toInt)] ++ mask))
-    else some (anyWord S rd x)
+    else f.arithExt S i
   | .shift .srli rd rs sh =>
     match r rs with
     | some e =>
@@ -286,14 +286,87 @@ def arithOk (k : Nat) (S : STy) (i : Instr) : Bool :=
     | none => false
   | none => false
 
+/-! ### Calls (the note's 呼出し rule, Lemma 8) -/
+
+/-- The callee's parameters from the registers its `in` clause types by a bare parameter. -/
+def callInst (S : STy) (g : Sig) : Option Subst :=
+  g.params.mapM fun y =>
+    match g.inRegs.find? (fun p => p.2.asVar == some y) with
+    | some (r, _) => (S.reg r).map fun e => (y, e)
+    | none => none
+
+/-- The held capability a `borrow` clause is lent from: a byte capability, `rw` for a `rw`
+    clause, whose range contains the clause's range of nonnegative length. -/
+def lendFrom (S : STy) (b : BytesCap) : Option HCap :=
+  S.caps.find? fun c =>
+    S.ent c.cap.guard &&
+    match c.cap.kind with
+    | .bytes h => (b.mode == .ro || h.mode == .rw) &&
+        S.ent (.and (.le h.base b.base) (.and (.le (b.base.add b.len) (h.base.add h.len))
+          (.le (.lit 0) b.len)))
+    | .token _ => false
+
+/-- The borrow clauses (instantiated) and the held capabilities they are lent from. -/
+def lends (S : STy) (g : Sig) (θ : Subst) : Option (List (BytesCap × HCap)) :=
+  g.borrow.mapM fun b =>
+    match b.cap.kind with
+    | .bytes x =>
+      let x' : BytesCap := { x with base := x.base.subst θ, len := x.len.subst θ }
+      (lendFrom S x').map fun c => (x', c)
+    | .token _ => none
+
+/-- Two clauses lent from the same capability do not overlap if either is `rw`. -/
+def lendsApart (S : STy) (ls : List (BytesCap × HCap)) : Bool :=
+  ls.zipIdx.all fun (p, i) => ls.zipIdx.all fun (q, j) =>
+    i == j || p.2.id != q.2.id || (p.1.mode == .ro && q.1.mode == .ro) ||
+    S.ent (.or (.le (p.1.base.add p.1.len) q.1.base) (.le (q.1.base.add q.1.len) p.1.base))
+
+/-- A capability lent `rw` to a callee: its per-field facts are dropped (the callee may
+    have written the bytes). -/
+def clearLent (ls : List (BytesCap × HCap)) (c : HCap) : HCap :=
+  if ls.any (fun p => p.2.id == c.id && p.1.mode == .rw) then
+    match c.cap.kind with
+    | .bytes h => { c with cap := { c.cap with kind := .bytes { h with fields := [] } } }
+    | .token _ => c
+  else c
+
+/-- The type after the call returns: preserved registers kept, the `out` registers with the
+    callee's `out` variables renamed to fresh ones, its exit constraint, the fields of
+    capabilities lent `rw` forgotten. -/
+def afterCall (S : STy) (g : Sig) (θ : Subst) (ls : List (BytesCap × HCap)) : STy :=
+  let x := f.freshAt S
+  let ρ := θ ++ g.outVars.zipIdx.map fun (p : Var × Nat) => (p.1, IExpr.var (x + p.2))
+  { S with
+    regs := S.regs.filter (fun p => preservedRegs.contains p.1) ++
+      g.outRegs.map fun p => (p.1, p.2.subst ρ)
+    facts := g.post.subst ρ :: S.facts
+    caps := S.caps.map (clearLent ls) }
+
+/-- `jal ra, off` to a callee in the table. -/
+def callOk (k : Nat) (S : STy) (off : BitVec 21) : Bool :=
+  match f.callees.lookup (f.pcOf k + off.signExtend 64) with
+  | none => false
+  | some g =>
+    match callInst S g with
+    | none => false
+    | some θ =>
+      (g.inRegs.all fun p => match S.reg p.1 with
+        | some e => S.entEqMod e (p.2.subst θ)
+        | none => false) &&
+      S.ent (g.pre.subst θ) &&
+      decide (S.depth + g.stack ≤ f.sig.stack) &&
+      match lends S g θ with
+      | none => false
+      | some ls => lendsApart S ls && f.edge (some k) (f.afterCall S g θ ls) (k + 1)
+
 /-- Check instruction `k`, decoded as `i`, at a point of type `S`. -/
 def instrAt (k : Nat) (S : STy) : Instr → Bool
   | .branch op rs1 rs2 off => f.branchOk k S op rs1 rs2 off
-  | .jal rd off => rd == 0 && f.jalOk k S off
+  | .jal rd off => if rd == 1 then f.callOk k S off else rd == 0 && f.jalOk k S off
   | .jalr rd rs1 off => rd == 0 && rs1 == 1 && off == 0 && f.ret S
   | .load op rd rs off => f.loadOk k S op rd rs off
   | .store op rs1 rs2 off => f.storeOk k S op rs1 rs2 off
-  | .ecall => false
+  | .ecall => f.ecallOk k S
   | .unimp => false
   | .lui rd imm => f.arithOk k S (.lui rd imm)
   | .auipc rd imm => f.arithOk k S (.auipc rd imm)
@@ -323,10 +396,33 @@ def frameDeclOk : Bool :=
       (F.slots.map (fun j => (j, 8)) ++ F.addr).zipIdx.all fun (q, j) =>
         i == j || r.1 + r.2 ≤ q.1 || q.1 + q.2 ≤ r.1
 
+/-- A signature mentions parameters on entry and parameters and `out` variables on exit. -/
+def Sig.scoped (σ : Sig) : Bool :=
+  (σ.inRegs.all fun p => p.2.vars.all σ.params.contains) &&
+  (σ.pre.vars.all σ.params.contains) &&
+  (σ.borrow.all fun b => b.cap.guard.vars.all σ.params.contains &&
+    match b.cap.kind with
+    | .bytes x => (x.base.vars ++ x.len.vars ++ x.fields.flatMap (·.ty.vars)).all σ.params.contains &&
+        (b.outFields.flatMap (·.ty.vars)).all (fun y => σ.params.contains y || σ.outVars.contains y)
+    | .token _ => true) &&
+  (σ.outRegs.all fun p => p.2.vars.all (fun y => σ.params.contains y || σ.outVars.contains y)) &&
+  (σ.post.vars.all (fun y => σ.params.contains y || σ.outVars.contains y)) &&
+  σ.outVars.Nodup && (σ.outVars.all fun y => !σ.params.contains y)
+
+/-- What the call rule needs of a callee's signature (v0 of the Lean checker): byte
+    capabilities without entry fields, no take/give/tokens, `out` registers caller-saved. -/
+def calleeOk (g : Sig) : Bool :=
+  Sig.scoped g && g.take.isEmpty && g.give.isEmpty && g.params.Nodup &&
+  (g.borrow.all fun b => b.cap.guard == .tt &&
+    match b.cap.kind with | .bytes x => x.fields.isEmpty | .token _ => false) &&
+  (g.inRegs.all fun p => p.1 != 1) &&
+  (g.outRegs.all fun p => !preservedRegs.contains p.1)
+
 /-- The structural conditions: loops nested, variables apart. -/
 def structOk : Bool :=
   let σ := f.sig
   σ.take.isEmpty && σ.give.isEmpty &&
+  (f.callees.all fun p => calleeOk p.2) &&
   f.frameDeclOk &&
   σ.borrow.all (fun b => match b.cap.kind with | .bytes _ => b.cap.guard == .tt | .token _ => false) &&
   (keptRegs.all fun r => (f.regVar.lookup r).isSome) &&

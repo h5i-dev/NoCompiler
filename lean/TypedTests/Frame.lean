@@ -45,7 +45,7 @@ def fn : Fn where
 theorem fn_checked : fn.check code = true := by decide
 
 theorem f_meets (T : TokEnv) : Meets code [(fn.entry, 4 * fn.size)] fn.entry T sig :=
-  Fn.check_sound fn code T fn_checked
+  Fn.check_sound_leaf fn code T fn_checked rfl
 
 /-! Rejected variants. -/
 /-- `ra` reloaded from the wrong slot (32 is outside the frame). -/

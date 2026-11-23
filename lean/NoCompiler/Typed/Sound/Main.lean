@@ -1,4 +1,5 @@
-import NoCompiler.Typed.Sound.Frame
+import NoCompiler.Typed.Sound.Call
+import NoCompiler.Typed.Sound.Ecall
 
 /-
 The soundness theorem of the Lean checker (Theorems A–C of docs/健全性の証明.md for the
@@ -94,30 +95,6 @@ theorem Fn.entryVal_param (hst : f.StructSpec) (ι : Val) (s0 : State) {x : Var}
     exact (List.nodup_append.1 this).2.2 x h x (List.mem_map.2 ⟨p, hp, hpx⟩) rfl
 
 /-! ## Instruction addresses -/
-
-theorem Fn.pcOf_succ (f : Fn) (k : Nat) : f.pcOf k + 4 = f.pcOf (k + 1) := by
-  unfold Fn.pcOf; apply BitVec.eq_of_toNat_eq
-  simp only [BitVec.toNat_add, BitVec.toNat_ofNat, show (4 : Word).toNat = 4 from rfl]; omega
-
-theorem Fn.pcOf_target (f : Fn) {n : Nat} (hn : n ≤ 64) {k k' : Nat} {off : BitVec n}
-    (h : Fn.target k off.toInt = some k') : f.pcOf k + off.signExtend 64 = f.pcOf k' := by
-  unfold Fn.target at h
-  split at h
-  · rename_i hc
-    simp only [Option.some.injEq] at h; subst h
-    simp only [Bool.and_eq_true, decide_eq_true_eq] at hc
-    unfold Fn.pcOf; apply BitVec.eq_of_toNat_eq
-    have hs := hasInt_signExtend hn (fun _ => 0) off
-    unfold HasInt at hs; simp only [IExpr.eval_lit] at hs
-    simp only [BitVec.toNat_add, BitVec.toNat_ofNat]
-    have := (off.signExtend 64).isLt
-    omega
-  · cases h
-
-theorem Fn.pcOf_aligned (hst : f.StructSpec) (k : Nat) : aligned (f.pcOf k) 4 := by
-  unfold aligned Fn.pcOf
-  have := hst.entryAligned
-  simp only [BitVec.toNat_add, BitVec.toNat_ofNat]; omega
 
 theorem Fn.pcOf_mem (hst : f.StructSpec) {k : Nat} (hk : k < f.size) :
     Dom.mem [(f.entry, 4 * f.size)] (f.pcOf k) := by
@@ -285,16 +262,19 @@ theorem Fn.arith_step (hst : f.StructSpec) {c : Code} {P : Perm} {D : Dom} {Q : 
     whose invariant holds, every run stays in the function, is allowed by the permission,
     ends, and ends returning with the exit conditions. By well-founded induction on the rank. -/
 theorem Fn.run (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.instr c k = true)
-    {a : Val × TokFp} {s0 : State} (he : Entry [(f.entry, 4 * f.size)] f.entry s0)
+    {D : Dom} (hDf : ∀ k < f.size, D.mem (f.pcOf k))
+    (hcall : ∀ p ∈ f.callees, aligned p.1 4 ∧ ∃ Dg, Meets c Dg p.1 T p.2 ∧ Dg.sub D ∧
+      ∀ j < f.size, ¬ Dg.mem (f.pcOf j))
+    {a : Val × TokFp} {s0 : State} (he : Entry D f.entry s0)
     (hι0r : ∀ r x, (r, x) ∈ f.regVar → f.entryVal a.1 s0 x = (s0.reg r).toNat)
     (hι0p : ∀ x ∈ f.sig.params, f.entryVal a.1 s0 x = a.1 x) :
     ∀ p : Nat × Val, ∀ S s, f.tyAt p.1 = some S → p.1 < f.size → s.pc = f.pcOf p.1 →
       Inv f T ((f.sig.spec T).perm a s0) s0 (f.entryVal a.1 s0) S s p.2 a.2 →
-      Exec c ((f.sig.spec T).perm a s0) [(f.entry, 4 * f.size)] ((f.sig.spec T).Done a s0) s := by
+      Exec c ((f.sig.spec T).perm a s0) D ((f.sig.spec T).Done a s0) s := by
   intro p
   refine WellFounded.induction (C := fun p : Nat × Val => ∀ S s, f.tyAt p.1 = some S → p.1 < f.size →
       s.pc = f.pcOf p.1 → Inv f T ((f.sig.spec T).perm a s0) s0 (f.entryVal a.1 s0) S s p.2 a.2 →
-      Exec c ((f.sig.spec T).perm a s0) [(f.entry, 4 * f.size)] ((f.sig.spec T).Done a s0) s)
+      Exec c ((f.sig.spec T).perm a s0) D ((f.sig.spec T).Done a s0) s)
     (InvImage.wf (fun p : Nat × Val => f.rank p.1 p.2) LexN.wf) p ?_
   intro p ih
   obtain ⟨k, ι⟩ := p
@@ -304,7 +284,7 @@ theorem Fn.run (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.instr
   have cont : ∀ (S1 : STy) (s' : State) (ι1 : Val) (k' : Nat), s'.pc = f.pcOf k' →
       Inv f T ((f.sig.spec T).perm a s0) s0 (f.entryVal a.1 s0) S1 s' ι1 a.2 →
       (∀ y : Nat, y < f.fresh → ι1 y = ι y) → f.edge (some k) S1 k' = true →
-      Exec c ((f.sig.spec T).perm a s0) [(f.entry, 4 * f.size)] ((f.sig.spec T).Done a s0) s' := by
+      Exec c ((f.sig.spec T).perm a s0) D ((f.sig.spec T).Done a s0) s' := by
     intro S1 s' ι1 k' hpc' hI1 hag he'
     unfold Fn.edge at he'
     split at he'
@@ -312,7 +292,7 @@ theorem Fn.run (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.instr
     · rename_i S2 hS2
       obtain ⟨hk', hI2, hrk⟩ := f.edgeOk_sound hst he' hI1 hag
       exact ih (k', _) (hrk k rfl) S2 s' hS2 hk' hpc' hI2
-  have hd : Dom.mem [(f.entry, 4 * f.size)] s.pc := hpc ▸ f.pcOf_mem hst hk
+  have hd : Dom.mem D s.pc := hpc ▸ hDf k hk
   have hprot := hst.protFresh
   obtain ⟨S', i, hS', hci, hk1⟩ := Fn.instr_spec (hinstr k hk)
   rw [hS] at hS'; cases hS'
@@ -359,7 +339,15 @@ theorem Fn.run (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.instr
         exact cont _ _ ι' (k + 1) (by simp only [State.setPc_pc]; rw [hpc, f.pcOf_succ]) (((hI.congr g2
           (fun y hy => g1 y (hprot y hy))).addFacts (gf (by simpa using hb))).setPc _) g1 hk1.2
   | jal rd off =>
-    simp only [Fn.instrAt, Bool.and_eq_true, beq_iff_eq] at hk1
+    simp only [Fn.instrAt] at hk1
+    by_cases hr1 : rd = 1
+    · subst hr1
+      simp only [beq_self_eq_true, if_true] at hk1
+      exact f.call_step hst hI hd hpc hi hk1 hcall
+        (fun s' hx => Reach.done ⟨Or.inr hx, Or.inr ⟨hx, trivial⟩⟩)
+        (fun S1 s' ι1 hpc' hI1 hag he' => cont S1 s' ι1 (k + 1) hpc' hI1 hag he')
+    rw [if_neg (by simpa using hr1)] at hk1
+    simp only [Bool.and_eq_true, beq_iff_eq] at hk1
     obtain ⟨rfl, hk1⟩ := hk1
     unfold Fn.jalOk at hk1
     cases ht : Fn.target k off.toInt with
@@ -461,16 +449,25 @@ theorem Fn.run (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.instr
           · cases hk1
       · cases hk1
     · exact f.arith_step hst cont hd hI hi hpc hk1
-  | ecall => simp [Fn.instrAt] at hk1
+  | ecall =>
+    simp only [Fn.instrAt] at hk1
+    exact f.ecall_step hst hI hd hpc hi hk1
+      (fun s' hx => Reach.done ⟨Or.inr hx, Or.inr ⟨hx, trivial⟩⟩)
+      (fun S1 s' ι1 hpc' hI1 hag he' => cont S1 s' ι1 (k + 1) hpc' hI1 hag he')
   | unimp => simp [Fn.instrAt] at hk1
   | _ =>
     simp only [Fn.instrAt] at hk1
     exact f.arith_step hst cont hd hI hi hpc hk1
 
-/-- **Soundness of the Lean checker**: a function it accepts meets its signature
-    (⟦σ⟧, total) on the code image it was checked against, for every meaning of tokens. -/
-theorem Fn.check_sound (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = true) :
-    Meets c [(f.entry, 4 * f.size)] f.entry T f.sig := by
+/-- **Soundness of the Lean checker** (theorems A–C for one function): a function it accepts
+    meets its signature (⟦σ⟧, total) on the code image it was checked against, for every
+    meaning of tokens, on any domain `D` that holds its code and its callees' (each callee
+    verified on its own domain, away from this function's code). -/
+theorem Fn.check_sound (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = true) {D : Dom}
+    (hDf : ∀ k < f.size, D.mem (f.pcOf k))
+    (hcall : ∀ p ∈ f.callees, aligned p.1 4 ∧ ∃ Dg, Meets c Dg p.1 T p.2 ∧ Dg.sub D ∧
+      ∀ j < f.size, ¬ Dg.mem (f.pcOf j)) :
+    Meets c D f.entry T f.sig := by
   unfold Fn.check at h
   simp only [Bool.and_eq_true, List.all_eq_true, List.mem_range] at h
   obtain ⟨⟨hso, hentry⟩, hinstr⟩ := h
@@ -482,8 +479,15 @@ theorem Fn.check_sound (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = true) :
   · cases hentry
   · rename_i S0 hS0
     obtain ⟨hk0, hI1, -⟩ := f.edgeOk_sound hst hentry hI0 (ιpre := f.entryVal a.1 s0) (fun _ _ => rfl)
-    exact f.run hst hinstr he (fun r x h => f.entryVal_reg hst a.1 s0 h)
+    exact f.run hst hinstr hDf hcall he (fun r x h => f.entryVal_reg hst a.1 s0 h)
       (fun x h => f.entryVal_param hst a.1 s0 h) (0, _) S0 s0 hS0 hk0
       (by simp [Fn.pcOf, he.pc]) hI1
+
+/-- A function with no calls, on its own code. -/
+theorem Fn.check_sound_leaf (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = true)
+    (hnc : f.callees = []) : Meets c [(f.entry, 4 * f.size)] f.entry T f.sig := by
+  have hso : f.structOk = true := by
+    unfold Fn.check at h; simp only [Bool.and_eq_true] at h; exact h.1.1
+  exact f.check_sound c T h (fun k hk => f.pcOf_mem (Fn.structOk_spec hso) hk) (by simp [hnc])
 
 end NoCompiler.Typed

@@ -206,10 +206,7 @@ theorem Fn.arith_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' : 
                   Int.zero_emod]
               · simp at hp
             · simp at hp
-      · simp only [Option.some.injEq] at ha; subst ha
-        simp only [exec, Option.some.injEq] at hx; subst hx
-        obtain ⟨ι', h1, h2⟩ := hI.any hprot hrd _ _
-        exact ⟨ι', h1, h2, by simp⟩
+      · exact f.arithExt_sound hprot hI (by simp [writesReg]) hrd ha hx
     all_goals arith_any
   | addiw rd' rs imm =>
     simp only [writesReg, Option.some.injEq] at hw; subst hw

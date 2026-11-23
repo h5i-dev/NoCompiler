@@ -15,6 +15,7 @@ import NoCompiler.Typed.Presburger
 import NoCompiler.Typed.Search
 import NoCompiler.Typed.CheckBase
 import NoCompiler.Typed.ArithExt
+import NoCompiler.Typed.Ecall
 import NoCompiler.Typed.Check
 import NoCompiler.Typed.Sound.Inv
 import NoCompiler.Typed.Sound.Rank
@@ -28,3 +29,5 @@ import NoCompiler.Typed.Sound.Edge
 import NoCompiler.Typed.Sound.Ret
 import NoCompiler.Typed.Sound.Main
 import NoCompiler.Typed.Sound.Frame
+import NoCompiler.Typed.Sound.Call
+import NoCompiler.Typed.Sound.Ecall

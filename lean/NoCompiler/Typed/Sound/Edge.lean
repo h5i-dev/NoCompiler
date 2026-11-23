@@ -12,6 +12,7 @@ variable {f : Fn} {T : TokEnv} {P : Perm} {s0 : State} {ι0 : Val}
 structure Fn.StructSpec (f : Fn) : Prop where
   take : f.sig.take = []
   give : f.sig.give = []
+  callees : ∀ p ∈ f.callees, Fn.calleeOk p.2 = true
   frameDecl : f.frameDeclOk = true
   borrowBytes : ∀ b ∈ f.sig.borrow, ∃ x, b.cap.kind = .bytes x
   kept : ∀ r ∈ keptRegs, (f.regVar.lookup r).isSome
@@ -39,9 +40,9 @@ theorem Fn.structOk_spec (h : f.structOk = true) : f.StructSpec := by
   simp only [Bool.and_eq_true, List.all_eq_true, List.isEmpty_iff, beq_iff_eq, decide_eq_true_eq,
     Bool.or_eq_true, List.contains_iff_mem, Bool.not_eq_true', Option.isSome_iff_exists] at h
   simp only [and_assoc] at h
-  obtain ⟨htake, hgive, hstack, hbb, hkept, hnd, hei, hpf, htau, hloops, hsorted, hal, hsz, hnest, hin, hpre,
+  obtain ⟨htake, hgive, hcal, hstack, hbb, hkept, hnd, hei, hpf, htau, hloops, hsorted, hal, hsz, hnest, hin, hpre,
     hbv, hout, hpost, hop, -⟩ := h
-  refine ⟨htake, hgive, hstack, ?_, fun r hr => by simpa [Option.isSome_iff_exists] using hkept r hr,
+  refine ⟨htake, hgive, hcal, hstack, ?_, fun r hr => by simpa [Option.isSome_iff_exists] using hkept r hr,
     hnd, hei, hpf, ?_, fun L hL => ⟨(hloops L hL).1, (hloops L hL).2.1⟩, fun L hL => (hloops L hL).2.2.2,
     hsorted, hal, hsz, ?_, hin, hpre, ?_, hout, hpost, fun x hx => by simpa using hop x hx⟩
   · intro b hb
