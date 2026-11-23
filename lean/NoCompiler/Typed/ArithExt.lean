@@ -80,6 +80,11 @@ def disjConst (S : STy) (rd : Reg) (e : IExpr) (cu : Nat) : Option STy :=
     else none
   else none
 
+/-- `divu`/`remu` by a positive divisor: `0 ≤ x < 2^64`, `x ≤ u(a)`, and `x < u(b)` for `remu`. -/
+def divBound (isDiv : Bool) (x : Var) (ua ub : IExpr) : List Constr :=
+  [.le (.lit 0) (.var x), .lt (.var x) (.lit (2 ^ 64)), .le (.var x) ua] ++
+    (if isDiv then [] else [.lt (.var x) ub])
+
 /-- `0 ≤ x ≤ b`. -/
 def boundFacts (x : Var) (b : Int) : List Constr := [.le (.lit 0) (.var x), .le (.var x) (.lit b)]
 
@@ -178,6 +183,13 @@ def arith2 (S : STy) (i : Instr) : Option STy :=
           some ((S.setReg rd (some (.var x))).addFacts (u.2 ++ quotFacts x u.1 cu))
         else
           some ((S.setReg rd (some (.var x))).addFacts (u.2 ++ remFacts x u.1 cu))
+      else none
+    -- any divisor provably > 0 (its range known): bounds only, as the Rust checker
+    | some e1, some e2 =>
+      let u1 := Fn.urep S (x + 1) e1
+      let u2 := Fn.urep S (x + 2) e2
+      if u2.2 = [] ∧ S.ent (.lt (.lit 0) u2.1) = true then
+        some ((S.setReg rd (some (.var x))).addFacts (u1.2 ++ divBound isDiv x u1.1 u2.1))
       else none
     | _, _ => none
   -- arithmetic right shift: the signed representative divided by 2^sh, rounded down

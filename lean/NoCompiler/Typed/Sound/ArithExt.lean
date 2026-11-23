@@ -284,6 +284,34 @@ theorem boundFacts_holds {ι : Val} {x : Var} {b : Int} {n : Nat} (hx : ι x = n
   rcases hp with rfl | rfl <;>
     simp only [Constr.holds, Constr.eval, decide_eq_true_eq, IExpr.eval_var, IExpr.eval_lit, hx] <;> omega
 
+theorem Fn.urep_fst_of_nil {S : STy} {x : Var} {e : IExpr} (h : (Fn.urep S x e).2 = []) :
+    (Fn.urep S x e).1 = e := by
+  unfold Fn.urep at *; split <;> simp_all
+
+theorem Fn.urep_nil_ent {S : STy} {x : Var} {e : IExpr} (h : (Fn.urep S x e).2 = []) :
+    S.ent (.and (.le (.lit 0) e) (.lt e (.lit (2 ^ 64)))) = true := by
+  unfold Fn.urep at h
+  split at h
+  · assumption
+  · simp at h
+
+theorem divBound_holds {ι : Val} {isDiv : Bool} {x : Var} {ua ub : IExpr} {r A B : Nat}
+    (hx : ι x = r) (ha : ua.eval ι = A) (hb : ub.eval ι = B) (hr : r < 2 ^ 64) (hra : r ≤ A)
+    (hrb : isDiv = false → r < B) : ∀ p ∈ Fn.divBound isDiv x ua ub, p.holds ι := by
+  intro p hp
+  cases isDiv
+  · simp only [Fn.divBound, Bool.false_eq_true, ite_false, List.cons_append, List.nil_append,
+      List.mem_cons, List.not_mem_nil, or_false] at hp
+    have := hrb rfl
+    rcases hp with rfl | rfl | rfl | rfl <;>
+      simp only [Constr.holds, Constr.eval, Constr.lt, decide_eq_true_eq, IExpr.eval_var,
+        IExpr.eval_lit, IExpr.eval_add, hx, ha, hb] <;> omega
+  · simp only [Fn.divBound, ite_true, List.append_nil, List.mem_cons, List.not_mem_nil,
+      or_false] at hp
+    rcases hp with rfl | rfl | rfl <;>
+      simp only [Constr.holds, Constr.eval, Constr.lt, decide_eq_true_eq, IExpr.eval_var,
+        IExpr.eval_lit, IExpr.eval_add, hx, ha] <;> omega
+
 /-- Products agree modulo 2^32 when the factors do. -/
 theorem mod32_mul {A B a b : Int} (hA : (A - a) % 2 ^ 32 = 0) (hB : (B - b) % 2 ^ 32 = 0) :
     (A * B - a * b) % 2 ^ 32 = 0 := by
@@ -731,7 +759,59 @@ theorem Fn.arith2_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' :
       | some e2 =>
         obtain ⟨c, ts⟩ := e2
         cases ts with
-        | cons t ts => simp [h1, h2] at ha
+        | cons t ts =>
+          simp only [h1, h2] at ha
+          split at ha
+          · rename_i hc
+            obtain ⟨hnil, hpos⟩ := hc
+            have hpos := hI.ent hpos
+            rw [Fn.urep_fst_of_nil hnil] at hpos
+            simp only [Constr.holds, Constr.eval, Constr.lt, IExpr.eval_add, IExpr.eval_lit,
+              decide_eq_true_eq] at hpos
+            have hbpos : 0 < (s.reg b).toNat := by
+              have hr := hI.ent (Fn.urep_nil_ent hnil)
+              simp only [Constr.holds, Constr.eval, Constr.lt, IExpr.eval_add, IExpr.eval_lit,
+                Bool.and_eq_true, decide_eq_true_eq] at hr
+              have := (STy.reg_hasInt hI.regs h2).toNat_eq hr.1 (by omega)
+              omega
+            have hbne : s.reg b ≠ 0 := fun h0 => by rw [h0] at hbpos; simp at hbpos
+            first
+            | (simp only [ite_true, Option.some.injEq] at ha; subst ha
+               let vs : List Int := [((evalR .divu (s.reg a) (s.reg b)).toNat : Int),
+                 ((s.reg a).toNat : Int), ((s.reg b).toNat : Int)]
+               refine hI.fresh4 hprot hrd vs (.var (f.freshAt S)) _ (evalR .divu (s.reg a) (s.reg b))
+                 (hasInt_toNat _ _ _ (by simp [vs, setFrom_x])) (fun p hp => ?_)
+               have u1 := Fn.urep_spec (x := f.freshAt S + 1) hI (STy.reg_hasInt hI.regs h1)
+                 (STy.reg_maxVar' h1) (hag vs).1 (by simp [vs, setFrom_x1])
+               have u2 := Fn.urep_spec (x := f.freshAt S + 2) hI (STy.reg_hasInt hI.regs h2)
+                 (STy.reg_maxVar' h2) (hag vs).1 (by simp [vs, setFrom_x2])
+               simp only [List.mem_append] at hp
+               rcases hp with hp | hp
+               · exact u1.2 p hp
+               · refine divBound_holds (r := (evalR .divu (s.reg a) (s.reg b)).toNat)
+                   (by simp [vs, setFrom_x]) u1.1 u2.1 (BitVec.isLt _) ?_ (fun h => by cases h) p hp
+                 simp only [evalR, rvDivu, hbne, if_false, BitVec.toNat_udiv]
+                 exact Nat.div_le_self _ _)
+            | (simp only [Bool.false_eq_true, ite_false, Option.some.injEq] at ha; subst ha
+               let vs : List Int := [((evalR .remu (s.reg a) (s.reg b)).toNat : Int),
+                 ((s.reg a).toNat : Int), ((s.reg b).toNat : Int)]
+               refine hI.fresh4 hprot hrd vs (.var (f.freshAt S)) _ (evalR .remu (s.reg a) (s.reg b))
+                 (hasInt_toNat _ _ _ (by simp [vs, setFrom_x])) (fun p hp => ?_)
+               have u1 := Fn.urep_spec (x := f.freshAt S + 1) hI (STy.reg_hasInt hI.regs h1)
+                 (STy.reg_maxVar' h1) (hag vs).1 (by simp [vs, setFrom_x1])
+               have u2 := Fn.urep_spec (x := f.freshAt S + 2) hI (STy.reg_hasInt hI.regs h2)
+                 (STy.reg_maxVar' h2) (hag vs).1 (by simp [vs, setFrom_x2])
+               simp only [List.mem_append] at hp
+               rcases hp with hp | hp
+               · exact u1.2 p hp
+               · refine divBound_holds (r := (evalR .remu (s.reg a) (s.reg b)).toNat)
+                   (by simp [vs, setFrom_x]) u1.1 u2.1 (BitVec.isLt _) ?_ ?_ p hp
+                 · simp only [evalR, rvRemu, hbne, if_false, BitVec.toNat_umod]
+                   exact Nat.mod_le _ _
+                 · intro _
+                   simp only [evalR, rvRemu, hbne, if_false, BitVec.toNat_umod]
+                   exact Nat.mod_lt _ hbpos)
+          · cases ha
         | nil =>
         simp only [h1, h2] at ha
         split at ha
