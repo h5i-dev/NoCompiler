@@ -118,7 +118,14 @@ Ordered by how many trial functions each blocks.
    must be reducible), and treat other backward edges as ordinary forward edges of the DAG.
    `inv`/`decreases` then only belong at real loop heads. The structural facts the proof
    uses (a measure on every cycle, single-entry loops) still hold for reducible CFGs.
-   `scripts/musl-trial/s2-intervals.py` lists the violations per file.
+   `scripts/musl-trial/s2-intervals.py` lists the violations per file, and also computes the
+   natural loops. Result over all 24 compiled files: **every CFG is reducible**, and the natural
+   loop heads are exactly the loops annotated with `decreases` (memcpy 5, memmove 6, memchr 3,
+   memccpy 3, stpncpy 3, strlen 3, the rest 0 or 1). All interval violations come from 25
+   backward edges that are not loops (fwrite 2, memchr 2, memccpy 5, memcpy 6, memmove 6,
+   stpncpy 4). Under the natural-loop reading the `inv` blocks without `decreases` that I put
+   at such non-loop targets (memchr 0x4c, memccpy 0x10/0x14/0x34/0x9c, memmove 0x2c/0x5c/0x80,
+   stpncpy 0x1c/0x8c) become `join` blocks: a mechanical change, made when the rule changes.
 2. **Branch-free boolean conditions** (memchr, strncmp, memcpy, memccpy: 4). clang compiles
    `a && b` loop tests as `sltu`/`sltiu`/`and`/`or`/`xor` and one `beq`/`bne`. Those ops are
    "not in the table" (`int`), so the branch adds no fact. Ask: rules for `slt`/`sltu`/

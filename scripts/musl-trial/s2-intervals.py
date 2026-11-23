@@ -34,3 +34,35 @@ for a, b in edges:
     for h, e in heads.items():
         if h < b <= e and not (h <= a <= e): print(f"  edge {a:#x}->{b:#x} enters loop [{h:#x},{e:#x}] not at its head"); bad += 1
 print("S2:", "ok" if not bad else f"{bad} violation(s)")
+
+# --- The proposal of finding 1: natural loops. Dominators over instructions (entry = first),
+# back edge = a->h with h dominating a; reducible iff every retreating edge of a DFS is a back
+# edge. Prints the real loop heads and whether the CFG is reducible.
+succ = {o: [] for o, _, _ in ins}
+for a, b in edges: succ[a].append(b)
+order, seen = [], set()
+def dfs(u):
+    seen.add(u)
+    for v in succ[u]:
+        if v not in seen: dfs(v)
+    order.append(u)
+if not ins: sys.exit(0)
+dfs(ins[0][0]); rpo = order[::-1]
+pred = {o: [] for o in succ}
+for a, b in edges: pred[b].append(a)
+dom = {o: set(rpo) for o in rpo}; dom[rpo[0]] = {rpo[0]}
+changed = True
+while changed:
+    changed = False
+    for u in rpo[1:]:
+        ps = [dom[p] for p in pred[u] if p in dom]
+        new = set.intersection(*ps) | {u} if ps else {u}
+        if new != dom[u]: dom[u] = new; changed = True
+idx = {u: i for i, u in enumerate(rpo)}
+retreat = [(a, b) for a, b in edges if a in idx and b in idx and idx[b] <= idx[a]]
+natural = [(a, b) for a, b in retreat if b in dom[a]]
+irreducible = [(a, b) for a, b in retreat if b not in dom[a]]
+nheads = sorted({b for _, b in natural})
+print("natural loop heads:", ', '.join(f"{h:#x}" for h in nheads) or "none",
+      "| reducible:", "yes" if not irreducible else f"NO {[(hex(a), hex(b)) for a, b in irreducible]}",
+      f"| backward edges that are not loops: {len([1 for a, b in back if b not in dom[a]])}")
