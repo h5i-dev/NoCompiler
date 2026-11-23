@@ -301,12 +301,24 @@ def arithOk (k : Nat) (S : STy) (i : Instr) : Bool :=
 
 /-! ### Calls (the note's 呼出し rule, Lemma 8) -/
 
-/-- The callee's parameters from the registers its `in` clause types by a bare parameter. -/
+/-- A constant the entry constraint fixes `y` to (a conjunct `y = c`), e.g. a static data
+    symbol's linked address (I30/I32). -/
+def pinned (y : Var) : Constr → Option Int
+  | .eq a b =>
+    if a.asVar == some y && b.terms.isEmpty then some b.const
+    else if b.asVar == some y && a.terms.isEmpty then some a.const
+    else none
+  | .and p q => (pinned y p).orElse fun _ => pinned y q
+  | _ => none
+
+/-- The callee's parameters from the registers its `in` clause types by a bare parameter, or
+    from its entry constraint when that fixes them. (Untrusted: the call rule checks the
+    entry constraint under the result.) -/
 def callInst (S : STy) (g : Sig) : Option Subst :=
   g.params.mapM fun y =>
     match g.inRegs.find? (fun p => p.2.asVar == some y) with
     | some (r, _) => (S.reg r).map fun e => (y, e)
-    | none => none
+    | none => (pinned y g.pre).map fun c => (y, IExpr.lit c)
 
 /-- The held capability a `borrow` clause is lent from: a byte capability, `rw` for a `rw`
     clause, whose range contains the clause's range of nonnegative length. -/
@@ -319,6 +331,17 @@ def lendFrom (S : STy) (b : BytesCap) : Option HCap :=
           (.le (.lit 0) b.len)))
     | .token _ => false
 
+/-- The clause's fields (its offsets, types in the callee's parameters) are fields of the held
+    capability at the same address with an equal type, inside the lent length (I33.1). -/
+def fieldsLent (S : STy) (θ : Subst) (b : BytesCap) (c : HCap) : Bool :=
+  b.fields.all fun fl =>
+    S.ent (.le (.lit ((fl.off : Int) + 8)) b.len) &&
+    match c.cap.kind with
+    | .bytes h => h.fields.any fun fh =>
+        S.ent (.eq (h.base.add (.lit (fh.off : Int))) (b.base.add (.lit (fl.off : Int)))) &&
+        S.entEqMod fh.ty (fl.ty.subst θ)
+    | .token _ => false
+
 /-- The callee's `borrow` and `take` clauses (instantiated) and the held capabilities they
     are lent from. -/
 def lends (S : STy) (g : Sig) (θ : Subst) : Option (List (BytesCap × HCap)) :=
@@ -326,7 +349,7 @@ def lends (S : STy) (g : Sig) (θ : Subst) : Option (List (BytesCap × HCap)) :=
     match c.kind with
     | .bytes x =>
       let x' : BytesCap := { x with base := x.base.subst θ, len := x.len.subst θ }
-      (lendFrom S x').map fun c => (x', c)
+      (lendFrom S x').bind fun c => if fieldsLent S θ x' c then some (x', c) else none
     | .token _ => none
 
 /-- Two clauses lent from the same capability do not overlap if either is `rw`. -/
@@ -494,7 +517,7 @@ def Sig.scoped (σ : Sig) : Bool :=
 def calleeOk (g : Sig) : Bool :=
   Sig.scoped g && g.params.Nodup &&
   (g.entryCaps.all fun c => c.guard == .tt &&
-    match c.kind with | .bytes x => x.fields.isEmpty | .token _ => false) &&
+    match c.kind with | .bytes _ => true | .token _ => false) &&
   (g.inRegs.all fun p => p.1 != 1) &&
   (g.outRegs.all fun p => !preservedRegs.contains p.1) &&
   (g.take.all fun c => c.vars.all g.params.contains) &&

@@ -26,7 +26,7 @@ theorem Fn.lendFrom_spec {S : STy} {b : BytesCap} {c : HCap} (h : Fn.lendFrom S 
 /-- What `calleeOk` says about a callee's signature. -/
 structure CalleeSpec (g : Sig) : Prop where
   params : g.params.Nodup
-  clauses : ∀ c ∈ g.entryCaps, c.guard = .tt ∧ ∃ x, c.kind = .bytes x ∧ x.fields = []
+  clauses : ∀ c ∈ g.entryCaps, c.guard = .tt ∧ ∃ x, c.kind = .bytes x
   inRegs : ∀ p ∈ g.inRegs, p.1 ≠ 1
   outRegs : ∀ p ∈ g.outRegs, p.1 ∉ preservedRegs
   inScoped : ∀ p ∈ g.inRegs, ∀ x ∈ p.2.vars, x ∈ g.params
@@ -52,7 +52,7 @@ theorem Fn.calleeOk_spec {g : Sig} (h : Fn.calleeOk g = true) : CalleeSpec g := 
     obtain ⟨hg, hk⟩ := hcl c hc
     refine ⟨hg, ?_⟩
     split at hk
-    · rename_i x hx; exact ⟨x, hx, by simpa using hk⟩
+    · rename_i x hx; exact ⟨x, hx⟩
     · cases hk
   · intro c hc
     obtain ⟨hk, -⟩ := hgv c hc
@@ -70,10 +70,37 @@ theorem Fn.lends_spec {S : STy} {g : Sig} {θ : Subst} {ls : List (BytesCap × H
   have := hget i hi hl
   split at this
   · rename_i x hx
-    simp only [Option.map_eq_some_iff] at this
-    obtain ⟨c, hc, he⟩ := this
-    rw [← he]
-    exact ⟨x, hx, rfl, hc⟩
+    dsimp only at this
+    cases hc : Fn.lendFrom S { x with base := x.base.subst θ, len := x.len.subst θ } with
+    | none => rw [hc] at this; cases this
+    | some c =>
+      rw [hc] at this
+      dsimp only [Option.bind] at this
+      split at this
+      · simp only [Option.some.injEq] at this
+        rw [← this]
+        exact ⟨x, hx, rfl, hc⟩
+      · cases this
+  · cases this
+
+theorem Fn.lends_fields {S : STy} {g : Sig} {θ : Subst} {ls : List (BytesCap × HCap)}
+    (h : Fn.lends S g θ = some ls) (i : Nat) (hi : i < g.entryCaps.length) (hl : i < ls.length) :
+    Fn.fieldsLent S θ ls[i].1 ls[i].2 = true := by
+  obtain ⟨-, hget⟩ := mapM_some h
+  have := hget i hi hl
+  split at this
+  · rename_i x hx
+    dsimp only at this
+    cases hc : Fn.lendFrom S { x with base := x.base.subst θ, len := x.len.subst θ } with
+    | none => rw [hc] at this; cases this
+    | some c =>
+      rw [hc] at this
+      dsimp only [Option.bind] at this
+      split at this
+      · rename_i hf
+        simp only [Option.some.injEq] at this
+        rw [← this]; exact hf
+      · cases this
   · cases this
 
 /-- A lent clause's range lies in the held capability's, and is a valid range. -/
@@ -150,7 +177,7 @@ theorem Fn.callee_pre (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {Ft 
       (∀ x, g.entryCaps[i].fp (IExpr.upd ι θ) Ft x → ls[i].2.cap.fp ι Ft x) ∧
       ls[i].2 ∈ S.caps ∧
       (g.entryCaps[i].exclusive = true → ls[i].2.cap.exclusive = true) ∧
-      (∃ x, g.entryCaps[i].kind = .bytes x ∧ x.fields = [] ∧
+      (∃ x, g.entryCaps[i].kind = .bytes x ∧ (∀ fl ∈ x.fields, Cap.Field.holds (IExpr.upd ι θ) s.mem x fl) ∧
         0 ≤ (x.base.subst θ).eval ι ∧ 0 ≤ (x.len.subst θ).eval ι ∧
         (x.base.subst θ).eval ι + (x.len.subst θ).eval ι ≤ 2 ^ 64) := by
     intro i hi
@@ -158,8 +185,36 @@ theorem Fn.callee_pre (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {Ft 
     obtain ⟨xb, hk, he, hlf⟩ := hget i hi hl
     obtain ⟨hm, -⟩ := Fn.lendFrom_spec hlf
     obtain ⟨hb, hkb, hmode, -, r0, r1, r2, hfp⟩ := lend_region hh (hI.valid _ hm) hlf
-    obtain ⟨hgt, xb', hk', hf0⟩ := hok.clauses _ (List.getElem_mem hi)
+    obtain ⟨hgt, xb', hk'⟩ := hok.clauses _ (List.getElem_mem hi)
     rw [hk] at hk'; cases hk'
+    -- the clause's fields: fields of the held capability at the same address
+    have hf0 : ∀ fl ∈ xb.fields, Cap.Field.holds (IExpr.upd ι θ) s.mem xb fl := by
+      intro fl hfl
+      have hfl' := List.all_eq_true.1 (Fn.lends_fields hls i hi hl) fl (by rw [he]; exact hfl)
+      unfold Fn.fieldsLent at hfl'
+      rw [hkb] at hfl'
+      simp only [Bool.and_eq_true] at hfl'
+      obtain ⟨hlen8, hany⟩ := hfl'
+      obtain ⟨fh, hfh, hadr⟩ := List.any_eq_true.1 hany
+      simp only [Bool.and_eq_true] at hadr
+      obtain ⟨hadr, hty⟩ := hadr
+      have hv := hI.valid _ hm
+      have hg := STy.ent_sound (Fn.lendFrom_spec hlf).2.1 hh
+      unfold Cap.valid at hv
+      rw [hkb] at hv
+      obtain ⟨-, -, -, hfs⟩ := hv hg
+      obtain ⟨-, hal, hread⟩ := hfs fh hfh
+      have e1 := STy.ent_sound hadr hh
+      have e2 := STy.ent_sound hlen8 hh
+      rw [he] at e1 e2
+      simp only [Constr.holds, Constr.eval, decide_eq_true_eq, IExpr.eval_add, IExpr.eval_lit,
+        IExpr.eval_subst] at e1 e2
+      have haddr : xb.base.eval (IExpr.upd ι θ) + fl.off = hb.base.eval ι + fh.off := by omega
+      refine ⟨by omega, by rw [haddr]; exact hal, ?_⟩
+      rw [haddr]
+      have h3 := hread.congr (STy.entEqMod_sound hty hh)
+      unfold HasInt at h3 ⊢
+      rwa [IExpr.eval_subst] at h3
     refine ⟨hl, fun x hx => hfp x ((clause_fp hok hls hi hl x).1 hx), hm, ?_, ⟨xb, hk, hf0, ?_⟩⟩
     · intro hex
       simp only [Cap.exclusive, hk, beq_iff_eq] at hex
@@ -212,7 +267,7 @@ theorem Fn.callee_pre (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {Ft 
     intro _
     rw [hk]
     simp only [IExpr.eval_subst] at r0 r1 r2
-    exact ⟨r0, r1, r2, by simp [hf0]⟩
+    exact ⟨r0, r1, r2, fun fl hfl => hmem ▸ hf0 fl hfl⟩
   · intro i j hi hj hne hex x hx hy
     obtain ⟨hbi, ei⟩ := hentryGet i hi
     obtain ⟨hbj, ej⟩ := hentryGet j hj
@@ -352,7 +407,9 @@ theorem Fn.callInst_spec {S : STy} {g : Sig} {θ : Subst} (h : Fn.callInst S g =
     · simp only [Option.map_eq_some_iff] at this
       obtain ⟨e, he, hpe⟩ := this
       rw [← hpe]; exact ⟨List.getElem_mem _, STy.reg_maxVar he⟩
-    · cases this
+    · simp only [Option.map_eq_some_iff] at this
+      obtain ⟨c, -, hpe⟩ := this
+      rw [← hpe]; exact ⟨List.getElem_mem _, by simp [IExpr.lit, IExpr.maxVar]⟩
   · intro y hy
     obtain ⟨i, hi, rfl⟩ := List.getElem_of_mem hy
     have := hget i hi (by omega)
@@ -360,7 +417,9 @@ theorem Fn.callInst_spec {S : STy} {g : Sig} {θ : Subst} (h : Fn.callInst S g =
     · simp only [Option.map_eq_some_iff] at this
       obtain ⟨e, -, hpe⟩ := this
       exact lookup_some_of_mem (b := e) (by rw [hpe]; exact List.getElem_mem _)
-    · cases this
+    · simp only [Option.map_eq_some_iff] at this
+      obtain ⟨c, -, hpe⟩ := this
+      exact lookup_some_of_mem (b := IExpr.lit c) (by rw [hpe]; exact List.getElem_mem _)
 
 /-- After the call, the callee's `out` variables are the renamed fresh ones. -/
 theorem eval_rename {θ : Subst} {S : STy} {g : Sig}
@@ -580,7 +639,7 @@ theorem Fn.afterCall_inv (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {
       obtain ⟨-, -, -, -, -, -, -, hfp⟩ := lend_region hh (hI.valid _ hmc) hlf
       obtain ⟨hex, htk⟩ := htx' _ (by omega) hl
       exact ⟨_, hl, hmc, hex, htk, hfp z hzr⟩
-    · obtain ⟨-, xb, hk, -⟩ := hok.clauses b.cap (by simp [Sig.entryCaps]; exact .inl ⟨b, hb, rfl⟩)
+    · obtain ⟨-, xb, hk⟩ := hok.clauses b.cap (by simp [Sig.entryCaps]; exact .inl ⟨b, hb, rfl⟩)
       simp [hk] at htok
   have hcaps' : ∀ c ∈ (f.afterCall S g θ ls ids).caps,
       (∃ c0 ∈ S.caps, c0.id ∉ Fn.takenIds g ls ∧ c = Fn.clearLent ls c0) ∨

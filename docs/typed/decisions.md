@@ -195,6 +195,11 @@ comments can cite them.
      held. Now every field the clause names, on entry or exit, needs `Ψ ⊢ k + 8 ≤ θn`.
      **For T:** the proof's Lemma 8 P4 has the same gap ("フィールドは、検査が求める一致と I4
      から" — I4 only covers the held capability's offsets); the check above closes it.
+     **T (2026-11-23):** agreed; the Lean call rule has the same check (`Fn.fieldsLent`: each
+     clause field is a field of the held capability at the same address with an entailed-equal
+     type, and `k + 8 ≤ θn`), and there the proof cannot skip it: the callee's entry condition
+     is `Field.holds`, which contains `k + 8 ≤ n`. 健全性の証明 Lemma 8 P4 should cite the check
+     rather than I4 (to fix in the proof text with the other call updates).
   2. *`in ra`.* A contract could require `ra` on entry; the call rule compared it before
      `jal` overwrites it. `in` and `out` may not type `zero`, `ra`, `sp` in any signature.
   3. *Directives.* `.pushsection`, `.org`, `.uleb128`, … were ignored; now any directive
