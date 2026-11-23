@@ -16,9 +16,9 @@ pub struct PInstr {
     pub addr: u64,
     /// `with` hints written right before the instruction.
     pub hints: Vec<(String, SLin)>,
-    /// An operand was a relocation (`%hi(sym)`, `%pcrel_lo(l)`, …), parsed as 0: the
-    /// value is the linker's, so the checker rejects the function (static data, I14).
-    pub reloc: bool,
+    /// A relocation operand (`%pcrel_hi(sym)`, `%pcrel_lo(label)`, …), parsed as 0 in
+    /// `instr`; the linker fills it in (I30).
+    pub reloc: Option<Reloc>,
 }
 
 #[derive(Clone, Debug)]
@@ -37,6 +37,42 @@ pub struct Func {
 pub struct Program {
     pub sigs: Vec<(SSig, usize)>,
     pub funcs: Vec<Func>,
+    /// Symbols of data sections (I30).
+    pub data: BTreeMap<String, DataSym>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Reloc {
+    /// `auipc rd, %pcrel_hi(sym)`.
+    PcrelHi(String),
+    /// `%pcrel_lo(label)`: the low part for the `auipc` at `label`.
+    PcrelLo(String),
+    /// Any other operator (`%hi`, `%lo`, `%got_pcrel_hi`, …): not supported.
+    Other(String),
+}
+
+/// A label in a data section: its bytes as the source gives them (`None`: not a known
+/// constant, e.g. a symbol reference), up to the next label of the section.
+#[derive(Clone, Debug)]
+pub struct DataSym {
+    pub section: String,
+    pub offset: u64,
+    pub bytes: Vec<Option<u8>>,
+    /// The address is a multiple of this (the offset's alignment, capped by the
+    /// section's alignment).
+    pub align: u64,
+    /// The section is read-only (`.rodata*`, `.srodata*`, or flags without `w`).
+    pub ro: bool,
+    pub line: usize,
+}
+
+#[derive(Default)]
+struct DataCtx {
+    bytes: BTreeMap<String, Vec<Option<u8>>>,
+    align: BTreeMap<String, u64>,
+    writable: BTreeMap<String, bool>,
+    /// (name, section, offset, line)
+    syms: Vec<(String, String, u64, usize)>,
 }
 
 #[derive(Clone, Debug)]
@@ -123,11 +159,17 @@ pub fn parse(src: &str) -> R<Program> {
     let mut section = ".text".to_string();
     let mut addr: BTreeMap<String, u64> = BTreeMap::new();
     let mut hints: Vec<(String, SLin)> = Vec::new();
+    let mut dc = DataCtx::default();
     let mut i = 0;
     while i < lines.len() {
         let l = &lines[i];
         for lab in &l.labels {
-            items.push(Item::Label(lab.to_string(), l.no));
+            if section.starts_with(".text") {
+                items.push(Item::Label(lab.to_string(), l.no));
+            } else {
+                let off = dc.bytes.get(&section).map(|b| b.len() as u64).unwrap_or(0);
+                dc.syms.push((lab.to_string(), section.clone(), off, l.no));
+            }
         }
         if let Some(a) = l.annot {
             // Gather continuation lines: comment-only `#:` lines not starting a new block.
@@ -165,13 +207,143 @@ pub fn parse(src: &str) -> R<Program> {
                 &mut addr,
                 &mut items,
                 &mut hints,
+                &mut dc,
             )?;
             continue;
         }
-        handle_code(l, &mut section, &mut addr, &mut items, &mut hints)?;
+        handle_code(l, &mut section, &mut addr, &mut items, &mut hints, &mut dc)?;
         i += 1;
     }
+    // data symbols: bytes up to the next label of the section
+    for (k, (name, sec, off, line)) in dc.syms.iter().enumerate() {
+        let all = dc.bytes.get(sec).cloned().unwrap_or_default();
+        let end = dc.syms[k + 1..]
+            .iter()
+            .filter(|x| x.1 == *sec && x.2 > *off)
+            .map(|x| x.2)
+            .min()
+            .unwrap_or(all.len() as u64);
+        let sal = dc.align.get(sec).copied().unwrap_or(1).max(1);
+        let oal = if *off == 0 {
+            sal
+        } else {
+            1u64 << off.trailing_zeros()
+        };
+        let ro = sec.starts_with(".rodata")
+            || sec.starts_with(".srodata")
+            || !dc.writable.get(sec).copied().unwrap_or(true);
+        prog.data.insert(
+            name.clone(),
+            DataSym {
+                section: sec.clone(),
+                offset: *off,
+                bytes: all
+                    .get(*off as usize..end as usize)
+                    .map(|b| b.to_vec())
+                    .unwrap_or_default(),
+                align: oal.min(sal),
+                ro,
+                line: *line,
+            },
+        );
+    }
     group(prog, items)
+}
+
+fn parse_int(s: &str) -> Option<i128> {
+    let s = s.trim();
+    let (neg, t) = match s.strip_prefix('-') {
+        Some(t) => (true, t),
+        None => (false, s),
+    };
+    let v = if let Some(h) = t.strip_prefix("0x").or_else(|| t.strip_prefix("0X")) {
+        i128::from_str_radix(h, 16).ok()?
+    } else {
+        t.parse::<i128>().ok()?
+    };
+    Some(if neg { -v } else { v })
+}
+
+fn unescape(s: &str) -> Option<Vec<u8>> {
+    let s = s.trim();
+    let inner = s.strip_prefix('"')?.strip_suffix('"')?;
+    let b = inner.as_bytes();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < b.len() {
+        if b[i] == b'\\' && i + 1 < b.len() {
+            i += 1;
+            match b[i] {
+                b'n' => out.push(b'\n'),
+                b't' => out.push(b'\t'),
+                b'r' => out.push(b'\r'),
+                b'0'..=b'7' => {
+                    let mut v = 0u32;
+                    let mut k = 0;
+                    while k < 3 && i < b.len() && (b'0'..=b'7').contains(&b[i]) {
+                        v = v * 8 + (b[i] - b'0') as u32;
+                        i += 1;
+                        k += 1;
+                    }
+                    out.push(v as u8);
+                    continue;
+                }
+                c => out.push(c),
+            }
+        } else {
+            out.push(b[i]);
+        }
+        i += 1;
+    }
+    Some(out)
+}
+
+/// Appends a data directive's bytes to the current data section.
+fn data_directive(name: &str, args: &str, sec: &str, dc: &mut DataCtx) {
+    let buf = dc.bytes.entry(sec.to_string()).or_default();
+    let width = match name {
+        "quad" | "dword" | "8byte" => 8,
+        "word" | "4byte" | "long" | "int" => 4,
+        "half" | "2byte" | "short" => 2,
+        "byte" => 1,
+        _ => 0,
+    };
+    if width > 0 {
+        for a in args.split(',') {
+            match parse_int(a) {
+                Some(v) => {
+                    let u = v.rem_euclid(1i128 << (8 * width)) as u128;
+                    for k in 0..width {
+                        buf.push(Some((u >> (8 * k)) as u8));
+                    }
+                }
+                None => buf.extend(std::iter::repeat_n(None, width)),
+            }
+        }
+        return;
+    }
+    match name {
+        "zero" | "space" | "skip" => {
+            let mut it = args.split(',');
+            let n = it.next().and_then(parse_int).unwrap_or(0).max(0) as usize;
+            let fill = it
+                .next()
+                .and_then(parse_int)
+                .map(|f| Some(f as u8))
+                .unwrap_or(Some(0));
+            buf.extend(std::iter::repeat_n(fill, n));
+        }
+        "ascii" | "asciz" | "string" => match unescape(args) {
+            Some(mut b) => {
+                if name != "ascii" {
+                    b.push(0);
+                }
+                buf.extend(b.into_iter().map(Some));
+            }
+            None => buf.push(None),
+        },
+        _ => {}
+    }
 }
 
 fn handle_code(
@@ -180,6 +352,7 @@ fn handle_code(
     addr: &mut BTreeMap<String, u64>,
     items: &mut Vec<Item>,
     hints: &mut Vec<(String, SLin)>,
+    dc: &mut DataCtx,
 ) -> R<()> {
     let code = l.code;
     if code.is_empty() {
@@ -199,7 +372,11 @@ fn handle_code(
                 items.push(Item::Section(section.clone()));
             }
             "section" => {
-                *section = args.split(',').next().unwrap_or("").trim().to_string();
+                let mut it = args.split(',');
+                *section = it.next().unwrap_or("").trim().to_string();
+                if let Some(flags) = it.next() {
+                    dc.writable.insert(section.clone(), flags.contains('w'));
+                }
                 items.push(Item::Section(section.clone()));
             }
             "p2align" | "align" | "balign" => {
@@ -216,6 +393,14 @@ fn handle_code(
                 } else {
                     1u64 << n.min(16)
                 };
+                if !in_text {
+                    let e = dc.align.entry(section.clone()).or_insert(1);
+                    *e = (*e).max(al);
+                    let buf = dc.bytes.entry(section.clone()).or_default();
+                    while (buf.len() as u64) % al != 0 {
+                        buf.push(Some(0));
+                    }
+                }
                 if in_text {
                     let a = addr.entry(section.clone()).or_insert(0);
                     if al > 4 {
@@ -231,7 +416,7 @@ fn handle_code(
                                 line: l.no,
                                 addr: *a,
                                 hints: vec![],
-                                reloc: false,
+                                reloc: None,
                             }));
                             *a += 4;
                         }
@@ -247,10 +432,12 @@ fn handle_code(
                 }
             }
             "word" | "half" | "byte" | "quad" | "dword" | "zero" | "space" | "ascii" | "asciz"
-            | "string" | "insn" | "2byte" | "4byte" | "8byte" | "fill" => {
+            | "string" | "insn" | "2byte" | "4byte" | "8byte" | "fill" | "long" | "short"
+            | "int" | "skip" => {
                 if in_text {
                     return err(l.no, format!("data directive .{name} in a code section"));
                 }
+                data_directive(name, args, section, dc);
             }
             "option" if in_text && args.contains("rvc") && !args.contains("norvc") => {
                 return err(
@@ -276,7 +463,7 @@ fn handle_code(
             line: l.no,
             addr: *a,
             hints: if first { std::mem::take(hints) } else { vec![] },
-            reloc,
+            reloc: reloc.clone(),
         }));
         first = false;
         *a += 4 * w;
@@ -385,18 +572,28 @@ fn group(mut prog: Program, items: Vec<Item>) -> R<Program> {
     Ok(prog)
 }
 
-/// Replaces relocation operators `%name(arg)` by `0`.
-fn strip_relocs(code: &str) -> (String, bool) {
+/// Replaces relocation operators `%name(arg)` by `0`; returns the first one.
+fn strip_relocs(code: &str) -> (String, Option<Reloc>) {
     if !code.contains('%') {
-        return (code.to_string(), false);
+        return (code.to_string(), None);
     }
     let mut out = String::new();
     let mut rest = code;
+    let mut first = None;
     while let Some(i) = rest.find('%') {
         out.push_str(&rest[..i]);
         let after = &rest[i..];
         match (after.find('('), after.find(')')) {
             (Some(o), Some(c)) if o < c => {
+                let op = &after[1..o];
+                let arg = after[o + 1..c].trim().to_string();
+                if first.is_none() {
+                    first = Some(match op {
+                        "pcrel_hi" => Reloc::PcrelHi(arg),
+                        "pcrel_lo" => Reloc::PcrelLo(arg),
+                        _ => Reloc::Other(format!("%{op}({arg})")),
+                    });
+                }
                 out.push('0');
                 rest = &after[c + 1..];
             }
@@ -407,7 +604,7 @@ fn strip_relocs(code: &str) -> (String, bool) {
         }
     }
     out.push_str(rest);
-    (out, true)
+    (out, first.or(Some(Reloc::Other("%".into()))))
 }
 
 fn sym_target(i: &Instr) -> Option<String> {
@@ -1025,6 +1222,26 @@ done:
     }
 
     #[test]
+    fn data_symbols() {
+        let p = parse(
+            "\t.section .rodata.cst8,\"aM\",@progbits,8\n\t.p2align 3\n.LC0:\n\t.quad 0x0101010101010101\n.LC1:\n\t.quad -1\n\t.data\nbuf:\n\t.zero 3\n\t.asciz \"a\\n\"\n",
+        )
+        .unwrap();
+        let c0 = &p.data[".LC0"];
+        assert!(c0.ro);
+        assert_eq!(c0.align, 8);
+        assert_eq!(c0.bytes, vec![Some(1); 8]);
+        assert_eq!(p.data[".LC1"].bytes, vec![Some(0xff); 8]);
+        assert_eq!(p.data[".LC1"].align, 8);
+        let b = &p.data["buf"];
+        assert!(!b.ro);
+        assert_eq!(
+            b.bytes,
+            vec![Some(0), Some(0), Some(0), Some(b'a'), Some(b'\n'), Some(0)]
+        );
+    }
+
+    #[test]
     fn pseudos() {
         assert_eq!(parse_instr("li a0, 4096").unwrap().len(), 1);
         assert_eq!(parse_instr("li a0, 4097").unwrap().len(), 2);
@@ -1033,11 +1250,17 @@ done:
         assert!(parse_instr("lw a0, %lo(x)(a1)").is_err());
         assert_eq!(
             strip_relocs("ld a0, %pcrel_lo(.Lpcrel_hi0)(a0)"),
-            ("ld a0, 0(a0)".to_string(), true)
+            (
+                "ld a0, 0(a0)".to_string(),
+                Some(Reloc::PcrelLo(".Lpcrel_hi0".into()))
+            )
         );
         assert_eq!(
             strip_relocs("auipc a0, %pcrel_hi(.LCPI0_0)"),
-            ("auipc a0, 0".to_string(), true)
+            (
+                "auipc a0, 0".to_string(),
+                Some(Reloc::PcrelHi(".LCPI0_0".into()))
+            )
         );
         assert_eq!(
             parse_instr("bgtz a1, .L").unwrap(),

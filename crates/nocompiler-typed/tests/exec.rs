@@ -76,6 +76,8 @@ struct Region {
 
 struct Machine<'a> {
     prog: &'a Program,
+    /// Data symbol → address.
+    data: HashMap<String, u64>,
     regs: [u64; 32],
     mem: HashMap<u64, u8>,
     regions: Vec<Region>,
@@ -268,9 +270,18 @@ impl Machine<'_> {
                     }
                     pc = next;
                 }
-                Instr::Unimp | Instr::Auipc { .. } => {
-                    return Stop::Fault("unimp/auipc reached".into());
+                Instr::Auipc { rd, .. } => {
+                    // with %pcrel_hi(sym); the paired %pcrel_lo immediate is 0 in the text
+                    match &g.instrs[i].reloc {
+                        Some(asm::Reloc::PcrelHi(sym)) => {
+                            let a = self.data[sym];
+                            self.set(*rd, a);
+                        }
+                        _ => return Stop::Fault("auipc without a symbol".into()),
+                    }
+                    pc = next;
                 }
+                Instr::Unimp => return Stop::Fault("unimp reached".into()),
                 _ => {
                     let (r1, r2) = match ins {
                         Instr::ROp { rs1, rs2, .. } | Instr::RWOp { rs1, rs2, .. } => {
@@ -381,11 +392,28 @@ fn run_case(prog: &Program, f: &Func, s: &Sig, rng: &mut Rng) -> Result<bool, St
     };
     let mut m = Machine {
         prog,
+        data: HashMap::new(),
         regs: [0; 32],
         mem: HashMap::new(),
         regions: vec![],
         steps: 0,
     };
+    // data symbols, laid out apart, aligned as declared; unknown bytes random
+    let mut next_data: u64 = 0x3000_0000;
+    for (name, d) in &prog.data {
+        let a = next_data.next_multiple_of(d.align.max(1));
+        m.data.insert(name.clone(), a);
+        for (j, b) in d.bytes.iter().enumerate() {
+            let v = b.unwrap_or(rng.next() as u8);
+            m.mem.insert(a + j as u64, v);
+        }
+        m.regions.push(Region {
+            lo: a,
+            hi: a + d.bytes.len() as u64,
+            write: !d.ro,
+        });
+        next_data = a + d.bytes.len() as u64 + 0x1000;
+    }
     for x in m.regs.iter_mut().skip(1) {
         *x = rng.next();
     }

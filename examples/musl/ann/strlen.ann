@@ -3,7 +3,7 @@
 # Annotations are the lines that start with hash-colon (provisional syntax of docs/Tab 1.md; see docs/typed/musl-trial.md).
 # Predicted (fixed before compiling): not expressible
 # Expected now (after reading the compiled code): not expressible, as predicted. The closest signature borrows s |-> bytes[n] ro, but nothing ties n to where the NUL is: the byte loop 0x14 and the word loop 0x48 stop on memory contents, so no invariant bounds the address and no decreases clause is provable. The word loop also reads whole aligned words past the NUL. Uses static data (constant pool).
-#! expect strlen: reject static-data
+#! expect strlen: reject loop-inv
 #: fn strlen [s, n]
 #:   in     a0: int(s)
 #:   borrow s |-> bytes[n] ro

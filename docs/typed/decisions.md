@@ -161,3 +161,19 @@ comments can cite them.
   result `x` of `xor a, b` remembers `(a, b)`, and `andi x, 2^k − 1` then also gives
   `r = 0 ⇔ a ≡ b (mod 2^k)`. Sound: (a xor b) mod 2^k = (a mod 2^k) xor (b mod 2^k), which is
   0 exactly when the two residues are equal.
+- **I30 Read-only static data** (replaces I14 for read-only symbols; the note's 静的データ).
+  Every label in a read-only data section (`.rodata*`, `.srodata*`, or a `.section` whose
+  flags lack `w`) is a data symbol with a variable ℓ_sym (its address after linking, S6) and
+  the bytes the source gives (`.quad`, `.word`, `.half`, `.byte`, `.zero`, `.ascii`, …; a
+  symbol reference is an unknown byte). Every function implicitly holds
+  `ℓ_sym ↦ bytes[size] ro` with a field for each known 8-byte word at a multiple of 8 (when
+  the symbol is 8-aligned), and `align ∣ ℓ_sym` (the offset's alignment, capped by the
+  section's). `auipc rd, %pcrel_hi(sym)` gives `int(ℓ_sym − L)` and an instruction with
+  `%pcrel_lo(label)` (addi, loads, stores) uses the variable `L` of the auipc at `label` as
+  its immediate, so the pair yields exactly ℓ_sym whatever the linker's split; `L` has no
+  facts. Writable data (`.data`, `.bss`, …) stays unsupported (the note passes it through
+  signatures from `_start`): an auipc to it is rejected (`static-data`), as are other
+  relocation operators. The object comparison (I15) also compares the data bytes.
+  **For ⟦σ⟧ (T):** the meaning must then include, on entry, that each read-only symbol's
+  range is readable in the permission, holds its bytes, and is disjoint from every `rw`
+  capability and token footprint (P4/P5 extended to the implicit capabilities).

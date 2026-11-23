@@ -219,5 +219,42 @@ pub fn compare(prog: &Program, bytes: &[u8]) -> Vec<CheckError> {
             }
         }
     }
+    // data symbols: the bytes the checker took fields from must be the object's
+    for (name, d) in &prog.data {
+        let Some(si) = elf.secs.iter().position(|s| s.name == d.section) else {
+            errs.push(e(
+                d.line,
+                format!(
+                    "data section {} of '{name}' is not in the object",
+                    d.section
+                ),
+            ));
+            continue;
+        };
+        let sec = &elf.secs[si];
+        if sec.ty == 8 {
+            // SHT_NOBITS: zeros
+            if d.bytes.iter().any(|b| b.is_some_and(|b| b != 0)) {
+                errs.push(e(
+                    d.line,
+                    format!("'{name}' is in a NOBITS section but has non-zero bytes"),
+                ));
+            }
+            continue;
+        }
+        for (j, b) in d.bytes.iter().enumerate() {
+            let Some(b) = b else { continue };
+            let at = d.offset as usize + j;
+            let got = if at < sec.size {
+                elf.d.get(sec.off + at).copied()
+            } else {
+                None
+            };
+            if got != Some(*b) {
+                errs.push(e(d.line, format!("data byte {}+{at:#x} of '{name}' is {got:?} in the object, {b:#04x} in the text", d.section)));
+                break;
+            }
+        }
+    }
     errs
 }

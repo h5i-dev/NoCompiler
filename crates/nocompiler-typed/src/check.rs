@@ -6,7 +6,7 @@
 //! or, at a loop head, the annotation. Every edge is checked against the type of its
 //! target (the proof's D7).
 
-use crate::asm::{Func, PInstr, Program};
+use crate::asm::{Func, PInstr, Program, Reloc};
 use crate::formula::Formula;
 use crate::isa::*;
 use crate::lin::{Lin, Names, TWO64, Var};
@@ -204,6 +204,21 @@ pub struct Checker {
     pub sigs: BTreeMap<String, Sig>,
     /// Record every query and state in the report (the ledger); off for speed.
     pub record: bool,
+    /// Read-only data symbols: implicitly held by every function (note, 静的データ; I30).
+    pub statics: Vec<Static>,
+    /// Writable data symbols (not supported yet: they belong in signatures).
+    pub writable_data: BTreeSet<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Static {
+    pub name: String,
+    /// ℓ_sym: the symbol's address after linking (S6).
+    pub var: Var,
+    pub size: i128,
+    pub align: i128,
+    /// The 8-byte words the source gives, at offsets that are multiples of 8.
+    pub fields: BTreeMap<i128, Lin>,
 }
 
 /// Checks every safe function of a parsed program.
@@ -212,7 +227,37 @@ pub fn check_program(p: &Program, record: bool) -> (Checker, Report) {
         names: Names::default(),
         sigs: BTreeMap::new(),
         record,
+        statics: vec![],
+        writable_data: BTreeSet::new(),
     };
+    for (name, d) in &p.data {
+        if !d.ro {
+            ck.writable_data.insert(name.clone());
+            continue;
+        }
+        let clean: String = name
+            .chars()
+            .filter(|c| c.is_alphanumeric() || *c == '_')
+            .collect();
+        let var = ck.names.fresh(&format!("ℓ{clean}"));
+        let mut fields = BTreeMap::new();
+        if d.align >= 8 {
+            for k in (0..d.bytes.len() / 8).map(|k| k * 8) {
+                let w: Option<Vec<u8>> = d.bytes[k..k + 8].iter().copied().collect();
+                if let Some(w) = w {
+                    let v = u64::from_le_bytes(w.try_into().unwrap());
+                    fields.insert(k as i128, Lin::konst(v as i128));
+                }
+            }
+        }
+        ck.statics.push(Static {
+            name: name.clone(),
+            var,
+            size: d.bytes.len() as i128,
+            align: d.align as i128,
+            fields,
+        });
+    }
     let mut rep = Report::default();
     for (s, line) in &p.sigs {
         if ck.sigs.contains_key(&s.name) {
@@ -405,6 +450,8 @@ struct FnCheck<'a> {
     nqueries: usize,
     /// `x = a xor b` for the fresh variables xor results get (true in every state).
     xor_defs: BTreeMap<Var, (Lin, Lin)>,
+    /// The `%pcrel_lo` value of each `auipc %pcrel_hi` (by instruction index), I30.
+    lo_vars: BTreeMap<usize, Var>,
     line: usize,
 }
 
@@ -444,6 +491,7 @@ impl<'a> FnCheck<'a> {
             queries: vec![],
             nqueries: 0,
             xor_defs: BTreeMap::new(),
+            lo_vars: BTreeMap::new(),
             line: f.line,
         }
     }
@@ -479,6 +527,15 @@ impl<'a> FnCheck<'a> {
             snapshots: self.snapshots.clone(),
             fresh: self.ck.names.len() as u32,
         }
+    }
+
+    fn lo_var(&mut self, auipc_ix: usize) -> Var {
+        if let Some(v) = self.lo_vars.get(&auipc_ix) {
+            return *v;
+        }
+        let v = self.fresh("lo");
+        self.lo_vars.insert(auipc_ix, v);
+        v
     }
 
     fn err<T>(&self, rule: Rule, msg: impl Into<String>) -> F<T> {
@@ -756,17 +813,43 @@ impl<'a> FnCheck<'a> {
                     );
                 }
                 Instr::Auipc { .. } => {
-                    return self.err(
-                        Rule::StaticData,
-                        "auipc: static data and pc-relative addresses are postponed (I14)",
-                    );
+                    match &pi.reloc {
+                        Some(Reloc::PcrelHi(sym))
+                            if self.ck.statics.iter().any(|x| x.name == *sym) => {}
+                        Some(Reloc::PcrelHi(sym)) if self.ck.writable_data.contains(sym) => {
+                            return self.err(Rule::StaticData, format!("'{sym}' is writable static data: not supported yet (it belongs in a signature, I30)"));
+                        }
+                        Some(Reloc::PcrelHi(sym)) => {
+                            return self.err(Rule::StaticData, format!("auipc to '{sym}', which is not a data symbol of this file (I30)"));
+                        }
+                        _ => {
+                            return self.err(Rule::StaticData, "auipc without %pcrel_hi(symbol): pc-relative values are not typed (I30)");
+                        }
+                    }
                 }
-                _ if pi.reloc => {
-                    return self.err(
-                        Rule::StaticData,
-                        "relocation operator (%hi/%lo/%pcrel_*): static data is postponed (I14)",
-                    );
-                }
+                i if pi.reloc.is_some() => match pi.reloc.as_ref().unwrap() {
+                    Reloc::PcrelLo(label)
+                        if matches!(
+                            i,
+                            Instr::IOp { op: IOp::Addi, .. }
+                                | Instr::Load { .. }
+                                | Instr::Store { .. }
+                        ) =>
+                    {
+                        let ok = self.f.labels.get(label).is_some_and(|ix| {
+                            matches!(self.f.instrs.get(*ix), Some(p) if matches!(p.instr, Instr::Auipc { .. }) && matches!(p.reloc, Some(Reloc::PcrelHi(_))))
+                        });
+                        if !ok {
+                            return self.err(Rule::StaticData, format!("%pcrel_lo({label}) must name the label of an auipc %pcrel_hi in this function"));
+                        }
+                    }
+                    r => {
+                        return self.err(
+                            Rule::StaticData,
+                            format!("relocation operand {r:?} is not supported (I30)"),
+                        );
+                    }
+                },
                 _ => {}
             }
         }
@@ -895,6 +978,23 @@ impl<'a> FnCheck<'a> {
         }
         for t in &me.take {
             let c = self.new_cap(t.guard.clone(), t.kind.clone());
+            st.caps.push(c);
+        }
+        for sd in self.ck.statics.clone() {
+            let l = Lin::var(sd.var);
+            if sd.align > 1 {
+                self.add_fact(&mut st, Formula::Dvd(sd.align, l.clone()));
+            }
+            let c = self.new_cap(
+                Formula::True,
+                CapKind::Bytes {
+                    base: l,
+                    len: Lin::konst(sd.size),
+                    mode: Mode::Ro,
+                    heap: false,
+                    fields: sd.fields.clone(),
+                },
+            );
             st.caps.push(c);
         }
         Ok(st)
@@ -1596,6 +1696,44 @@ impl<'a> FnCheck<'a> {
         let ins = pi.instr.clone();
         let next = ix + 1;
         let me = self.me;
+        // I30: the immediate of a `%pcrel_lo(label)` operand is the variable L of that auipc
+        let sym_off: Option<Lin> = match &pi.reloc {
+            Some(Reloc::PcrelLo(label)) => {
+                let aix = self.f.labels[label];
+                Some(Lin::var(self.lo_var(aix)))
+            }
+            _ => None,
+        };
+        if let (Instr::Auipc { rd, .. }, Some(Reloc::PcrelHi(sym))) = (&ins, &pi.reloc) {
+            // auipc rd, %pcrel_hi(sym) = ℓ_sym − lo, where lo is the paired %pcrel_lo value
+            let l = self.ck.statics.iter().find(|x| x.name == *sym).unwrap().var;
+            let lo = self.lo_var(ix);
+            let e = Lin::var(l)
+                .sub(&Lin::var(lo))
+                .ok_or_else(|| ovf(self.line))?;
+            self.set(&mut st, *rd, e)?;
+            return Ok(vec![(next, st)]);
+        }
+        if let Some(off) = sym_off.clone() {
+            match &ins {
+                Instr::IOp {
+                    op: IOp::Addi,
+                    rd,
+                    rs1,
+                    ..
+                } => {
+                    let e = self
+                        .reg(&st, *rs1)
+                        .add(&off)
+                        .ok_or_else(|| ovf(self.line))?;
+                    self.set(&mut st, *rd, e)?;
+                }
+                Instr::Load { op, rd, rs1, .. } => self.load(&mut st, *op, *rd, *rs1, off)?,
+                Instr::Store { op, rs1, rs2, .. } => self.store(&mut st, *op, *rs1, *rs2, off)?,
+                _ => unreachable!("checked by structure()"),
+            }
+            return Ok(vec![(next, st)]);
+        }
         // constant folding: all register operands constant
         if let Some((rd, r1, r2)) = comp_operands(&ins) {
             let a = st.regs[r1.0 as usize].as_const();
@@ -1837,11 +1975,11 @@ impl<'a> FnCheck<'a> {
                 Ok(vec![(next, st)])
             }
             Instr::Load { op, rd, rs1, off } => {
-                self.load(&mut st, op, rd, rs1, off as i128)?;
+                self.load(&mut st, op, rd, rs1, Lin::konst(off as i128))?;
                 Ok(vec![(next, st)])
             }
             Instr::Store { op, rs1, rs2, off } => {
-                self.store(&mut st, op, rs1, rs2, off as i128)?;
+                self.store(&mut st, op, rs1, rs2, Lin::konst(off as i128))?;
                 Ok(vec![(next, st)])
             }
             Instr::Branch {
@@ -2217,11 +2355,11 @@ impl<'a> FnCheck<'a> {
         self.err(Rule::MemBounds, msg)
     }
 
-    fn load(&mut self, st: &mut State, op: LdOp, rd: Reg, rs1: Reg, off: i128) -> F<()> {
+    fn load(&mut self, st: &mut State, op: LdOp, rd: Reg, rs1: Reg, off: Lin) -> F<()> {
         if rd == SP {
             return self.err(Rule::StackShape, "load into sp (S3)");
         }
-        if let Some(k) = self.slot_of(st, rs1, off) {
+        if let Some(k) = off.as_const().and_then(|o| self.slot_of(st, rs1, o)) {
             if op != LdOp::Ld {
                 return self.err(Rule::Frame, "a save slot is accessed only with ld/sd");
             }
@@ -2232,10 +2370,7 @@ impl<'a> FnCheck<'a> {
             return self.set(st, rd, v);
         }
         let w = op.width() as i128;
-        let a = self
-            .reg(st, rs1)
-            .add_const(off)
-            .ok_or_else(|| ovf(self.line))?;
+        let a = self.reg(st, rs1).add(&off).ok_or_else(|| ovf(self.line))?;
         let (i, a) = self.find_cap(st, &a, w, false)?;
         if w == 8
             && let CapKind::Bytes { base, fields, .. } = st.caps[i].kind.clone()
@@ -2271,9 +2406,9 @@ impl<'a> FnCheck<'a> {
         self.set(st, rd, x)
     }
 
-    fn store(&mut self, st: &mut State, op: StOp, rs1: Reg, rs2: Reg, off: i128) -> F<()> {
+    fn store(&mut self, st: &mut State, op: StOp, rs1: Reg, rs2: Reg, off: Lin) -> F<()> {
         let val = self.reg(st, rs2);
-        if let Some(k) = self.slot_of(st, rs1, off) {
+        if let Some(k) = off.as_const().and_then(|o| self.slot_of(st, rs1, o)) {
             if op != StOp::Sd {
                 return self.err(Rule::Frame, "a save slot is accessed only with ld/sd");
             }
@@ -2281,10 +2416,7 @@ impl<'a> FnCheck<'a> {
             return Ok(());
         }
         let w = op.width() as i128;
-        let a = self
-            .reg(st, rs1)
-            .add_const(off)
-            .ok_or_else(|| ovf(self.line))?;
+        let a = self.reg(st, rs1).add(&off).ok_or_else(|| ovf(self.line))?;
         let (i, a) = self.find_cap(st, &a, w, true)?;
         let CapKind::Bytes {
             base,

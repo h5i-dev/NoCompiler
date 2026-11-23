@@ -19,8 +19,9 @@ assembler comments that start with `#:`, so the same file assembles unchanged (I
   `call f` is `auipc ra, %pcrel_hi(f)` + `jalr ra, %pcrel_lo(f)(ra)`; `tail f` uses `t1` and
   `jalr zero`. Both are typed as a call / tail call of `f` (I21). Assemble with `-mno-relax`
   so the pair is what runs.
-- Relocation operands (`%hi`/`%lo`/`%pcrel_*`, as clang emits for constant pools) parse, and
-  the function using them is rejected with rule `static-data` (I14).
+- Read-only data: `auipc rd, %pcrel_hi(sym)` with `%pcrel_lo(label)` in the following
+  `addi`/load/store, `sym` a label in a read-only data section of the same file (I30). Other
+  relocation operands, and symbols in writable sections, are rejected (`static-data`).
 - Not accepted: data directives in a code section, `.option rvc`, any instruction outside
   the profile.
 - Directives: `.text`, `.section` (any section whose name starts with `.text` is code),
@@ -149,3 +150,4 @@ sum:
 - 2026-11-23: relocation operands parse (function rejected, `static-data`) instead of a
   file-level syntax error. A safe `fn` signature without a body in the file is a declaration
   of a function checked elsewhere (ledger status `declared`), not an error.
+- 2026-11-23: read-only static data (I30): data sections are parsed; constant pools work.
