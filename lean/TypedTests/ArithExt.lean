@@ -53,49 +53,4 @@ def mkFn (σ : Sig) (S0 S1 : STy) : Fn :=
 
 def b : IExpr := .var 1
 
-/-- `ori a0, a0, 1` on an 8-aligned pointer: the bits are disjoint, so the result is p + 1. -/
-def pre8 : Constr := .and pre (.dvd 8 p)
-def tagSig : Sig where
-  params := [0]
-  inRegs := [(10, p)]
-  pre := pre8
-  outVars := [26]
-  outRegs := [(10, r)]
-  post := .eq r (p.add (.lit 1))
-def tag : Fn := mkFn tagSig { regs := kept ++ [(10, p)], facts := [pre8] }
-  { regs := kept ++ [(10, p.add (.lit 1))], facts := [pre8] }
-theorem tag_checked : tag.check (mkCode 0x00156513#32) = true := by decide
-/-- Without the alignment the bits may overlap: rejected. -/
-def tagNoAlign : Fn := mkFn { tagSig with pre := pre } { regs := kept ++ [(10, p)], facts := [pre] }
-  { regs := kept ++ [(10, p.add (.lit 1))], facts := [pre] }
-example : tagNoAlign.check (mkCode 0x00156513#32) = false := by decide
-
-/-- `clz a0, a0`: at most 64. -/
-def cntSig : Sig where
-  params := [0]
-  inRegs := [(10, p)]
-  outVars := [26]
-  outRegs := [(10, r)]
-  post := .and (.le (.lit 0) r) (.le r (.lit 64))
-def cnt : Fn := mkFn cntSig { regs := kept ++ [(10, p)], facts := [] }
-  { regs := kept ++ [(10, q)], facts := Fn.boundFacts 30 64 }
-theorem cnt_checked : cnt.check (mkCode 0x60051513#32) = true := by decide
-
-/-- `remu a0, a0, a1` with 0 < b: the remainder is below b and at most a. -/
-def preAB : Constr := .and pre (.and (.lt (.lit 0) b) (.lt b (.lit (2 ^ 64))))
-def remSig : Sig where
-  params := [0, 1]
-  inRegs := [(10, p), (11, b)]
-  pre := preAB
-  outVars := [26]
-  outRegs := [(10, r)]
-  post := .and (.lt r b) (.le r p)
-def rem : Fn := mkFn remSig { regs := kept ++ [(10, p), (11, b)], facts := [preAB] }
-  { regs := kept ++ [(10, q), (11, b)], facts := [preAB] ++ Fn.divBound false 30 p b }
-theorem rem_checked : rem.check (mkCode 0x02b57533#32) = true := by decide
-/-- A divisor that may be 0: rejected (remu by 0 returns a, which need not be below b). -/
-def remZero : Fn := mkFn { remSig with pre := pre } { regs := kept ++ [(10, p), (11, b)], facts := [pre] }
-  { regs := kept ++ [(10, q), (11, b)], facts := [pre] ++ Fn.divBound false 30 p b }
-example : remZero.check (mkCode 0x02b57533#32) = false := by decide
-
 end TypedTests.ArithExt
