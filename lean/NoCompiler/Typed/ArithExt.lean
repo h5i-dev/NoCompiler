@@ -225,11 +225,42 @@ def arith2 (S : STy) (i : Instr) : Option STy :=
     | _, _ => none
   | _ => none
 
+/-- `and` of `e` with the constant `c` (mod 2^64, I23): a mask `2^k − 1` gives `x = e mod 2^k`; a
+    mask `−2^k` gives `2^k·q` with `q` the representative's quotient (as `andi`). -/
+def andConstOf (S : STy) (rd : Reg) (x : Var) (e : IExpr) (c : Int) : Option STy :=
+  let cu := (c % 2 ^ 64).toNat
+  match (List.range 64).find? (fun k => cu == 2 ^ k - 1) with
+  | some k => some ((S.setReg rd (some (.var x))).addFacts (lowFacts x e k))
+  | none =>
+    match (List.range 64).find? (fun k => cu + 2 ^ k == 2 ^ 64) with
+    | some k =>
+      let u := Fn.urep S (x + 1) e
+      some ((S.setReg rd (some ((IExpr.var x).smul (2 ^ k)))).addFacts (u.2 ++ quotFacts x u.1 (2 ^ k)))
+    | none => none
+
+/-- `and`/`or`/`xor rd, a, b` with one operand a known constant. -/
+def andConst (S : STy) (i : Instr) : Option STy :=
+  match i with
+  | .rop .and rd a b =>
+    match S.reg a, S.reg b with
+    | some e1, some ⟨c, []⟩ => andConstOf S rd (f.freshAt S) e1 c
+    | some ⟨c, []⟩, some e2 => andConstOf S rd (f.freshAt S) e2 c
+    | _, _ => none
+  | .rop .or rd a b | .rop .xor rd a b =>
+    match S.reg a, S.reg b with
+    | some e1, some ⟨c, []⟩ => disjConst S rd e1 (c % 2 ^ 64).toNat
+    | some ⟨c, []⟩, some e2 => disjConst S rd e2 (c % 2 ^ 64).toNat
+    | _, _ => none
+  | _ => none
+
 /-- In order: constant folding, the rules above, the fresh-word default. -/
 def arithExt (S : STy) (i : Instr) : Option STy :=
   match Fn.fold S i with
   | some S' => some S'
   | none =>
+    match f.andConst S i with
+    | some S' => some S'
+    | none =>
     match f.arith2 S i with
     | some S' => some S'
     | none =>
