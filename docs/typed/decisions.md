@@ -225,6 +225,14 @@ comments can cite them.
   address-interval rule stays as `--loops interval`; corpus files keep its verdicts in
   `#! expect-interval` lines where they differ. An `inv` on a label that heads no loop is a
   `join`. T updates the proof's S2/Theorem C and the design note.
+- **I37 Witness-free facts in the record.** Every fact the Rust checker records mentions only
+  variables that some register, slot or field of the state (or the signature, or an
+  annotation) also mentions, wherever the rule allows: `u(e) = x` is `2^64 ∣ e − x` (not
+  `e = x + 2^64·k`), the 32-bit rule `2^32 ∣ e − x`, a quotient result `0 ≤ e − c·q < c`, a
+  remainder result `c ∣ e − r, 0 ≤ r < c`. Equivalent to the earlier forms (the solver
+  introduces the quotient itself), and it lets the Lean checker instantiate every variable of
+  the next point's type on an edge (its θ is found from registers). Exception left: the
+  single-bit `andi` rule still has a fact-only quotient.
 
 ## Proposals (not adopted: the default checker does not use them)
 

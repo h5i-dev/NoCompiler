@@ -2007,12 +2007,13 @@ impl<'a> FnCheck<'a> {
         if self.prove(st, &rng, "u(e) = e") {
             return Ok(e.clone());
         }
+        // witness-free (so the Lean checker can instantiate every variable of the record):
+        // 2^64 ∣ e − x rather than e = x + 2^64·k
         let x = Lin::var(self.fresh("u"));
-        let k = Lin::var(self.fresh("k"));
-        let rhs = x
-            .add(&k.scale(TWO64).ok_or_else(|| ovf(self.line))?)
-            .ok_or_else(|| ovf(self.line))?;
-        self.add_fact(st, Formula::eq(e, &rhs).ok_or_else(|| ovf(self.line))?);
+        self.add_fact(
+            st,
+            Formula::Dvd(TWO64, e.sub(&x).ok_or_else(|| ovf(self.line))?),
+        );
         self.add_fact(st, Formula::in_u64(&x).unwrap());
         Ok(x)
     }
@@ -2029,30 +2030,40 @@ impl<'a> FnCheck<'a> {
             return Ok(e.clone());
         }
         let x = Lin::var(self.fresh("s"));
-        let k = Lin::var(self.fresh("k"));
-        let rhs = x
-            .add(&k.scale(TWO64).ok_or_else(|| ovf(self.line))?)
-            .ok_or_else(|| ovf(self.line))?;
-        self.add_fact(st, Formula::eq(e, &rhs).ok_or_else(|| ovf(self.line))?);
+        self.add_fact(
+            st,
+            Formula::Dvd(TWO64, e.sub(&x).ok_or_else(|| ovf(self.line))?),
+        );
         self.add_fact(st, sig::range_fact(crate::syntax::RangeKind::I64, &x));
         Ok(x)
     }
 
-    /// `e = 2^k·q + r`, `0 ≤ r < 2^k` with fresh q, r; returns (q, r).
-    fn divmod(&mut self, st: &mut State, e: &Lin, d: i128) -> F<(Lin, Lin)> {
+    /// The quotient `q = ⌊e / d⌋` (fresh), as `0 ≤ e − d·q < d` (no remainder variable).
+    fn divq(&mut self, st: &mut State, e: &Lin, d: i128) -> F<Lin> {
+        let line = self.line;
         let q = Lin::var(self.fresh("q"));
+        let rest = e
+            .sub(&q.scale(d).ok_or_else(|| ovf(line))?)
+            .ok_or_else(|| ovf(line))?;
+        self.add_fact(st, Formula::Ge(rest.clone()));
+        self.add_fact(
+            st,
+            Formula::lt(&rest, &Lin::konst(d)).ok_or_else(|| ovf(line))?,
+        );
+        Ok(q)
+    }
+
+    /// The remainder `r = e mod d` (fresh), as `d ∣ e − r`, `0 ≤ r < d` (no quotient variable).
+    fn divr(&mut self, st: &mut State, e: &Lin, d: i128) -> F<Lin> {
+        let line = self.line;
         let r = Lin::var(self.fresh("r"));
-        let rhs = q
-            .scale(d)
-            .and_then(|x| x.add(&r))
-            .ok_or_else(|| ovf(self.line))?;
-        self.add_fact(st, Formula::eq(e, &rhs).ok_or_else(|| ovf(self.line))?);
+        self.add_fact(st, Formula::Dvd(d, e.sub(&r).ok_or_else(|| ovf(line))?));
         self.add_fact(st, Formula::Ge(r.clone()));
         self.add_fact(
             st,
-            Formula::lt(&r, &Lin::konst(d)).ok_or_else(|| ovf(self.line))?,
+            Formula::lt(&r, &Lin::konst(d)).ok_or_else(|| ovf(line))?,
         );
-        Ok((q, r))
+        Ok(r)
     }
 
     /// The 32-bit result rule: `e = x + 2^32·j`, `−2^31 ≤ x < 2^31`.
@@ -2061,11 +2072,10 @@ impl<'a> FnCheck<'a> {
             return Ok(Lin::konst(c.rem_euclid(1 << 32) as u32 as i32 as i128));
         }
         let x = Lin::var(self.fresh("w"));
-        let j = Lin::var(self.fresh("j"));
-        let rhs = x
-            .add(&j.scale(1 << 32).unwrap())
-            .ok_or_else(|| ovf(self.line))?;
-        self.add_fact(st, Formula::eq(e, &rhs).ok_or_else(|| ovf(self.line))?);
+        self.add_fact(
+            st,
+            Formula::Dvd(1 << 32, e.sub(&x).ok_or_else(|| ovf(self.line))?),
+        );
         self.add_fact(st, Formula::le(&Lin::konst(-(1 << 31)), &x).unwrap());
         self.add_fact(st, Formula::lt(&x, &Lin::konst(1 << 31)).unwrap());
         Ok(x)
@@ -2076,8 +2086,7 @@ impl<'a> FnCheck<'a> {
         if let Some(c) = e.as_const() {
             return Ok(Lin::konst(c.rem_euclid(1 << 32)));
         }
-        let (_, r) = self.divmod(st, e, 1 << 32)?;
-        Ok(r)
+        self.divr(st, e, 1 << 32)
     }
 
     /// `x` with `x = 1 ⇔ a < b` (given representatives).
@@ -2215,13 +2224,11 @@ impl<'a> FnCheck<'a> {
                     ShOp::Slli => e.scale(p).ok_or_else(ovf_)?,
                     ShOp::Srli => {
                         let u = self.urep(&mut st, &e)?;
-                        let (q, _) = self.divmod(&mut st, &u, p)?;
-                        q
+                        self.divq(&mut st, &u, p)?
                     }
                     ShOp::Srai => {
                         let s = self.srep(&mut st, &e)?;
-                        let (q, _) = self.divmod(&mut st, &s, p)?;
-                        q
+                        self.divq(&mut st, &s, p)?
                     }
                     ShOp::SlliUw => {
                         let z = self.zext32(&mut st, &e)?;
@@ -2243,8 +2250,7 @@ impl<'a> FnCheck<'a> {
                     // keeps it: zext32(e) = 2^c·x + r
                     ShWOp::Srliw if sh >= 1 => {
                         let z = self.zext32(&mut st, &e)?;
-                        let (q, _) = self.divmod(&mut st, &z, 1i128 << sh)?;
-                        q
+                        self.divq(&mut st, &z, 1i128 << sh)?
                     }
                     _ => self.unknown_word(&mut st, "x"),
                 };
@@ -2311,8 +2317,11 @@ impl<'a> FnCheck<'a> {
                         let ua = self.urep(&mut st, &a)?;
                         match b.as_const().map(|c| c.rem_euclid(TWO64)) {
                             Some(c) if c > 0 => {
-                                let (q, r) = self.divmod(&mut st, &ua, c)?;
-                                if op == ROp::Remu { r } else { q }
+                                if op == ROp::Remu {
+                                    self.divr(&mut st, &ua, c)?
+                                } else {
+                                    self.divq(&mut st, &ua, c)?
+                                }
                             }
                             _ => {
                                 let ub = self.urep(&mut st, &b)?;
@@ -2350,8 +2359,7 @@ impl<'a> FnCheck<'a> {
                     RWOp::Srlw if b.as_const().is_some_and(|c| c.rem_euclid(32) >= 1) => {
                         let c = b.as_const().unwrap().rem_euclid(32);
                         let z = self.zext32(&mut st, &a)?;
-                        let (q, _) = self.divmod(&mut st, &z, 1i128 << c)?;
-                        q
+                        self.divq(&mut st, &z, 1i128 << c)?
                     }
                     RWOp::Mulw if a.is_const() || b.is_const() => {
                         let s = match (a.as_const(), b.as_const()) {
@@ -2380,10 +2388,7 @@ impl<'a> FnCheck<'a> {
             Instr::UOp { op, rd, rs1 } => {
                 let e = self.reg(&st, rs1);
                 let v = match op {
-                    UOp::ZextH => {
-                        let (_, r) = self.divmod(&mut st, &e, 1 << 16)?;
-                        r
-                    }
+                    UOp::ZextH => self.divr(&mut st, &e, 1 << 16)?,
                     UOp::Clz | UOp::Ctz | UOp::Cpop => {
                         let x = self.unknown_word(&mut st, "x");
                         self.add_fact(&mut st, Formula::le(&x, &Lin::konst(64)).unwrap());
@@ -2610,7 +2615,7 @@ impl<'a> FnCheck<'a> {
         let ovf_ = move || ovf(line_);
         if c >= 0 && (c + 1).count_ones() == 1 {
             // c = 2^k − 1: x = e mod 2^k
-            let (_, r) = self.divmod(st, e, c + 1)?;
+            let r = self.divr(st, e, c + 1)?;
             // (a xor b) mod 2^k = 0 ⇔ a ≡ b (mod 2^k)
             if let Some((a, b)) = e.as_var().and_then(|v| self.xor_defs.get(&v)).cloned() {
                 let d = a.sub(&b).ok_or_else(ovf_)?;
@@ -2629,13 +2634,13 @@ impl<'a> FnCheck<'a> {
         if c < 0 && (-c).count_ones() == 1 {
             // c = −2^k: x = u(e) − (u(e) mod 2^k)
             let u = self.urep(st, e)?;
-            let (q, _) = self.divmod(st, &u, -c)?;
+            let q = self.divq(st, &u, -c)?;
             return Ok(q.scale(-c).ok_or_else(ovf_)?);
         }
         if c >= 0 && c.count_ones() == 1 {
             // a single bit 2^k: x ∈ {0, 2^k}, x = 2^k ⇔ bit k of e is set
-            let (q, _) = self.divmod(st, e, c)?; // e = c·q + r
-            let (_, bit) = self.divmod(st, &q, 2)?; // q = 2·_ + bit
+            let q = self.divq(st, e, c)?; // 0 ≤ e − c·q < c
+            let bit = self.divr(st, &q, 2)?; // 2 ∣ q − bit
             return Ok(bit.scale(c).ok_or_else(ovf_)?);
         }
         let x = self.unknown_word(st, "x");
