@@ -76,6 +76,10 @@ struct Region {
 
 struct Machine<'a> {
     prog: &'a Program,
+    sigs: &'a BTreeMap<String, Sig>,
+    /// Ranges given away with `take` (no longer accessible).
+    revoked: Vec<(u64, u64)>,
+    next_alloc: u64,
     /// Data symbol → address.
     data: HashMap<String, u64>,
     regs: [u64; 32],
@@ -91,15 +95,19 @@ enum Stop {
     Returned,
     Exited,
     Fault(String),
+    /// The environment could not be modelled for this run (no sample of a contract).
+    Skip,
 }
 
 impl Machine<'_> {
     fn allowed(&self, a: u64, w: u64, write: bool) -> bool {
         (0..w).all(|i| {
             let b = a.wrapping_add(i);
-            self.regions
-                .iter()
-                .any(|r| r.lo <= b && b < r.hi && (!write || r.write))
+            !self.revoked.iter().any(|(lo, hi)| *lo <= b && b < *hi)
+                && self
+                    .regions
+                    .iter()
+                    .any(|r| r.lo <= b && b < r.hi && (!write || r.write))
         })
     }
     fn load(&self, a: u64, w: u64) -> u64 {
@@ -221,20 +229,35 @@ impl Machine<'_> {
                     };
                     pc = if take { target(t).unwrap() } else { next };
                 }
-                Instr::Jal { rd, target: t } => {
+                Instr::Jal { rd, target: t } | Instr::CallPair { rd, target: t, .. } => {
+                    if let Instr::CallPair { tmp, .. } = ins {
+                        let v = rng.next();
+                        self.set(*tmp, v);
+                    }
                     self.set(*rd, next);
-                    let Some(tg) = target(t) else {
-                        return Stop::Fault("call of a function without a body".into());
-                    };
-                    pc = tg;
-                }
-                Instr::CallPair { rd, tmp, target: t } => {
-                    self.set(*tmp, rng.next());
-                    self.set(*rd, next);
-                    let Some(tg) = target(t) else {
-                        return Stop::Fault("call of a function without a body".into());
-                    };
-                    pc = tg;
+                    match target(t) {
+                        Some(tg) => pc = tg,
+                        None => {
+                            let Target::Symbol(name) = t else {
+                                unreachable!()
+                            };
+                            let Some(sig) = self.sigs.get(name) else {
+                                return Stop::Fault(format!(
+                                    "call of '{name}' without a signature"
+                                ));
+                            };
+                            let ret = self.regs[RA.0 as usize];
+                            match self.contract(sig, rng) {
+                                Ok(true) => {}
+                                Ok(false) => return Stop::Skip,
+                                Err(e) => {
+                                    return Stop::Fault(format!("line {}: {e}", g.instrs[i].line));
+                                }
+                            }
+                            // the callee returns to ra (next for a call, our caller for a tail call)
+                            pc = ret;
+                        }
+                    }
                 }
                 Instr::Jalr { rd, rs1, off } => {
                     let t = r(*rs1).wrapping_add(*off as u64) & !1;
@@ -303,6 +326,181 @@ impl Machine<'_> {
     }
 }
 
+impl Machine<'_> {
+    /// A call of a function known only by its contract: check what the caller must
+    /// provide, then act as some function satisfying the contract would. `Ok(false)`: no
+    /// valuation found (the run is skipped).
+    fn contract(&mut self, sig: &Sig, rng: &mut Rng) -> Result<bool, String> {
+        // θ for the parameters: bare in-registers (unsigned or signed representative)
+        let mut cands: Vec<BTreeMap<Var, i128>> = vec![BTreeMap::new()];
+        for (r, e) in &sig.ins {
+            if let Some(v) = e.as_var().filter(|v| sig.params.contains(v)) {
+                let u = self.regs[r.0 as usize] as i128;
+                let mut next = Vec::new();
+                for c in &cands {
+                    for x in [u, u - TWO64] {
+                        let mut c2 = c.clone();
+                        c2.insert(v, x);
+                        next.push(c2);
+                    }
+                }
+                cands = next;
+                cands.truncate(16);
+            }
+        }
+        // lengths from the regions at a clause's base
+        for c in &mut cands {
+            for cl in sig.borrow.iter().chain(&sig.take) {
+                if let CapKind::Bytes { base, len, .. } = &cl.kind
+                    && let (Some(b), Some(lv)) = (eval_lin(base, c), len.as_var())
+                    && !c.contains_key(&lv)
+                    && let Some(rg) = self.regions.iter().find(|rg| rg.lo as i128 == b)
+                {
+                    c.insert(lv, (rg.hi - rg.lo) as i128);
+                }
+            }
+        }
+        let pre = Formula::and(sig.pre.clone());
+        let Some(th) = cands.into_iter().find(|c| eval_f(&pre, c) == Some(true)) else {
+            if sig
+                .params
+                .iter()
+                .all(|v| sig.ins.iter().any(|(_, e)| e.as_var() == Some(*v)))
+            {
+                return Err(format!(
+                    "call of '{}': no valuation of the arguments satisfies the precondition",
+                    sig.name
+                ));
+            }
+            return Ok(false);
+        };
+        if sig.params.iter().any(|v| !th.contains_key(v)) {
+            return Ok(false);
+        }
+        // lent and taken ranges must be permitted to the caller
+        let mut rw_ranges = Vec::new();
+        for (k, cl) in sig.borrow.iter().chain(&sig.take).enumerate() {
+            let CapKind::Bytes {
+                base, len, mode, ..
+            } = &cl.kind
+            else {
+                continue;
+            };
+            let (b, n) = (eval_lin(base, &th).unwrap(), eval_lin(len, &th).unwrap());
+            if n < 0 {
+                return Err(format!("call of '{}': negative length {n}", sig.name));
+            }
+            if n > 0
+                && (b < 0 || b + n > TWO64 || !self.allowed(b as u64, n as u64, *mode == Mode::Rw))
+            {
+                return Err(format!(
+                    "call of '{}': clause {} range [{b:#x}, +{n}) not permitted to the caller",
+                    sig.name,
+                    k + 1
+                ));
+            }
+            if *mode == Mode::Rw {
+                rw_ranges.push((b as u64, n as u64, k < sig.borrow.len()));
+            }
+            if k >= sig.borrow.len() {
+                self.revoked.push((b as u64, (b + n) as u64));
+            }
+        }
+        // the callee may write what it was lent rw
+        for (b, n, _) in &rw_ranges {
+            for j in 0..*n {
+                let v = rng.next() as u8;
+                self.mem.insert(b + j, v);
+            }
+        }
+        for r in Reg::all().skip(1) {
+            if !r.is_preserved() {
+                let v = rng.next();
+                self.set(r, v);
+            }
+        }
+        // results: given capabilities get fresh memory; other variables are sampled
+        for _ in 0..300 {
+            let mut t2 = th.clone();
+            let mut allocs = Vec::new();
+            for g in &sig.give {
+                if let CapKind::Bytes { base, .. } = &g.kind
+                    && let Some(v) = base.as_var().filter(|v| sig.out_vars.contains(v))
+                {
+                    // sometimes the null result a guarded give allows
+                    let a = if g.guard != Formula::True && rng.below(4) == 0 {
+                        0
+                    } else {
+                        self.next_alloc
+                    };
+                    t2.insert(v, a as i128);
+                    allocs.push(a);
+                }
+            }
+            for v in &sig.out_vars {
+                if !t2.contains_key(v) {
+                    let x = match rng.below(5) {
+                        0 => 0,
+                        1 => -1,
+                        2 => rng.below(8) as i128,
+                        3 => {
+                            th.values()
+                                .nth(rng.below(th.len().max(1) as u64) as usize)
+                                .copied()
+                                .unwrap_or(0)
+                                - rng.below(3) as i128
+                        }
+                        _ => rng.below(100) as i128,
+                    };
+                    t2.insert(*v, x);
+                }
+            }
+            if eval_f(&Formula::and(sig.post.clone()), &t2) != Some(true) {
+                continue;
+            }
+            for g in &sig.give {
+                if eval_f(&g.guard, &t2) != Some(true) {
+                    continue;
+                }
+                if let CapKind::Bytes {
+                    base, len, mode, ..
+                } = &g.kind
+                {
+                    let (b, n) = (eval_lin(base, &t2).unwrap(), eval_lin(len, &t2).unwrap());
+                    if n > 1 << 20 {
+                        return Ok(false);
+                    }
+                    self.regions.push(Region {
+                        lo: b as u64,
+                        hi: (b + n) as u64,
+                        write: *mode == Mode::Rw,
+                    });
+                    self.next_alloc = (b + n) as u64 + 0x10_0000;
+                    self.next_alloc = self.next_alloc.next_multiple_of(0x1000);
+                }
+            }
+            // exit fields of borrows
+            for cl in &sig.borrow {
+                if let CapKind::Bytes { base, .. } = &cl.kind {
+                    let b = eval_lin(base, &t2).unwrap();
+                    for (k, e) in cl.exit_fields() {
+                        if let Some(x) = eval_lin(&e, &t2) {
+                            self.store((b + k) as u64, 8, x.rem_euclid(TWO64) as u64);
+                        }
+                    }
+                }
+            }
+            for (r, e) in &sig.outs {
+                let x = eval_lin(e, &t2).unwrap();
+                self.set(*r, x.rem_euclid(TWO64) as u64);
+            }
+            let _ = allocs;
+            return Ok(true);
+        }
+        Ok(false)
+    }
+}
+
 /// (base, length, mode, fields) of one capability's memory.
 type Layout = (u64, u64, Mode, BTreeMap<i128, Lin>);
 
@@ -310,12 +508,14 @@ type Layout = (u64, u64, Mode, BTreeMap<i128, Lin>);
 /// what this tester handles or no sample satisfies it.
 fn sample(s: &Sig, rng: &mut Rng) -> Option<(BTreeMap<Var, i128>, Vec<Layout>)> {
     let caps: Vec<_> = s.borrow.iter().chain(&s.take).collect();
-    if caps
-        .iter()
-        .any(|c| c.guard != Formula::True || matches!(c.kind, CapKind::Token(_)))
-    {
+    if caps.iter().any(|c| c.guard != Formula::True) {
         return None;
     }
+    // tokens: nothing to lay out (the contracts' state is not modelled)
+    let caps: Vec<_> = caps
+        .into_iter()
+        .filter(|c| !matches!(c.kind, CapKind::Token(_)))
+        .collect();
     // base variables: bare variables that are a capability's base
     let mut bases: Vec<Var> = Vec::new();
     for c in &caps {
@@ -329,7 +529,9 @@ fn sample(s: &Sig, rng: &mut Rng) -> Option<(BTreeMap<Var, i128>, Vec<Layout>)> 
             if bases.contains(p) {
                 continue;
             }
-            let x = match rng.below(6) {
+            let x = match rng.below(8) {
+                6 => -(rng.below(8) as i128) - 1,
+                7 => (1i128 << 63) + rng.below(4) as i128,
                 0 => 0,
                 1 => 1,
                 2 => rng.below(8) as i128,
@@ -386,12 +588,21 @@ fn sample(s: &Sig, rng: &mut Rng) -> Option<(BTreeMap<Var, i128>, Vec<Layout>)> 
     None
 }
 
-fn run_case(prog: &Program, f: &Func, s: &Sig, rng: &mut Rng) -> Result<bool, String> {
+fn run_case(
+    prog: &Program,
+    sigs: &BTreeMap<String, Sig>,
+    f: &Func,
+    s: &Sig,
+    rng: &mut Rng,
+) -> Result<bool, String> {
     let Some((v, layout)) = sample(s, rng) else {
         return Ok(false);
     };
     let mut m = Machine {
         prog,
+        sigs,
+        revoked: vec![],
+        next_alloc: 0x5000_0000,
         data: HashMap::new(),
         regs: [0; 32],
         mem: HashMap::new(),
@@ -450,6 +661,7 @@ fn run_case(prog: &Program, f: &Func, s: &Sig, rng: &mut Rng) -> Result<bool, St
         .collect();
     match m.run(f, rng) {
         Stop::Exited => Ok(true),
+        Stop::Skip => Ok(false),
         // a `partial` function need not end
         Stop::Fault(msg) if s.partial && msg.starts_with("did not end") => Ok(true),
         Stop::Fault(msg) => Err(format!(
@@ -507,31 +719,12 @@ fn accepted_functions_do_not_get_stuck() {
                 continue;
             }
             let f = prog.funcs.iter().find(|g| g.name == fr.name).unwrap();
-            // callees must have bodies here
-            let calls_contract = f.instrs.iter().any(|pi| match &pi.instr {
-                Instr::Jal {
-                    target: Target::Symbol(s),
-                    ..
-                }
-                | Instr::CallPair {
-                    target: Target::Symbol(s),
-                    ..
-                } => {
-                    ck.sigs.get(s).is_none_or(|g| g.kind != FnKind::Safe)
-                        || !prog.funcs.iter().any(|g| g.name == *s)
-                }
-                _ => false,
-            });
-            if calls_contract {
-                skipped.push(format!("{}: {} (calls a contract)", p.display(), fr.name));
-                continue;
-            }
             let s = &ck.sigs[&fr.name];
             let mut any = false;
             for _ in 0..300 {
-                match run_case(&prog, f, s, &mut rng) {
+                match run_case(&prog, &ck.sigs, f, s, &mut rng) {
                     Ok(true) => any = true,
-                    Ok(false) => break,
+                    Ok(false) => continue,
                     Err(e) => {
                         bad.push(format!("{}: {e}", p.display()));
                         break;
@@ -556,4 +749,37 @@ fn accepted_functions_do_not_get_stuck() {
         bad.join("\n")
     );
     assert!(ran > 0);
+}
+
+/// The tester has teeth: on functions the checker rejects for a memory reason, it finds a
+/// fault (so a checker that wrongly accepted them would be caught).
+#[test]
+fn tester_finds_the_known_holes() {
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/typed/corpus");
+    let cases = [
+        ("neg_bounds_off_by_one.s", "sum"),
+        ("neg_blt_index.s", "get"),
+        ("neg_use_after_free.s", "use_after_free"),
+        ("neg_store_ro.s", "zero_first"),
+        ("neg_static_oob.s", "lookup"),
+        ("neg_null_unchecked.s", "no_null_check"),
+        ("neg_ret_s0.s", "f"),
+    ];
+    let mut rng = Rng(0x9e37_79b9_7f4a_7c15);
+    let mut missed = Vec::new();
+    for (file, name) in cases {
+        let src = std::fs::read_to_string(dir.join(file)).unwrap();
+        let prog = asm::parse(&src).unwrap();
+        let (ck, _) = check::check_program(&prog, false);
+        let f = prog.funcs.iter().find(|g| g.name == name).unwrap();
+        let s = &ck.sigs[name];
+        let found = (0..2000).any(|_| run_case(&prog, &ck.sigs, f, s, &mut rng).is_err());
+        if !found {
+            missed.push(format!("{file}: {name}"));
+        }
+    }
+    assert!(
+        missed.is_empty(),
+        "the tester found no fault in: {missed:?}"
+    );
 }
