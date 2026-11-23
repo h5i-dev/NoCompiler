@@ -293,6 +293,40 @@ What changed in the findings now that the checker exists:
   CFGs are reducible. The cost is a dominator computation in both checkers. Today S2 is the first
   failure for 8 of the 29 files.
 
+### Stage 3: re-run with I29 (bitwise rules) and I30 (read-only static data) (2026-11-23T18:14Z)
+
+Checker at origin/typed 1e69e82f, run by `scripts/musl-trial/check.sh` (with `--object`). U updated
+the `#! expect` lines of memset, strncmp, memchr, memccpy, strlen and stpncpy in the same commits
+as the rules. No annotation changed for this stage.
+
+| function | stage 2 | stage 3 |
+|----------|---------|---------|
+| memset | reject `loop-inv` (`ori 24`) | **accept** (80 queries, 11 ms) |
+| strncmp | reject `mem-bounds` (and of booleans) | **accept** (27 queries, 9 ms) |
+| memchr | reject `static-data` | reject `cfg` |
+| memccpy | reject `static-data` | reject `cfg` |
+| stpncpy | reject `static-data` | reject `cfg` |
+| strlen | reject `static-data` | reject `loop-inv` (its precondition is not expressible: expected) |
+| memchr-x | reject `loop-inv` (entry, `8 ∣ p`) | reject `loop-inv` (`8 ∣ p`, finding 7) |
+| all others | unchanged | unchanged |
+
+**14 of the 21 compiled functions are accepted as compiled** (labs, memcmp, bcmp, memrchr,
+strnlen, strncmp, swab, bzero, memset, wmemcpy, wmemset, wmemcmp, wmemchr, strncpy). Of the 7
+rejected, strlen is the one whose contract v0 cannot state. **The other 6 (memchr, memcpy,
+memccpy, memmove, stpncpy, fwrite) are all rejected first by S2 (`cfg`)**, and so are all their
+`-ic`/`-x` variants except memchr-x. Finding 1 is now the only rule between these six and the
+remaining typing rules.
+
+What S2-as-natural-loops would take in the Rust checker (sketch for U, not tried): the pass runs
+in **reverse postorder** of the CFG instead of address order. An edge `a → h` is a back edge iff
+`h` dominates `a`. `inv` is required exactly at targets of back edges, and a target of a
+non-back retreating edge means the CFG is irreducible (reject `cfg`). "Registers written in the
+loop" (I13) ranges over the natural loop's body (the nodes that reach `a` without passing `h`), not
+the address interval. Joins are as now, over forward (non-back) edges, which are acyclic in RPO.
+On the annotation side, the `inv` blocks without `decreases` at non-loop targets become `join`
+blocks (listed under finding 1). That is mechanical in `examples/musl/ann/`, and I will make the
+change when the rule changes.
+
 ## Files
 
 - `scripts/musl-trial/build.sh` — pinned build (musl tree digest, clang 15.0.7, flags);
