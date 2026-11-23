@@ -160,6 +160,42 @@ fn lean_sty(st: &State, borrow_ids: &[u32]) -> String {
     )
 }
 
+/// The signature as the Lean checker sees it (T on I30): every data symbol's address is a
+/// parameter with its range and alignment in `pre`, and each read-only symbol is an
+/// ordinary `borrow ℓ_sym ↦ bytes[size] ro {fields}` clause after the signature's own.
+pub fn exported_sig(s: &Sig, ck: &Checker) -> Sig {
+    let mut e = s.clone();
+    if s.syscall {
+        return e;
+    }
+    for (name, v) in &ck.sym_vars {
+        e.params.push(*v);
+        let (size, align) = ck.sym_info[name];
+        let l = Lin::var(*v);
+        e.pre.push(Formula::Ge(l.clone()));
+        e.pre.push(
+            Formula::le(&l.add_const(size).unwrap(), &Lin::konst(crate::lin::TWO64)).unwrap(),
+        );
+        if align > 1 {
+            e.pre.push(Formula::Dvd(align, l));
+        }
+    }
+    for sd in &ck.statics {
+        e.borrow.push(SigCap {
+            guard: Formula::True,
+            kind: CapKind::Bytes {
+                base: Lin::var(sd.var),
+                len: Lin::konst(sd.size),
+                mode: Mode::Ro,
+                heap: false,
+                fields: sd.fields.clone(),
+            },
+            out_fields: None,
+        });
+    }
+    e
+}
+
 /// Word index of each instruction (a `call`/`tail` pair is two words).
 fn word_index(f: &Func) -> Vec<usize> {
     let a0 = f.instrs.first().map(|p| p.addr).unwrap_or(0);
@@ -207,7 +243,7 @@ pub fn to_lean(prog: &Program, ck: &Checker, rep: &Report, module: &str) -> Stri
             o,
             "def sig_{} : Sig :=\n  {}\n",
             lean_ident(name).trim_matches(['«', '»']),
-            lean_sig(s)
+            lean_sig(&exported_sig(s, ck))
         );
     }
     for f in &rep.funcs {
@@ -348,8 +384,11 @@ pub fn to_json(prog: &Program, ck: &Checker, rep: &Report) -> Value {
     let names: Vec<Value> = (0..ck.names.len())
         .map(|i| json!(ck.names.name(crate::lin::Var(i as u32))))
         .collect();
-    let sigs: serde_json::Map<String, Value> =
-        ck.sigs.iter().map(|(n, s)| (n.clone(), j_sig(s))).collect();
+    let sigs: serde_json::Map<String, Value> = ck
+        .sigs
+        .iter()
+        .map(|(n, s)| (n.clone(), j_sig(&exported_sig(s, ck))))
+        .collect();
     let mut fns = Vec::new();
     for f in &rep.funcs {
         let Some(ex) = &f.export else { continue };

@@ -483,6 +483,8 @@ struct FnCheck<'a> {
     entry_preserved: BTreeMap<Reg, Var>,
     /// Identities of the entry `borrow` capabilities, by clause.
     borrow_ids: Vec<u32>,
+    /// Identities of the implicit read-only data capabilities, in `ck.statics` order.
+    static_ids: Vec<u32>,
     frame_ids: Vec<u32>,
     next_fact: u32,
     next_cap: u32,
@@ -529,6 +531,7 @@ impl<'a> FnCheck<'a> {
             sigma0,
             entry_preserved: BTreeMap::new(),
             borrow_ids: vec![],
+            static_ids: vec![],
             frame_ids: vec![],
             next_fact: 0,
             next_cap: 0,
@@ -575,7 +578,14 @@ impl<'a> FnCheck<'a> {
         FnExport {
             reg_var,
             loops,
-            borrow_ids: self.borrow_ids.clone(),
+            // the export lists the implicit data capabilities as borrow clauses after the
+            // signature's own (export.md), so their identities follow
+            borrow_ids: self
+                .borrow_ids
+                .iter()
+                .chain(&self.static_ids)
+                .copied()
+                .collect(),
             snapshots: self.snapshots.clone(),
             fresh: self.ck.names.len() as u32,
         }
@@ -1233,6 +1243,7 @@ impl<'a> FnCheck<'a> {
                     fields: sd.fields.clone(),
                 },
             );
+            self.static_ids.push(c.id);
             st.caps.push(c);
         }
         Ok(st)
