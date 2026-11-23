@@ -432,6 +432,14 @@ unknown word. **Ask for U:** `srliw rd, rs, c` with `c ≥ 1` gives `x` with
 `srlw` likewise for a constant amount. No other verdict changed (19 checked by default, 24 with
 `--loops natural`, counting variants).
 
+### Stage 6: Presburger fixes (U's 5062a08c: goals that are hypotheses, split conjunctive goals) (2026-11-23T18:50Z)
+
+Checker at origin/typed 7fb9b366. Ask 2 of stage 4 is done. **memmove is now accepted with
+`--loops natural`** (114 queries, 0.38 s), under its signature with `0 ≤ n < 2^63`. No other
+verdict changed. Totals for the 29 compiled functions: **18 accepted by default, 21 with natural
+loops** (memcpy, memmove and stpncpy added). Still open from stage 4/5: `sltu` of an `xor`
+(memccpy), `srliw` (l64a), per-mode corpus expectations.
+
 ## Files
 
 - `scripts/musl-trial/build.sh` — pinned build (musl tree digest, clang 15.0.7, flags);
