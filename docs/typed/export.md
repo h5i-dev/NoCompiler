@@ -100,6 +100,15 @@ linked ELF (ET_EXEC/ET_DYN) and then:
   `pc + (imm<<12)` (T, I21), so the literal and the data capability `ℓ_sym ↦ bytes[size]` meet
   in the solver. ⟦σ⟧ is unchanged: the equation is an ordinary entry constraint, which the
   caller (or the loader, for `_start`) establishes.
+* in the exported point types (not the signatures) each ℓ_sym is replaced by its address, so
+  an access at `auipc`'s literal address has a constant offset into the data capability and
+  reads its fields (`capSub` compares bases by entailment; the equation makes them equal);
+* each `auipc rd, %pcrel_hi(sym)`'s variable L (the paired `%pcrel_lo` immediate, I30) is the
+  linker's value: with P the auipc's address and S the symbol's, hi = (S − P + 0x800) >> 12 and
+  L = S − P − hi·2^12, so `rd` is the literal P + hi·2^12 the Lean checker computes;
+* a `call`/`tail` pair (two words, I21) gets a type at its second word too: the type before the
+  pair with the temporary (`ra`, `t1`) holding the auipc's literal for the callee's address;
+* `def prog : List Fn` lists the exported functions callee-first (S5), for `Prog.check`.
 Without `--image` the export is as before (section offsets, same-section callees, ℓ_sym free).
 
 ### θ per edge (2026-11-23, T's ask 4)

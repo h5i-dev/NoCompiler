@@ -173,6 +173,8 @@ pub struct FnExport {
     pub thetas: Vec<(usize, usize, BTreeMap<Var, Lin>)>,
     /// Variables are numbered below this.
     pub fresh: u32,
+    /// The `%pcrel_lo` variable L of each `auipc %pcrel_hi(sym)`: (instruction index, L, sym).
+    pub lo_vars: Vec<(usize, Var, String)>,
 }
 
 /// What the checker did for one function (the ledger's "判断の記録").
@@ -608,7 +610,16 @@ impl<'a> FnCheck<'a> {
                 )
             })
             .collect();
+        let lo_vars = self
+            .lo_vars
+            .iter()
+            .filter_map(|(ix, v)| match &self.f.instrs.get(*ix)?.reloc {
+                Some(Reloc::PcrelHi(sym)) => Some((*ix, *v, sym.clone())),
+                _ => None,
+            })
+            .collect();
         FnExport {
+            lo_vars,
             reg_var,
             loops,
             tau: self.order.clone(),

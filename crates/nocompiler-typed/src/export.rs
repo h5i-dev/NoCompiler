@@ -191,6 +191,52 @@ fn sym_eqs(ck: &Checker, image: Option<&BTreeMap<String, u64>>) -> Vec<Formula> 
         .collect()
 }
 
+/// The linker's split of a pc-relative offset `d` into `%pcrel_hi` (sign-extended, rounded)
+/// and `%pcrel_lo` (12-bit signed): `d = (hi << 12) + lo`.
+fn hi_lo(d: i128) -> (i128, i128) {
+    let hi = (d + 0x800) >> 12;
+    (hi, d - (hi << 12))
+}
+
+/// The data symbols' variables mapped to their linked addresses.
+fn sym_addrs(ck: &Checker, image: Option<&BTreeMap<String, u64>>) -> BTreeMap<crate::lin::Var, Lin> {
+    let Some(img) = image else { return BTreeMap::new() };
+    ck.sym_vars
+        .iter()
+        .filter_map(|(name, v)| Some((*v, Lin::konst(*img.get(name)? as i128))))
+        .collect()
+}
+
+/// A point's type with every data symbol's variable replaced by its address (with
+/// `--image`): the Lean checker then finds constant offsets for accesses at `auipc`'s literal
+/// addresses, so fields are read (`capSub` compares bases by entailment, and the entry
+/// constraint has `ℓ_sym = address`). Expressions that would overflow are kept as they are.
+fn pin_state(st: &State, m: &BTreeMap<crate::lin::Var, Lin>) -> State {
+    if m.is_empty() {
+        return st.clone();
+    }
+    let l = |e: &Lin| e.subst_all(m).unwrap_or_else(|| e.clone());
+    let f = |p: &Formula| p.map_lin(&mut |e| e.subst_all(m)).unwrap_or_else(|| p.clone());
+    let mut out = st.clone();
+    out.regs = st.regs.iter().map(l).collect();
+    out.facts = st.facts.iter().map(|(i, p)| (*i, f(p))).collect();
+    out.slots = st.slots.iter().map(|(k, e)| (*k, l(e))).collect();
+    for c in &mut out.caps {
+        c.guard = f(&c.guard);
+        if let CapKind::Bytes {
+            base, len, fields, ..
+        } = &mut c.kind
+        {
+            *base = l(base);
+            *len = l(len);
+            for v in fields.values_mut() {
+                *v = l(v);
+            }
+        }
+    }
+    out
+}
+
 /// `exported_sig`, with the linked addresses of the data symbols in `pre` when an image is
 /// given.
 pub fn exported_sig_at(s: &Sig, ck: &Checker, image: Option<&BTreeMap<String, u64>>) -> Sig {
@@ -266,6 +312,7 @@ pub fn to_lean_image(
     image: Option<&BTreeMap<String, u64>>,
 ) -> String {
     let eqs = sym_eqs(ck, image);
+    let pins = sym_addrs(ck, image);
     let addr_of = |name: &str, fallback: Option<u64>| -> Option<u64> {
         match image {
             Some(img) => img.get(name).copied(),
@@ -398,11 +445,49 @@ pub fn to_lean_image(
         }
         let tau: Vec<String> = tw.iter().map(|w| w.to_string()).collect();
         let _ = writeln!(o, "  tau := [{}]", tau.join(", "));
-        let types: Vec<String> = ex
-            .snapshots
-            .iter()
-            .map(|(ix, st)| format!("    ({}, {})", wi[*ix], lean_sty(st, &ex.borrow_ids, &eqs)))
-            .collect();
+        // with --image: each auipc %pcrel_hi's L is the linker's %pcrel_lo value, so the
+        // register is the exact literal pc + (hi << 12) the Lean checker computes (T's ask b)
+        let mut fpins = pins.clone();
+        if let Some(img) = image {
+            for (ix, l, sym) in &ex.lo_vars {
+                if let Some(s_addr) = img.get(sym) {
+                    let pc = entry as i128 + 4 * wi[*ix] as i128;
+                    let (_, lo) = hi_lo(*s_addr as i128 - pc);
+                    fpins.insert(*l, Lin::konst(lo));
+                }
+            }
+        }
+        let mut types: Vec<String> = Vec::new();
+        for (ix, st) in &ex.snapshots {
+            let pst = pin_state(st, &fpins);
+            types.push(format!("    ({}, {})", wi[*ix], lean_sty(&pst, &ex.borrow_ids, &eqs)));
+            // a call pair is two words: the second one's type is the first one's with the
+            // temporary holding auipc's exact value (T's ask a, I21)
+            if let Instr::CallPair {
+                tmp,
+                target: Target::Symbol(g),
+                ..
+            } = &func.instrs[*ix].instr
+            {
+                let local = prog
+                    .funcs
+                    .iter()
+                    .find(|h| &h.name == g && h.section == func.section && !h.instrs.is_empty())
+                    .map(|h| h.instrs[0].addr);
+                if let Some(ga) = addr_of(g, local) {
+                    let pc = entry as i128 + 4 * wi[*ix] as i128;
+                    let (hi, _) = hi_lo(ga as i128 - pc);
+                    let lit = (pc + (hi << 12)).rem_euclid(1i128 << 64);
+                    let mut st2 = pst.clone();
+                    st2.regs[tmp.0 as usize] = Lin::konst(lit);
+                    types.push(format!(
+                        "    ({}, {})",
+                        wi[*ix] + 1,
+                        lean_sty(&st2, &ex.borrow_ids, &eqs)
+                    ));
+                }
+            }
+        }
         let _ = writeln!(o, "  types := [\n{}]", types.join(",\n"));
         let _ = writeln!(o, "  fresh := {}\n", ex.fresh);
         // θ per edge into an annotated point: (source word or none for the entry, target
