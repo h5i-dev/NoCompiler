@@ -5,7 +5,7 @@
 Usage: annotate.py SKELETON.s SPEC > ANNOTATED.s  (keeps the instructions untouched)."""
 import re, sys
 skel, spec = open(sys.argv[1]).read().splitlines(), open(sys.argv[2]).read().splitlines()
-blocks, cur = {}, None
+blocks, cur = {'header': []}, 'header'   # lines before the first [at] are the header
 for l in spec:
     m = re.match(r'^\[(header|at (\S+))\]\s*$', l)
     if m: cur = m[2] or 'header'; blocks[cur] = []; continue

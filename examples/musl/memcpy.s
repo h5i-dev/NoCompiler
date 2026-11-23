@@ -1,3 +1,15 @@
+# musl 1.2.5 src/string/memcpy.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh.
+# Instructions as compiled, unchanged (scripts/musl-trial/verify.sh checks the bytes).
+# Annotations are the lines that start with hash-colon (provisional syntax of docs/Tab 1.md; see docs/typed/musl-trial.md).
+# Predicted (fixed before compiling): reject (v0 rules: andi n, 2^k tails)
+# Expected now (after reading the compiled code): reject. (1) As predicted, the tails 'if (n&8)', 'if (n&4)', ... are andi a1, a2, 8 + beq (0x15c, 0x17c, ...): x != 0 does not give k >= 8, so lw 4(a4) at 0x168 fails. (2) S2: 33 violations (11 backward-edge targets; the misaligned cases share tail blocks reached backwards). (3) The head loop test '(uintptr_t)s % 4 && n' is branch-free (0x0-0x10, 0x30-0x4c). Only the signature, the head loop, the aligned 16-byte loop and the joins around it are annotated; the misaligned paths 0x58-0x11c, 0x198-0x410 are not, since (1)-(3) already reject the file.
+#! expect memcpy: reject cfg
+#: fn memcpy [d, s, n]
+#:   in     a0: int(d), a1: int(s), a2: int(n)
+#:   borrow d |-> bytes[n] rw
+#:   borrow s |-> bytes[n] ro
+#:   out    a0: int(d)
+#:   stack  0
 	.text
 	.globl memcpy
 	.p2align 2

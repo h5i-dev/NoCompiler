@@ -1,3 +1,14 @@
+# musl 1.2.5 src/string/memchr.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh.
+# Instructions as compiled, unchanged (scripts/musl-trial/verify.sh checks the bytes).
+# Annotations are the lines that start with hash-colon (provisional syntax of docs/Tab 1.md; see docs/typed/musl-trial.md).
+# Predicted (fixed before compiling): accept
+# Expected now (after reading the compiled code): reject. (1) S2: clang places the return block 0x4c after the head loop and reaches it by backward branches (0x5c, 0xcc), giving loop intervals [0x4c,0xcc] and [0xc8,0xd8] that are not nested, and edges entering [0x4c,0xcc] in the middle. (2) Even with S2 fixed: the head-loop conditions '(s&7) && n' are branch-free sltiu/or/sltu/and (0x0-0x14, 0x2c-0x40), so 1 <= m at the head loop is not derivable. (3) The word loop 0x9c is reached through the join 0x60, also from the 'found' path 0x20 where s is not aligned; that path never reaches the word loop only because it re-reads the same byte (memory contents, not in v0 types), so 8 | p at 0x9c is not derivable under the coarse join (decision 2). Static data (constant pool via auipc+addi+ld) needs the note's static-data rule (implementation decision I14 postpones it).
+#! expect memchr: reject static-data
+#: fn memchr [s, n]
+#:   in     a0: int(s), a2: int(n)
+#:   borrow s |-> bytes[n] ro
+#:   out    a0: int
+#:   stack  0
 	.text
 	.globl memchr
 	.p2align 2

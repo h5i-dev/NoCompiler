@@ -1,3 +1,15 @@
+# musl 1.2.5 src/string/memcmp.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh.
+# Instructions as compiled, unchanged (scripts/musl-trial/verify.sh checks the bytes).
+# Annotations are the lines that start with hash-colon (provisional syntax of docs/Tab 1.md; see docs/typed/musl-trial.md).
+# Predicted (fixed before compiling): accept
+# Expected now (after reading the compiled code): accept.
+#! expect memcmp: accept
+#: fn memcmp [l, r, n]
+#:   in     a0: int(l), a1: int(r), a2: int(n)
+#:   borrow l |-> bytes[n] ro
+#:   borrow r |-> bytes[n] ro
+#:   out    a0: int
+#:   stack  0
 	.text
 	.globl memcmp
 	.p2align 2

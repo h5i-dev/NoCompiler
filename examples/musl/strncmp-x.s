@@ -1,3 +1,16 @@
+# musl 1.2.5 src/string/strncmp.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh
+# with -mllvm -riscv-disable-using-constant-pool-for-large-ints -mllvm -jump-is-expensive=false
+# (constants inline; && kept as branches). Instructions as compiled, unchanged (verify.sh).
+# Annotations are the lines that start with hash-colon (docs/typed/syntax.md).
+# Predicted (fixed before building this variant): accept
+# Expected now (after reading the compiled code): accept: each condition of the loop test is its own branch (0x18 beq r[i]=0, 0x1c beq m=0, 0x24 bne), so the load at 0x28 has m >= 1.
+#! expect strncmp: accept
+#: fn strncmp [l, r, n]
+#:   in     a0: int(l), a1: int(r), a2: int(n)
+#:   borrow l |-> bytes[n] ro
+#:   borrow r |-> bytes[n] ro
+#:   out    a0: int
+#:   stack  0
 	.text
 	.globl strncmp
 	.p2align 2

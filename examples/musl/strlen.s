@@ -1,3 +1,15 @@
+# musl 1.2.5 src/string/strlen.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh.
+# Instructions as compiled, unchanged (scripts/musl-trial/verify.sh checks the bytes).
+# Annotations are the lines that start with hash-colon (provisional syntax of docs/Tab 1.md; see docs/typed/musl-trial.md).
+# Predicted (fixed before compiling): not expressible
+# Expected now (after reading the compiled code): not expressible, as predicted. The closest signature borrows s |-> bytes[n] ro, but nothing ties n to where the NUL is: the byte loop 0x14 and the word loop 0x48 stop on memory contents, so no invariant bounds the address and no decreases clause is provable. The word loop also reads whole aligned words past the NUL. Uses static data (constant pool).
+#! expect strlen: reject static-data
+#: fn strlen [s, n]
+#:   in     a0: int(s)
+#:   borrow s |-> bytes[n] ro
+#:   out    a0: int
+#:   stack  0
+# Not the C contract: C needs "a NUL at some s+k with s..s+k readable", not a v0 signature.
 	.text
 	.globl strlen
 	.p2align 2

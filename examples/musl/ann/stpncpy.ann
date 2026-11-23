@@ -1,8 +1,9 @@
 # musl 1.2.5 src/string/stpncpy.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh.
 # Instructions as compiled, unchanged (scripts/musl-trial/verify.sh checks the bytes).
-# Annotations are the `#:` lines (provisional syntax of docs/Tab 1.md; see docs/typed/musl-trial.md).
+# Annotations are the lines that start with hash-colon (provisional syntax of docs/Tab 1.md; see docs/typed/musl-trial.md).
 # Predicted (batch 2, fixed before compiling): reject
 # Expected now (after reading the compiled code): reject, as predicted, plus one unpredicted reason: it also uses a constant pool (static data, I14: parse error at 0x9c). Then (1) S2: 9 violations ([0x1c,0xe0]/[0x8c,0xe8], [0x20,0xc8]/[0xb8,0xdc]; the word loop exits into the byte loop 0xc8 -> 0x20); (2) xor alignment test (0x10-0x14), so the sd at 0xcc fails 8 | a; (3) branch-free && in the head loop (0x44-0x4c, 0x70-0x84). The tail call memset(d', 0, m) at 0xf8 itself is fine: d' = d + n - m.
+#! expect __stpncpy: reject static-data
 #: fn memset [s, n]
 #:   in     a0: int(s), a2: int(n)
 #:   borrow s |-> bytes[n] rw

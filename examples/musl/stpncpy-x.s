@@ -1,3 +1,22 @@
+# musl 1.2.5 src/string/stpncpy.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh
+# with -mllvm -riscv-disable-using-constant-pool-for-large-ints -mllvm -jump-is-expensive=false
+# (constants inline; && kept as branches). Instructions as compiled, unchanged (verify.sh).
+# Annotations are the lines that start with hash-colon (docs/typed/syntax.md).
+# Predicted (fixed before building this variant): reject
+# Expected now (after reading the compiled code): reject: S2 5 violations (4 non-loop backward edges); xor alignment test, so the sd at 0xec fails 8 | a. Annotated: signature and the three natural loops 0x24, 0x5c, 0xd8. Not annotated: the non-loop backward targets and joins.
+#! expect __stpncpy: reject cfg
+#: fn memset [s, n]
+#:   in     a0: int(s), a2: int(n)
+#:   borrow s |-> bytes[n] rw
+#:   out    a0: int(s)
+#:   stack  0
+#: fn __stpncpy [d, s, n]
+#:   in     a0: int(d), a1: int(s), a2: int(n)
+#:   borrow d |-> bytes[n] rw
+#:   borrow s |-> bytes[n] ro
+#:   out    a0: int
+#:   stack  16
+#:   frame  16 slots 0, 8
 	.text
 	.globl __stpncpy
 	.p2align 2

@@ -1,3 +1,16 @@
+# musl 1.2.5 src/string/wmemcmp.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh.
+# Instructions as compiled, unchanged (scripts/musl-trial/verify.sh checks the bytes).
+# Annotations are the lines that start with hash-colon (provisional syntax of docs/Tab 1.md; see docs/typed/musl-trial.md).
+# Predicted (batch 2, fixed before compiling): accept
+# Expected now (after reading the compiled code): accept.
+#! expect wmemcmp: accept
+#: fn wmemcmp [l, r, n]
+#:   in     a0: int(l), a1: int(r), a2: int(n)
+#:   borrow l |-> bytes[4n] ro
+#:   borrow r |-> bytes[4n] ro
+#:   where  4 | l, 4 | r
+#:   out    a0: int
+#:   stack  0
 	.text
 	.globl wmemcmp
 	.p2align 2

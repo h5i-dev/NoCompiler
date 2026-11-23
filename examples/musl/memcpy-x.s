@@ -1,3 +1,16 @@
+# musl 1.2.5 src/string/memcpy.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh
+# with -mllvm -riscv-disable-using-constant-pool-for-large-ints -mllvm -jump-is-expensive=false
+# (constants inline; && kept as branches). Instructions as compiled, unchanged (verify.sh).
+# Annotations are the lines that start with hash-colon (docs/typed/syntax.md).
+# Predicted (fixed before building this variant): reject
+# Expected now (after reading the compiled code): reject: S2 33 violations (6 non-loop backward edges); andi n,2^k tails. Annotated: signature, head loop 0x18, aligned loop 0x120. Not annotated: the misaligned loops 0x98, 0x1a4, 0x2b0 and the joins; S2 and the tails reject the file first.
+#! expect memcpy: reject cfg
+#: fn memcpy [d, s, n]
+#:   in     a0: int(d), a1: int(s), a2: int(n)
+#:   borrow d |-> bytes[n] rw
+#:   borrow s |-> bytes[n] ro
+#:   out    a0: int(d)
+#:   stack  0
 	.text
 	.globl memcpy
 	.p2align 2

@@ -1,3 +1,18 @@
+# musl 1.2.5 src/string/memchr.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh
+# with -mllvm -riscv-disable-using-constant-pool-for-large-ints -mllvm -jump-is-expensive=false
+# (constants inline; && kept as branches). Instructions as compiled, unchanged (verify.sh).
+# Annotations are the lines that start with hash-colon (docs/typed/syntax.md).
+# Predicted (fixed before building this variant): reject
+# Checker note: the join at 0x44 first lacked a5 (the saved boolean); with it, the checker showed
+# that int(n) allows n = 2^64 (s = 0), where sltu gives 0 although n != 0. The C type is
+# size_t, so the signature now says u64(n).
+# Expected now (after reading the compiled code): reject, but S2 passes (my 'S2 probably' was wrong: no backward non-loop edges here). First failure: the edge 0x4c -> join 0x50. 'n && ...' is still decided through a saved boolean, a5 = sltu zero, a2 (0x8, 0x34), branched on at 0x4c, so 1 <= m is not derivable without an sltu rule (finding 2). With that rule, the next failure is the entry edge of the word loop 0xb4: 8 | p does not hold on the path from 0x24 (finding 7).
+#! expect memchr: reject loop-inv
+#: fn memchr [s, n]
+#:   in     a0: int(s), a2: u64(n)
+#:   borrow s |-> bytes[n] ro
+#:   out    a0: int
+#:   stack  0
 	.text
 	.globl memchr
 	.p2align 2
@@ -23,7 +38,7 @@ memchr:
 	addi	a1, a1, 1               # 3c: 00158593
 	bne	a4, a6, .Lmemchr_1c     # 40: fd071ee3
 .Lmemchr_44:
-	#: join [p, m] a0: int(p), a2: int(m) where s <= p, p + m = s + n, 0 <= m, (8 | p || m = 0)
+	#: join [p, m, b] a0: int(p), a2: int(m), a5: int(b) where s <= p, p + m = s + n, 0 <= m, (8 | p || m = 0), ((b = 1 && 1 <= m) || (b = 0 && m = 0))
 	addi	a1, zero, 0             # 44: 00000593
 	addi	a4, a2, 0               # 48: 00060713
 	beq	a5, zero, .Lmemchr_f8   # 4c: 0a078663

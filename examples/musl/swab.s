@@ -1,3 +1,15 @@
+# musl 1.2.5 src/string/swab.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh.
+# Instructions as compiled, unchanged (scripts/musl-trial/verify.sh checks the bytes).
+# Annotations are the lines that start with hash-colon (provisional syntax of docs/Tab 1.md; see docs/typed/musl-trial.md).
+# Predicted (fixed before compiling): accept
+# Expected now (after reading the compiled code): accept. Signature narrower than C: 0 <= n (C allows n < 0, then nothing is touched; a capability of length max(n,0) is not a v0 index expression).
+#! expect swab: accept
+#: fn swab [s, d, n]
+#:   in     a0: int(s), a1: int(d), a2: int(n)
+#:   borrow s |-> bytes[n] ro
+#:   borrow d |-> bytes[n] rw
+#:   where  0 <= n < 2^63
+#:   stack  0
 	.text
 	.globl swab
 	.p2align 2

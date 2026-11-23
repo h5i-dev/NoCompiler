@@ -224,6 +224,70 @@ stpncpy-x keep their S2, `andi` and xor failures. All five pass the qemu harness
 So, for findings 1–4: a flag removes most of 2 (the branch-free tests); 1, 3 and 4 need rule
 changes; static data (6) can be avoided by a flag.
 
+### Stage 2: the Rust checker's verdicts (2026-11-23T17:52Z)
+
+Checker: `nocompiler-typed check` at origin/typed 6193afc0 (trusted, I2: "checked" means
+accepted by this checker, not proved). The corpus copies `tests/typed/corpus/musl/*.s` carry these
+verdicts as `#! expect` lines, and U's corpus test passes with them. Times are per function.
+
+| file | predicted (before compiling) | actual (checker) | first failure | agrees with stage 1? |
+|------|------------------------------|------------------|---------------|----------------------|
+| labs | accept | **accept** (2 queries, 0.1 ms) | — | yes |
+| memcmp | accept | **accept** (11 q, 0.8–3.6 ms) | — | yes |
+| bcmp | accept | **accept** (5 q) | — | yes |
+| memrchr | accept | **accept** (8 q) | — | yes |
+| strnlen | accept | **accept** (4 q) | — | yes |
+| swab | accept | **accept** (13 q) | — | yes |
+| bzero | accept | **accept** (2 q) | — | yes |
+| wmemcpy / wmemset / wmemcmp / wmemchr | accept | **accept** (9–19 q) | — | yes |
+| strncpy | accept | **accept** (5 q) | — | yes |
+| strncmp | accept | reject `mem-bounds` | 0x38 | yes |
+| strncmp-x | accept | **accept** (25 q, 2–5 ms) | — | yes |
+| memchr | accept | reject `static-data` | 0x70 | yes |
+| memchr-ic | reject | reject `cfg` | 0xf0 | yes |
+| memchr-x | reject | reject `loop-inv` | 0xb0 (entry of word loop: `8 ∣ p`) | yes, after an annotation fix (below) |
+| memset | reject | reject `loop-inv` | 0xd8 (entry of 0xdc: `32 ≤ m`) | **no**: I expected `memory` at 0x70; the checker's `andi −4` rule (I23) gets past it, and the failure moves to the `ori 24` result, which is only `int` |
+| memcpy / memcpy-x | reject | reject `cfg` | 0xfc / 0xf4 | yes |
+| memccpy | reject | reject `static-data` | 0xa4 | yes |
+| memccpy-ic / memccpy-x | reject | reject `cfg` | 0x34 / 0x98 | yes |
+| memmove | reject | reject `cfg` | 0x5c | yes |
+| strlen | not expressible | reject `static-data` | 0x2c | yes |
+| strlen-ic | not expressible | reject `loop-inv` | 0x10 (entry edge: `n ≥ 1` unknown) | yes (I expected the back edge; the entry edge fails first) |
+| stpncpy | reject | reject `static-data` | 0x9c | yes |
+| stpncpy-x | reject | reject `cfg` | 0x9c | yes |
+| fwrite | unsafe contract | reject `cfg` | 0xc4 | yes (stage 1 already revised the reason) |
+| malloc, free | unsafe contract | `external` (contracts) | — | yes |
+
+Totals over the 21 functions compiled with the pinned flags: **12 accepted**, 9 rejected; plus
+malloc/free (23 functions in all), which do not compile in the profile and are external. The 8 variants add one more acceptance (strncmp-x). Against the predictions
+fixed before compiling (17 functions): 7 of the 9 predicted accepts were accepted (memchr and strncmp
+were not), all 4 predicted rejects were rejected, strlen was not accepted, and fwrite moved from
+"unsafe contract" to rejected. Batch 2: 6 of 6 as predicted.
+
+Annotation fixes made after running the checker, all visible in the history:
+- Every `.s` file had lost its signature block: `annotate.py` dropped the lines before the first
+  `[at …]` (my bug, reported by U). Fixed; the instructions were unaffected.
+- My header comment contained the literal "`#:`", which the parser reads as an annotation.
+  Reworded.
+- memchr-x: my `join` at 0x44 did not carry the saved boolean `a5`. With it, the checker showed
+  my claim `b = 0 ⇒ m = 0` false for `n = 2^64, s = 0`, which `int(n)` with `s ↦ bytes[n]` allows.
+  The signature now has `a2: u64(n)`, the C type `size_t`. This is a correction, not a dodge: it
+  matches C, and the rejection that remains is the predicted one (finding 7).
+- malloc/free: `unsafe fn` → `extern fn`. The bodies are outside the machine model, so the
+  ledger state is "external" (the note's table), as predicted.
+
+What changed in the findings now that the checker exists:
+- Finding 2 (booleans) and finding 3 (`andi`) are partly implemented already (I23: `slt*` give
+  0/1 with `x = 1 ⇔ comparison`; `andi` with `2^k` and `−2^k`). Still missing: `and`/`or`/`xor`
+  of two 0/1 values (strncmp at 0x38) and `ori` with a constant (memset at 0xd8).
+- Finding 1 (S2): U keeps the interval reading because "it is what Theorem C's termination
+  argument uses" (I22). Reply: the argument needs every cycle to pass a back edge whose head
+  carries a measure, and every loop to be entered only at its head. Natural loops of a
+  reducible CFG have both properties: every cycle contains a retreating edge, and in a reducible
+  CFG every retreating edge goes to a dominator, which is the loop's only entry. All 29 compiled
+  CFGs are reducible. The cost is a dominator computation in both checkers. Today S2 is the first
+  failure for 8 of the 29 files.
+
 ## Files
 
 - `scripts/musl-trial/build.sh` — pinned build (musl tree digest, clang 15.0.7, flags);

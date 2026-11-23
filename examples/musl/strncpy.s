@@ -1,3 +1,22 @@
+# musl 1.2.5 src/string/strncpy.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh.
+# Instructions as compiled, unchanged (scripts/musl-trial/verify.sh checks the bytes).
+# Annotations are the lines that start with hash-colon (provisional syntax of docs/Tab 1.md; see docs/typed/musl-trial.md).
+# Predicted (batch 2, fixed before compiling): accept (signature stronger than C)
+# Expected now (after reading the compiled code): accept, if call pairs are typed as calls (I21); uses __stpncpy's signature (which itself is expected to be rejected).
+#! expect strncpy: accept
+#: fn __stpncpy [d, s, n]
+#:   in     a0: int(d), a1: int(s), a2: int(n)
+#:   borrow d |-> bytes[n] rw
+#:   borrow s |-> bytes[n] ro
+#:   out    a0: int
+#:   stack  16
+#: fn strncpy [d, s, n]
+#:   in     a0: int(d), a1: int(s), a2: int(n)
+#:   borrow d |-> bytes[n] rw
+#:   borrow s |-> bytes[n] ro
+#:   out    a0: int(d)
+#:   stack  32
+#:   frame  16 slots 0, 8
 	.text
 	.globl strncpy
 	.p2align 2

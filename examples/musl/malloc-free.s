@@ -4,14 +4,16 @@
 # They also use brk/mmap/munmap/madvise syscalls, outside the environment's four (63, 64, 93, 94).
 # So in the ledger they can only be "external" (note, "機械モデルの外にあるコード"): the contract
 # is part of the environment model, not something to prove. The contracts are the note's.
-#: unsafe fn malloc [n]
+#! expect malloc: external
+#! expect free: external
+#: extern fn malloc [n]
 #:   in     a0: int(n)
 #:   borrow Heap
 #:   where  0 <= n < 2^64
 #:   out    a0: int(p)
 #:   give   p != 0 => p |-> bytes[n] rw heap
 #:   where  0 <= p < 2^64, 16 | p
-#: unsafe fn free [p, n]
+#: extern fn free [p, n]
 #:   in     a0: int(p)
 #:   take   p |-> bytes[n] rw heap
 #:   borrow Heap

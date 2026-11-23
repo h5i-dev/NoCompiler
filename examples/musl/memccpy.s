@@ -1,3 +1,15 @@
+# musl 1.2.5 src/string/memccpy.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh.
+# Instructions as compiled, unchanged (scripts/musl-trial/verify.sh checks the bytes).
+# Annotations are the lines that start with hash-colon (provisional syntax of docs/Tab 1.md; see docs/typed/musl-trial.md).
+# Predicted (fixed before compiling): reject (v0 rules: xor alignment test)
+# Expected now (after reading the compiled code): reject. (1) S2: 7 backward-edge targets (0x10, 0x14, 0x18, 0x34, 0x58, 0x9c, 0xd0); only 0x18, 0x58, 0xd0 are loops; the word loop exits back into the byte loop (0xe4 -> 0x14) and return blocks are reached backwards, giving 5 non-nested pairs. (2) As predicted: '(s & 7) == (d & 7)' became xor a4, a1, a0; andi a4, a4, 7 (0x0-0x4); xor is not in the table, so s = d (mod 8) is lost and the aligned sd at 0xe8 fails 8 | a. (3) The alignment-loop test is branch-free (sltu/xor/and, 0x6c-0x80). Static data (constant pool).
+#! expect memccpy: reject static-data
+#: fn memccpy [d, s, n]
+#:   in     a0: int(d), a1: int(s), a3: int(n)
+#:   borrow d |-> bytes[n] rw
+#:   borrow s |-> bytes[n] ro
+#:   out    a0: int
+#:   stack  0
 	.text
 	.globl memccpy
 	.p2align 2

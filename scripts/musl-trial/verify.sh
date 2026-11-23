@@ -50,4 +50,12 @@ PY
   if [ "$bad" != 0 ]; then echo "$name: $bad ENCODING COMMENTS WRONG"; fail=1; continue; fi
   echo "$name: OK ($(stat -c %s "$OUT/$name.text") bytes, sha256 $(sha256sum < "$OUT/$name.text" | cut -c1-16))"
 done < "$HERE/functions.txt"
+# The corpus copies (tests/typed/corpus/musl/*.s) must be byte copies of examples/musl/*.s.
+for f in "$ROOT"/examples/musl/*.s; do
+  c="$ROOT/tests/typed/corpus/musl/$(basename "$f")"
+  cmp -s "$f" "$c" || { echo "$(basename "$f"): corpus copy differs (cp examples/musl/*.s tests/typed/corpus/musl/)"; fail=1; }
+done
+for c in "$ROOT"/tests/typed/corpus/musl/*.s; do
+  [ -f "$ROOT/examples/musl/$(basename "$c")" ] || { echo "$(basename "$c"): corpus copy without an example"; fail=1; }
+done
 exit $fail
