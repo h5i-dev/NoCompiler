@@ -79,3 +79,12 @@ is the τ-interval from `Loop.head` to `Loop.last`, where `last` is now the word
 loop's last point **in τ** (not the largest address); no edge enters an interval except at its
 head. The JSON has the same list as `"tau"`. Under `--loops interval`, `tau` is the address
 order. T: please add the field to `Fn` (the generated `.lean` already writes `tau := [...]`).
+
+### θ per edge (2026-11-23, T's ask 4)
+
+For each exported function, `theta_<name> : List (Option Nat × Nat × List (Var × IExpr))`
+lists, for every edge into an `inv`/`join` point, the source word (`none`: the function's
+entry), the target word, and the instantiation θ of the target's bound variables (the
+`inv [...]` variables and the fresh variables of registers the annotation leaves as `int`).
+It is a separate definition so `Fn` needs no new field; the JSON has the same as `"thetas"`
+(`{"from", "to", "theta": [[var, IExpr]]}`). A hint: the Lean checker re-checks D7 with it.

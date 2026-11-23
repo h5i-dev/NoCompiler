@@ -299,6 +299,29 @@ pub fn to_lean(prog: &Program, ck: &Checker, rep: &Report, module: &str) -> Stri
             .collect();
         let _ = writeln!(o, "  types := [\n{}]", types.join(",\n"));
         let _ = writeln!(o, "  fresh := {}\n", ex.fresh);
+        // θ per edge into an annotated point: (source word or none for the entry, target
+        // word, [(variable, expression)]) — a hint, re-checked (export.md)
+        let th: Vec<String> = ex
+            .thetas
+            .iter()
+            .map(|(src, t, m)| {
+                let src = if *src == usize::MAX {
+                    "none".to_string()
+                } else {
+                    format!("some {}", wi[*src])
+                };
+                let b: Vec<String> = m
+                    .iter()
+                    .map(|(v, e)| format!("({}, {})", v.0, lean_lin(e)))
+                    .collect();
+                format!("({src}, {}, [{}])", wi[*t], b.join(", "))
+            })
+            .collect();
+        let _ = writeln!(
+            o,
+            "def theta_{n} : List (Option Nat × Nat × List (Var × IExpr)) := [\n  {}]\n",
+            th.join(",\n  ")
+        );
     }
     let _ = writeln!(o, "end {module}");
     o
@@ -406,6 +429,11 @@ pub fn to_json(prog: &Program, ck: &Checker, rep: &Report) -> Value {
             "regVar": ex.reg_var.iter().map(|(r, v)| json!([r.0, v.0])).collect::<Vec<_>>(),
             "loops": ex.loops.iter().map(|(h, l, vs, m)| json!({"head": wi[*h], "last": wi[*l], "vars": vs.iter().map(|v| v.0).collect::<Vec<_>>(), "meas": m.as_ref().map(j_lin)})).collect::<Vec<_>>(),
             "types": ex.snapshots.iter().map(|(ix, st)| json!([wi[*ix], j_state(st, ex)])).collect::<Vec<_>>(),
+            "thetas": ex.thetas.iter().map(|(src, t, m)| json!({
+                "from": if *src == usize::MAX { Value::Null } else { json!(wi[*src]) },
+                "to": wi[*t],
+                "theta": m.iter().map(|(v, e)| json!([v.0, j_lin(e)])).collect::<Vec<_>>(),
+            })).collect::<Vec<_>>(),
             "tau": ex.tau.iter().map(|i| wi[*i]).collect::<Vec<_>>(),
             "fresh": ex.fresh,
         }));

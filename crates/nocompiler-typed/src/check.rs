@@ -167,6 +167,9 @@ pub struct FnExport {
     pub borrow_ids: Vec<u32>,
     /// The state type before each reached instruction (instruction index).
     pub snapshots: Vec<(usize, State)>,
+    /// θ per edge into an `inv`/`join` point: (source instruction or `usize::MAX` for the
+    /// entry, target instruction, θ).
+    pub thetas: Vec<(usize, usize, BTreeMap<Var, Lin>)>,
     /// Variables are numbered below this.
     pub fresh: u32,
 }
@@ -506,6 +509,9 @@ struct FnCheck<'a> {
     loops: Vec<Loop>,
     states: Vec<(usize, usize, String)>,
     snapshots: Vec<(usize, State)>,
+    /// θ chosen on each edge into an annotated point: (source, target, θ); source
+    /// `usize::MAX` = the function's entry.
+    thetas: Vec<(usize, usize, BTreeMap<Var, Lin>)>,
     insts: Vec<(usize, String, String)>,
     queries: Vec<Query>,
     nqueries: usize,
@@ -553,6 +559,7 @@ impl<'a> FnCheck<'a> {
             loops: vec![],
             states: vec![],
             snapshots: vec![],
+            thetas: vec![],
             insts: vec![],
             queries: vec![],
             nqueries: 0,
@@ -613,6 +620,7 @@ impl<'a> FnCheck<'a> {
                 .copied()
                 .collect(),
             snapshots: self.snapshots.clone(),
+            thetas: self.thetas.clone(),
             fresh: self.ck.names.len() as u32,
         }
     }
@@ -1657,6 +1665,9 @@ impl<'a> FnCheck<'a> {
                 self.f.instrs[*src].line
             };
             let theta = self.instantiate_head(&head, e, *src)?;
+            if self.ck.record {
+                self.thetas.push((*src, ix, theta.clone()));
+            }
             self.subtype(e, &head, &theta, rule, None)?;
         }
         self.heads.insert(ix, head);
@@ -1919,6 +1930,9 @@ impl<'a> FnCheck<'a> {
         };
         let r = (|| -> F<()> {
             let th = self.instantiate_head(&h, &e, src)?;
+            if self.ck.record {
+                self.thetas.push((src, t, th.clone()));
+            }
             self.subtype(&e, &h, &th, Rule::LoopInv, Some(t))?;
             if let Some(m) = &h.measure {
                 let Some(next) = m.subst_all(&th) else {
