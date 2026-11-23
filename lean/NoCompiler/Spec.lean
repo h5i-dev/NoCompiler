@@ -114,6 +114,11 @@ theorem covers_of_within {r r' : Region} {a : Word} {n : Nat} (h : r.covers a n)
   exact Nat.le_trans (Nat.add_le_add_right (Nat.mod_le _ _) n) (by omega)
 
 theorem within_refl (r : Region) : r.within r := by simp [within]
+
+theorem mem_of_within {r r' : Region} {x : Word} (h : r.mem x) (hw : r.within r') : r'.mem x := by
+  have hc : r.covers x 1 := by unfold covers; unfold mem at h; omega
+  have := covers_of_within hc hw
+  unfold covers at this; unfold mem; omega
 end Region
 
 /-- `P ≤ Q` from region containment, the form calls need. -/
@@ -121,16 +126,13 @@ theorem Perm.le_of {P Q : Perm}
     (hr : ∀ r ∈ P.rd, ∃ r' ∈ Q.rd ++ Q.wr, r.within r')
     (hw : ∀ r ∈ P.wr, ∃ r' ∈ Q.wr, r.within r') : P.le Q := by
   constructor
-  · rintro a n (h0 | ⟨r, hr', hc⟩)
-    · exact .inl h0
-    · right
-      rcases List.mem_append.1 hr' with h | h
-      · obtain ⟨r', h', hw'⟩ := hr r h; exact ⟨r', h', Region.covers_of_within hc hw'⟩
-      · obtain ⟨r', h', hw'⟩ := hw r h
-        exact ⟨r', List.mem_append.2 (.inr h'), Region.covers_of_within hc hw'⟩
-  · rintro a n (h0 | ⟨r, hr', hc⟩)
-    · exact .inl h0
-    · obtain ⟨r', h', hw'⟩ := hw r hr'; exact .inr ⟨r', h', Region.covers_of_within hc hw'⟩
+  · rintro x ⟨r, hr', hm⟩
+    rcases List.mem_append.1 hr' with h | h
+    · obtain ⟨r', h', hw'⟩ := hr r h; exact ⟨r', h', Region.mem_of_within hm hw'⟩
+    · obtain ⟨r', h', hw'⟩ := hw r h
+      exact ⟨r', List.mem_append.2 (.inr h'), Region.mem_of_within hm hw'⟩
+  · rintro x ⟨r, hr', hm⟩
+    obtain ⟨r', h', hw'⟩ := hw r hr'; exact ⟨r', h', Region.mem_of_within hm hw'⟩
 
 variable {c : Code} {α : Type}
 

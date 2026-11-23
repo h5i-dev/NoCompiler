@@ -7,3 +7,5 @@ import NoCompiler.Adequacy
 import NoCompiler.Spec
 import NoCompiler.Arith
 import NoCompiler.Mem
+import NoCompiler.Typed.Lang
+import NoCompiler.Typed.Sem

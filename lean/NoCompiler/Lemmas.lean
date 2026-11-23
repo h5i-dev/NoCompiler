@@ -113,6 +113,31 @@ theorem Region.covers_mem {r : Region} {a x : Word} {n : Nat} (hc : r.covers a n
   rw [e, BitVec.toNat_add]
   exact Nat.lt_of_le_of_lt (Nat.mod_le _ _) (by omega)
 
+/-- The bytes `a + i`, `i < n`, are the words `x` with `(x - a).toNat < n`. -/
+theorem add_ofNat_sub (a x : Word) : a + BitVec.ofNat 64 (x - a).toNat = x := by
+  rw [BitVec.ofNat_toNat, BitVec.setWidth_eq]; bv_omega
+
+/-- A byte the permission does not let one write is not among the bytes a
+    permitted write of `n` bytes from `a` changes. -/
+theorem Perm.canWrite_far {P : Perm} {a x : Word} {n : Nat} (hc : P.canWrite a n)
+    (hx : ¬ P.writable x) : n ≤ (x - a).toNat :=
+  Nat.le_of_not_lt fun hlt => hx (by have := hc _ hlt; rwa [add_ofNat_sub] at this)
+
+/-- The one-region form of the permission judgment: `n` bytes inside one readable region. -/
+theorem Perm.canRead_of_covers {P : Perm} {r : Region} {a : Word} {n : Nat}
+    (hr : r ∈ P.rd ++ P.wr) (hc : r.covers a n) : P.canRead a n := by
+  intro i hi
+  refine ⟨r, hr, Region.covers_mem hc ?_⟩
+  have e : a + BitVec.ofNat 64 i - a = BitVec.ofNat 64 i := by bv_omega
+  rw [e, BitVec.toNat_ofNat]; exact Nat.lt_of_le_of_lt (Nat.mod_le _ _) hi
+
+theorem Perm.canWrite_of_covers {P : Perm} {r : Region} {a : Word} {n : Nat}
+    (hr : r ∈ P.wr) (hc : r.covers a n) : P.canWrite a n := by
+  intro i hi
+  refine ⟨r, hr, Region.covers_mem hc ?_⟩
+  have e : a + BitVec.ofNat 64 i - a = BitVec.ofNat 64 i := by bv_omega
+  rw [e, BitVec.toNat_ofNat]; exact Nat.lt_of_le_of_lt (Nat.mod_le _ _) hi
+
 /-! ## The frame property: a step changes no byte `P` does not let it write -/
 
 theorem exec_frame {i : Instr} {s s' : State} (h : exec i s = some s') :
@@ -144,10 +169,7 @@ theorem Step.frame {c : Code} {P : Perm} {s s' : State} (h : Step c P s s') (x :
     rcases exec_frame hxs with e | ⟨op, rs1, rs2, off, rfl, e⟩
     · rw [e]
     · rw [e]
-      apply writeLE_other
-      rcases hok with h0 | ⟨r, hr, hc⟩
-      · exact absurd h0 (Nat.ne_of_gt (StOp.width_pos op))
-      · exact Nat.le_of_not_lt fun hlt => hx ⟨r, hr, Region.covers_mem hc hlt⟩
+      exact writeLE_other _ _ _ _ _ (Perm.canWrite_far hok hx)
   | sys _ _ hok hy =>
     cases hy with
     | writeOk => simp
@@ -157,10 +179,8 @@ theorem Step.frame {c : Code} {P : Perm} {s s' : State} (h : Step c P s s') (x :
     | readOk ds hn hlen hmax =>
       simp only [State.emit_mem, State.setMem_mem]
       apply writeBytes_other
-      rcases hok.2 hn with h0 | ⟨r, hr, hc⟩
-      · omega
-      · exact Nat.le_of_not_lt fun hlt =>
-          hx ⟨r, hr, Region.covers_mem (n := ds.length) (by unfold Region.covers at *; omega) hlt⟩
+      have := Perm.canWrite_far (hok.2 hn) hx
+      omega
 
 /-- Memory outside the writable regions of `P` is unchanged when a run ends. -/
 theorem Reach.frame {c : Code} {P : Perm} {D : Dom} {Q : State → Prop} {s : State}
