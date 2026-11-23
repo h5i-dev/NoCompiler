@@ -1,0 +1,366 @@
+\begin{filecontents*}[overwrite]{nocompiler-references.bib}
+@misc{nocompiler, author={{nocompiler contributors}}, title={{nocompiler}: Source, proofs, design documents, and trial files at commit 5776981}, year={2026}, url={https://github.com/h5i-dev/NoCompiler/tree/5776981905d9bf888775442d35c2e4c4be339107}, note={Pinned artifact; full revision 5776981905d9bf888775442d35c2e4c4be339107}}
+@inproceedings{pcc96, author={George C. Necula and Peter Lee}, title={Safe Kernel Extensions Without Run-Time Checking}, booktitle={Proceedings of the Second USENIX Symposium on Operating Systems Design and Implementation (OSDI '96)}, pages={229--243}, year={1996}, publisher={ACM}, address={New York, NY, USA}, doi={10.1145/238721.238781}}
+@inproceedings{pcc97, author={George C. Necula}, title={Proof-Carrying Code}, booktitle={Proceedings of the 24th ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages (POPL '97)}, pages={106--119}, year={1997}, publisher={ACM}, address={New York, NY, USA}, doi={10.1145/263699.263712}}
+@article{tal, author={Greg Morrisett and David Walker and Karl Crary and Neal Glew}, title={From System {F} to Typed Assembly Language}, journal={ACM Transactions on Programming Languages and Systems}, volume={21}, number={3}, pages={527--568}, year={1999}, month=may, doi={10.1145/319301.319345}}
+@inproceedings{dtal, author={Hongwei Xi and Robert Harper}, title={A Dependently Typed Assembly Language}, booktitle={Proceedings of the Sixth ACM SIGPLAN International Conference on Functional Programming (ICFP '01)}, pages={169--180}, year={2001}, publisher={ACM}, address={New York, NY, USA}, doi={10.1145/507635.507657}}
+@inproceedings{aliastypes, author={Frederick Smith and David Walker and Greg Morrisett}, title={Alias Types}, booktitle={Programming Languages and Systems (ESOP 2000)}, editor={Gert Smolka}, series={Lecture Notes in Computer Science}, volume={1782}, pages={366--381}, year={2000}, publisher={Springer}, address={Berlin, Heidelberg}, doi={10.1007/3-540-46425-5_24}}
+@techreport{ltal, author={James Cheney and Greg Morrisett}, title={A Linearly Typed Assembly Language}, institution={Cornell University}, number={TR2003-1900}, year={2003}, month=jun, url={https://hdl.handle.net/1813/5613}}
+@inproceedings{liquid, author={Patrick M. Rondon and Ming Kawaguchi and Ranjit Jhala}, title={Liquid Types}, booktitle={Proceedings of the 29th ACM SIGPLAN Conference on Programming Language Design and Implementation (PLDI '08)}, pages={159--169}, year={2008}, publisher={ACM}, address={New York, NY, USA}, doi={10.1145/1375581.1375602}}
+@inproceedings{llliquid, author={Patrick Maxim Rondon and Ming Kawaguchi and Ranjit Jhala}, title={Low-Level Liquid Types}, booktitle={Proceedings of the 37th Annual ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages (POPL '10)}, pages={131--144}, year={2010}, publisher={ACM}, address={New York, NY, USA}, doi={10.1145/1706299.1706316}}
+@inproceedings{sfi, author={Robert Wahbe and Steven Lucco and Thomas E. Anderson and Susan L. Graham}, title={Efficient Software-Based Fault Isolation}, booktitle={Proceedings of the Fourteenth ACM Symposium on Operating Systems Principles (SOSP '93)}, pages={203--216}, year={1993}, publisher={ACM}, address={New York, NY, USA}, doi={10.1145/168619.168635}}
+@inproceedings{nacl, author={Bennet Yee and David Sehr and Gregory Dardyk and J. Bradley Chen and Robert Muth and Tavis Ormandy and Shiki Okasaka and Neha Narula and Nicholas Fullagar}, title={Native Client: A Sandbox for Portable, Untrusted x86 Native Code}, booktitle={2009 30th IEEE Symposium on Security and Privacy}, pages={79--93}, year={2009}, publisher={IEEE}, address={Los Alamitos, CA, USA}, doi={10.1109/SP.2009.25}}
+@inproceedings{rocksalt, author={Greg Morrisett and Gang Tan and Joseph Tassarotti and Jean-Baptiste Tristan and Edward Gan}, title={RockSalt: Better, Faster, Stronger SFI for the x86}, booktitle={Proceedings of the 33rd ACM SIGPLAN Conference on Programming Language Design and Implementation (PLDI '12)}, pages={395--404}, year={2012}, publisher={ACM}, address={New York, NY, USA}, doi={10.1145/2254064.2254111}}
+@inproceedings{prevail, author={Elazar Gershuni and Nadav Amit and Arie Gurfinkel and Nina Narodytska and Jorge A. Navas and Noam Rinetzky and Leonid Ryzhyk and Mooly Sagiv}, title={Simple and Precise Static Analysis of Untrusted Linux Kernel Extensions}, booktitle={Proceedings of the 40th ACM SIGPLAN Conference on Programming Language Design and Implementation (PLDI '19)}, pages={1069--1084}, year={2019}, publisher={ACM}, address={New York, NY, USA}, doi={10.1145/3314221.3314590}}
+@inproceedings{seplogic, author={John C. Reynolds}, title={Separation Logic: A Logic for Shared Mutable Data Structures}, booktitle={Proceedings of the 17th Annual IEEE Symposium on Logic in Computer Science (LICS 2002)}, pages={55--74}, year={2002}, publisher={IEEE Computer Society}, address={Los Alamitos, CA, USA}, doi={10.1109/LICS.2002.1029817}}
+@article{compcert, author={Xavier Leroy}, title={Formal Verification of a Realistic Compiler}, journal={Communications of the ACM}, volume={52}, number={7}, pages={107--115}, year={2009}, month=jul, doi={10.1145/1538788.1538814}}
+@inproceedings{cakeml, author={Ramana Kumar and Magnus O. Myreen and Michael Norrish and Scott Owens}, title={{CakeML}: A Verified Implementation of {ML}}, booktitle={Proceedings of the 41st ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages (POPL '14)}, pages={179--191}, year={2014}, publisher={ACM}, address={New York, NY, USA}, doi={10.1145/2535838.2535841}}
+@inproceedings{sel4tv, author={Thomas Arthur Leck Sewell and Magnus O. Myreen and Gerwin Klein}, title={Translation Validation for a Verified {OS} Kernel}, booktitle={Proceedings of the 34th ACM SIGPLAN Conference on Programming Language Design and Implementation (PLDI '13)}, pages={471--482}, year={2013}, publisher={ACM}, address={New York, NY, USA}, doi={10.1145/2491956.2462183}}
+@inproceedings{islaris, author={Michael Sammler and Angus Hammond and Rodolphe Lepigre and Brian Campbell and Jean Pichon-Pharabod and Derek Dreyer and Deepak Garg and Peter Sewell}, title={Islaris: Verification of Machine Code Against Authoritative {ISA} Semantics}, booktitle={Proceedings of the 43rd ACM SIGPLAN International Conference on Programming Language Design and Implementation (PLDI '22)}, pages={825--840}, year={2022}, publisher={ACM}, address={New York, NY, USA}, doi={10.1145/3519939.3523434}}
+@article{sail, author={Alasdair Armstrong and Thomas Bauereiss and Brian Campbell and Alastair Reid and Kathryn E. Gray and Robert M. Norton and Prashanth Mundkur and Mark Wassell and Jon French and Christopher Pulte and Shaked Flur and Ian Stark and Neel Krishnaswami and Peter Sewell}, title={{ISA} Semantics for {ARMv8-A}, {RISC-V}, and {CHERI-MIPS}}, journal={Proceedings of the ACM on Programming Languages}, volume={3}, number={POPL}, articleno={71}, numpages={31}, year={2019}, month=jan, doi={10.1145/3290384}}
+@inproceedings{omega, author={William Pugh}, title={The {Omega} Test: A Fast and Practical Integer Programming Algorithm for Dependence Analysis}, booktitle={Proceedings of the 1991 ACM/IEEE Conference on Supercomputing (Supercomputing '91)}, pages={4--13}, year={1991}, publisher={ACM}, address={New York, NY, USA}, doi={10.1145/125826.125848}}
+@article{rustbelt, author={Ralf Jung and Jacques-Henri Jourdan and Robbert Krebbers and Derek Dreyer}, title={{RustBelt}: Securing the Foundations of the {Rust} Programming Language}, journal={Proceedings of the ACM on Programming Languages}, volume={2}, number={POPL}, articleno={66}, numpages={34}, year={2018}, month=jan, doi={10.1145/3158154}}
+@inproceedings{funtal, author={Daniel Patterson and Jamie Perconti and Christos Dimoulas and Amal Ahmed}, title={{FunTAL}: Reasonably Mixing a Functional Language with Assembly}, booktitle={Proceedings of the 38th ACM SIGPLAN Conference on Programming Language Design and Implementation (PLDI '17)}, pages={495--509}, year={2017}, publisher={ACM}, address={New York, NY, USA}, doi={10.1145/3062341.3062347}}
+@inproceedings{myreen, author={Magnus O. Myreen and Michael J. C. Gordon}, title={Hoare Logic for Realistically Modelled Machine Code}, booktitle={Tools and Algorithms for the Construction and Analysis of Systems (TACAS 2007)}, editor={Orna Grumberg and Michael Huth}, series={Lecture Notes in Computer Science}, volume={4424}, pages={568--582}, year={2007}, publisher={Springer}, address={Berlin, Heidelberg}, doi={10.1007/978-3-540-71209-1_44}}
+@inproceedings{refinedc, author={Michael Sammler and Rodolphe Lepigre and Robbert Krebbers and Kayvan Memarian and Derek Dreyer and Deepak Garg}, title={{RefinedC}: Automating the Foundational Verification of {C} Code with Refined Ownership Types}, booktitle={Proceedings of the 42nd ACM SIGPLAN International Conference on Programming Language Design and Implementation (PLDI '21)}, pages={158--174}, year={2021}, publisher={ACM}, address={New York, NY, USA}, doi={10.1145/3453483.3454036}}
+@article{cn, author={Christopher Pulte and Dhruv C. Makwana and Thomas Sewell and Kayvan Memarian and Peter Sewell and Neel Krishnaswami}, title={{CN}: Verifying Systems {C} Code with Separation-Logic Refinement Types}, journal={Proceedings of the ACM on Programming Languages}, volume={7}, number={POPL}, articleno={1}, numpages={32}, year={2023}, month=jan, doi={10.1145/3571194}}
+@manual{riscvspec, author={{RISC-V International}}, title={The {RISC-V} Instruction Set Manual, Volume {I}: Unprivileged Architecture}, organization={RISC-V International}, note={Ratified version 20260120}, year={2026}, month=jan, url={https://docs.riscv.org/reference/isa/v20260120/unpriv/unpriv-index.html}}
+@misc{musl, author={Rich Felker and others}, title={musl libc, release 1.2.5}, year={2024}, month=feb, url={https://musl.libc.org/}, note={Released February 29, 2024; accessed November 23, 2026}}
+@misc{sailriscv, author={{RISC-V International}}, title={Sail {RISC-V} Model}, year={2026}, url={https://github.com/riscv/sail-riscv}, note={Formal specification of the RISC-V architecture in Sail; accessed November 23, 2026}}
+@inproceedings{lean, author={Leonardo de Moura and Sebastian Ullrich}, title={The {Lean} 4 Theorem Prover and Programming Language}, booktitle={Automated Deduction -- CADE 28}, editor={Andr{\'e} Platzer and Geoff Sutcliffe}, series={Lecture Notes in Computer Science}, volume={12699}, pages={625--635}, year={2021}, publisher={Springer}, address={Cham}, doi={10.1007/978-3-030-79876-5_37}}
+@inproceedings{ownptr, author={Izumi Tanaka and Ken Sakayori and Naoki Kobayashi}, title={Ownership Types for Verification of Programs with Pointer Arithmetic}, booktitle={Proceedings of the 2024 ACM SIGPLAN International Workshop on Partial Evaluation and Program Manipulation (PEPM '24)}, pages={94--106}, year={2024}, publisher={ACM}, address={New York, NY, USA}, doi={10.1145/3635800.3636965}}
+@inproceedings{ebpfrange, author={Harishankar Vishwanathan and Matan Shachnai and Srinivas Narayana and Santosh Nagarakatte}, title={Verifying the Verifier: {eBPF} Range Analysis Verification}, booktitle={Computer Aided Verification (CAV 2023), Part III}, editor={Constantin Enea and Akash Lal}, series={Lecture Notes in Computer Science}, volume={13966}, pages={226--251}, year={2023}, publisher={Springer}, address={Cham}, doi={10.1007/978-3-031-37709-9_12}}
+\end{filecontents*}
+\documentclass[sigconf,nonacm,pbalance=true]{acmart}
+\usepackage{amsmath}
+\usepackage{needspace}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{alltt}
+\setlist[itemize]{leftmargin=1.2em,labelsep=0.4em,itemsep=1pt,parsep=0pt,topsep=2pt}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
+\settopmatter{printacmref=false,printfolios=true}
+\setcopyright{none}
+\newcommand{\sys}{\textnormal{nocompiler}}
+\newcommand{\code}[1]{\texttt{\small #1}}
+\setlength{\emergencystretch}{1.5em}
+\setlength{\parskip}{0pt plus 3pt}
+\AtBeginDocument{\clubpenalty=150 \widowpenalty=150 \displaywidowpenalty=150}
+\renewcommand{\figurename}{Fig.}
+\newcommand{\sem}[1]{[\![#1]\!]}
+\newcommand{\inttype}[1]{\mathsf{int}(#1)}
+\newcommand{\bytes}[3]{#1\mapsto\mathsf{bytes}[#2]\;\mathsf{#3}}
+\newcommand{\ent}{\vdash}
+\newcommand{\VerifiedImg}{\operatorname{VerifiedImg}}
+\newcommand{\Exec}{\operatorname{Exec}}
+\newcommand{\Reach}{\operatorname{Reach}}
+\newcommand{\Done}{\operatorname{Done}}
+\newcommand{\Pre}{\operatorname{Pre}}
+\newcommand{\Post}{\operatorname{Post}}
+\newcommand{\Meets}{\operatorname{Meets}}
+\newcommand{\Inv}{\operatorname{Inv}}
+\newcommand{\Pool}{\operatorname{Pool}}
+\newcommand{\fp}{\operatorname{fp}}
+\newtheorem{definition}{Definition}
+\newtheorem{claim}{Theorem}
+\title[nocompiler: Safe and Unsafe Typed RISC-V Assembly]{nocompiler: Safe and Unsafe Typed RISC-V Assembly\texorpdfstring{\\}{ }with One Machine-Level Meaning in Lean}
+\author{The h5i Team}
+\affiliation{\institution{\href{https://h5i.dev}{h5i.dev}}\city{}\country{}}
+\renewcommand{\shortauthors}{The h5i Team}
+\begin{document}
+\begin{abstract}
+The code that runs is increasingly written by compilers, code generators, and language models, and a proof about a source program says nothing about the bytes they emit. Proofs about machine code exist, but they are one-off expert work, and much of their effort goes to side conditions about bounds, stack frames, and aliasing rather than to what the function computes.
+
+We present \sys, a typed RISC-V assembly in which that part of the work is done by a type checker on the instructions themselves, with no compiler in the trusted base. Types track two kinds of fact only: a register holds a linear integer expression modulo $2^{64}$, and a function may use a range of bytes. A \emph{safe} function is checked: every load and store must land inside a range it holds, which the checker decides in quantifier-free Presburger arithmetic. An \emph{unsafe} function (an allocator, a system-call wrapper, code outside the machine model) carries the same kind of signature as a contract. Every signature $\sigma$ has one meaning $\sem{\sigma}$, defined in Lean~4 as a total-correctness judgment over an RV64IM+Zba+Zbb semantics with byte-wise permissions, so a checked function, a hand-proved one, and an assumed contract state the same proposition, and a ledger records the evidence behind each. This paper describes the system as it is being rebuilt: the type language and $\sem{\sigma}$ in Lean; the typing rules and a soundness argument in natural language, whose writing found four errors in the rules and one mismatch with the machine model; a Presburger entailment checker whose certificates are proved sound in Lean; a first type checker in Lean that runs on the decoded code image and accepts the running example as clang assembled it, not yet proved sound; and a trial on musl libc compiled as is, with verdicts predicted before compiling. Of 23 trial functions, 14 were predicted to be accepted; reading the compiled code against the rules, 12 are. Most rejections come from rules coarser than the compiler's output, such as block layout and branch-free boolean tests, not from the type language.
+\end{abstract}
+\keywords{typed assembly language, RISC-V, memory safety, refinement types, Presburger arithmetic, Lean 4, unsafe contracts}
+\maketitle
+
+\section{Introduction}
+Most code that runs was not written by the person who reasons about it. A compiler lowers it, a code generator emits it, or a language model writes it directly. A proof about the source, or a review of it, then says nothing about the instructions that execute, and every tool between the two is trusted. Verified compilers remove that trust for one source language and one compiler~\cite{compcert,cakeml}, and translation validation removes it for one compilation~\cite{sel4tv}, but neither applies to machine code that comes from somewhere else.
+
+Proofs about the machine code itself are possible: program logics over realistic or authoritative ISA models verify individual functions~\cite{myreen,islaris,sail}. They are expert work done once per function, and part of each proof is side conditions unrelated to what the function computes: bounds and alignment, which memory a callee leaves untouched, and that writable buffers do not overlap. In our earlier hand proofs over the same machine model, bounds were cheap; how much typing saves on frames and non-overlap is open, and loop invariants about values remain.
+
+Type systems for assembly take over exactly this kind of obligation. Typed assembly language~\cite{tal} and its dependently typed extension DTAL~\cite{dtal} type machine code with integer index expressions, and proof-carrying code ships a safety proof with hand-tuned assembly~\cite{pcc96,pcc97}. Software fault isolation~\cite{sfi,nacl,rocksalt} and the Linux eBPF verifier~\cite{prevail} check untrusted machine code at load time. What these systems do not provide is a boundary inside one program: they either type a whole program or isolate a whole module, and code that cannot be typed has no place in the argument. Real programs mix code that a type system can check with code it cannot (an allocator, a system-call wrapper, a library compiled with instructions outside the model), and the guarantee for the checked part should be stated in terms of what the unchecked part promises.
+
+\sys\ draws that boundary at the function. A \emph{safe} function is checked by a type checker over its instructions. An \emph{unsafe} function carries a signature of the same form as a contract, and its body is not checked. The guarantee is a single theorem shape: a checked safe function, if every function it calls meets its contract, meets its own signature. Two design choices keep the type language small enough for this.
+
+\emph{Two kinds of fact} (Section~\ref{sec:model}). A register has type $\inttype{e}$: its 64-bit word equals the linear index expression $e$ modulo $2^{64}$. A pointer is such an expression too and carries no permission; permission lives in a \emph{capability} $\bytes{e}{n}{rw}$ over the $n$ bytes from $e$. The only checks are at accesses, loop heads, calls, and returns, each an entailment in quantifier-free Presburger arithmetic.
+
+\emph{One meaning} (Section~\ref{sec:meaning}). The meaning $\sem{\sigma}$ of a signature is a proposition in Lean~4~\cite{lean} over a RISC-V machine semantics: from every entry satisfying the precondition, every execution touches only the bytes the signature grants, never gets stuck, terminates, and returns with the callee-saved registers intact and the postcondition. The checker establishes it for a safe function, a hand proof for an unsafe one, and an assumed contract assumes it; a ledger records which.
+
+This paper describes \sys\ early in a redesign and separates what exists from what is planned. At the commit we describe~\cite{nocompiler}, the machine model and $\sem{\sigma}$ are defined in Lean, with the permission judgment made byte-wise because the soundness argument required it; the soundness of the typing rules is proved in natural language only, and its mechanization has started; a Lean type checker on the decoded code image, not yet proved sound, accepts the running example as clang compiled it, for functions without calls, frames, or system calls; the Rust checker parses annotated compiler output and decides entailments but does not yet implement the typing rules; and a trial on musl has 29 compiled, annotated files with predictions committed before compiling, whose results so far come from reading the code against the rules, not from a checker.
+
+In summary, we make the following contributions:
+\begin{itemize}
+\item A type language for RISC-V machine code in which safe and unsafe functions share one signature form, and its meaning $\sem{\sigma}$ in Lean as a total-correctness judgment with byte-wise permissions (Section~\ref{sec:model}).
+\item Typing rules with a soundness argument against that meaning, and the errors the argument found (Section~\ref{sec:verification}).
+\item A certificate-checked Presburger entailment procedure and a first type checker on decoded machine code, both in Lean (Sections~\ref{sec:presburger} and~\ref{sec:lean}).
+\item A pre-registered trial on compiled musl code with stated failure conditions for the design, and the rule extensions its first stage asks for (Section~\ref{sec:evidence}).
+\end{itemize}
+
+\section{Background}\label{sec:background}
+\subsection{The machine model}\label{sec:machine}
+\sys's machine is written in Lean for this project. \code{Isa.lean} decodes 32-bit words into the RV64IM, Zba, and Zbb instructions~\cite{riscvspec} and nothing else: no compressed encodings, atomics, floating point, CSRs, or fences, and an encoder with a proof \code{decode\_encode} that the two agree. \code{Machine.lean} executes an instruction on a state of 32 registers, a program counter, a byte-addressed memory, an event trace, and an exit status. \code{Env.lean} models four Linux system calls (\code{read}, \code{write}, \code{exit}, \code{exit\_group}) as a relation, so a proof must hold for every outcome the kernel may choose, including short writes and errors.
+
+Two step relations use these. \code{HwStep} is the hardware: fetch from memory, decode, execute, with no permission check. $\mathrm{Step}\;c\;P$ is what proofs and checkers reason about: the instruction comes from the code image $c$ (the \code{.text} words), and every load, store, and system-call buffer must lie in a permission $P$, a list of read-only and a list of writable regions. A misaligned access, an undecodable word, a jump to an address that is not a multiple of four, and an unmodeled system call have no successor in either relation. $\Reach\;c\;P\;D\;Q\;s$ is inductive: every execution from $s$ stays in the code region $D$, takes only $\mathrm{Step}\;c\;P$ steps, never gets stuck, and reaches a state satisfying $Q$ after finitely many steps. $\Exec$ is $\Reach$ stopped at the first state outside $D$ or after exit. A specification $\mathit{sp}$ over logical arguments $a$ gives a precondition, a postcondition, readable and writable regions, and a stack bound, and
+\begin{equation}
+ \begin{aligned}
+ \VerifiedImg\,c\,D\,e\,\mathit{sp}\;\triangleq\;{}&\forall a\,s.\ \mathrm{Entry}\,D\,e\,s\to\mathit{sp}.\mathrm{pre}\,a\,s\to{}\\
+ &\Exec\;c\;(\mathit{sp}.\mathrm{perm}\;a\;s)\;D\;(\mathit{sp}.\Done\;a\;s)\;s
+ \end{aligned}
+ \label{eq:verifiedimg}
+\end{equation}
+where $\mathrm{Entry}$ puts the program counter at $e$ with a four-byte-aligned return address outside $D$ and a 16-byte-aligned stack pointer, $\mathit{sp}.\mathrm{perm}$ adds the $\mathit{sp}.\mathrm{stack}$ bytes below the entry \code{sp} to the writable regions, and $\Done$ says that the function returned to the entry \code{ra} with \code{sp}, \code{gp}, \code{tp}, and \code{s0}--\code{s11} unchanged and the postcondition, or that the process exited. The program logic over these definitions (sequencing, invariants, a loop rule with a decreasing measure, a frame rule, and a call rule \code{VerifiedImg.call}) is proved, not trusted. \code{VerifiedImg.hw} transfers a result to \code{HwStep}: if memory holds the image and no writable region overlaps the code, every hardware execution inside $D$ can step, each of its steps is a $\mathrm{Step}\;c\;P$ step, it ends in $\Done$, and it cannot stay in $D$ forever.
+
+\subsection{A running example}\label{sec:example}
+Fig.~\ref{fig:sum} is the \code{sum} function as \code{clang -O2} emits it for RV64, with a signature and one loop annotation in \code{\#:} comments, which assemblers ignore. The signature is universal in two index variables, the base $\rho$ and the count $n$. It says that \code{a0} and \code{a1} hold them on entry, that the function borrows $8n$ bytes from $\rho$ read-only and returns them unchanged, that $\rho$ is 8-byte aligned, that \code{a0} holds some integer on exit, and that it uses no stack.
+
+The loop annotation introduces a new index variable $m$, the number of words left, and gives the registers the loop changes: \code{a0} points at $\rho+8n-8m$ and \code{a1} holds $m$. It requires $1\le m\le n$ at the head and gives $m$ as the measure. At the load, the checker must show $\rho\le\rho+8n-8m$, $\rho+8n-8m+8\le\rho+8n$, and $8\mid\rho+8n-8m$ from $1\le m\le n$ and $8\mid\rho$. The \code{beqz} that skips the loop gives the fact $\neg(2^{64}\mid n)$ on its fall-through edge, and the capability gives $0\le 8n$ and $\rho+8n\le 2^{64}$, so $n\ge1$ follows and the entry edge establishes the annotation with $m:=n$. On the back edge, $m:=m-1$, and \code{bnez} gives $m-1\ge1$. No instruction is added to the compiler's output. We return to this example in Sections~\ref{sec:meaning} and~\ref{sec:rules}.
+
+\begin{figure}[t]
+\begin{alltt}\scriptsize
+#: fn sum [\(\rho\), n]
+#:   in     a0: int(\(\rho\)), a1: int(n)
+#:   borrow \(\rho\) \(\mapsto\) bytes[8n] ro
+#:   where  8 \(\mid\) \(\rho\)
+#:   out    a0: int
+#:   stack  0
+sum:
+    li   a2, 0
+    beqz a1, .LBB0_2
+.LBB0_1:   #: inv [m] a0: int(\(\rho\) + 8n \(-\) 8m), a1: int(m), a2: int
+           #:     where 1 \(\le\) m \(\le\) n   decreases m
+    ld   a3, 0(a0)
+    add  a2, a3, a2
+    addi a1, a1, -1
+    addi a0, a0, 8
+    bnez a1, .LBB0_1
+.LBB0_2:
+    mv   a0, a2
+    ret
+\end{alltt}
+\vspace{-4pt}
+\caption{The running example in the concrete syntax the Rust checker parses: compiler output with \code{\#:} annotations. The instructions are unchanged.}
+\Description{An RV64 assembly listing of a function sum with a signature in comments and a loop invariant annotation at the loop label.}
+\label{fig:sum}
+\end{figure}
+
+\section{Assumptions and threat model}\label{sec:threat}
+The guarantee is about the instructions of a code image, not about any source. The compiler, the assembler, and whoever wrote the code, the signatures of safe functions, or the loop annotations are untrusted: an annotation is a hint that the checker re-checks, and a wrong one makes checking fail. In particular, the code may come from a language model that emits arbitrary instruction sequences, and a safe function it produced is accepted only if it type-checks.
+
+Trusted are: the Lean kernel; the machine model of Section~\ref{sec:machine} (decoder, instruction semantics, step relations, and the system-call relation); the definitions in which $\sem{\sigma}$ is stated (Section~\ref{sec:meaning}), which one reads to know what a guarantee says; the meaning an unsafe module gives to each of its tokens; every contract the ledger marks \emph{assumed} or \emph{external}; and the hypotheses of \code{VerifiedImg.hw}, that the loader places the image in memory and maps nothing writable over it. Until the Lean checker covers the rules and is proved sound, the Rust checker and the soundness of the typing rules are trusted too, and the soundness argument is not machine-checked (Section~\ref{sec:soundness}). The semantics were tested against \code{llvm-mc}, QEMU, and the Sail RISC-V model~\cite{sailriscv} before the redesign; those tests were removed with the old tree and are being restored, and the semantics are not proved equal to Sail.
+
+What the guarantee covers is memory safety in the sense of the capabilities a function holds, control-flow and register discipline at the calling convention, and termination. It does not cover what a function computes, the contents of memory (reading uninitialized bytes is safe and yields an arbitrary value), leaks (a capability may be dropped), integer overflow (arithmetic is modulo $2^{64}$ by definition), or the truth of unsafe contracts. Signals, threads, other processes writing this process's memory, and system calls other than the four are outside the model.
+
+\section{The model}\label{sec:model}
+\subsection{Index expressions, constraints, and value types}\label{sec:types}
+Index variables $x,n,\rho,\dots$ range over the mathematical integers and never change value; they are logical, not registers. An index expression is linear, $e=c_0+\sum_i c_i x_i$, and a constraint $\psi$ is built from $e_1\le e_2$, $e_1=e_2$, and $c\mid e$ for a positive constant $c$ with $\land,\lor,\lnot$: quantifier-free Presburger arithmetic, which is decidable. In Lean these are \code{IExpr} and \code{Constr} (\code{Typed/Lang.lean}), with variables numbered and a valuation $\iota:\mathbb{N}\to\mathbb{Z}$.
+
+There is one value type. A 64-bit word $w$ has type $\inttype{e}$ under $\iota$ when
+\begin{equation}
+ \lfloor w\rfloor\equiv\iota(e)\pmod{2^{64}},
+ \label{eq:hasint}
+\end{equation}
+where $\lfloor w\rfloor$ is its unsigned value (\code{HasInt}). $\mathsf{int}$ alone is $\inttype{x}$ for a fresh $x$. Defining the type modulo $2^{64}$ is what lets \code{add}, \code{sub}, \code{addi}, constant shifts, and multiplication by a constant produce exact types with no side condition. Range facts are needed only where order matters: at unsigned and signed comparisons, through the representatives $u(e)$ and $s(e)$ introduced with fresh variables, and at memory accesses.
+
+\subsection{Capabilities and state types}\label{sec:caps}
+A byte capability $\bytes{b}{n}{rw}$ or $\bytes{b}{n}{ro}$ permits reading and writing, or reading, the $n$ bytes from $b$. A capability may carry \emph{fields} $\{k:\inttype{e'}\}$: the 8-byte word $k$ bytes from $b$ has type $\inttype{e'}$. A field is a fact about memory contents, not a permission, so a structure that holds a pointer and a length is a capability with two fields, and the buffer it points to is a second capability listed in the signature. A \code{heap} mark identifies a whole allocation unit, the only thing \code{free} accepts. An opaque \emph{token}, such as \code{Heap}, is a named resource of an unsafe module whose footprint safe code carries but cannot touch. A guard $\psi\Rightarrow\kappa$ makes a capability usable where $\psi$ is entailed, as after a null check of \code{malloc}'s result.
+
+Capabilities cannot be duplicated but may be dropped. Pointers carry no permission, so a pointer outside every range can be computed, stored, and returned safely; only the access is checked. Because every \code{rw} capability excludes all others, a store can invalidate only fields of the capability it writes, with no alias analysis. The price is a fixed number of capabilities per signature, so arrays of pointers, lists, and trees are not safe in v0.
+
+At each program point the checker holds a \emph{state type} $(\Delta;\allowbreak\Psi;\allowbreak\Gamma;\allowbreak\Phi;\allowbreak C)$: index variables, constraints, register types, types of the 8-byte stack save slots, and held capabilities. Holding $\bytes{b}{n}{}$ adds $0\le b$, $0\le n$, and $b+n\le 2^{64}$ to $\Psi$, which is why the address of a checked access does not wrap.
+
+\subsection{Signatures}\label{sec:sigs}
+A signature lists universal index variables, entry register types, capabilities that are \code{borrow}ed (lent for the call and returned as they were, with possibly new fields) or \code{take}n (consumed), an entry constraint, existential result variables, exit register types, capabilities it \code{give}s (handed out on exit), an exit constraint, and a stack bound. The design note's \code{malloc} contract is
+\begin{alltt}\scriptsize
+unsafe fn malloc [n]  in a0: int(n)  borrow Heap  where 0 \(\le\) n < 2\(\sp{64}\)
+  out a0: int(p)  give p \(\neq\) 0 \(\Rightarrow\) p \(\mapsto\) bytes[n] rw heap
+  where 0 \(\le\) p < 2\(\sp{64}\), 16 \(\mid\) p
+\end{alltt}
+and \code{free} takes \code{p\,$\mapsto$\,bytes[n]\,rw\,heap} and borrows \code{Heap}. After \code{free}, a later load through the same pointer has no capability to match and is rejected; so is a second \code{free}. This depends on \code{free}'s contract being true.
+
+\subsection{The meaning of a signature}\label{sec:meaning}
+For a valuation $\iota$ and a choice $F$ of token footprints, a capability is \emph{valid} in memory $m$ when its range satisfies $0\le\iota b$, $0\le\iota n$, $\iota b+\iota n\le2^{64}$ and every field holds in $m$, or, for a token, when the module's invariant holds of the token's footprint; a capability whose guard is false is valid with an empty footprint. A list of capabilities is \emph{separated} when the footprint of each \code{rw} capability and token meets no other footprint; \code{ro} footprints may overlap. The \emph{pool} of a signature is the union of the footprints of its \code{take} capabilities and its borrowed tokens at entry.
+
+\begin{definition}[Meaning of a signature]\label{def:meaning}
+For a signature $\sigma$ and token meanings $T$, $\sigma.\mathrm{spec}\;T$ is the specification whose logical argument is $(\iota,F)$ and whose
+\begin{itemize}
+\item precondition $\Pre$ requires that the \code{in} registers have their types, the entry constraint holds, every \code{borrow} and \code{take} capability is valid and they are separated, none meets the stack region $[\mathit{sp}-K,\mathit{sp})$, and $K\le\mathit{sp}$ for the bound $K$;
+\item readable regions are the footprints of the \code{ro} capabilities, and writable regions those of the \code{rw} capabilities and tokens;
+\item postcondition $\Post$ requires a valuation $\iota'$ agreeing with $\iota$ except on the result variables and footprints $F'$ such that the \code{out} registers have their types, the exit constraint holds, the borrowed capabilities (with their exit fields) and the given ones are valid and separated, and every byte of a returned token or given capability lies in the pool at entry;
+\item and a run that ends the process promises nothing more.
+\end{itemize}
+Then $\sem{\sigma}\triangleq\Meets\;c\;D\;e\;T\;\sigma\triangleq\VerifiedImg\;c\;D\;e\;(\sigma.\mathrm{spec}\;T)$.
+\end{definition}
+
+The last condition of $\Post$ is the one that makes allocation sound: what a function hands out comes from what it was given to consume or from a token it borrowed, so it cannot overlap any range its caller still holds. \code{malloc}'s block is disjoint from the caller's other capabilities because it is cut from the footprint of \code{Heap}, which was. Memory outside the writable regions is unchanged on return, but this is not part of the definition: \code{VerifiedImg.frame} derives it from the step relation. For \code{sum}, $\sem{\sigma}$ says that every execution reads only $[\rho,\rho+8n)$, writes nothing, terminates, and returns. The definition is in \code{Typed/Sem.lean}, 151 lines; reading it and \code{Spec.lean} is what it takes to know what a checked function guarantees.
+
+\subsection{Unsafe functions and the ledger}\label{sec:ledger}
+An unsafe function's signature has the same meaning, and its body is not checked. Four implicit obligations come with every assumed contract and are part of $\sem{\sigma}$: touch only the granted ranges and the own stack; give only from the pool; return to \code{ra} with \code{sp} and the callee-saved registers restored; and keep each token's invariant a function of the bytes in its footprint only (\code{TokDef.local\_} in Lean). The ledger records for each function one of four states: \emph{proved} (a Lean theorem $\sem{\sigma}$, written with the callees' $\sem{\sigma}$ as hypotheses, so a callee's status can change without breaking it); \emph{checked} (accepted by the Rust checker, which Lean sees as an assumption today); \emph{assumed}; and \emph{external}, for code outside the machine model, such as code with compressed instructions, which the default compiler output contains. Assuming $\sem{\sigma}$ for code the model cannot execute would be a false hypothesis, so a call to external code is to become an environment step, like \code{ecall}, from a table of entry addresses to signatures. That change to the trusted semantics is decided but not made.
+
+\section{Verification}\label{sec:verification}
+\subsection{Typing rules}\label{sec:rules}
+Each rule maps the state type before an instruction to the one after it, and checks are needed only at accesses, loop heads, calls, and returns. Write $e_r$ for the index expression of register $r$.
+
+\emph{Arithmetic.} \code{addi}, \code{add}, \code{sub}, \code{slli}, \code{sh$N$add}, and \code{mul} by a constant give exact linear types with no new fact. \code{andi} with $c\ge0$ gives a fresh $x$ with $0\le x\le c$, and for $c=2^k-1$ also $e_{rs}=x+2^kj$. \code{srli}, \code{minu}, \code{remu}, and 32-bit operations give fresh variables with the facts that relate them to their operands, and any other instruction gives $0\le x<2^{64}$ only. Any type may be weakened to $\mathsf{int}$ and any fact dropped, so a coarse table costs expressiveness, not soundness.
+
+\emph{Memory.} A load or store of width $w$ at $a=e_{rs}+c$ passes when some held capability $\bytes{b}{n}{}$ satisfies
+\begin{equation}
+ \Psi\ \ent\ b\le a\ \land\ a+w\le b+n\ \land\ w\mid a,
+ \label{eq:access}
+\end{equation}
+and, for a store, the capability is \code{rw}. An 8-byte load at $a=b+k$ from a capability with field $k:\inttype{e'}$ gives $\inttype{e'}$; any other load gives a fresh variable with the range of its width and sign. A store at a constant offset replaces the field there, and any other store drops the fields it may overlap. Stores to and loads from the save slots at \code{sp}$+k$ copy types between registers and $\Phi$.
+
+\emph{Branches.} \code{bltu} adds $u(e_1)<u(e_2)$ to the taken edge and its negation to the other, \code{blt} the same with $s(\cdot)$, and \code{beq} adds $2^{64}\mid e_1-e_2$ or its negation. Explicit bounds and null checks work through these facts.
+
+\emph{Joins and loops.} A loop head carries an annotation
+\[
+ \mathsf{inv}\,[m,\dots]\;\;r:\inttype{e},\dots\;\;\mathsf{where}\;\psi\;\;\mathsf{decreases}\;e_\mu .
+\]
+Every incoming edge must establish it under an instantiation of $m,\dots$, taken from the registers the annotation types as a bare $\inttype{m}$, and each back edge must show $0\le e_\mu$ and that the instantiated $e_\mu$ is smaller. Since index variables never change, facts from before the loop survive it. A forward join keeps a register's expression only where all incoming edges agree and drops facts not shared by all (design decision 2); a \code{join} annotation of the same form restores what is needed.
+
+\emph{Calls and returns.} A call to $g$ instantiates $g$'s variables, checks its \code{in} registers and entry constraint, matches every \code{borrow} to a held capability containing it (each \code{rw} borrow disjoint from the call's other borrows, every length non-negative) and every \code{take} to a capability with exactly that range and mark, which is removed, and checks the stack bound. Afterwards \code{sp}, the callee-saved registers, and the slots are unchanged, other caller-saved registers are $\mathsf{int}$, given capabilities are added, and fields a \code{rw} borrow may have changed are dropped. A return shows \code{ra}, \code{sp}, \code{gp}, \code{tp}, and \code{s0}--\code{s11} equal to their entry values, the \code{out} types and exit constraint, and that every borrowed capability is held with its entry range and every given one is held, each capability meeting one obligation only. The 8-byte stack slots and the address-taken ranges of a frame are declared; the ranges become \code{rw} capabilities after the prologue and must all be held, intact, at the instruction that raises \code{sp}, not only at the return. \code{ecall} is a call against one of four signatures selected by a constant \code{a7}.
+
+\subsection{Soundness}\label{sec:soundness}
+The soundness argument is written in natural language against the machine model; it is not machine-checked. Its premises are properties of the machine (M1--M7, for example that a load proceeds exactly when every byte is permitted and the address is aligned), structural properties of the checked code (S1--S6: profile instructions only; forward edges or back edges to annotated, properly nested loop heads; \code{sp} lowered once by a frame size $F$, a multiple of 16; slots disjoint from address-taken ranges; an acyclic call graph), that the system-call signatures are true of \code{Env.lean} (E1, not yet checked), that a reported entailment is valid (A1), and that unsafe and external contracts hold (U1).
+
+The central definition is an invariant $\Inv(\mathit{pc},s,\iota)$ relating a machine state to the state type at $\mathit{pc}$. Besides the expected parts (I1--I4: $\iota$ extends the entry valuation and satisfies $\Psi$, registers and slots have their types, capabilities are valid), it states that the held capabilities are separated (I5), that they meet the stack region only inside the address-taken ranges of the current frame (I6), that their footprints lie in the permission (I7), and that the \code{rw} ones and tokens lie in the entry \code{rw} footprints and the frame (I8). I6 is what keeps slots and the callee's stack out of every capability, and I8 is what gives the pool condition of $\Post$ at the return.
+
+\begin{claim}[Soundness, natural language]\label{thm:soundness}
+Let $f$ be accepted by the checker and every function $f$ calls meet its $\sem{\sigma}$. (A) In every execution from an entry satisfying $\Pre$, each time control is at an instruction of $f$ the invariant holds and a next step exists, a callee's execution counting as one step. (B) At a return, $\Post$ and the register conditions of $\Done$ hold. (C) If $f$ is not \code{partial}, the execution returns or exits after finitely many steps. (D) Given S5 and U1, every checked safe function meets $\sem{\sigma}$, by induction over the acyclic call graph.
+\end{claim}
+\noindent\emph{Proof sketch.} (A) is induction over the visits to instructions of $f$ with one lemma per rule: arithmetic (exact modulo $2^{64}$; for \code{andi} with $2^k-1$, $2^k$ divides $2^{64}$), branches (a comparison of words is a comparison of the representatives), weakening, loads and stores (Equation~\ref{eq:access} with the validity of the capability implies that the address does not wrap and that every byte is permitted, and a store into a \code{rw} capability changes no other capability's fields, no slot, and no token invariant), frames, calls, and system calls. (B) uses I8 to show that what is given lies in the pool. (C) takes the outermost loop whose back edge is traversed infinitely often: from some point the execution stays in its body, and the measure, a non-negative integer, decreases on every back edge. (D) orders functions callee-first.
+
+Writing the call and return lemmas found four errors in the rules of the design note, which were corrected before the proof was completed: the frame's capabilities were checked at the return rather than where \code{sp} is raised, so a call after the epilogue could overlap a capability still held; \code{give} was allowed from any received range, including borrowed bytes the lender still holds; a lent length was not checked to be non-negative; and nothing said that one capability can meet only one obligation of a return. The call lemma has the most cases and is where further errors are most likely. Mechanizing (A)--(D) is the soundness proof of the Lean checker (Section~\ref{sec:lean}), which has started.
+
+\subsection{Byte-wise permissions}\label{sec:decision10}
+The proof also found a mismatch with the machine. The original permission judgment let an access proceed when it lay inside \emph{one} region of the permission. A capability returned by \code{give} may span two regions of the receiver's permission, for instance when an allocator coalesces a freed block with its neighbor, and a well-typed access to it would then be stuck. The judgment is now
+\begin{equation}
+ \mathrm{canRead}\;P\;a\;n\;\triangleq\;\forall i<n.\ \mathrm{readable}\;P\;(a+i),
+ \label{eq:canread}
+\end{equation}
+and likewise for writing (\code{Step.lean}). Permission order is byte-wise too, and the one-region form survives as the lemmas \code{Perm.canRead\_of\_covers} and \code{canWrite\_of\_covers}, so existing proofs changed only the lemma they cite.
+
+\subsection{Entailment with checked certificates}\label{sec:presburger}
+Every check of Section~\ref{sec:rules} is an entailment $\Psi\ent\psi$. In Lean, a query is refuted as $\Psi\land\lnot\psi$: it is put in disjunctive normal form, each divisibility and non-divisibility literal becomes a linear constraint over fresh variables ($c\mid e$ as $e=cq$; $\lnot(c\mid e)$ as $e=cq+r$ with $1\le r\le c-1$), and each branch must be refuted by a certificate: a list of steps that take a hypothesis, add non-negative multiples of earlier steps, or tighten $\sum a_ix_i+c\ge0$ to $\sum (a_i/g)x_i+\lfloor c/g\rfloor\ge0$ for $g=\gcd(a_i)$, ending in a negative constant. The search that finds certificates (\code{Typed/Search.lean}, Fourier--Motzkin elimination) is untrusted.
+\begin{claim}[Entailment]\label{thm:presburger}
+If \code{Query.check}\;$q$\;$cs$ returns \code{true}, then for every valuation $\iota$ satisfying all hypotheses of $q$, the goal of $q$ holds under $\iota$ (\code{Query.\allowbreak check\_sound}). Consequently \code{Query.decide}, which runs the search and checks its result, is sound for every query (\code{Query.\allowbreak decide\_sound}).
+\end{claim}
+\noindent\emph{Proof sketch.} Each step derives a constraint that every satisfying valuation satisfies (\code{Cert.\allowbreak stepLin\_sound}; tightening is sound because the left side is an integer). A derived negative constant contradicts that, so no valuation satisfies the branch (\code{Cert.\allowbreak check\_sound}). The fresh-variable translation preserves satisfiability under an extended valuation (\code{linsOf\_sound}), and the DNF is complete for the formula (\code{Constr.\allowbreak dnf\_complete}), so every valuation of hypotheses and negated goal satisfies some refuted branch. Both theorems depend only on \code{propext}, \code{Classical.choice}, and \code{Quot.sound}.
+
+The search is incomplete: it gives up after fuel and size limits, and elimination with rounding does not refute every integer-infeasible system. Incompleteness only makes the checker reject more programs.
+
+\section{System}\label{sec:system}
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[font=\scriptsize,>=Latex,node distance=3.2mm,
+ box/.style={draw,rounded corners=1pt,align=center,minimum height=6.5mm,text width=73mm},
+ half/.style={draw,align=center,minimum height=6.5mm,text width=33mm}]
+\node[box] (src) {compiler or model output (\texttt{.s}) + \texttt{\#:} signatures and \texttt{inv}\quad [untrusted]};
+\node[half,below=of src,xshift=-19mm] (rust) {Rust checker\par parse, type, decide\par [trusted today; rules in progress]};
+\node[half,below=of src,xshift=19mm] (asm) {clang / llvm-mc\par object, \texttt{.text} words\par [untrusted]};
+\node[box,below=of rust,xshift=19mm] (export) {ledger + export: per-point state types, instantiations, queries\quad [hints]};
+\node[box,below=of export,fill=black!6] (lean) {Lean checker over the decoded image (milestone 1)\par rules re-checked, \texttt{Query.decide}, soundness = Theorem~\ref{thm:soundness} mechanized};
+\node[box,below=of lean,fill=black!6] (meets) {$\Meets\;c\;D\;e\;T\;\sigma$ = $\VerifiedImg$ of $\sigma.\mathrm{spec}$\quad [definitions trusted, by reading]\par unsafe: proved by hand, or assumed / external in the ledger};
+\node[box,below=of meets] (hw) {machine model: \texttt{Isa}, \texttt{Machine}, \texttt{Step}, \texttt{Env}\quad [trusted]\par \texttt{VerifiedImg.hw}: hardware runs are safe, final, terminating};
+\draw[->] (src.south -| rust.north)--(rust.north);
+\draw[->] (src.south -| asm.north)--(asm.north);
+\draw[->] (rust.south)--(export.north -| rust.south);
+\draw[->] (asm.south)--(export.north -| asm.south);
+\draw[->] (export)--(lean);
+\draw[->] (lean)--(meets);
+\draw[->] (meets)--(hw);
+\end{tikzpicture}
+\caption{From compiler output to a machine-level guarantee. Shaded: what the Lean development states and, once the Lean checker is proved sound, proves. The Rust checker is trusted only until then.}
+\Description{Annotated assembly flows to the Rust checker and to the assembler; both feed an export of hints; a Lean checker over the decoded image yields Meets, a VerifiedImg over the trusted machine model.}
+\label{fig:pipeline}
+\end{figure}
+
+\subsection{Lean development}\label{sec:lean}
+Table~\ref{tab:components} lists the parts at the pinned commit. The machine model and program logic are 1,684 lines, kept from the previous design and migrated to byte-wise permissions. The typed part is 2,069 lines: the type language and $\sem{\sigma}$, the entailment procedure, the checker, and the start of its soundness proof. No declaration uses \code{sorry} or \code{native\_decide}.
+
+The Lean checker, \code{Fn.check}\;$c$ in \code{Typed/Check.lean}, checks a function against the decoded code image $c$, never against assembly text. Its other inputs are hints: the signature, the loop heads with their variables and measures, and a \emph{record} with a state type before every instruction, which the Rust checker is to export. Every rule is re-checked locally: the entry type must be a subtype of the record's (T0); each instruction's rule must produce a type that is a subtype of the record at every successor under an instantiation of the successor's new variables (T1); backward edges must go to declared heads from inside their address interval, intervals must nest, and each measure must be non-negative and decrease on every backward edge (T2); and the return rule must hold. The instantiation may not rebind the signature's parameters, the entry values of preserved registers, or the measure variables of an enclosing loop. Entailments go to \code{Query.decide}. The first milestone covers the arithmetic rules (\code{addi}, \code{add}, \code{sub}, \code{slli}, \code{sh$N$add}, \code{mul} by a constant, \code{lui}, \code{andi}, \code{srli}, and any other register write as a fresh word), branches through unsigned and signed representatives, loads and stores through byte capabilities with field reads and updates, jumps, loops, and the return. Functions with calls, a frame, \code{ecall}, tokens, \code{take}, \code{give}, or \code{partial} are rejected for now.
+
+Its soundness proof, Theorem~\ref{thm:soundness} mechanized for these rules, has started. Proved so far are the $\inttype{e}$ lemmas for addition, subtraction, multiplication by a constant, shifts, and sign-extended immediates (\code{Typed/Sound/Word.lean}); the invariant \code{Inv} (D6) for frameless functions without calls; the soundness of the checker's entailment calls (\code{STy.ent\_sound}); and weakening (\code{Inv.sub}): an accepted subtyping under an instantiation $\theta$ that avoids the protected variables carries \code{Inv} to the target type under the valuation updated by $\theta$. When the proof is complete, a function the Lean checker accepts gets $\Meets$ as a kernel-checked theorem, and the Rust checker becomes an untrusted producer of records.
+
+\begin{table}[t]
+\caption{Components at commit \code{57769819}. Lines of source, comments included; tests excluded.}
+\label{tab:components}
+\centering\small
+\begin{tabular}{@{}llr@{}}
+\toprule
+Component & State & Lines\\
+\midrule
+Lean: machine model, \code{Spec}, adequacy & done & 1,684\\
+Lean: type language, $\sem{\sigma}$ & done & 306\\
+Lean: entailment, certificates & proved sound & 765\\
+Lean: checker on the image & milestone 1 & 557\\
+Lean: its soundness (Thm.~\ref{thm:soundness}) & started & 341\\
+Rust: parser, entailment & done & 4,029\\
+Rust: typing rules, ledger & in progress & ---\\
+musl: 24 annotated files & stage 1 & ---\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Rust checker}\label{sec:rust}
+The Rust checker (\code{crates/nocompiler-typed}) reads clang's assembly output unchanged, with annotations in \code{\#:} comments, so the same file goes to the assembler. It accepts the profile of \code{Isa.lean} with LLVM's pseudo-instructions, including \code{call} and \code{tail} as \code{auipc}/\code{jalr} pairs, which requires assembling with \code{-mno-relax} so the pair is what runs. It is to compare the object's \code{.text} words with its own encoding of the instructions it checked, so that what is checked is what runs. It has its own entailment procedure rather than an SMT solver: lazy DNF and the Omega test~\cite{omega}, with exact equality elimination and the real shadow, dark shadow, and splinters for inequalities, over \code{i128}, where any overflow or exhausted budget answers ``not proved''. The structural premises S1--S6 are to be checked directly on the assembly. Static data is postponed, and a function that addresses a symbol is rejected.
+
+Both checkers are to agree on a shared corpus of typed programs with expected verdicts, one rejected case per rule, and the musl trial cases; a disagreement is a bug in one of them or in the rules.
+
+The repository also contains a binary analysis toolkit from \sys's earlier life: ELF, PE, and Mach-O loaders, x86-64 and AArch64 decoders, a SLEIGH runtime with RISC-V, an IR with lifters, function and control-flow recovery, and a decompiler to C. Nothing it computes is an input to a guarantee.
+
+\section{Related work}\label{sec:related}
+\emph{Proof-carrying code and typed assembly.} Necula and Lee certified hand-tuned Alpha packet filters with safety proofs checked at load time~\cite{pcc96,pcc97}, the precedent for checking annotated machine code and for checking a recorded derivation rather than redoing a search. TAL~\cite{tal} types assembly produced by a type-preserving compiler, and DTAL~\cite{dtal} adds integer index types with linear constraints to eliminate array bound checks; \sys's $\inttype{e}$ and constraints follow DTAL, defined modulo $2^{64}$ for a real 64-bit machine. Alias types~\cite{aliastypes} separate pointers from the permission to use them, as capabilities do here, and LTAL~\cite{ltal} types memory management, \code{malloc} and \code{free} included, with linear types. FunTAL~\cite{funtal} formalizes mixing a functional language with typed assembly; \sys's boundary is between checked and unchecked assembly instead. These systems type whole programs against an abstract machine; \sys\ states its guarantee as a theorem over a concrete ISA semantics and admits untyped functions through contracts.
+
+\emph{Isolation of untrusted machine code.} SFI~\cite{sfi}, Native Client~\cite{nacl}, and RockSalt~\cite{rocksalt}, which verifies a NaCl-style checker against an x86 model in Coq, confine a whole module to a sandbox. The eBPF verifier and PREVAIL~\cite{prevail} check bounds of untrusted kernel extensions by abstract interpretation, and its range analysis has itself been verified~\cite{ebpfrange}. They establish isolation of a module, not per-function contracts with ownership transfer.
+
+\emph{Refinement and ownership types.} Liquid types~\cite{liquid} and their low-level variant~\cite{llliquid} refine C values with logical predicates and infer annotations. Ownership types have been extended to pointer arithmetic~\cite{ownptr}. RefinedC~\cite{refinedc} and CN~\cite{cn} combine refinement types with separation-logic ownership for C, foundationally in the case of RefinedC. RustBelt~\cite{rustbelt} gives types a semantic meaning in separation logic~\cite{seplogic} and verifies unsafe libraries against it, the stance \sys\ takes for unsafe contracts at a much smaller scale: no lifetimes, shared references, or concurrency.
+
+\emph{Machine-code verification.} Myreen and Gordon's decompilation into logic~\cite{myreen}, translation validation of seL4's binary~\cite{sel4tv}, and Islaris~\cite{islaris}, which verifies Armv8-A and RISC-V machine code against Sail models~\cite{sail}, prove full functional properties of machine code. \sys\ aims at the part of such proofs a type checker can discharge, and a hand proof of an unsafe function is a proof in this style against $\sem{\sigma}$. Verified compilers~\cite{compcert,cakeml} remove the compiler from the trusted base by verifying it; \sys\ checks its output instead.
+
+\section{Preliminary evaluation}\label{sec:evidence}
+No acceptance is yet backed by a soundness proof, and the Rust checker accepts or rejects nothing yet. This section reports what was run at the pinned commit, what was found by reading compiled code against the rules, and what was fixed in advance.
+
+\emph{The Lean checker on \code{sum}.} \code{TypedTests/Sum.lean} holds the nine \code{.text} words of \code{sum} as clang assembled them and a hand-written record of state types in the form the Rust export is to produce. The kernel evaluates \code{Fn.check} with \code{decide}: the function is accepted, and six variants are rejected: a buffer one word too short, a signature without the alignment fact, a measure that does not decrease, a record that claims $m\ge2$ at the loop head, the same code with \code{ld a3, 8(a0)}, which reads one word past the buffer on the last iteration, and a return through \code{a1} instead of \code{ra}. \code{TypedTests/Presburger.lean} decides four entailments the same way: the \code{beqz} fall-through of \code{sum} ($0\le n<2^{64}$, $\lnot(2^{64}\mid n)\ent 1\le n$), the check of its load (Section~\ref{sec:example}), an invalid query that must not be proved, and $1\le 2x\le1$, which is infeasible over the integers but not over the rationals and needs tightening. Both files are checked whenever the Lean development is built; these results are from the build of commit \code{f7bcfea3}.
+
+\emph{Fixed in advance.} The design note lists five outcomes that would send v0 back to redesign: most trial functions falling to unsafe; annotations that cannot be written reliably, by a language model in particular; checking too slow for interactive use; a soundness hole whose cause is the modulo-$2^{64}$ foundation rather than a rule; and contracts the type language cannot state. It requires the trial list to be fixed before results are seen. The first set is 17 functions of musl 1.2.5~\cite{musl}, compiled unmodified with clang 15.0.7 for \code{rv64im\_zba\_zbb} at \code{-O2}, without compressed instructions, relaxation, or jump tables. Their predicted verdicts were committed before any of them was compiled with these flags or annotated, and are not edited. A second set of six functions followed, and two families of variants of the same source built with different flags: three with large constants inline instead of in a constant pool, and five that also keep \code{\&\&} conditions as branches. Each was predicted before it was compiled.
+
+\emph{Stage 1: compiled and annotated.} The 29 compiled files (21 functions and 8 variants; \code{malloc} and \code{free} do not compile without the atomics extension and are contracts only) carry signatures and loop annotations in the checker's syntax. A script checks that every committed file assembles to the same \code{.text} bytes, relocations, constant pools, and per-instruction encodings as a fresh build from the pinned source, and a QEMU harness runs each function on unaligned pointers and lengths from 0 to 100; both pass on all files. The Rust parser reads 26 of the 30 files; the 4 that address a constant pool are rejected because static data is postponed. Table~\ref{tab:musl} compares the predictions with the verdicts expected from reading the compiled code against the rules. These are not checker results.
+
+\begin{table}[t]
+\caption{musl trial: verdicts predicted before compiling, and verdicts expected after reading the compiled code against the v0 rules (not a checker result), as counts A\,/\,R\,/\,U\,/\,X. A: accept; R: rejected by a v0 rule although a natural safe signature exists; U: unsafe or external contract; X: contract not expressible.}
+\label{tab:musl}
+\centering\small
+\begin{tabular}{@{}lrcc@{}}
+\toprule
+Set & $n$ & Predicted & By reading\\
+\midrule
+first set & 17 & 9 / 4 / 3 / 1 & 7 / 7 / 2 / 1\\
+second set & 6 & 5 / 1 / 0 / 0 & 5 / 1 / 0 / 0\\
+constants inline & 3 & 0 / 2 / 0 / 1 & 0 / 2 / 0 / 1\\
+\ldots\ and \code{\&\&} kept & 5 & 1 / 4 / 0 / 0 & 1 / 4 / 0 / 0\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Three predictions were wrong. \code{memchr} and \code{strncmp} were predicted to be accepted and are not; \code{fwrite} was predicted to need an unsafe contract because of a function pointer, but the pointer is called in a helper, and \code{fwrite} itself is rejected because its length \code{size*nmemb} is not linear. Of the 12 accepted functions, 4 pass only because the \code{auipc}/\code{jalr} pair that \code{call} and \code{tail} assemble to is typed as one call. The reasons for rejection, by the number of functions they block:
+\begin{itemize}
+\item \emph{Block layout} (6 functions). Reading loops as address intervals, as the Lean checker does and the Rust checker's design specifies, rejects clang's layout, which places return blocks and shared tails after the code that branches back to them. The 24 control-flow graphs of the first three sets are all reducible, their natural loop heads are exactly the annotated loops, and all violations of the interval rule come from 25 backward edges that are not loops. Defining loops as natural loops keeps the structural facts the proof uses.
+\item \emph{Branch-free boolean tests} (5). clang compiles \code{a \&\& b} to \code{sltu}, \code{and}, \code{or}, or \code{xor} and one branch, and these instructions have no rule, so the branch adds no fact. Rules giving a 0/1 value with a disjunctive fact stay in quantifier-free Presburger arithmetic. A flag that keeps such conditions as branches makes \code{strncmp} acceptable, but \code{memchr} still saves a comparison result in a register and branches on it later.
+\item \emph{Constant pools} (4), postponed in the implementation; the inline-constant variants reach the other rules instead.
+\item \emph{Bit masks and alignment tests} (5), as predicted: \code{andi} with a single-bit or a negative constant, and \code{xor} followed by \code{andi} for $a\equiv b\pmod{2^k}$, all expressible with fresh variables.
+\item \emph{Single cases}: facts lost at a forward join (\code{memchr}), a non-linear length (\code{fwrite}), and signatures narrower than C's (\code{strnlen} and \code{strncmp} borrow all $n$ bytes; \code{free(NULL)} needs a conditional \code{take}).
+\end{itemize}
+Against the first failure condition, none of the rejected functions falls to unsafe because its contract cannot be stated; \code{strlen} is the one contract that cannot. But under the v0 rules as they stand, \code{memchr}, \code{memset}, \code{memcpy}, \code{memccpy}, and \code{memmove} are not accepted as compiled.
+
+When the checkers run, the trial will add per function the checkers' verdicts and whether they agree, the numbers of annotations and entailment queries, and checking time.
+
+\section{Conclusion}
+We presented \sys, a typed RISC-V assembly in which safe functions are checked on their own instructions, unsafe functions carry contracts of the same form, and every signature has one meaning in Lean over a RISC-V machine semantics. At the commit described, the meaning, the machine model with byte-wise permissions, a certificate-checked entailment procedure, and a first type checker on decoded machine code exist in Lean, and the checker accepts the running example as compiled. The soundness of the typing rules is argued in natural language and has already corrected four rules and the machine's permission judgment; its mechanization has started. A trial on musl compiled as is, with predictions fixed in advance, found by reading that the type language states the contracts it needs except one, and that the rules must follow the compiler's block layout and boolean tests before the core memory functions are accepted as compiled. What remains is the typing rules in both checkers, the mechanized soundness proof that removes the Rust checker from the trusted base, and checker verdicts against those predictions.
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{nocompiler-references}
+\end{document}
