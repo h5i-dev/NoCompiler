@@ -277,6 +277,100 @@ theorem bitTable_holds {ι : Val} {g : Nat → Nat → Nat} {x : Var} {a b : IEx
   rcases hp with rfl | rfl <;> rcases hq with rfl | rfl <;>
     simp [Constr.holds, Constr.eval, ha, hb, hx]
 
+theorem boundFacts_holds {ι : Val} {x : Var} {b : Int} {n : Nat} (hx : ι x = n) (hb : (n : Int) ≤ b) :
+    ∀ p ∈ Fn.boundFacts x b, p.holds ι := by
+  intro p hp
+  simp only [Fn.boundFacts, List.mem_cons, List.not_mem_nil, or_false] at hp
+  rcases hp with rfl | rfl <;>
+    simp only [Constr.holds, Constr.eval, decide_eq_true_eq, IExpr.eval_var, IExpr.eval_lit, hx] <;> omega
+
+/-- Products agree modulo 2^32 when the factors do. -/
+theorem mod32_mul {A B a b : Int} (hA : (A - a) % 2 ^ 32 = 0) (hB : (B - b) % 2 ^ 32 = 0) :
+    (A * B - a * b) % 2 ^ 32 = 0 := by
+  have hA' := Int.dvd_of_emod_eq_zero hA
+  have hB' := Int.dvd_of_emod_eq_zero hB
+  have : A * B - a * b = A * (B - b) + (A - a) * b := by
+    rw [Int.mul_sub, Int.sub_mul]; omega
+  rw [this]
+  exact Int.emod_eq_zero_of_dvd (Int.dvd_add (Int.dvd_trans hB' (Int.dvd_mul_left _ _))
+    (Int.dvd_trans hA' (Int.dvd_mul_right _ _)))
+
+theorem IExpr.maxVar_smul' (k : Int) (a : IExpr) : (a.smul k).maxVar = a.maxVar := by
+  unfold IExpr.maxVar IExpr.smul
+  simp only
+  generalize a.terms = ts
+  induction ts with
+  | nil => rfl
+  | cons t r ih => simp only [List.map_cons, List.foldr_cons]; rw [ih]
+
+theorem w32_mul_mod {x y : Word} {E1 E2 : Int} (hx : (x.toNat : Int) % 2 ^ 64 = E1 % 2 ^ 64)
+    (hy : (y.toNat : Int) % 2 ^ 64 = E2 % 2 ^ 64) :
+    (((x.setWidth 32 * y.setWidth 32).toNat : Int) - E1 * E2) % 2 ^ 32 = 0 := by
+  rw [BitVec.toNat_mul, BitVec.toNat_setWidth, BitVec.toNat_setWidth]
+  generalize hP : x.toNat % 2 ^ 32 * (y.toNat % 2 ^ 32) = P
+  have hPc : ((P : Nat) : Int) = ((x.toNat % 2 ^ 32 : Nat) : Int) * ((y.toNat % 2 ^ 32 : Nat) : Int) := by
+    rw [← hP, Int.natCast_mul]
+  have k := mod32_mul (A := ((x.toNat % 2 ^ 32 : Nat) : Int)) (a := E1)
+    (B := ((y.toNat % 2 ^ 32 : Nat) : Int)) (b := E2) (by omega) (by omega)
+  rw [← hPc] at k
+  generalize E1 * E2 = Q at k ⊢
+  omega
+
+theorem w32_shl_mod {x : Word} {E : Int} (n : Nat) (hx : (x.toNat : Int) % 2 ^ 64 = E % 2 ^ 64) :
+    ((((x.setWidth 32) <<< n).toNat : Int) - ((2 ^ n : Nat) : Int) * E) % 2 ^ 32 = 0 := by
+  rw [BitVec.toNat_shiftLeft, BitVec.toNat_setWidth, Nat.shiftLeft_eq]
+  generalize hP : x.toNat % 2 ^ 32 * 2 ^ n = P
+  generalize hN : 2 ^ n = N at hP ⊢
+  have hPc : ((P : Nat) : Int) = ((x.toNat % 2 ^ 32 : Nat) : Int) * ((N : Nat) : Int) := by
+    rw [← hP, Int.natCast_mul]
+  have k := mod32_mul (A := ((x.toNat % 2 ^ 32 : Nat) : Int)) (a := E) (B := ((N : Nat) : Int))
+    (b := ((N : Nat) : Int)) (by omega) (by simp)
+  rw [← hPc] at k
+  rw [Int.mul_comm ((N : Nat) : Int) E]
+  generalize E * ((N : Nat) : Int) = Q at k ⊢
+  omega
+
+theorem bitcount_le (x : Word) :
+    (evalU .clz x).toNat ≤ 64 ∧ (evalU .ctz x).toNat ≤ 64 ∧ (evalU .cpop x).toNat ≤ 64 ∧
+    (evalU .clzw x).toNat ≤ 32 ∧ (evalU .ctzw x).toNat ≤ 32 ∧ (evalU .cpopw x).toNat ≤ 32 := by
+  have c64 : ∀ y : BitVec 64, y.clz.toNat ≤ 64 := fun y => by
+    have := BitVec.le_def.1 (BitVec.clz_le (x := y)); simpa using this
+  have c32 : ∀ y : BitVec 32, y.clz.toNat ≤ 32 := fun y => by
+    have := BitVec.le_def.1 (BitVec.clz_le (x := y)); simpa using this
+  have p64 : ∀ y : BitVec 64, y.cpop.toNat ≤ 64 := fun y => by
+    unfold BitVec.cpop; rw [BitVec.toNat_ofNat]
+    exact Nat.le_trans (Nat.mod_le _ _) (BitVec.cpopNatRec_zero_le y 64)
+  have p32 : ∀ y : BitVec 32, y.cpop.toNat ≤ 32 := fun y => by
+    unfold BitVec.cpop; rw [BitVec.toNat_ofNat]
+    exact Nat.le_trans (Nat.mod_le _ _) (BitVec.cpopNatRec_zero_le y 32)
+  simp only [evalU, BitVec.ctz, BitVec.toNat_setWidth]
+  refine ⟨c64 _, c64 _, p64 _, ?_, ?_, ?_⟩ <;>
+    exact Nat.le_trans (Nat.mod_le _ _) (by first | exact c32 _ | exact p32 _)
+
+/-- The type `word32` gives a sign-extended 32-bit value `z` that is `e` modulo 2^32. -/
+theorem Inv.word32' (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S : STy} {s : State} {ι : Val}
+    {F : TokFp} (hI : Inv f T P s0 ι0 S s ι F) {rd : Reg} (hrd : rd ≠ 2) {e : IExpr}
+    (hem : e.maxVar ≤ S.maxVar) (z : BitVec 32) (hz : ((z.toNat : Int) - e.eval ι) % 2 ^ 32 = 0) :
+    ∃ ι', (∀ y : Nat, y < f.fresh → ι' y = ι y) ∧
+      Inv f T P s0 ι0 (Fn.word32 S rd (f.freshAt S) e) ((s.setReg rd (z.signExtend 64)).setPc (s.pc + 4)) ι' F ∧
+      ((s.setReg rd (z.signExtend 64)).setPc (s.pc + 4)).pc = s.pc + 4 := by
+  have hc := BitVec.toInt_eq_toNat_cond z
+  have hl := z.isLt
+  have hse : (z.signExtend 64).toInt = z.toInt := BitVec.toInt_signExtend_of_le (by omega)
+  unfold Fn.word32
+  refine hI.fresh4 hprot hrd [z.toInt] (.var (f.freshAt S)) _ (z.signExtend 64) ?_ (fun p hp => ?_)
+  · unfold HasInt
+    simp only [IExpr.eval_var, setFrom_x]
+    have hc' := BitVec.toInt_eq_toNat_cond (z.signExtend 64)
+    have hl' := (z.signExtend 64).isLt
+    rw [hse] at hc'
+    split at hc <;> split at hc' <;> omega
+  · have hev := Fn.eval_setFrom_old (f := f) hem ι [z.toInt]
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hp
+    rcases hp with rfl | rfl | rfl <;>
+      simp only [Constr.holds, Constr.eval, Constr.lt, decide_eq_true_eq, IExpr.eval_var,
+        IExpr.eval_lit, IExpr.eval_add, IExpr.eval_sub, setFrom_x, hev] <;> split at hc <;> omega
+
 /-- The comparisons (`slt`, `sltu`, `slti`, `sltiu`) and `xori rd, rs, −1`. -/
 theorem Fn.arith2_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' : STy} {s s' : State}
     {ι : Val} {F : TokFp} (hI : Inv f T P s0 ι0 S s ι F) {i : Instr} {rd : Reg}
@@ -697,6 +791,36 @@ theorem Fn.arith2_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' :
         HasInt (setFrom ι (f.freshAt S) vs) (zext32 (s.reg a)) (.var (f.freshAt S)) := by
       intro n vs h; subst h; exact hasInt_toNat _ _ _ (by simp [setFrom_x, zext32_toNat])
     cases op
+    case mulw =>
+      simp only [Fn.arith2] at ha
+      cases h1 : S.reg a with
+      | none => simp [h1] at ha
+      | some e1 =>
+      cases h2 : S.reg b with
+      | none => simp [h1, h2] at ha
+      | some e2 =>
+        have ha' := STy.reg_hasInt hI.regs h1
+        have hb' := STy.reg_hasInt hI.regs h2
+        unfold HasInt at ha' hb'
+        have hm := w32_mul_mod ha' hb'
+        obtain ⟨c2, ts2⟩ := e2
+        cases ts2 with
+        | nil =>
+          simp only [h1, h2, Option.some.injEq] at ha; subst ha
+          simp only [evalRW, w32]
+          refine hI.word32' hprot hrd (by rw [IExpr.maxVar_smul']; exact STy.reg_maxVar' h1) _ ?_
+          rw [IExpr.eval_smul, Int.mul_comm]
+          simpa [IExpr.eval] using hm
+        | cons t ts =>
+          obtain ⟨c1, ts1⟩ := e1
+          cases ts1 with
+          | cons t' ts' => simp [h1, h2] at ha
+          | nil =>
+            simp only [h1, h2, Option.some.injEq] at ha; subst ha
+            simp only [evalRW, w32]
+            refine hI.word32' hprot hrd (by rw [IExpr.maxVar_smul']; exact STy.reg_maxVar' h2) _ ?_
+            rw [IExpr.eval_smul]
+            simpa [IExpr.eval] using hm
     case adduw | sh1adduw | sh2adduw | sh3adduw =>
       simp only [Fn.arith2] at ha
       cases h1 : S.reg a with
@@ -759,6 +883,20 @@ theorem Fn.arith2_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' :
     simp only [writesReg, Option.some.injEq] at hw; subst hw
     simp only [exec, Option.some.injEq] at hx; subst hx
     cases op
+    case slliw =>
+      simp only [Fn.arith2] at ha
+      cases hr : S.reg rs with
+      | none => simp [hr] at ha
+      | some e =>
+        simp only [hr, Option.map_some, Option.some.injEq] at ha; subst ha
+        have hre := STy.reg_hasInt hI.regs hr
+        unfold HasInt at hre
+        simp only [evalShW]
+        refine hI.word32' hprot hrd (by rw [IExpr.maxVar_smul']; exact STy.reg_maxVar' hr) _ ?_
+        rw [IExpr.eval_smul]
+        have := w32_shl_mod sh.toNat hre
+        rw [Int.natCast_pow] at this
+        exact this
     case srliw =>
       simp only [Fn.arith2] at ha
       split at ha
@@ -804,6 +942,13 @@ theorem Fn.arith2_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' :
     simp only [writesReg, Option.some.injEq] at hw; subst hw
     simp only [exec, Option.some.injEq] at hx; subst hx
     cases op
+    case clz | ctz | cpop | clzw | ctzw | cpopw =>
+      simp only [Fn.arith2, Option.some.injEq] at ha; subst ha
+      have hb := bitcount_le (s.reg rs)
+      refine hI.fresh4 hprot hrd [_] (.var (f.freshAt S)) _ _
+        (hasInt_toNat _ _ _ setFrom_x) (boundFacts_holds setFrom_x ?_)
+      obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hb
+      omega
     case zexth =>
       simp only [Fn.arith2] at ha
       cases hr : S.reg rs with

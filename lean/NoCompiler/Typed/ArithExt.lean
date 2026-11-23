@@ -64,6 +64,9 @@ def quotFacts (x : Var) (u : IExpr) (c : Int) : List Constr :=
 def remFacts (x : Var) (u : IExpr) (c : Int) : List Constr :=
   [.dvd c.toNat (u.sub (.var x)), .le (.lit 0) (.var x), .lt (.var x) (.lit c)]
 
+/-- `0 ≤ x ≤ b`. -/
+def boundFacts (x : Var) (b : Int) : List Constr := [.le (.lit 0) (.var x), .le (.var x) (.lit b)]
+
 /-- `0 ≤ e ≤ 1`. -/
 def isBit (e : IExpr) : Constr := .and (.le (.lit 0) e) (.le e (.lit 1))
 
@@ -129,6 +132,19 @@ def arith2 (S : STy) (i : Instr) : Option STy :=
   | .shift .slliuw rd rs sh =>
     (S.reg rs).map fun e =>
       (S.setReg rd (some ((IExpr.var x).smul (2 ^ sh.toNat)))).addFacts (lowFacts x e 32)
+  -- bit counts: at most the width (I23)
+  | .uop .clz rd _ | .uop .ctz rd _ | .uop .cpop rd _ =>
+    some ((S.setReg rd (some (.var x))).addFacts (boundFacts x 64))
+  | .uop .clzw rd _ | .uop .ctzw rd _ | .uop .cpopw rd _ =>
+    some ((S.setReg rd (some (.var x))).addFacts (boundFacts x 32))
+  -- slliw and mulw by a constant: the sign-extended low word of the product (I23)
+  | .shiftw .slliw rd rs sh =>
+    (S.reg rs).map fun e => Fn.word32 S rd x (e.smul (2 ^ sh.toNat))
+  | .rwop .mulw rd a b =>
+    match S.reg a, S.reg b with
+    | some e1, some ⟨c, []⟩ => some (Fn.word32 S rd x (e1.smul c))
+    | some ⟨c, []⟩, some e2 => some (Fn.word32 S rd x (e2.smul c))
+    | _, _ => none
   | .uop .zexth rd rs =>
     (S.reg rs).map fun e => (S.setReg rd (some (.var x))).addFacts (lowFacts x e 16)
   -- unsigned division and remainder by a constant `c` (mod 2^64) > 0 (I23)
