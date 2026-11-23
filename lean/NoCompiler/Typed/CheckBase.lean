@@ -366,6 +366,9 @@ structure Fn where
   /-- The order τ of the points (word indices) from the export (decisions.md I36); not used by
       the checker yet. -/
   tau : List Nat := []
+  /-- Bit counts `k` for which an `xor` result also gets `2^k ∣ x ⇔ 2^k ∣ a − b` (the
+      xor-then-mask idiom, I23). A hint from the record; sound for any list (U). -/
+  xorBits : List Nat := []
   /-- The functions it calls: entry address and signature (each must meet it; `check_sound`'s
       hypotheses). -/
   callees : List (Word × Sig) := []

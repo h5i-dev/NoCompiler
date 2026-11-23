@@ -110,9 +110,10 @@ def arith2Div (S : STy) (i : Instr) : Option STy :=
     match S.reg a, S.reg b with
     | some e1, some e2 =>
       some ((S.setReg rd (some (.var x))).addFacts
-        [.le (.lit 0) (.var x), .lt (.var x) (.lit (2 ^ 64)),
-         .or (.and (.eq (.var x) (.lit 0)) (Constr.eqMod e1 e2))
-             (.and (.not (.eq (.var x) (.lit 0))) (.not (Constr.eqMod e1 e2)))])
+        ([.le (.lit 0) (.var x), .lt (.var x) (.lit (2 ^ 64)),
+          .or (.and (.eq (.var x) (.lit 0)) (Constr.eqMod e1 e2))
+              (.and (.not (.eq (.var x) (.lit 0))) (.not (Constr.eqMod e1 e2)))] ++
+          ((f.xorBits.filter (· ≤ 64)).map fun k => xorBitFact k x e1 e2)))
     | _, _ => none
   -- and/or/xor of two values provably in {0, 1}: exact (I29)
   | .rop .and rd a b | .rop .or rd a b =>

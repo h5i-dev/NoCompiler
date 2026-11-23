@@ -115,4 +115,37 @@ theorem bv_disjoint {w c : Word} (h : w &&& c = 0#64) : w ||| c = w + c ∧ w ^^
   rw [← BitVec.getLsbD_eq_getElem, ← BitVec.getLsbD_eq_getElem]
   cases hw : w.getLsbD i <;> cases hc : c.getLsbD i <;> simp_all
 
+/-- The low `k` bits of `x xor y` are zero exactly when `x` and `y` agree modulo `2^k`. -/
+theorem xor_low_zero_iff (x y : Word) (k : Nat) :
+    (x ^^^ y).toNat % 2 ^ k = 0 ↔ x.toNat % 2 ^ k = y.toNat % 2 ^ k := by
+  rw [BitVec.toNat_xor, Nat.xor_mod_two_pow]
+  constructor
+  · intro h
+    have := congrArg (· ^^^ (y.toNat % 2 ^ k)) h
+    simpa [Nat.xor_assoc] using this
+  · intro h; rw [h]; simp
+
+/-- For words standing for `a` and `b` (mod 2^64) and `k ≤ 64`: `2^k ∣ x xor y ⇔ 2^k ∣ a − b`
+    (the xor-then-mask idiom, I23). -/
+theorem xor_dvd_iff {x y : Word} {a b : Int} (hx : (x.toNat : Int) % 2 ^ 64 = a % 2 ^ 64)
+    (hy : (y.toNat : Int) % 2 ^ 64 = b % 2 ^ 64) {k : Nat} (hk : k ≤ 64) :
+    ((x ^^^ y).toNat : Int) % 2 ^ k = 0 ↔ (a - b) % 2 ^ k = 0 := by
+  have hdk : ((2 : Int) ^ k) ∣ 2 ^ 64 := by
+    have := Int.natCast_dvd_natCast.2 (Nat.pow_dvd_pow 2 hk); exact_mod_cast this
+  have ha : (x.toNat : Int) % 2 ^ k = a % 2 ^ k := by
+    rw [← Int.emod_emod_of_dvd (x.toNat : Int) hdk, hx, Int.emod_emod_of_dvd a hdk]
+  have hb : (y.toNat : Int) % 2 ^ k = b % 2 ^ k := by
+    rw [← Int.emod_emod_of_dvd (y.toNat : Int) hdk, hy, Int.emod_emod_of_dvd b hdk]
+  rw [← Int.emod_eq_emod_iff_emod_sub_eq_zero, ← ha, ← hb]
+  have h := xor_low_zero_iff x y k
+  constructor
+  · intro h1
+    have h2 : (x ^^^ y).toNat % 2 ^ k = 0 := by exact_mod_cast h1
+    have h3 := h.1 h2
+    exact_mod_cast h3
+  · intro h1
+    have h3 : x.toNat % 2 ^ k = y.toNat % 2 ^ k := by exact_mod_cast h1
+    have h2 := h.2 h3
+    exact_mod_cast h2
+
 end NoCompiler.Typed

@@ -82,6 +82,11 @@ def divBound (isDiv : Bool) (x : Var) (ua ub : IExpr) : List Constr :=
   [.le (.lit 0) (.var x), .lt (.var x) (.lit (2 ^ 64)), .le (.var x) ua] ++
     (if isDiv then [] else [.lt (.var x) ub])
 
+/-- `2^k ∣ x ⇔ 2^k ∣ a − b`, for `x = a xor b` (the xor-then-mask idiom, I23). -/
+def xorBitFact (k : Nat) (x : Var) (a b : IExpr) : Constr :=
+  .or (.and (.dvd (2 ^ k) (.var x)) (.dvd (2 ^ k) (a.sub b)))
+    (.and (.not (.dvd (2 ^ k) (.var x))) (.not (.dvd (2 ^ k) (a.sub b))))
+
 /-- `0 ≤ x ≤ b`. -/
 def boundFacts (x : Var) (b : Int) : List Constr := [.le (.lit 0) (.var x), .le (.var x) (.lit b)]
 

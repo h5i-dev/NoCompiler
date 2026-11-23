@@ -144,8 +144,20 @@ theorem Fn.arith2Div_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S
         unfold HasInt at k1 k2
         have ha' := (s.reg a).isLt; have hb' := (s.reg b).isLt
         have hx' := (s.reg a ^^^ s.reg b).isLt
-        simp only [List.mem_cons, List.not_mem_nil, or_false] at hp
-        rcases hp with rfl | rfl | rfl
+        simp only [List.mem_append, List.mem_cons, List.not_mem_nil, or_false, List.mem_map,
+          List.mem_filter, decide_eq_true_eq] at hp
+        rcases hp with (rfl | rfl | rfl) | ⟨k, ⟨-, hk⟩, rfl⟩
+        rotate_left 3
+        · -- xor then mask: 2^k ∣ x ⇔ 2^k ∣ a − b
+          have hiffk := xor_dvd_iff k1 k2 hk
+          simp only [Fn.xorBitFact, Constr.holds, Constr.eval, Bool.or_eq_true, Bool.and_eq_true,
+            Bool.not_eq_true', decide_eq_true_eq, decide_eq_false_iff_not, IExpr.eval_var,
+            IExpr.eval_sub, hv, ev1, ev2]
+          have hc : (((2 ^ k : Nat) : Int)) = 2 ^ k := by norm_cast
+          rw [hc]
+          by_cases h : (e1.eval ι - e2.eval ι) % 2 ^ k = 0
+          · left; exact ⟨hiffk.2 h, h⟩
+          · right; exact ⟨fun h' => h (hiffk.1 h'), h⟩
         · simp only [Constr.holds, Constr.eval, decide_eq_true_eq, IExpr.eval_var, IExpr.eval_lit, hv]; omega
         · simp only [Constr.holds, Constr.eval, Constr.lt, decide_eq_true_eq, IExpr.eval_var,
             IExpr.eval_lit, IExpr.eval_add, hv]; omega
