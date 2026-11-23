@@ -19,9 +19,11 @@ assembler comments that start with `#:`, so the same file assembles unchanged (I
   `call f` is `auipc ra, %pcrel_hi(f)` + `jalr ra, %pcrel_lo(f)(ra)`; `tail f` uses `t1` and
   `jalr zero`. Both are typed as a call / tail call of `f` (I21). Assemble with `-mno-relax`
   so the pair is what runs.
-- Read-only data: `auipc rd, %pcrel_hi(sym)` with `%pcrel_lo(label)` in the following
-  `addi`/load/store, `sym` a label in a read-only data section of the same file (I30). Other
-  relocation operands, and symbols in writable sections, are rejected (`static-data`).
+- Static data: `auipc rd, %pcrel_hi(sym)` with `%pcrel_lo(label)` in the following
+  `addi`/load/store, `sym` a label in a data section of the same file. Read-only symbols are
+  readable everywhere (I30); a writable symbol needs a capability from the signature, written
+  with `@sym` for its address: `borrow @data ↦ bytes[40] rw` (I32). Other relocation operands
+  are rejected (`static-data`).
 - Not accepted: data directives in a code section, `.option rvc`, any instruction outside
   the profile.
 - Directives: `.text`, `.section` (any section whose name starts with `.text` is code),
@@ -81,7 +83,7 @@ cmp      ::= expr (relop expr)+                    -- chains: 1 ≤ m ≤ n
 relop    ::= '≤' | '<' | '≥' | '>' | '=' | '≠'
 expr     ::= ['-'] term (('+' | '-') term)*         -- must be linear
 term     ::= factor ('·' factor)* | NUM factor      -- 8n, 8(n − m)
-factor   ::= NUM ['^' NUM] | NAME | '(' expr ')' | '-' factor
+factor   ::= NUM ['^' NUM] | NAME | '@' SYMBOL | '(' expr ')' | '-' factor
 ```
 
 ASCII spellings: `|->` for `↦`, `<=` `>=` `!=`, `|` for `∣` (divides), `&&` `||` `!`, `=>` for
@@ -152,3 +154,4 @@ sum:
   file-level syntax error. A safe `fn` signature without a body in the file is a declaration
   of a function checked elsewhere (ledger status `declared`), not an error.
 - 2026-11-23: read-only static data (I30): data sections are parsed; constant pools work.
+- 2026-11-23: `@sym` (a data symbol's address) in expressions; writable data via signatures (I32).

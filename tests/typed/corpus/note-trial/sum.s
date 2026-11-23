@@ -2,7 +2,7 @@
 # annotations are the '#:' lines (docs/typed/note-trial.md).
 #! expect sum: accept
 #! expect sum2: accept
-#! expect _start: reject static-data
+#! expect _start: accept
 #: fn sum [ρ, n]
 #:   in     a0: int(ρ), a1: int(n)
 #:   borrow ρ ↦ bytes[8n] ro
@@ -16,7 +16,7 @@
 #:   out    a0: int
 #:   frame  32 slots 0, 8, 16, 24
 #:   stack  32
-#: fn _start [] frame 32 slots 8, 16, 24 stack 32
+#: fn _start [] borrow @data ↦ bytes[40] rw frame 32 slots 8, 16, 24 stack 32
 	.text
 	.attribute	4, 16
 	.attribute	5, "rv64i2p0_m2p0_zba1p0_zbb1p0"

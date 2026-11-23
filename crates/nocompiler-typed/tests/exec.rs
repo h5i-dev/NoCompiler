@@ -510,7 +510,12 @@ type Layout = (u64, u64, Mode, BTreeMap<i128, Lin>);
 
 /// Samples a valuation and memory layout for `s`; `None` if the signature is outside
 /// what this tester handles or no sample satisfies it.
-fn sample(s: &Sig, rng: &mut Rng) -> Option<(BTreeMap<Var, i128>, Vec<Layout>)> {
+/// `fixed`: data symbols' address variables, already laid out.
+fn sample(
+    s: &Sig,
+    fixed: &BTreeMap<Var, i128>,
+    rng: &mut Rng,
+) -> Option<(BTreeMap<Var, i128>, Vec<Layout>)> {
     let caps: Vec<_> = s.borrow.iter().chain(&s.take).collect();
     if caps.iter().any(|c| c.guard != Formula::True) {
         return None;
@@ -528,7 +533,7 @@ fn sample(s: &Sig, rng: &mut Rng) -> Option<(BTreeMap<Var, i128>, Vec<Layout>)> 
         }
     }
     'try_: for _ in 0..400 {
-        let mut v: BTreeMap<Var, i128> = BTreeMap::new();
+        let mut v: BTreeMap<Var, i128> = fixed.clone();
         for p in &s.params {
             if bases.contains(p) {
                 continue;
@@ -564,8 +569,14 @@ fn sample(s: &Sig, rng: &mut Rng) -> Option<(BTreeMap<Var, i128>, Vec<Layout>)> 
                 0 => rng.below(16),
                 _ => 0,
             };
-            let a = next_area + mis;
-            v.insert(b, a as i128);
+            let a = match fixed.get(&b) {
+                Some(x) => *x as u64,
+                None => {
+                    let a = next_area + mis;
+                    v.insert(b, a as i128);
+                    a
+                }
+            };
             let Some(n) = eval_lin(len, &v) else {
                 continue 'try_;
             };
@@ -595,13 +606,11 @@ fn sample(s: &Sig, rng: &mut Rng) -> Option<(BTreeMap<Var, i128>, Vec<Layout>)> 
 fn run_case(
     prog: &Program,
     sigs: &BTreeMap<String, Sig>,
+    syms: &BTreeMap<String, Var>,
     f: &Func,
     s: &Sig,
     rng: &mut Rng,
 ) -> Result<bool, String> {
-    let Some((v, layout)) = sample(s, rng) else {
-        return Ok(false);
-    };
     let mut m = Machine {
         prog,
         sigs,
@@ -622,13 +631,24 @@ fn run_case(
             let v = b.unwrap_or(rng.next() as u8);
             m.mem.insert(a + j as u64, v);
         }
-        m.regions.push(Region {
-            lo: a,
-            hi: a + d.bytes.len() as u64,
-            write: !d.ro,
-        });
+        // read-only symbols are held implicitly (I30); writable ones only when lent (I32)
+        if d.ro {
+            m.regions.push(Region {
+                lo: a,
+                hi: a + d.bytes.len() as u64,
+                write: false,
+            });
+        }
         next_data = a + d.bytes.len() as u64 + 0x1000;
     }
+    let fixed: BTreeMap<Var, i128> = m
+        .data
+        .iter()
+        .filter_map(|(n, a)| syms.get(n).map(|v| (*v, *a as i128)))
+        .collect();
+    let Some((v, layout)) = sample(s, &fixed, rng) else {
+        return Ok(false);
+    };
     for x in m.regs.iter_mut().skip(1) {
         *x = rng.next();
     }
@@ -789,7 +809,7 @@ fn accepted_functions_do_not_get_stuck() {
             let s = &ck.sigs[&fr.name];
             let mut any = false;
             for _ in 0..300 {
-                match run_case(&prog, &ck.sigs, f, s, &mut rng) {
+                match run_case(&prog, &ck.sigs, &ck.sym_vars, f, s, &mut rng) {
                     Ok(true) => any = true,
                     Ok(false) => continue,
                     Err(e) => {
@@ -833,6 +853,7 @@ fn tester_finds_the_known_holes() {
         ("neg_ret_s0.s", "f"),
         ("neg_out.s", "inc"),
         ("neg_exit_field.s", "set_one"),
+        ("neg_static_writable.s", "bump"),
     ];
     let mut rng = Rng(0x9e37_79b9_7f4a_7c15);
     let mut missed = Vec::new();
@@ -842,7 +863,8 @@ fn tester_finds_the_known_holes() {
         let (ck, _) = check::check_program(&prog, false);
         let f = prog.funcs.iter().find(|g| g.name == name).unwrap();
         let s = &ck.sigs[name];
-        let found = (0..2000).any(|_| run_case(&prog, &ck.sigs, f, s, &mut rng).is_err());
+        let found =
+            (0..2000).any(|_| run_case(&prog, &ck.sigs, &ck.sym_vars, f, s, &mut rng).is_err());
         if !found {
             missed.push(format!("{file}: {name}"));
         }

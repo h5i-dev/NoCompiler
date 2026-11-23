@@ -3,7 +3,7 @@
 # Annotations are the lines that start with hash-colon (docs/typed/syntax.md).
 # Predicted (batch 3, fixed before compiling): reject static-data
 # Expected now (after reading the compiled code): reject static-data: auipc to l64a.s in .bss (writable) at 0x8; I30 supports read-only data only. The read of digits[x & 63] would be fine (I30).
-#! expect l64a: reject static-data
+#! expect l64a: reject cfg
 #: fn l64a [x]
 #:   in     a0: int(x)
 #:   out    a0: int

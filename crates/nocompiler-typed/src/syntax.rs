@@ -46,8 +46,12 @@ pub fn lex(s: &str) -> Result<Vec<Tok>, String> {
             }
             continue;
         }
-        if c.is_alphabetic() || c == '_' || c == '.' {
+        if c.is_alphabetic() || c == '_' || c == '.' || c == '@' {
+            // `@sym`: the address of the data symbol sym (I32)
             let st = i;
+            if c == '@' {
+                i += 1;
+            }
             while i < cs.len()
                 && (cs[i].is_alphanumeric() || cs[i] == '_' || cs[i] == '\'' || cs[i] == '.')
             {

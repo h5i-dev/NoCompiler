@@ -1,5 +1,6 @@
-# Writable static data is not implicit (it belongs in signatures; not supported yet).
-#! expect bump: reject static-data
+# Writable static data has no implicit capability (I32): reading it needs a signature that
+# lends it.
+#! expect bump: reject mem-bounds
 	.text
 #: fn bump [] stack 0
 bump:

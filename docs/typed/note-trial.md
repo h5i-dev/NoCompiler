@@ -52,3 +52,7 @@ environment model; the other results are unchanged.
 qemu-riscv64: `hello` prints `nocompiler` and exits 0 (through `write_all` and `exit`); `sum`'s
 `_start` exits 24 = (1+2+3+4+5) + (2+3+4), through `sum2` and `sum`. A sanity check of the
 compiled code, not part of any guarantee.
+
+### After I32 (writable data through signatures)
+
+`_start` (sum.c) with `borrow @data ↦ bytes[40] rw` in its signature is **accepted**.

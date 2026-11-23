@@ -206,8 +206,12 @@ pub struct Checker {
     pub record: bool,
     /// Read-only data symbols: implicitly held by every function (note, 静的データ; I30).
     pub statics: Vec<Static>,
-    /// Writable data symbols (not supported yet: they belong in signatures).
+    /// Writable data symbols: no implicit capability; a signature lends them (I32).
     pub writable_data: BTreeSet<String>,
+    /// Every data symbol's address variable ℓ_sym, named `@sym` in annotations (I32).
+    pub sym_vars: BTreeMap<String, Var>,
+    /// Size and alignment of every data symbol.
+    pub sym_info: BTreeMap<String, (i128, i128)>,
     /// Loops as natural loops of a reducible CFG (proposal P1) instead of address
     /// intervals (S2). Off by default.
     pub natural_loops: bool,
@@ -251,18 +255,23 @@ pub fn check_program_opts(p: &Program, opts: Options) -> (Checker, Report) {
         record,
         statics: vec![],
         writable_data: BTreeSet::new(),
+        sym_vars: BTreeMap::new(),
+        sym_info: BTreeMap::new(),
         natural_loops: opts.natural_loops,
     };
     for (name, d) in &p.data {
-        if !d.ro {
-            ck.writable_data.insert(name.clone());
-            continue;
-        }
         let clean: String = name
             .chars()
             .filter(|c| c.is_alphanumeric() || *c == '_')
             .collect();
         let var = ck.names.fresh(&format!("ℓ{clean}"));
+        ck.sym_vars.insert(name.clone(), var);
+        ck.sym_info
+            .insert(name.clone(), (d.bytes.len() as i128, d.align as i128));
+        if !d.ro {
+            ck.writable_data.insert(name.clone());
+            continue;
+        }
         let mut fields = BTreeMap::new();
         if d.align >= 8 {
             for k in (0..d.bytes.len() / 8).map(|k| k * 8) {
@@ -291,7 +300,12 @@ pub fn check_program_opts(p: &Program, opts: Options) -> (Checker, Report) {
             });
             continue;
         }
-        match sig::resolve(s, *line, &mut ck.names) {
+        let syms: Scope = ck
+            .sym_vars
+            .iter()
+            .map(|(n, v)| (format!("@{n}"), *v))
+            .collect();
+        match sig::resolve_with(s, *line, &mut ck.names, &syms) {
             Ok(sg) => {
                 ck.sigs.insert(s.name.clone(), sg);
             }
@@ -845,11 +859,7 @@ impl<'a> FnCheck<'a> {
                 }
                 Instr::Auipc { .. } => {
                     match &pi.reloc {
-                        Some(Reloc::PcrelHi(sym))
-                            if self.ck.statics.iter().any(|x| x.name == *sym) => {}
-                        Some(Reloc::PcrelHi(sym)) if self.ck.writable_data.contains(sym) => {
-                            return self.err(Rule::StaticData, format!("'{sym}' is writable static data: not supported yet (it belongs in a signature, I30)"));
-                        }
+                        Some(Reloc::PcrelHi(sym)) if self.ck.sym_vars.contains_key(sym) => {}
                         Some(Reloc::PcrelHi(sym)) => {
                             return self.err(Rule::StaticData, format!("auipc to '{sym}', which is not a data symbol of this file (I30)"));
                         }
@@ -1184,11 +1194,21 @@ impl<'a> FnCheck<'a> {
             let c = self.new_cap(t.guard.clone(), t.kind.clone());
             st.caps.push(c);
         }
+        // every data symbol's address is its linked address (S6): in range and aligned
+        for (name, v) in self.ck.sym_vars.clone() {
+            let (size, align) = self.ck.sym_info[&name];
+            let l = Lin::var(v);
+            self.add_fact(&mut st, Formula::Ge(l.clone()));
+            self.add_fact(
+                &mut st,
+                Formula::le(&l.add_const(size).unwrap(), &Lin::konst(TWO64)).unwrap(),
+            );
+            if align > 1 {
+                self.add_fact(&mut st, Formula::Dvd(align, l.clone()));
+            }
+        }
         for sd in self.ck.statics.clone() {
             let l = Lin::var(sd.var);
-            if sd.align > 1 {
-                self.add_fact(&mut st, Formula::Dvd(sd.align, l.clone()));
-            }
             let c = self.new_cap(
                 Formula::True,
                 CapKind::Bytes {
@@ -1328,6 +1348,7 @@ impl<'a> FnCheck<'a> {
             .params
             .iter()
             .map(|v| (self.me.src_names[v].clone(), *v))
+            .chain(self.ck.sym_vars.iter().map(|(n, v)| (format!("@{n}"), *v)))
             .collect()
     }
 
@@ -1910,7 +1931,7 @@ impl<'a> FnCheck<'a> {
         };
         if let (Instr::Auipc { rd, .. }, Some(Reloc::PcrelHi(sym))) = (&ins, &pi.reloc) {
             // auipc rd, %pcrel_hi(sym) = ℓ_sym − lo, where lo is the paired %pcrel_lo value
-            let l = self.ck.statics.iter().find(|x| x.name == *sym).unwrap().var;
+            let l = self.ck.sym_vars[sym];
             let lo = self.lo_var(ix);
             let e = Lin::var(l)
                 .sub(&Lin::var(lo))

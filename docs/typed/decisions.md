@@ -177,6 +177,14 @@ comments can cite them.
   **For ⟦σ⟧ (T):** the meaning must then include, on entry, that each read-only symbol's
   range is readable in the permission, holds its bytes, and is disjoint from every `rw`
   capability and token footprint (P4/P5 extended to the implicit capabilities).
+- **I32 Writable static data through signatures** (the note: "書込み可能なデータの能力は
+  `_start` の署名に現れ、そこから署名を通して受け渡す"). Every data symbol, read-only or not,
+  has its address variable ℓ_sym, written `@sym` in annotations; every function may assume
+  `0 ≤ ℓ_sym`, `ℓ_sym + size ≤ 2^64` and `align ∣ ℓ_sym` (S6). `auipc %pcrel_hi(sym)` works for
+  writable symbols too, but they have no implicit capability: an access needs one lent by the
+  signature, e.g. `borrow @data ↦ bytes[40] rw`, passed on to callees as any other.
+  **For ⟦σ⟧ (T):** `@sym` in a signature is the linked address (a constant of the image, not
+  a parameter); P4/P5 apply to such capabilities as to any other.
 
 ## Proposals (not adopted: the default checker does not use them)
 

@@ -207,7 +207,12 @@ fn regty_names(r: &SRegTy, out: &mut Vec<String>) {
 /// Resolves a signature: its universal variables become fresh variables in `names`; names
 /// first used on the exit side become its existential results.
 pub fn resolve(s: &SSig, line: usize, names: &mut Names) -> Result<Sig, String> {
-    let mut scope = Scope::new();
+    resolve_with(s, line, names, &Scope::new())
+}
+
+/// `syms`: the data symbols' address variables, named `@sym` (I32).
+pub fn resolve_with(s: &SSig, line: usize, names: &mut Names, syms: &Scope) -> Result<Sig, String> {
+    let mut scope = syms.clone();
     let mut src_names: BTreeMap<Var, String> = BTreeMap::new();
     let mut params = Vec::new();
     for p in &s.params {
