@@ -88,3 +88,9 @@ entry), the target word, and the instantiation θ of the target's bound variable
 `inv [...]` variables and the fresh variables of registers the annotation leaves as `int`).
 It is a separate definition so `Fn` needs no new field; the JSON has the same as `"thetas"`
 (`{"from", "to", "theta": [[var, IExpr]]}`). A hint: the Lean checker re-checks D7 with it.
+
+### Frames (2026-11-23, T's fields)
+
+`fn_<name>` has `frame := some { size, slots, addr }` when the signature has a `frame` clause
+(offsets from the lowered `sp`, I8), and each `STy` has `slots := [(offset, IExpr)]` (Φ) and
+`depth := 0 | size`. Frame capabilities have origin `none`.

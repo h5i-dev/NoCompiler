@@ -152,11 +152,18 @@ fn lean_sty(st: &State, borrow_ids: &[u32]) -> String {
         .collect();
     let facts: Vec<String> = st.facts.iter().map(|(_, f)| lean_formula(f)).collect();
     let caps: Vec<String> = st.caps.iter().map(|c| lean_hcap(c, borrow_ids)).collect();
+    let slots: Vec<String> = st
+        .slots
+        .iter()
+        .map(|(k, e)| format!("({k}, {})", lean_lin(e)))
+        .collect();
     format!(
-        "{{ regs := {}, facts := [{}], caps := [{}] }}",
+        "{{ regs := {}, facts := [{}], caps := [{}], slots := [{}], depth := {} }}",
         lean_regs(&regs),
         facts.join(", "),
-        caps.join(", ")
+        caps.join(", "),
+        slots.join(", "),
+        st.depth
     )
 }
 
@@ -273,6 +280,17 @@ pub fn to_lean(prog: &Program, ck: &Checker, rep: &Report, module: &str) -> Stri
             .map(|(r, v)| format!("({}, {})", r.0, v.0))
             .collect();
         let _ = writeln!(o, "  regVar := [{}]", rv.join(", "));
+        if let Some(fr) = ck.sigs.get(&f.name).and_then(|g| g.frame.as_ref()) {
+            let slots: Vec<String> = fr.slots.iter().map(|k| k.to_string()).collect();
+            let addr: Vec<String> = fr.addr.iter().map(|(o, l)| format!("({o}, {l})")).collect();
+            let _ = writeln!(
+                o,
+                "  frame := some {{ size := {}, slots := [{}], addr := [{}] }}",
+                fr.size,
+                slots.join(", "),
+                addr.join(", ")
+            );
+        }
         let loops: Vec<String> = ex
             .loops
             .iter()
