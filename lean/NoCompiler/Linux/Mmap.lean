@@ -25,6 +25,8 @@ namespace NoCompiler.Linux
 def sysMmap : Word := 222
 def sysMunmap : Word := 215
 def mapPrivateAnon : Word := 0x22
+/-- MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED. -/
+def mapPrivateAnonFixed : Word := 0x32
 def taskSize : Nat := 0x800000000000
 def enomem : Word := -(BitVec.ofNat 64 12)
 def einval : Word := -(BitVec.ofNat 64 22)
@@ -48,12 +50,29 @@ def withProt (prot a : Word) (n : Nat) (k : Kern) : Kern :=
 
 def mmapSpec (k : Kern) (i : SyscallInput) (o : Outcome) (k' : Kern) : Prop :=
   let len := pageUp (i.arg 1)
-  if i.arg 0 = 0 ∧ i.arg 3 = mapPrivateAnon ∧ i.arg 4 = -1 ∧ i.arg 5 = 0 ∧ 0 < (i.arg 1).toNat ∧
+  if i.arg 0 = 0 ∧ i.arg 3 = mapPrivateAnon ∧ i.fd 4 = 0xffffffff#64 ∧ i.arg 5 = 0 ∧ 0 < (i.arg 1).toNat ∧
       (i.arg 2).toNat < 8 then
     (∃ a : Word, a.toNat % 4096 = 0 ∧ a.toNat + len ≤ taskSize ∧
         (∀ p ∈ k.maps, disjointNat a.toNat len p.1.toNat p.2) ∧
         o = .ret { ret := a, zeros := [(a, len)] } none ∧ k' = withProt (i.arg 2) a len { k with maps := (a, len) :: k.maps }) ∨
       (o = .ret { ret := enomem } none ∧ k' = k)
+  else if i.arg 3 = mapPrivateAnonFixed ∧ i.fd 4 = 0xffffffff#64 ∧ i.arg 5 = 0 ∧ 0 < (i.arg 1).toNat ∧
+      (i.arg 2 = 0 ∨ i.arg 2 = 3) then
+    -- MAP_FIXED, PROT_NONE or PROT_READ|PROT_WRITE, with LPS's meaning (user decision 2026-11-22 (7);
+    -- LPS's mmap_spec fixed arms): an unaligned address is EINVAL; a range past 2^64 ENOMEM; address 0 or a
+    -- range past TASK_SIZE has no outcome (LPS: unmodeled); else the range is mapped at `addr`, replacing what
+    -- was there (zero-filled, the protection set), or the call fails with ENOMEM, leaving the old mappings or
+    -- having destroyed the range first (LPS's injected failure and its destroy arm). LPS's finer cases
+    -- (contained, free, spanning, reserved, budget) are all among these outcomes.
+    let a := i.arg 0
+    if a.toNat % 4096 ≠ 0 then o = .ret { ret := einval } none ∧ k' = k
+    else if 2 ^ 64 ≤ a.toNat + len then o = .ret { ret := enomem } none ∧ k' = k
+    else if a.toNat = 0 ∨ taskSize < a.toNat + len then False
+    else
+      (o = .ret { ret := a, zeros := [(a, len)] } none ∧
+        k' = withProt (i.arg 2) a len { k.unmap a len with maps := (a, len) :: (k.unmap a len).maps }) ∨
+      (o = .ret { ret := enomem } none ∧ k' = k) ∨
+      (o = .ret { ret := enomem } none ∧ k' = k.unmap a len)
   else False
 
 /-- `munmap(addr, len)`: 0, with the page-rounded range cut out of the mapped
@@ -87,7 +106,7 @@ theorem ProcStep2.sys {s s' : State} {k k' : Kern} (h : ProcStep2 (s, k) (s', k'
 /-- A successful `mmap` gives fresh pages: aligned, below TASK_SIZE, apart from
     every earlier mapping, zero-filled, and recorded. -/
 theorem mmap_fresh {k k' : Kern} {i : SyscallInput} {o : Outcome} (h : mmapSpec k i o k')
-    (hok : ∀ e ev, o = .ret e ev → e.ret ≠ enomem) :
+    (hfl : i.arg 3 = mapPrivateAnon) (hok : ∀ e ev, o = .ret e ev → e.ret ≠ enomem) :
     ∃ a : Word, a.toNat % 4096 = 0 ∧ a.toNat + pageUp (i.arg 1) ≤ taskSize ∧
       (∀ p ∈ k.maps, disjointNat a.toNat (pageUp (i.arg 1)) p.1.toNat p.2) ∧
       o = .ret { ret := a, zeros := [(a, pageUp (i.arg 1))] } none ∧ (a, pageUp (i.arg 1)) ∈ k'.maps := by
@@ -97,7 +116,9 @@ theorem mmap_fresh {k k' : Kern} {i : SyscallInput} {o : Outcome} (h : mmapSpec 
     · refine ⟨a, h1, h2, h3, rfl, ?_⟩
       unfold withProt; split <;> (try split) <;> exact List.mem_cons_self
     · exact absurd rfl (hok _ _ rfl)
-  · exact h.elim
+  · have hnf : ¬ (i.arg 3 = mapPrivateAnonFixed ∧ i.fd 4 = 0xffffffff#64 ∧ i.arg 5 = 0 ∧ 0 < (i.arg 1).toNat ∧
+        (i.arg 2 = 0 ∨ i.arg 2 = 3)) := fun h' => absurd (hfl.symm.trans h'.1) (by decide)
+    rw [if_neg hnf] at h; exact h.elim
 
 /-- Control: `munmap` of an unaligned address fails with EINVAL and unmaps nothing. -/
 theorem munmap_unaligned {k k' : Kern} {i : SyscallInput} {o : Outcome} (h : (i.arg 0).toNat % 4096 ≠ 0)
@@ -107,14 +128,16 @@ theorem munmap_unaligned {k k' : Kern} {i : SyscallInput} {o : Outcome} (h : (i.
   exact hm
 
 /-- Control: mapping a file (fd 3) has no outcome either. -/
-theorem mmap_file_none {k k' : Kern} {i : SyscallInput} {o : Outcome} (h : i.arg 4 = 3) :
+theorem mmap_file_none {k k' : Kern} {i : SyscallInput} {o : Outcome} (h : i.fd 4 = 3) :
     ¬ mmapSpec k i o k' := by
-  have h4 : ¬ (i.arg 4 = -1) := by rw [h]; decide
-  have hc : ¬ (i.arg 0 = 0 ∧ i.arg 3 = mapPrivateAnon ∧ i.arg 4 = -1 ∧ i.arg 5 = 0 ∧ 0 < (i.arg 1).toNat ∧
+  have h4 : ¬ (i.fd 4 = 0xffffffff#64) := by rw [h]; decide
+  have hc : ¬ (i.arg 0 = 0 ∧ i.arg 3 = mapPrivateAnon ∧ i.fd 4 = 0xffffffff#64 ∧ i.arg 5 = 0 ∧ 0 < (i.arg 1).toNat ∧
       (i.arg 2).toNat < 8) :=
     fun ⟨_, _, h', _⟩ => h4 h'
+  have hc2 : ¬ (i.arg 3 = mapPrivateAnonFixed ∧ i.fd 4 = 0xffffffff#64 ∧ i.arg 5 = 0 ∧ 0 < (i.arg 1).toNat ∧
+      (i.arg 2 = 0 ∨ i.arg 2 = 3)) := fun ⟨_, h', _⟩ => h4 h'
   intro hp
   unfold mmapSpec at hp
-  simp only [hc, ↓reduceIte] at hp
+  simp only [hc, hc2, ↓reduceIte] at hp
 
 end NoCompiler.Linux

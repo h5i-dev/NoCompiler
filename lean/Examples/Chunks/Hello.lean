@@ -58,15 +58,21 @@ def Outcome (n k : Nat) (r : Word) : Prop :=
     nothing else, and uses no stack. -/
 def spec : Spec Args where
   pre := fun ⟨fd, buf, n⟩ s =>
-    s.reg Reg.a0 = fd ∧ s.reg Reg.a1 = buf ∧ s.reg Reg.a2 = BitVec.ofNat 64 n ∧ n < 2 ^ 64
+    s.reg Reg.a0 = fd ∧ s.reg Reg.a1 = buf ∧ s.reg Reg.a2 = BitVec.ofNat 64 n ∧ n < 2 ^ 64 ∧ fd.toNat < 2 ^ 32
   post := fun ⟨fd, buf, n⟩ s s' => ∃ evs k, k ≤ n ∧ s'.trace = s.trace ++ evs ∧
     writtenTo fd evs = some (readBytes s.mem buf k) ∧ Outcome n k (s'.reg Reg.a0)
   reads := fun ⟨_, buf, n⟩ _ => [⟨buf, n⟩]
 
+/-- A descriptor below 2^32 is its own low 32 bits (the kernel's reading of the fd argument). -/
+theorem fd_mask {fd : Word} (h : fd.toNat < 2 ^ 32) : fd &&& 0xffffffff#64 = fd := by
+  apply BitVec.eq_of_toNat_eq
+  rw [BitVec.toNat_and, show (0xffffffff#64 : Word).toNat = 2 ^ 32 - 1 from rfl, Nat.and_two_pow_sub_one_eq_mod,
+    Nat.mod_eq_of_lt h]
+
 /-- `write_all` as compiled: correct for every way the kernel splits the
     writes, memory-safe, terminating, ABI-preserving. -/
 theorem write_all_verified : VerifiedImg code write_all_dom write_all_entry spec := by
-  rintro ⟨fd, buf, n⟩ s he ⟨ha0, ha1, ha2, hn⟩
+  rintro ⟨fd, buf, n⟩ s he ⟨ha0, ha1, ha2, hn, hfd⟩
   nocompiler_auto write_all_func s he
     loop_inv $l1 (fun u => ∃ k evs, k ≤ n ∧ u.reg 11 = buf + BitVec.ofNat 64 k ∧
         u.reg 12 = BitVec.ofNat 64 (n - k) ∧ u.reg 13 = fd ∧ u.reg 17 = 64#64 ∧ u.mem = s.mem ∧
@@ -77,7 +83,7 @@ theorem write_all_verified : VerifiedImg code write_all_dom write_all_entry spec
   case l1_ret_x20 => exact .inr ⟨sys_err, nocompiler_he1, nocompiler_he2, rfl⟩
   case l1_to_l1 =>
     refine ⟨k + sys_n, evs ++ [.write fd (readBytes s.mem (buf + BitVec.ofNat 64 k) sys_n)], by omega, rfl,
-      ?_, trivial, trivial, trivial, by simp, ?_⟩
+      ?_, trivial, trivial, trivial, by simp [fd_mask hfd], ?_⟩
     · apply BitVec.eq_of_toNat_eq; simp only [BitVec.toNat_ofNat]; omega
     · rw [writtenTo_append_write, h8, readBytes_add]; rfl
 

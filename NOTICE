@@ -1,0 +1,30 @@
+NOTICE: GPL-3.0 material in this repository's history
+
+Three commits on `next` added memory images of fuzz_qdisc builds. Each image holds the bytes of a
+statically linked binary that contains GPL-3.0 code, so these files are GPL-3.0-containing:
+
+  c9c84891f1824ec5a86ad06bfde2f4a9e64f5129  (2026-11-22)  lean/LPS/Images/QdiscPlainE5r.lean
+  6a19faad4bafa5a040e2dd5adf1ad26b53c9c668  (2026-11-22)  lean/LPS/Images/QdiscUbsanE5r.lean
+  f3a9b1d514a6822be368c48a28f1b7320dd17bc9  (2026-11-22)  lean/LPS/Images/QdiscPlainOvp.lean,
+                                                          lean/LPS/Images/QdiscUbsanOvp.lean
+
+They were removed from the tree in 44b47ca8e65d32a45db59a0292edb02da74b42bf (2026-11-22) and are not in
+any later tree. The history was not rewritten.
+
+Images of this kind are generated, not committed: examples/qdisc/gen_qdisc_images.sh writes them, and
+lean/Examples/LPS/Images/.gitignore excludes `Qdisc*.lean`.
+
+NOTICE: LGPL material in the current tree
+
+lean/LPS/Riscv/SpecFloat.lean is a Lean transcription of definitions from two LGPL libraries: those that
+LPS's theories/Riscv/Fpu.v (theorem-labs/rocq-linux-process-semantics at f1006fe8, MIT) calls, and what they
+call, nothing else:
+
+  - Rocq's SpecFloat (Rocq 9.2, Corelib.Floats.SpecFloat), The Rocq Development Team, LGPL-2.1:
+    spec_float, location, shr_record, shr, shr_fexp, shr_record_of_loc, loc_of_shr_record, Zdigits2,
+    digits2_pos, fexp, shl_align, new_location, SFdiv_core_binary, SFsqrt_core_binary, SFcompare.
+  - Flocq's IEEE754.BinarySingleNaN (Flocq >= 4.2), S. Boldo, G. Melquiond et al., LGPL-3.0:
+    mode, choice_mode, binary_overflow, binary_round_aux.
+
+That file remains under those licences; its header carries the same notice. The rest of lean/LPS is a port
+of MIT-licensed code (Copyright (c) 2026 Theorem Labs, PBC).

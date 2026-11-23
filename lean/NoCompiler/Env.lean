@@ -48,14 +48,14 @@ inductive Sys : State → State → Prop
       s.reg Reg.a7 = sysWrite → r ≤ (s.reg Reg.a2).toNat → r ≤ maxRW →
       (0 < (s.reg Reg.a2).toNat → 0 < r) →
       Sys s ((s.sysRet (BitVec.ofNat 64 r)).emit
-              (.write (s.reg Reg.a0) (readBytes s.mem (s.reg Reg.a1) r)))
+              (.write (s.reg Reg.a0 &&& 0xffffffff#64) (readBytes s.mem (s.reg Reg.a1) r)))
   | writeErr {s : State} (e : Nat) :
       s.reg Reg.a7 = sysWrite → 1 ≤ e → e ≤ 4095 →
       Sys s (s.sysRet (-(BitVec.ofNat 64 e)))
   | readOk {s : State} (ds : List Byte) :
       s.reg Reg.a7 = sysRead → ds.length ≤ (s.reg Reg.a2).toNat → ds.length ≤ maxRW →
       Sys s (((s.sysRet (BitVec.ofNat 64 ds.length)).setMem
-              (writeBytes s.mem (s.reg Reg.a1) ds)).emit (.read (s.reg Reg.a0) ds))
+              (writeBytes s.mem (s.reg Reg.a1) ds)).emit (.read (s.reg Reg.a0 &&& 0xffffffff#64) ds))
   | readErr {s : State} (e : Nat) :
       s.reg Reg.a7 = sysRead → 1 ≤ e → e ≤ 4095 →
       Sys s (s.sysRet (-(BitVec.ofNat 64 e)))

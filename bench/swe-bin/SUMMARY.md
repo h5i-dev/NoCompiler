@@ -8,7 +8,7 @@ SWE-bench-derived (function-level from-scratch), not SWE-bench.
 | language | kept | dropped | not converted | total |
 | --- | --- | --- | --- | --- |
 | C | 28 | 2 | 0 | 30 |
-| Rust | 24 | 11 | 8 | 43 |
+| Rust | 27 | 8 | 8 | 43 |
 
 ## Drop reasons
 
@@ -16,10 +16,9 @@ SWE-bench-derived (function-level from-scratch), not SWE-bench.
 | --- | --- | --- |
 | C | FAIL_TO_PASS test: gold FAILED | 1 |
 | C | FAIL_TO_PASS test: passes at base | 1 |
-| Rust | FAIL_TO_PASS test: gold FAILED | 1 |
-| Rust | PASS_TO_PASS test: base FAILED | 3 |
-| Rust | PASS_TO_PASS test: gold FAILED | 3 |
-| Rust | build failed at base | 7 |
+| Rust | PASS_TO_PASS test: base FAILED | 2 |
+| Rust | PASS_TO_PASS test: gold FAILED | 2 |
+| Rust | build failed at base | 5 |
 | Rust | checkout failed at checkout | 1 |
 
 ## Tasks
@@ -28,9 +27,9 @@ Tests: FAIL_TO_PASS/PASS_TO_PASS kept (excluded: tests that do not run a subject
 
 | task | lang | status | tests or reason | size | instructions | profile levels | changed | scratch |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| astral-sh__ruff-15309 | Rust | dropped | build failed at base |  |  |  |  |  |
-| astral-sh__ruff-15330 | Rust | dropped | build failed at base |  |  |  |  |  |
-| astral-sh__ruff-15356 | Rust | dropped | FAIL_TO_PASS rules::pycodestyle::tests::logical::rule_missingwhitespacearoundparameterequals_path_new_e25_py_expects: gold FAILED; PASS_TO_P |  |  |  |  |  |
+| astral-sh__ruff-15309 | Rust | kept | 1/4 | 125.6 MB | 3,994,511 | L2 7857, L1 14, L0 17108, below L0 5580 | 11759 / _ZN11ruff_linter3cst8matchers20transform_expression17h46267002ab0bff03E, _ZN11ru | 282 |
+| astral-sh__ruff-15330 | Rust | kept | 1/12 | 125.7 MB | 3,997,215 | L2 7860, L1 14, L0 17119, below L0 5586 | 11844 / _ZN11ruff_linter5rules9eradicate5rules18commented_out_code20skip_script_comments | 187 |
+| astral-sh__ruff-15356 | Rust | kept | 1/133 | 125.7 MB | 4,000,112 | L2 7870, L1 14, L0 17102, below L0 5589 | 3458 / _ZN11ruff_linter5rules11pycodestyle5rules13logical_lines18missing_whitespace18mi | 2,405 |
 | astral-sh__ruff-15394 | Rust | not converted |  |  |  |  |  |  |
 | astral-sh__ruff-15443 | Rust | not converted |  |  |  |  |  |  |
 | astral-sh__ruff-15543 | Rust | not converted |  |  |  |  |  |  |

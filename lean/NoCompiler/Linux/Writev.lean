@@ -38,9 +38,9 @@ def writeBytesSpec (fd : Word) (bs : List Byte) : Outcome → Prop
 
 def writevSpec (k : Kern) (i : SyscallInput) (o : Outcome) (k' : Kern) : Prop :=
   k' = k ∧
-  if i.arg 0 ∈ k.fds then
+  if i.fd 0 ∈ k.fds then
     if 1024 < (i.arg 2).toNat then o = .ret { ret := einval } none
-    else writeBytesSpec (i.arg 0) (gather i.mem (i.arg 1) (i.arg 2).toNat) o
+    else writeBytesSpec (i.fd 0) (gather i.mem (i.arg 1) (i.arg 2).toNat) o
   else o = .ret { ret := ebadf } none
 
 /-- The process layer with `writev`. -/
@@ -75,7 +75,7 @@ theorem readBytes_length'' (m : Word → Byte) (a : Word) (n : Nat) : (readBytes
 
 /-- With one iovec, `writev` is `write` of that buffer. -/
 theorem writev_one {i : SyscallInput} {o : Outcome} (h1 : i.arg 2 = 1) :
-    writeBytesSpec (i.arg 0) (gather i.mem (i.arg 1) (i.arg 2).toNat) o ↔
+    writeBytesSpec (i.fd 0) (gather i.mem (i.arg 1) (i.arg 2).toNat) o ↔
     writeSpec ⟨sysWrite, [i.arg 0, read64 i.mem (i.arg 1), read64 i.mem (i.arg 1 + 8), 0, 0, 0], i.mem⟩ o := by
   have hg : gather i.mem (i.arg 1) (i.arg 2).toNat =
       readBytes i.mem (read64 i.mem (i.arg 1)) (read64 i.mem (i.arg 1 + 8)).toNat := by
@@ -84,7 +84,7 @@ theorem writev_one {i : SyscallInput} {o : Outcome} (h1 : i.arg 2 = 1) :
   cases o with
   | exit _ => simp [writeBytesSpec, writeSpec]
   | ret e ev =>
-    simp only [writeBytesSpec, writeSpec, SyscallInput.arg, List.getD_cons_zero, List.getD_cons_succ,
+    simp only [writeBytesSpec, writeSpec, SyscallInput.fd, SyscallInput.arg, List.getD_cons_zero, List.getD_cons_succ,
       readBytes_length'']
     constructor
     · rintro ⟨hw, hz, ⟨r, hr1, hr2, hr3, he, hev⟩ | herr⟩
@@ -95,7 +95,7 @@ theorem writev_one {i : SyscallInput} {o : Outcome} (h1 : i.arg 2 = 1) :
       · exact ⟨hw, hz, .inr herr⟩
 
 /-- Control: more than 1024 iovecs give only EINVAL. -/
-theorem writev_too_many {k k' : Kern} {i : SyscallInput} {o : Outcome} (hfd : i.arg 0 ∈ k.fds)
+theorem writev_too_many {k k' : Kern} {i : SyscallInput} {o : Outcome} (hfd : i.fd 0 ∈ k.fds)
     (hn : 1024 < (i.arg 2).toNat) (h : writevSpec k i o k') : o = .ret { ret := einval } none := by
   simp only [writevSpec, hfd, hn, ↓reduceIte] at h
   exact h.2

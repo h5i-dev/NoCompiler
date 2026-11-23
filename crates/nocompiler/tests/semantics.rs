@@ -195,3 +195,89 @@ fn lean_semantics_agree_with_qemu() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// `unimp` (0xc0001073) is a trap (docs/isa/profile.md, lead and user
+/// 2026-11-22): qemu kills the process with SIGILL, and the Lean semantics has
+/// no step from it (a fault, as LPS's `EDefinedIllegal` is a `MachineFault`).
+/// The decoder agrees with the Rust one on the word.
+#[test]
+fn unimp_is_sigill_under_qemu_and_no_step_in_lean() {
+    use std::os::unix::process::ExitStatusExt;
+    let clang = tool("CLANG", &["clang"]);
+    let lld = tool("LLD", &["ld.lld", "ld.lld-20", "ld.lld-19", "ld.lld-18"]);
+    let qemu = tool("QEMU_RISCV64", &["qemu-riscv64", "qemu-riscv64-static"]);
+    let lake = tool("LAKE", &["lake"]);
+    let (Some(clang), Some(lld), Some(qemu), Some(lake)) = (clang, lld, qemu, lake) else {
+        eprintln!(
+            "SKIPPED unimp_is_sigill_under_qemu_and_no_step_in_lean: needs clang, ld.lld, qemu-riscv64 and lake"
+        );
+        return;
+    };
+    let dir = std::env::temp_dir().join(format!("nocompiler-unimp-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let (asm, obj, elf) = (dir.join("u.S"), dir.join("u.o"), dir.join("u.elf"));
+    std::fs::write(
+        &asm,
+        ".globl _start\n_start:\n  li a0, 1\n  unimp\n  li a7, 93\n  ecall\n",
+    )
+    .unwrap();
+    assert!(
+        Command::new(&clang)
+            .args([
+                "--target=riscv64-unknown-elf",
+                "-march=rv64im_zba_zbb",
+                "-mabi=lp64",
+                "-mno-relax",
+                "-c"
+            ])
+            .arg(&asm)
+            .arg("-o")
+            .arg(&obj)
+            .status()
+            .unwrap()
+            .success()
+    );
+    assert!(
+        Command::new(&lld)
+            .args(["-static", "-e", "_start"])
+            .arg(&obj)
+            .arg("-o")
+            .arg(&elf)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let out = Command::new(&qemu).arg(&elf).output().unwrap();
+    assert_eq!(out.status.signal(), Some(4), "qemu: {:?}", out.status);
+    let bytes = std::fs::read(&elf).unwrap();
+    let bin = nocompiler::load(&bytes).unwrap();
+    assert_eq!(bin.text[1], 0xc000_1073);
+    assert_eq!(
+        nocompiler::isa::decode(0xc000_1073),
+        Some(nocompiler::isa::Instr::Unimp)
+    );
+    let words: Vec<String> = bin.text.iter().map(|w| format!("0x{w:08x}#32")).collect();
+    let lean = format!(
+        "import NoCompiler\nopen NoCompiler\n\ndef code : Code := ⟨0x{:x}#64, #[{}]⟩\n#eval IO.println (match runToEcall code 100 {{ regs := fun _ => 0, pc := 0x{:x}#64, mem := fun _ => 0, trace := [], exit := none }} with\n  | some _ => \"REACHED\"\n  | none => \"FAULT\")\n#eval IO.println s!\"DECODE {{decode 0xc0001073#32 == some .unimp}}\"\n",
+        bin.text_addr,
+        words.join(", "),
+        bin.text_addr
+    );
+    let file = dir.join("Unimp.lean");
+    std::fs::write(&file, &lean).unwrap();
+    let out = Command::new(&lake)
+        .args(["env", "lean"])
+        .arg(&file)
+        .current_dir(root().join("lean"))
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(
+        out.status.success(),
+        "lean failed:\n{stdout}\n{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(stdout.contains("FAULT"), "{stdout}");
+    assert!(stdout.contains("DECODE true"), "{stdout}");
+}

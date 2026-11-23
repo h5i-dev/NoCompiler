@@ -117,10 +117,14 @@ theorem pairAt_some {c : Code} {f : Func} {pc : Word} {r : Reg} {v : Word}
 
 /-- Instructions after which control goes to the next one, and nowhere else. -/
 def _root_.NoCompiler.Instr.plain : Instr → Bool
-  | .branch .. | .jal .. | .jalr .. | .ecall => false
+  | .branch .. | .jal .. | .jalr .. | .ecall | .unimp => false
   | _ => true
 
-/-- The rules at one address. -/
+/-- The rules at one address. A call need not be followed by an instruction of
+    the function (R2, docs/isa/profile.md): a call that is the last instruction
+    is to a function that never returns, and the caller's proof shows it from
+    the callee's spec. `Transfer.call` gives only where the call goes and the
+    return address, never that the return address is inside the function. -/
 def instrOk (c : Code) (f : Func) (entries : List Word) (pc : Word) : Bool :=
   match c.instr pc with
   | none => false
@@ -132,14 +136,16 @@ def instrOk (c : Code) (f : Func) (entries : List Word) (pc : Word) : Bool :=
     | .jal rd off =>
       let t := pc + off.signExtend 64
       if rd = 0 then local_ t || entries.contains t
-      else rd == 1 && entries.contains t && fall
+      else rd == 1 && entries.contains t
     | .jalr rd rs1 off =>
       if rd = 0 && rs1 = 1 && off = 0 then true
       else match pairAt c f pc with
         | some (r, v) =>
           let t := (v + off.signExtend 64) &&& ~~~1
-          entries.contains t && ((rd == 1 && r == 1 && fall) || (rd == 0 && r == 6))
+          entries.contains t && ((rd == 1 && r == 1) || (rd == 0 && r == 6))
         | none => false
+    -- A trap: control goes nowhere after it (R2), so nothing needs to follow.
+    | .unimp => true
     | _ => fall
 
 /-- R1 to R3 for every instruction of `f`. -/
@@ -155,6 +161,7 @@ theorem exec_plain {i : Instr} {s s' : State} (hp : Instr.plain i = true) (h : e
   | jal => cases hp
   | jalr => cases hp
   | ecall => cases hp
+  | unimp => cases hp
   | load op rd rs1 off =>
     unfold exec at h; dsimp only at h; split at h
     · cases h; simp
@@ -296,7 +303,7 @@ theorem cfi {c : Code} {f : Func} {entries : List Word} (hc : check c f entries 
           rw [hpc] at hp; rw [hp] at hnone; cases hnone
         · exact .tail (hpc ▸ hent)
       · simp only [h0, ite_false, Bool.and_eq_true, beq_iff_eq] at hok
-        obtain ⟨⟨rfl, hent⟩, _⟩ := hok
+        obtain ⟨rfl, hent⟩ := hok
         exact .call (hpc ▸ hent) (hlink h0)
     | jalr rd rs1 off =>
       obtain ⟨hpc, hlink⟩ := exec_jalr hx
@@ -321,10 +328,11 @@ theorem cfi {c : Code} {f : Func} {entries : List Word} (hc : check c f entries 
           subst hrs
           have hv := hpair r v hp
           have ht : s'.pc = (v + off.signExtend 64) &&& ~~~1 := by rw [hpc, hv]
-          rcases hk with ⟨⟨rfl, rfl⟩, _⟩ | ⟨rfl, rfl⟩
+          rcases hk with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
           · exact .call (ht ▸ hent) (hlink (by decide))
           · exact .tail (ht ▸ hent)
     | ecall => simp [exec_ecall] at hx
+    | unimp => simp [exec_unimp] at hx
     | _ =>
       have hpc := exec_plain rfl hx
       exact .next hpc (inv_next hc hi hx hpc hok)

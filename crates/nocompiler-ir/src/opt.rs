@@ -51,6 +51,10 @@ pub fn optimize(f: &mut SsaFunction) -> Changes {
         round.add(cse(f));
         round.add(patterns(f));
         round.add(divisions(f));
+        round.add(Changes {
+            folded: crate::syscall::trim(f),
+            ..Changes::default()
+        });
         round.add(remove_dead(f));
         if round.is_empty() {
             break;

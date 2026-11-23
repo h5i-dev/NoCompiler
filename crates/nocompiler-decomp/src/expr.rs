@@ -54,6 +54,9 @@ pub enum Expr {
     Cast(&'static str, Box<Expr>),
     /// Something the rebuilder does not model, named by its operator.
     Unknown(&'static str),
+    /// Text already written out, parenthesized as it stands: the statements
+    /// and test of a condition's second half (`(v = f(x), v != 0)`).
+    Text(String),
 }
 
 impl Expr {
@@ -217,6 +220,7 @@ impl Expr {
                 a.render(f, 11)
             }
             Expr::Unknown(what) => write!(f, "__{what}()"),
+            Expr::Text(text) => f.write_str(text),
         }
     }
 }

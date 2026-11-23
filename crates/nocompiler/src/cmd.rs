@@ -195,7 +195,11 @@ pub fn annotate(file: &Path, dst: &Path, out: &mut String) -> Result<u8, String>
 /// profile, record `.nocompiler.struct` and check (docs/isa/toolchain.md).
 /// `args` are passed to clang as given (without `-o OUT`).
 pub fn cc(args: &[String], dst: &Path, out: &mut String) -> Result<u8, String> {
-    let report = crate::cc::build(args, dst)?;
+    let report = if args.iter().any(|a| a == "-c") {
+        crate::cc::compile(args, dst)?
+    } else {
+        crate::cc::build(args, dst)?
+    };
     out.push_str(&report.text);
     Ok(if report.conforms { 0 } else { VIOLATION })
 }
@@ -209,6 +213,7 @@ pub fn export(
     ns: &str,
     chunks: bool,
     lean_level_check: bool,
+    process: bool,
     dst: Option<&Path>,
     out: &mut String,
 ) -> Result<u8, String> {
@@ -221,8 +226,16 @@ pub fn export(
             Err(vs) => eprintln!("nocompiler: skipping {} ({} violations)", r.name, vs.len()),
         }
     }
-    let text =
+    let mut text =
         crate::lean::export_with(&bin, &metas, ns, &file_name(file), chunks, lean_level_check)?;
+    if process {
+        let tail = format!("end {ns}\n");
+        let body = text
+            .strip_suffix(&tail)
+            .ok_or("export: the text does not end with its namespace")?
+            .to_string();
+        text = body + &crate::lean::process_defs(&bytes)? + &tail;
+    }
     match dst {
         Some(dst) => std::fs::write(dst, text).map_err(|e| format!("{}: {e}", dst.display()))?,
         None => out.push_str(&text),
@@ -263,9 +276,9 @@ pub fn module(
     Ok(0)
 }
 
-/// `nocompiler ledger FILE [--proofs TSV]`: the ledger entries of a binary's
-/// module (docs/isa/ledger.md), one JSON object per line. TSV lines are
-/// `function<TAB>theorem<TAB>spec`.
+/// `nocompiler ledger FILE [--proofs FILE]`: the ledger entries of a binary's
+/// module (docs/isa/ledger.md), one JSON object per line. The proofs are a
+/// proofs file (crate::proofs) or TSV lines `function<TAB>theorem<TAB>spec`.
 pub fn ledger(file: &Path, proofs: Option<&Path>, out: &mut String) -> Result<u8, String> {
     let bytes = read(file)?;
     let bin = crate::load(&bytes)?;
@@ -279,7 +292,18 @@ pub fn ledger(file: &Path, proofs: Option<&Path>, out: &mut String) -> Result<u8
     let mut p = std::collections::BTreeMap::new();
     if let Some(t) = proofs {
         let text = std::fs::read_to_string(t).map_err(|e| format!("{}: {e}", t.display()))?;
-        for l in text
+        if crate::proofs::is_proofs(&text) {
+            let ps = crate::proofs::parse(&text).map_err(|e| format!("{}: {e}", t.display()))?;
+            for q in ps.proofs {
+                p.insert(q.function, (q.theorem, q.spec));
+            }
+        }
+        let tsv = if crate::proofs::is_proofs(&text) {
+            ""
+        } else {
+            &text
+        };
+        for l in tsv
             .lines()
             .filter(|l| !l.trim().is_empty() && !l.starts_with('#'))
         {
@@ -297,6 +321,210 @@ pub fn ledger(file: &Path, proofs: Option<&Path>, out: &mut String) -> Result<u8
         &bin, &m, &p,
     )));
     Ok(0)
+}
+
+/// Options of `nocompiler status` beyond the two inputs.
+#[derive(Default)]
+pub struct StatusOpts<'a> {
+    /// Write the reuse theorems for the proofs that carry here.
+    pub lean: Option<&'a Path>,
+    /// `Refines` of the two images rather than `Verified` in the new module.
+    pub refines: bool,
+    /// The Lean namespace of the `--lean` file.
+    pub namespace: &'a str,
+    /// Write the new build's proofs file here.
+    pub record: Option<&'a Path>,
+    /// The compiled `--lean` file: carried proofs are recorded `checked`.
+    pub checked: Option<&'a Path>,
+}
+
+/// `path` relative to directory `dir` (both made absolute first).
+fn relative_to(path: &Path, dir: &Path) -> Result<std::path::PathBuf, String> {
+    let abs = |p: &Path| std::fs::canonicalize(p).map_err(|e| format!("{}: {e}", p.display()));
+    let (p, d) = (abs(path)?, abs(dir)?);
+    let (pc, dc): (Vec<_>, Vec<_>) = (p.components().collect(), d.components().collect());
+    let common = pc.iter().zip(&dc).take_while(|(a, b)| a == b).count();
+    let mut r = std::path::PathBuf::new();
+    for _ in common..dc.len() {
+        r.push("..");
+    }
+    for c in &pc[common..] {
+        r.push(c);
+    }
+    Ok(r)
+}
+
+/// `nocompiler status NEW --proofs OLD.nocompiler-proofs [--lean OUT.lean
+/// [--form refines]] [--record NEW.nocompiler-proofs [--checked OUT.olean]]`
+/// (Q-VC3, docs/toolkit/proof-status.md): which of the theorems proved about
+/// the proofs file's binary still cover NEW (an ELF or a patch stack). One
+/// line per proof, sorted by function. Status 1 unless every proof carries.
+pub fn status(
+    new_path: &Path,
+    proofs_path: &Path,
+    o: &StatusOpts,
+    out: &mut String,
+) -> Result<u8, String> {
+    use crate::proofs::{self, State, Status};
+    let text = std::fs::read_to_string(proofs_path)
+        .map_err(|e| format!("{}: {e}", proofs_path.display()))?;
+    let mut p = proofs::parse(&text).map_err(|e| format!("{}: {e}", proofs_path.display()))?;
+    p.proofs
+        .sort_by(|a, b| (&a.function, &a.theorem).cmp(&(&b.function, &b.theorem)));
+    let old_bytes = proofs::subject_bytes(&p, proofs_path)?;
+    let (new_bytes, new_is_stack) = proofs::load_bytes(new_path)?;
+    let old_bin = crate::load(&old_bytes)?;
+    let new_bin = crate::load(&new_bytes)?;
+    let old = crate::module::of_binary(&old_bin)?;
+    let new = crate::module::of_binary(&new_bin)?;
+    let st = proofs::status(&old, &new, &p)?;
+    let w0 = p.proofs.iter().map(|q| q.function.len()).max().unwrap_or(0);
+    let w1 = st.iter().map(|s| s.label().len()).max().unwrap_or(0);
+    for (q, s) in p.proofs.iter().zip(&st) {
+        let line = format!(
+            "{:w0$}  {:w1$}  {}  {}",
+            q.function,
+            s.label(),
+            q.theorem,
+            s.detail()
+        );
+        say!(out, "{}", line.trim_end());
+    }
+    let n = |f: &dyn Fn(&Status) -> bool| st.iter().filter(|s| f(s)).count();
+    let (c, i) = (n(&Status::carries), n(&Status::invalidated));
+    say!(
+        out,
+        "{} proofs: {c} carries, {i} invalidated, {} unknown",
+        st.len(),
+        st.len() - c - i
+    );
+    let unchecked = p
+        .proofs
+        .iter()
+        .zip(&st)
+        .filter(|(q, s)| s.carries() && q.state == State::ByKey)
+        .count();
+    if unchecked > 0 {
+        say!(
+            out,
+            "{unchecked} of those that carry are by-key in the proofs file: not checked about any build"
+        );
+    }
+    // The reuse theorems: for the carried proofs, plus a control for each
+    // invalidated one whose function is still in NEW.
+    let only: std::collections::BTreeSet<String> = p
+        .proofs
+        .iter()
+        .zip(&st)
+        .filter(|(_, s)| s.carries() || matches!(s, Status::Edited(..) | Status::Callee(_)))
+        .map(|(q, _)| q.function.clone())
+        .collect();
+    let ns = if o.namespace.is_empty() {
+        "NoCompilerStatus"
+    } else {
+        o.namespace
+    };
+    let form = if o.refines {
+        crate::module::ReuseForm::Refines
+    } else {
+        crate::module::ReuseForm::Verified
+    };
+    let sha = |b: &[u8]| crate::sha256::hex(&crate::sha256::digest(b));
+    let (old_sha, new_sha) = (sha(&old_bytes), sha(&new_bytes));
+    let old_src = match &p.subject {
+        proofs::Subject::Module(_, f) | proofs::Subject::Stack(_, f) => file_name(f),
+    };
+    let lean_text = || {
+        crate::proofs::lean(
+            &old,
+            &new,
+            ns,
+            form,
+            &only,
+            (&old_src, &file_name(new_path)),
+            (&old_sha, &new_sha),
+        )
+    };
+    if let Some(dst) = o.lean {
+        std::fs::write(dst, lean_text()?).map_err(|e| format!("{}: {e}", dst.display()))?;
+        say!(
+            out,
+            "{}: the reuse theorems (r_i, by the function's index in the old module); \
+             the carried proofs cover NEW once this file checks",
+            dst.display()
+        );
+        for (q, s) in p.proofs.iter().zip(&st) {
+            if s.carries() {
+                let i = proofs::reuse_index(&old, &q.function).expect("in the old module");
+                say!(out, "  {} {}: {ns}.r_{i}", q.function, q.theorem);
+            }
+        }
+    }
+    if let Some(dst) = o.record {
+        // `checked` needs the compiled reuse file of exactly these two builds.
+        let checked = match o.checked {
+            None => false,
+            Some(olean) => {
+                let src = olean.with_extension("lean");
+                let have =
+                    std::fs::read_to_string(&src).map_err(|e| format!("{}: {e}", src.display()))?;
+                if have != lean_text()? {
+                    return Err(format!(
+                        "{}: not the reuse file of these builds (rewrite it with --lean and check it again)",
+                        src.display()
+                    ));
+                }
+                let mtime = |p: &Path| {
+                    std::fs::metadata(p)
+                        .and_then(|m| m.modified())
+                        .map_err(|e| format!("{}: {e}", p.display()))
+                };
+                if mtime(olean)? < mtime(&src)? {
+                    return Err(format!("{}: older than {}", olean.display(), src.display()));
+                }
+                true
+            }
+        };
+        let dir = dst
+            .parent()
+            .filter(|d| !d.as_os_str().is_empty())
+            .unwrap_or(Path::new("."));
+        let rel = relative_to(new_path, dir)?;
+        let subject = if new_is_stack {
+            proofs::Subject::Stack(new_sha.clone(), rel)
+        } else {
+            proofs::Subject::Module(new_sha.clone(), rel)
+        };
+        let mut rec = proofs::Proofs {
+            subject,
+            proofs: Vec::new(),
+        };
+        for (q, s) in p.proofs.iter().zip(&st) {
+            if s.carries() {
+                let mut q = q.clone();
+                // A checked reuse of an unchecked claim is still unchecked.
+                if !(checked && q.state == State::Checked) {
+                    q.state = State::ByKey;
+                }
+                rec.proofs.push(q);
+            } else {
+                eprintln!(
+                    "nocompiler: not recorded: {} {} ({})",
+                    q.function,
+                    q.theorem,
+                    s.label()
+                );
+            }
+        }
+        std::fs::write(dst, proofs::render(&rec)).map_err(|e| format!("{}: {e}", dst.display()))?;
+        say!(
+            out,
+            "{}: {} proofs recorded",
+            dst.display(),
+            rec.proofs.len()
+        );
+    }
+    Ok(if c == st.len() { 0 } else { VIOLATION })
 }
 
 /// `nocompiler asm FILE -o OUT.o`: assemble the structured text into a
@@ -560,5 +788,59 @@ pub fn textconv(file: &Path, out: &mut String) -> Result<u8, String> {
     let bytes = read(file)?;
     let bin = crate::load(&bytes)?;
     out.push_str(&crate::textconv::textconv(&bin));
+    Ok(0)
+}
+
+/// `nocompiler link STACK [-o OUT] [--check | --record]`: rebuild a patched
+/// binary from its patch stack (crate::stack, docs/toolkit/patch-stack.md).
+/// `--check`: status 1 unless the rebuilt binary's SHA-256 is the stack's
+/// `result`. `--record`: write that SHA-256 into the stack's `result` line.
+pub fn link(
+    stack: &Path,
+    dst: Option<&Path>,
+    check: bool,
+    record: bool,
+    out: &mut String,
+) -> Result<u8, String> {
+    let text = std::fs::read_to_string(stack).map_err(|e| format!("{}: {e}", stack.display()))?;
+    let mut s = crate::stack::parse(&text).map_err(|e| format!("{}: {e}", stack.display()))?;
+    let dir = stack.parent().unwrap_or(Path::new("."));
+    let bin = crate::stack::build(&s, dir)?;
+    let sha = crate::stack::result_sha(&bin);
+    if let Some(d) = dst {
+        std::fs::write(d, &bin).map_err(|e| format!("{}: {e}", d.display()))?;
+    }
+    say!(
+        out,
+        "{}: {} patches, result {sha}",
+        stack.display(),
+        s.patches.len()
+    );
+    if record {
+        // Replace the `result` line (or add one), keeping the rest as written.
+        let mut lines: Vec<String> = text
+            .lines()
+            .filter(|l| !l.trim_start().starts_with("result "))
+            .map(str::to_string)
+            .collect();
+        lines.push(format!("result {sha}"));
+        std::fs::write(stack, lines.join("\n") + "\n")
+            .map_err(|e| format!("{}: {e}", stack.display()))?;
+        s.result = Some(sha.clone());
+        say!(out, "recorded in {}", stack.display());
+    }
+    if check {
+        match &s.result {
+            Some(r) if *r == sha => say!(out, "matches the recorded result"),
+            Some(r) => {
+                eprintln!("nocompiler: the rebuilt binary is {sha}, the stack records {r}");
+                return Ok(1);
+            }
+            None => {
+                eprintln!("nocompiler: the stack records no result (--record writes it)");
+                return Ok(1);
+            }
+        }
+    }
     Ok(0)
 }

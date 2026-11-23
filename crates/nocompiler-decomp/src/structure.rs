@@ -425,7 +425,13 @@ fn lift_one(
         Region::Seq(parts) => parts,
         other => vec![other],
     };
-    let guard = Region::Seq(vec![guard, Region::Block(*exit)]);
+    // A guard that already returns (a block ending the function) does not
+    // fall into the epilogue: a second return after it is never reached.
+    let guard = if ends_in_return(&guard, graph) {
+        guard
+    } else {
+        Region::Seq(vec![guard, Region::Block(*exit)])
+    };
     rest.insert(
         0,
         Region::If {
@@ -444,6 +450,14 @@ fn lift_one(
         rest.push(Region::Block(*exit));
     }
     Some(rest)
+}
+
+fn ends_in_return(region: &Region, graph: &Graph) -> bool {
+    match region {
+        Region::Block(block) => graph.get(block).is_some_and(|succs| succs.is_empty()),
+        Region::Seq(parts) => parts.last().is_some_and(|part| ends_in_return(part, graph)),
+        _ => false,
+    }
 }
 
 fn ends_with_block(region: &Region, at: Addr) -> bool {
@@ -999,7 +1013,15 @@ impl Ctx<'_> {
             } else {
                 (succs[1], succs[0])
             };
-            if body_blocks.contains(&inside) && !body_blocks.contains(&outside) {
+            // Only when the header's way out is where the loop continues: a
+            // `while` that ends goes on after the loop, and an exit the loop
+            // does not continue at (one returning block, loop_exit) has to
+            // be written where the header branches to it.
+            let exit = self.loops.last().and_then(|n| n.exit);
+            if body_blocks.contains(&inside)
+                && !body_blocks.contains(&outside)
+                && exit.is_none_or(|e| e == outside)
+            {
                 // A `while` enters its body when the condition holds, so the
                 // test needs inverting when the branch jumps out instead.
                 let taken = self.taken.get(&head).copied().unwrap_or(succs[0]);
@@ -1067,10 +1089,81 @@ impl Ctx<'_> {
         if counts.is_empty() {
             return None;
         }
+        // An exit that is one block ending the function, reached only from
+        // here, is written inside the loop as it is (a `return`), so it need
+        // not be where the loop continues. Another exit is: in
+        // mbedtls_mpi_lsb's inner loop the bit test leaves to
+        // `return count + j`, and taking that as the exit made the way back
+        // to the outer loop a goto.
+        // Not only one block: a region entered only from the loop, every
+        // block of it entered only from the loop or from the region, and with
+        // no way out but returns (scope_check_to_close_over's "found" exit runs
+        // a loop of its own and returns). Bounded, as copyable tails are.
+        let returns_here = |a: &Addr| {
+            let mut region: BTreeSet<Addr> = BTreeSet::new();
+            let mut work = vec![*a];
+            while let Some(b) = work.pop() {
+                if body.contains(&b) || b == head || !region.insert(b) {
+                    if body.contains(&b) || b == head {
+                        return false;
+                    }
+                    continue;
+                }
+                if region.len() > 4 * MAX_COPIED_TAIL {
+                    return false;
+                }
+                work.extend(self.graph.get(&b).into_iter().flatten().copied());
+            }
+            // A return block the region shares (the function's epilogue) is
+            // one statement, copied where needed; any other block of it is
+            // the region's alone.
+            let shared_ok = |b: &Addr| self.graph.get(b).is_some_and(|succs| succs.is_empty());
+            self.graph.iter().all(|(p, succs)| {
+                succs.iter().all(|s| !region.contains(s) || shared_ok(s))
+                    || body.contains(p)
+                    || region.contains(p)
+            }) && self
+                .graph
+                .iter()
+                .filter(|(_, succs)| succs.contains(a))
+                .all(|(p, _)| body.contains(p))
+        };
+        if counts.len() > 1 && counts.keys().any(|a| !returns_here(a)) {
+            counts.retain(|a, _| !returns_here(a));
+        }
+        // Several exits that are each one block reached only from the loop,
+        // all going on to the same place: the loop continues there, and each
+        // block is written where the loop branches to it, then `break`.
+        // Taking one of them as the exit made the others gotos past it
+        // (calloc's zeroing loop, whose two exits set its cursor and go back
+        // to the outer loop's head).
+        if counts.len() > 1 {
+            let only_from_loop = |a: &Addr| {
+                self.graph
+                    .iter()
+                    .filter(|(_, succs)| succs.contains(a))
+                    .all(|(p, _)| body.contains(p))
+            };
+            let mut common: Option<Addr> = None;
+            let all_tails = counts
+                .keys()
+                .all(|a| match self.graph.get(a).map(Vec::as_slice) {
+                    Some([next]) if only_from_loop(a) && !self.loop_headers.contains(a) => {
+                        *common.get_or_insert(*next) == *next
+                    }
+                    _ => false,
+                });
+            if all_tails && let Some(next) = common {
+                return Some(next);
+            }
+        }
         // The header's own way out, when it has one.
         if let Some(succs) = self.graph.get(&head) {
             if succs.len() == 2 {
-                if let Some(outside) = succs.iter().find(|s| !body.contains(*s)) {
+                if let Some(outside) = succs
+                    .iter()
+                    .find(|s| !body.contains(*s) && counts.contains_key(*s))
+                {
                     return Some(*outside);
                 }
             }

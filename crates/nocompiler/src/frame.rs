@@ -173,7 +173,7 @@ fn succs(pc: u64, fl: Flow) -> Vec<u64> {
         Flow::Next | Flow::Call(_) => vec![pc + 4],
         Flow::Branch(t) => vec![pc + 4, t],
         Flow::Jump(t) => vec![t],
-        Flow::Tail(_) | Flow::Ret => vec![],
+        Flow::Tail(_) | Flow::Ret | Flow::Trap => vec![],
     }
 }
 

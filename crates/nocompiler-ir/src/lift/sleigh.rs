@@ -230,9 +230,15 @@ pub fn lift(id: &str, insn: &Insn) -> Lifted {
             match op.note.as_deref() {
                 Some("fence") | Some("fence.i") | Some("ecall") | Some("ebreak") => {
                     if op.note.as_deref() == Some("ecall") {
-                        for r in abi.caller_saved.iter().chain(&abi.results) {
-                            m.b.emit(Op::Undefine, Some(Varnode::register(*r, 8)), &[]);
-                        }
+                        // Linux reads a7 and a0-a5 and writes a0; every other
+                        // register keeps its value (crate::syscall).
+                        let a = &abi.integer_arguments;
+                        let mut ins = vec![
+                            Varnode::constant(crate::syscall::SYSCALL, 8),
+                            Varnode::register(a[7], 8),
+                        ];
+                        ins.extend(a[..6].iter().map(|r| Varnode::register(*r, 8)));
+                        m.b.emit(Op::Call, Some(result), &ins);
                     }
                     continue;
                 }

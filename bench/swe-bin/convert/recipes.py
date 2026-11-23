@@ -489,7 +489,10 @@ class RustTests(RustProgram):
             pkg = os.path.join(wt, pkg_dirs.get(rel, "."))
             args = " ".join(shlex.quote(a) for a in exe_args)
             out.append(f"     Running {rel}")
-            out.append(log.run(f"CARGO_MANIFEST_DIR={shlex.quote(pkg)} {shlex.quote(QEMU)} {shlex.quote(elf)} {args} 2>&1 ; true",
+            # insta (ruff's snapshot tests) finds the workspace by running `cargo metadata`, which
+            # gives nothing under qemu (every snapshot test failed, at base and gold): tell it
+            insta = f"INSTA_WORKSPACE_ROOT={shlex.quote(wt)} INSTA_UPDATE=no "
+            out.append(log.run(f"{insta}CARGO_MANIFEST_DIR={shlex.quote(pkg)} {shlex.quote(QEMU)} {shlex.quote(elf)} {args} 2>&1 ; true",
                                pkg, "test", timeout=5400, check=False))
         return "\n".join(out)
 

@@ -60,11 +60,17 @@ inductive Ob
   | aligned (a : Sym) (width : Nat)
   | canRead (a : Sym) (width : Nat)
   | canWrite (a : Sym) (width : Nat)
+  /-- An `ld`/`sd` with base `sp`: as `canRead`/`canWrite` on the machine; in the structured
+      semantics (SSem) a slot access needs no permission (`Ob.denS`). -/
+  | canReadS (a : Sym) (width : Nat)
+  | canWriteS (a : Sym) (width : Nat)
 
 def Ob.den (ρ : Nat → Word) (μ : Word → Byte) (P : Perm) : Ob → Prop
   | .aligned a w => NoCompiler.aligned (a.den ρ μ) w
   | .canRead a w => P.canRead (a.den ρ μ) w
   | .canWrite a w => P.canWrite (a.den ρ μ) w
+  | .canReadS a w => P.canRead (a.den ρ μ) w
+  | .canWriteS a w => P.canWrite (a.den ρ μ) w
 
 /-- An address as variable `n` plus constant `k`, when it is one. -/
 def Sym.lin : Sym → Option (Nat × Word)
@@ -248,11 +254,12 @@ def sstep (i : Instr) (S : SState) : Option (SState × List Ob) :=
   | .uop op rd rs1 => some ({ S.setReg rd (.uop op (S.reg rs1)) with pc := S.pc + 4 }, [])
   | .load op rd rs1 off =>
     let a := addr S rs1 off
-    some ({ S.setReg rd (symLoad op S.mem a) with pc := S.pc + 4 }, [.aligned a op.width, .canRead a op.width])
+    some ({ S.setReg rd (symLoad op S.mem a) with pc := S.pc + 4 },
+      [.aligned a op.width, if rs1.val = 2 ∧ op = .ld then .canReadS a op.width else .canRead a op.width])
   | .store op rs1 rs2 off =>
     let a := addr S rs1 off
     some ({ S with mem := symStore a (S.reg rs2) op.width S.mem, pc := S.pc + 4 },
-      [.aligned a op.width, .canWrite a op.width])
+      [.aligned a op.width, if rs1.val = 2 ∧ op = .sd then .canWriteS a op.width else .canWrite a op.width])
   | _ => none
 
 theorem reg0 (S : SState) : S.reg 0 = .const 0 := by simp [SState.reg]
@@ -322,16 +329,20 @@ theorem sstep_sound {ρ : Nat → Word} {μ : Word → Byte} {P : Perm} {S S' : 
   | load op rd rs1 off =>
     simp only [sstep, Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl⟩ := h
     have hal := hob (.aligned (addr S rs1 off) op.width) (by simp)
-    have hcr := hob (.canRead (addr S rs1 off) op.width) (by simp)
-    simp only [Ob.den, addr_den hr] at hal hcr
+    have hcr : P.canRead (ea s rs1 off) op.width := by
+      have h2 := hob _ (List.mem_cons_of_mem _ (List.mem_singleton_self _))
+      split at h2 <;> simpa only [Ob.den, addr_den hr] using h2
+    simp only [Ob.den, addr_den hr] at hal
     refine ⟨(s.setReg rd (loadVal op s.mem (ea s rs1 off))).setPc (s.pc + 4), ?_, hcr,
       upd _ _ _ (by rw [symLoad_den, addr_den hr, hmem])⟩
     simp only [exec, hal, ite_true]
   | store op rs1 rs2 off =>
     simp only [sstep, Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl⟩ := h
     have hal := hob (.aligned (addr S rs1 off) op.width) (by simp)
-    have hcw := hob (.canWrite (addr S rs1 off) op.width) (by simp)
-    simp only [Ob.den, addr_den hr] at hal hcw
+    have hcw : P.canWrite (ea s rs1 off) op.width := by
+      have h2 := hob _ (List.mem_cons_of_mem _ (List.mem_singleton_self _))
+      split at h2 <;> simpa only [Ob.den, addr_den hr] using h2
+    simp only [Ob.den, addr_den hr] at hal
     refine ⟨(s.setMem (writeLE s.mem (ea s rs1 off) (s.reg rs2).toNat op.width)).setPc (s.pc + 4), ?_, hcw,
       ⟨hl, by simp [hpc], fun q => by simp [hr q, SState.reg], ?_⟩⟩
     · simp only [exec, hal, ite_true]
@@ -394,7 +405,7 @@ theorem Reach.of_runW {ρ : Nat → Word} {μ : Word → Byte} {c : Code} {P : P
               (fun o ho => hob o (List.mem_append_left _ ho))
             have hpc₁ : S₁.pc = c.base + BitVec.ofNat 64 (4 * (k + 1)) := by
               cases i <;> simp only [sstep, Option.some.injEq, Prod.mk.injEq, reduceCtorEq] at hst <;>
-                (try obtain ⟨rfl, rfl⟩ := hst) <;> simp_all [BitVec.ofNat_add] <;> bv_omega
+                (try obtain ⟨rfl, rfl⟩ := hst) <;> simp_all <;> bv_omega
             have hd₁ : c.words.toList.drop (k + 1) = ws ++ rest := by rw [← List.drop_drop, hd]; rfl
             have hx₁ : s₁.exit = none := (exec_exit he).trans hx
             have hD' : D.mem s.pc := by rw [hm.2.1]; exact hD

@@ -105,7 +105,7 @@ an operation has no C, a named helper appears (`__bits`, `__clobbered`,
 To find the function worth reading first:
 
 ```
-$ nocompiler query prog 'functions where insns > 100 and calls > 5'
+$ nocompiler query prog 'functions where insns > 100 and callees > 5'
 $ nocompiler strings prog --min 8
 $ nocompiler xrefs prog 0x410008
 ```
@@ -175,8 +175,8 @@ $ git checkout -b theirs
 $ git checkout main && git merge theirs
 ```
 
-and get both sets of work, because the file is append-only text sorted by a
-sequence number with a content hash as a deterministic tiebreak.
+and get both sets of work, because the file is text written sorted by content id rather than appended,
+so two branches' new lines land at different places and git's line merge takes both.
 
 ## 7. Prove the work survived the rebuild
 

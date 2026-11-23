@@ -103,6 +103,9 @@ inductive Instr
   | rwop (op : RWOp) (rd rs1 rs2 : Reg)
   | uop (op : UOp) (rd rs1 : Reg)
   | ecall
+  /-- `unimp` (0xc0001073): a trap; the process dies (SIGILL). It has no step
+      (Machine.lean), as LPS's `MachineFault` (docs/isa/profile.md). -/
+  | unimp
   deriving DecidableEq, Repr
 
 /-! ## Decoding -/
@@ -235,7 +238,10 @@ def decode (w : BitVec 32) : Option Instr :=
   | 0x3b =>
     if f7 = 0x04 ∧ f3 = 4 ∧ bits w 20 5 = 0 then some (.uop .zexth rd rs1)
     else (decodeRW f7 f3).map fun op => .rwop op rd rs1 rs2
-  | 0x73 => if w = 0x00000073#32 then some .ecall else none
+  | 0x73 =>
+    if w = 0x00000073#32 then some .ecall
+    else if w = 0xc0001073#32 then some .unimp
+    else none
   | _ => none
 
 /-! ## Encoding
@@ -326,5 +332,6 @@ def encode : Instr → BitVec 32
     | .cpopw => iTy 0x602 rs1 1 rd 0x1b
     | .zexth => rTy 0x04 0 rs1 4 rd 0x3b
   | .ecall => 0x00000073#32
+  | .unimp => 0xc0001073#32
 
 end NoCompiler

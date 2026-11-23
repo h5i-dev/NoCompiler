@@ -106,10 +106,10 @@ def ebadf : Word := -(BitVec.ofNat 64 9)
 /-- The outcomes and next kernel state the layer allows for an input. -/
 def fdSpec (k : Kern) (i : SyscallInput) (o : Outcome) (k' : Kern) : Prop :=
   if i.sysno = sysRead ∨ i.sysno = sysWrite then
-    if i.arg 0 ∈ k.fds then spec i o ∧ k' = k
+    if i.fd 0 ∈ k.fds then spec i o ∧ k' = k
     else o = .ret { ret := ebadf } none ∧ k' = k
   else if i.sysno = sysClose then
-    if i.arg 0 ∈ k.fds then o = .ret { ret := 0 } none ∧ k' = { k with fds := k.fds.erase (i.arg 0) }
+    if i.fd 0 ∈ k.fds then o = .ret { ret := 0 } none ∧ k' = { k with fds := k.fds.erase (i.fd 0) }
     else o = .ret { ret := ebadf } none ∧ k' = k
   else spec i o ∧ k' = k
 
@@ -129,7 +129,7 @@ theorem FdStep.sys {s s' : State} {k k' : Kern} (h : FdStep (s, k) (s', k'))
     simp only [fdSpec, hno, hc, ↓reduceIte] at h
     by_cases hrw : s.reg Reg.a7 = sysRead ∨ s.reg Reg.a7 = sysWrite
     · simp only [hrw, ↓reduceIte] at h
-      by_cases hfd : (SyscallInput.of s).arg 0 ∈ k.fds
+      by_cases hfd : (SyscallInput.of s).fd 0 ∈ k.fds
       · simp only [hfd, ↓reduceIte] at h
         exact hbasic h.1
       · simp only [hfd, ↓reduceIte] at h
@@ -146,7 +146,7 @@ theorem write_closed_fd {s : State} {o : Outcome} {k' : Kern} (hw : s.reg Reg.a7
     (h5 : s.reg 10 = 5) (h : fdSpec Kern.init (SyscallInput.of s) o k') :
     o = .ret { ret := ebadf } none := by
   have hno : (SyscallInput.of s).sysno = s.reg Reg.a7 := rfl
-  have ha : (SyscallInput.of s).arg 0 = 5 := h5
+  have ha : (SyscallInput.of s).fd 0 = 5 := by rw [SyscallInput.fd_of, h5]; rfl
   have hn : (5 : Word) ∉ Kern.init.fds := by decide
   simp only [fdSpec, hno, hw, ha, hn, or_true, ↓reduceIte] at h
   exact h.1

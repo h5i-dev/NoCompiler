@@ -1,0 +1,6 @@
+nocompiler-proofs 1
+# Test data for nocompiler status on sum.nocompiler-stack: proofs about its
+# base. The theorem names are placeholders (status reads no Lean).
+module 751554eceaa0cd0f5324733c5d72de7c9b2c505041f49bcaf69093464211428b ../../../../examples/elf/refine-sum-a.elf
+proof _start Test.start_ok Test.start_spec closure 5e82d2b9a7e22057359a9c63c78faa17d863f2efaea28383068e7c344bf09e2a checked
+proof sum Test.sum_ok Test.sum_spec closure 4ef4bfc74df50b5e374bf1d2be0cbb28f45f7fee93482f34942a9714d6e3c589 checked

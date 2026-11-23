@@ -2,7 +2,7 @@
 
 `crates/nocompiler-db`
 
-ROADMAP.md M7 says this subsystem gets designed before it gets coded, because
+ROADMAP-toolkit.md M7 says this subsystem gets designed before it gets coded, because
 it is the feature that distinguishes nocompiler from the incumbents. This is that
 design, kept up to date with what was built.
 
@@ -43,13 +43,12 @@ plus a byte offset.
 
 ### The log
 
-One assertion per line. Append-only. Sorted by a sequence number with a
-content hash as the deterministic tiebreak, so two people who made assertions
-concurrently produce a file whose order does not depend on whose was written
-first.
+One assertion per line, written sorted by content id rather than appended (crates/nocompiler-db/src/log.rs):
+appending puts every new line at the end of the file, where git's line merge conflicts; sorting by a content
+hash spreads two branches' additions across the file. The format, as `log.rs` writes it:
 
 ```
-name 3f0a1c2b8e7d4a19 d41d8cd98f00b204 12 0 seq=7 who=ht value=parse_header
+name shape=3f0a1c2b8e7d4a19 bytes=d41d8cd98f00b204 insns=12 abs=401000 off=0 seq=7 id=9b2e5f0c1d3a4e77 by=ht value=parse_header
 ```
 
 The current state is a fold over the log: the last assertion for a key wins,
@@ -57,7 +56,7 @@ and undo is a new assertion rather than an edit, so history is never rewritten.
 
 ### Merging
 
-The file is line-oriented and append-only, which means `*.nocompiler merge=union` in
+The file is line-oriented, and one line is one assertion, which means `*.nocompiler merge=union` in
 `.gitattributes` makes git merge two branches of annotations with no conflict
 markers. Two analysts on separate branches merge like two people editing
 different functions in source, because that is what they are doing.
@@ -111,8 +110,9 @@ others.
 
 ## What it deliberately does not do
 
-**It is not a database.** No index to keep consistent, no schema migration, no
-lock file, no daemon. A text file and a fold over it.
+**It is not a database.** The annotation log has no index to keep consistent, no schema migration,
+no lock file and no daemon: a text file and a fold over it. (Other parts of the same crate differ: the
+task store, `work.rs`, takes a `.lock` file, and `nocompiler ui` is a server.)
 
 **It does not store analysis results.** Only assertions a person made. The
 analysis is cheap enough to redo and it is the thing most likely to be wrong;

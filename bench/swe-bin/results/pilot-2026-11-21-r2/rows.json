@@ -1,0 +1,251 @@
+[
+ {
+  "task": "jqlang__jq-2839",
+  "reward": 1.0,
+  "submitted": "agent",
+  "f2p": "1/1",
+  "p2p": "6/6",
+  "proof_bonus": "no (check_proof not available)",
+  "wall_s": 1989,
+  "tool_calls": 107,
+  "tools_used": [
+   "asm",
+   "decompile",
+   "disasm",
+   "emulate",
+   "funcs",
+   "info",
+   "link",
+   "list_files",
+   "read_file",
+   "run_tests",
+   "sections",
+   "submit",
+   "symbols",
+   "write_file",
+   "xrefs"
+  ],
+  "transcript": "/home/ec2-user/.claude/projects/-mnt-scratch-ec2-user-swe-bin-pilot-2026-11-21-r2-jqlang--jq-2839-cwd/0c75a6fa-54dd-4511-be3a-d15493e4d29f.jsonl",
+  "submitted_sha256": [
+   "38fa4e14b6f6cf22a61e1cb4ec48171546585dbfaee4ce42509698e9206b6efa"
+  ],
+  "sessions": [
+   "/home/ec2-user/.claude/projects/-mnt-scratch-ec2-user-swe-bin-pilot-2026-11-21-r2-jqlang--jq-2839-cwd/0c75a6fa-54dd-4511-be3a-d15493e4d29f.jsonl"
+  ],
+  "session_rows": [
+   {
+    "session": "0c75a6fa",
+    "start": "22:27:50",
+    "end": "22:59:51",
+    "tool_calls": 107,
+    "claims_fix_knowledge": false,
+    "matches": 0,
+    "counted": true
+   }
+  ],
+  "attempts": 1,
+  "attempt_notes": "",
+  "claims_fix_knowledge": false,
+  "fix_knowledge_quotes": []
+ },
+ {
+  "task": "micropython__micropython-13039",
+  "reward": 1.0,
+  "submitted": "agent",
+  "f2p": "1/1",
+  "p2p": "13/13",
+  "proof_bonus": "no (check_proof not available)",
+  "wall_s": 72,
+  "tool_calls": 14,
+  "tools_used": [
+   "asm",
+   "decompile",
+   "disasm",
+   "funcs",
+   "link",
+   "list_files",
+   "run_tests",
+   "submit",
+   "write_file"
+  ],
+  "transcript": "/home/ec2-user/.claude/projects/-mnt-scratch-ec2-user-swe-bin-pilot-2026-11-21-r2-micropython--micropython-13039-cwd/6700a121-7603-4bc5-a50c-f508a1988f8d.jsonl",
+  "submitted_sha256": [
+   "4cbb870ac001c8afbcf58f0fb9b06803da455acb2bc3154d49f722cad5b35745"
+  ],
+  "sessions": [
+   "/home/ec2-user/.claude/projects/-mnt-scratch-ec2-user-swe-bin-pilot-2026-11-21-r2-micropython--micropython-13039-cwd/6700a121-7603-4bc5-a50c-f508a1988f8d.jsonl",
+   "/home/ec2-user/.claude/projects/-mnt-scratch-ec2-user-swe-bin-pilot-2026-11-21-r2-micropython--micropython-13039-cwd/bfe66882-e1b2-4a43-bd03-7c7cba934436.jsonl"
+  ],
+  "session_rows": [
+   {
+    "session": "6700a121",
+    "start": "22:32:18",
+    "end": "22:33:16",
+    "tool_calls": 14,
+    "claims_fix_knowledge": false,
+    "matches": 0,
+    "counted": true
+   },
+   {
+    "session": "bfe66882",
+    "start": "22:31:00",
+    "end": "22:31:01",
+    "tool_calls": 0,
+    "claims_fix_knowledge": false,
+    "matches": 0,
+    "counted": false
+   }
+  ],
+  "attempts": 2,
+  "attempt_notes": "4 starts. 22:26: Claude Code exited at the folder-trust question (runner's Down key lost; no session). 22:28: the runner did not recognize v2.1.330's input box and stopped (no prompt, no session). 22:30 (session bfe66882): the prompt went in before the swebin tools loaded; the solver had no tools, wrote '@swebin:list_files' as text and ended its turn, 0 tool calls; stopped by the operator, an infrastructure stop. 22:32: the counted attempt",
+  "claims_fix_knowledge": false,
+  "fix_knowledge_quotes": []
+ },
+ {
+  "task": "redis__redis-11510",
+  "reward": 1.0,
+  "submitted": "agent",
+  "f2p": "1/1",
+  "p2p": "4/4",
+  "proof_bonus": "no (check_proof not available)",
+  "wall_s": 1076,
+  "tool_calls": 50,
+  "tools_used": [
+   "asm",
+   "decompile",
+   "disasm",
+   "funcs",
+   "link",
+   "list_files",
+   "read_file",
+   "run_tests",
+   "sections",
+   "strings",
+   "submit",
+   "symbols",
+   "write_file",
+   "xrefs"
+  ],
+  "transcript": "/home/ec2-user/.claude/projects/-mnt-scratch-ec2-user-swe-bin-pilot-2026-11-21-r2-redis--redis-11510-cwd/d3859efa-82a8-48b6-860b-1b31475b7b79.jsonl",
+  "submitted_sha256": [
+   "17afcf3e59609bf4b043ff4961a685eb9b110c58b4141786ee1a7a7088815ad1",
+   "b8386c6734fc8a81b5371a8fd729a58a10291227ccfe56c33c24cdf2003d087c"
+  ],
+  "sessions": [
+   "/home/ec2-user/.claude/projects/-mnt-scratch-ec2-user-swe-bin-pilot-2026-11-21-r2-redis--redis-11510-cwd/d3859efa-82a8-48b6-860b-1b31475b7b79.jsonl"
+  ],
+  "session_rows": [
+   {
+    "session": "d3859efa",
+    "start": "22:33:41",
+    "end": "22:51:20",
+    "tool_calls": 50,
+    "claims_fix_knowledge": false,
+    "matches": 0,
+    "counted": true
+   }
+  ],
+  "attempts": 1,
+  "attempt_notes": "one session; an earlier start at 22:29 was stopped by the runner before the prompt (input box not recognized; no session)",
+  "claims_fix_knowledge": false,
+  "fix_knowledge_quotes": []
+ },
+ {
+  "task": "tokio-rs__axum-2096",
+  "reward": 0.0,
+  "submitted": "agent",
+  "f2p": "0/4",
+  "p2p": "0/17",
+  "proof_bonus": "no (check_proof not available)",
+  "wall_s": 4581,
+  "tool_calls": 92,
+  "tools_used": [
+   "asm",
+   "decompile",
+   "disasm",
+   "funcs",
+   "info",
+   "link",
+   "list_files",
+   "read_file",
+   "run_tests",
+   "sections",
+   "stats",
+   "strings",
+   "submit",
+   "symbols",
+   "write_file"
+  ],
+  "transcript": "/home/ec2-user/.claude/projects/-mnt-scratch-ec2-user-swe-bin-pilot-2026-11-21-r2-tokio-rs--axum-2096-cwd/c410a32e-47fd-4bec-aac1-f07ce3fae529.jsonl",
+  "submitted_sha256": [
+   "86e2064e0d8fe8f82d4ac16e91adf6fdd8d336cd9fae430e70a73ec6a312fa10"
+  ],
+  "sessions": [
+   "/home/ec2-user/.claude/projects/-mnt-scratch-ec2-user-swe-bin-pilot-2026-11-21-r2-tokio-rs--axum-2096-cwd/c410a32e-47fd-4bec-aac1-f07ce3fae529.jsonl"
+  ],
+  "session_rows": [
+   {
+    "session": "c410a32e",
+    "start": "23:00:28",
+    "end": "00:16:28",
+    "tool_calls": 92,
+    "claims_fix_knowledge": false,
+    "matches": 0,
+    "counted": true
+   }
+  ],
+  "attempts": 1,
+  "attempt_notes": "one session. The recorded reward 0.0 is the environment's integrity check, not the tests: the 6 axum records had no editable_crates, so the one function the solver changed (axum::routing::Router::merge) counted as 'crate axum is not under test' and the tests did not run (an environment bug, fixed after the run by convert/editable.py). Re-judged afterwards with the fixed list (convert/harness.py run, same ELF, sha256 86e2064e\u2026): integrity 0 violations, FAIL_TO_PASS 2/4, PASS_TO_PASS 17/17 (failing: routing::tests::fallback::merge_router_with_fallback_into_nested_router_with_fallback, ...::merging_nested_router_with_fallback_into_router_with_fallback), so 0 either way",
+  "claims_fix_knowledge": false,
+  "fix_knowledge_quotes": []
+ },
+ {
+  "task": "valkey-io__valkey-1499",
+  "reward": 1.0,
+  "submitted": "agent",
+  "f2p": "1/1",
+  "p2p": "46/46",
+  "proof_bonus": "no (check_proof not available)",
+  "wall_s": 1164,
+  "tool_calls": 46,
+  "tools_used": [
+   "asm",
+   "decompile",
+   "diff",
+   "disasm",
+   "funcs",
+   "link",
+   "list_files",
+   "read_file",
+   "run_tests",
+   "sections",
+   "submit",
+   "symbols",
+   "write_file",
+   "xrefs"
+  ],
+  "transcript": "/home/ec2-user/.claude/projects/-mnt-scratch-ec2-user-swe-bin-pilot-2026-11-21-r2-valkey-io--valkey-1499-cwd/56df60dc-4587-4cba-bc8c-d7a92f29801d.jsonl",
+  "submitted_sha256": [
+   "c6bc519107dd542ef4d3f9b2e2df8c2b17f8e9890b3b87f9ade09063f646dda4",
+   "67c44477f8a3fddcd69e6bf2f0cd7e944f92c0cd14258d40675a3f0c0a933adb"
+  ],
+  "sessions": [
+   "/home/ec2-user/.claude/projects/-mnt-scratch-ec2-user-swe-bin-pilot-2026-11-21-r2-valkey-io--valkey-1499-cwd/56df60dc-4587-4cba-bc8c-d7a92f29801d.jsonl"
+  ],
+  "session_rows": [
+   {
+    "session": "56df60dc",
+    "start": "22:51:53",
+    "end": "23:10:43",
+    "tool_calls": 46,
+    "claims_fix_knowledge": false,
+    "matches": 0,
+    "counted": true
+   }
+  ],
+  "attempts": 1,
+  "attempt_notes": "",
+  "claims_fix_knowledge": false,
+  "fix_knowledge_quotes": []
+ }
+]

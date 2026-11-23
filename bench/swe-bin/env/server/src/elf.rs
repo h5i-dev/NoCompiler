@@ -932,6 +932,43 @@ pub fn refs_to(bin: &[u8], name: &str) -> Result<Vec<(String, u64, &'static str)
 
 // ---- isolate ---------------------------------------------------------------------------------
 
+/// The proof view of a submission: for `nocompiler export`, which exports `.text` only. A copy of
+/// `bin` whose `.text` section covers [.text start, .swb end): .text's bytes, zero words up to
+/// .swb, then .swb's bytes. Every function keeps its address and its bytes, so a function `link`
+/// placed in .swb is exported with its `_dom`. The words between are zero (an illegal
+/// instruction), never part of a function's range. Only for the Lean export: never run or
+/// submitted. A binary without .swb comes back unchanged.
+pub fn proof_view(bin: &[u8]) -> Result<Vec<u8>, Error> {
+    let e = Elf::parse(bin.to_vec())?;
+    let (Some(ti), Some(si)) = (
+        e.shdrs.iter().position(|s| s.name == ".text"),
+        e.shdrs.iter().position(|s| s.name == SWB_SECTION),
+    ) else {
+        return Ok(bin.to_vec());
+    };
+    let (t, s) = (&e.shdrs[ti], &e.shdrs[si]);
+    let tend = t.addr + t.size;
+    if s.addr < tend {
+        return err(".swb starts before the end of .text");
+    }
+    let gap = s.addr - tend;
+    if gap % 4 != 0 || gap > 64 << 20 {
+        return err(format!("gap of {gap} bytes between .text and .swb"));
+    }
+    let mut text = e.section(ti)?.to_vec();
+    text.resize(text.len() + gap as usize, 0);
+    text.extend_from_slice(e.section(si)?);
+    let mut out = bin.to_vec();
+    let off = align_up(out.len() as u64, 16);
+    out.resize(off as usize, 0);
+    out.extend_from_slice(&text);
+    let shoff = rd(&out, 0x28, 8)? as usize;
+    let sh = shoff + ti * 64;
+    wr(&mut out, sh + 24, 8, off)?;
+    wr(&mut out, sh + 32, 8, text.len() as u64)?;
+    Ok(out)
+}
+
 /// A copy of `bin` in which every function but `keep` is `ret` (each word). nocompiler recovers
 /// the relocatable module of the whole binary before it prints structured text, and gives up on
 /// the first function outside the profile; in this copy every other function is trivially in

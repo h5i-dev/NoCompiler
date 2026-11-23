@@ -226,3 +226,34 @@ fn a_wrong_declared_partition_misses_l2_and_nothing_worse() {
     assert_eq!(c.meta.level, Level::L1);
     assert!(c.missed.iter().any(|v| v.rule.starts_with("R6")));
 }
+
+/// R2 (lead 2026-11-22): a call may be a function's last instruction (to a
+/// function that never returns; the caller's proof shows it from the callee's
+/// spec). Control: any other last instruction still falls through.
+#[test]
+fn a_call_may_end_a_function_and_nothing_else_falls_through() {
+    let entries: std::collections::BTreeSet<u64> = [0x1000, 0x2000].into_iter().collect();
+    let level = |words: Vec<u32>| {
+        let f = Func {
+            name: "f".into(),
+            entry: 0x1000,
+            words,
+        };
+        let nodes = match profile::recover(&f, &entries) {
+            Ok(n) => n,
+            Err(v) => return (Some(Level::L0), format!("{v:?}")),
+        };
+        match profile::check_with(&f, &nodes, None, None, &entries) {
+            Ok(c) => (Some(c.meta.level), String::new()),
+            Err(e) => (e.level, format!("{:?}", e.violations)),
+        }
+    };
+    // auipc ra, 1; jalr ra, 0(ra): a call to 0x2000, the last instruction.
+    // At L1 (R1 to R3); it misses L2 only by not saving ra, a frame rule.
+    let (lv, why) = level(vec![0x0000_1097, 0x0000_80e7]);
+    assert!(matches!(lv, Some(Level::L1 | Level::L2)), "{lv:?} {why}");
+    // addi a0, a0, 1 last: falls through.
+    let (lv, why) = level(vec![0x0015_0513]);
+    assert_eq!(lv, Some(Level::L0));
+    assert!(why.contains("falls through"), "{why}");
+}

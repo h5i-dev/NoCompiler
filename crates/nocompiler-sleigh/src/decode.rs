@@ -9,7 +9,7 @@
 //!    [`crate::model::ResolvedPattern::may_match`] and it is the fast path.
 //! 3. Walk [`Constructor::order`], not [`Constructor::operands`]: operands are
 //!    numbered in display order and arrive in stream order, and only the
-//!    second resolves an [`Offset`] whose base is another operand.
+//!    second resolves an [`Offset`](crate::model::Offset) whose base is another operand.
 //! 4. Re-evaluate [`Constructor::pattern`] whenever the masks are only a
 //!    filter, which [`crate::model::ResolvedPattern::approximation`] and a
 //!    non-empty [`crate::model::PatternAlt::residual`] both say.
@@ -138,7 +138,7 @@ pub struct ResolvedOperand {
     /// Byte offset from the instruction's own address where its bits begin.
     pub start: usize,
     /// Byte offset just past its match. Equal to `start` for anything that
-    /// consumes no instruction bytes, which is what [`Offset::resolve`] wants
+    /// consumes no instruction bytes, which is what [`Offset::resolve`](crate::model::Offset::resolve) wants
     /// from the operand it is measured against.
     pub end: usize,
     /// What it resolved to.

@@ -399,21 +399,65 @@ pub(crate) struct Facts {
     pub returns_to_caller: bool,
 }
 
+/// How many of an operation's inputs it certainly reads: all of them, except
+/// for a system call, whose arguments past its least count are whatever the
+/// registers held (musl's __unlock wakes with futex's three; a3..a5 are not
+/// arguments __unlock takes).
+fn certain_reads(op: &crate::ssa::SsaOp) -> usize {
+    if op.kind == SsaKind::Op(Op::Call)
+        && op.inputs.first().and_then(|i| i.as_const()) == Some(crate::syscall::SYSCALL)
+    {
+        crate::syscall::certain_inputs(op)
+    } else {
+        op.inputs.len()
+    }
+}
+
 /// The phis whose value reaches a real use: an operand of an operation that
 /// is not itself a phi, or a result register at a return when it holds
 /// something the function computed rather than its entry value or a clobber.
 fn used_phis(f: &SsaFunction, abi: &Abi) -> BTreeSet<Value> {
     let definitions = f.definitions();
+    let a0 = abi.results.first().copied();
+    let writes_a0 = f.blocks.values().flat_map(|b| b.ops.iter()).any(|op| {
+        op.kind != SsaKind::Op(Op::Undefine)
+            && op.out.is_some_and(|v| {
+                v.location.space == Space::Register && Some(v.location.offset) == a0
+            })
+    });
     let mut work: Vec<Value> = Vec::new();
     for (at, b) in &f.blocks {
         for (n, op) in b.ops.iter().enumerate() {
             if op.kind != SsaKind::Phi {
-                work.extend(op.inputs.iter().filter_map(|i| i.as_value()));
+                work.extend(
+                    op.inputs[..certain_reads(op)]
+                        .iter()
+                        .filter_map(|i| i.as_value()),
+                );
             }
             if op.kind != SsaKind::Op(Op::Return) {
                 continue;
             }
             for offset in &abi.results {
+                // fa1 is a result only for a pair of floats (a complex
+                // double), which C code rarely returns; a phi of the entry
+                // fa1 and a scratch value that happens to reach a return is
+                // not a read of a second float argument (musl's log1p loads
+                // its polynomial constants into fa1).
+                if abi.name == crate::abi::Named::Lp64d && Some(offset) == abi.results.get(3) {
+                    continue;
+                }
+                // a1 likewise, when the function writes a0: a result is one
+                // register here (the a1 of a pair is not returned), so a1 at a
+                // return is the result only when a0 is never written. musl's
+                // __unlock sets a1 for futex and returns with it unchanged on
+                // the other path; that made a1 its argument.
+                if abi.name == crate::abi::Named::Lp64d
+                    && Some(offset) == abi.results.get(1)
+                    && writes_a0
+                {
+                    continue;
+                }
                 let location = Location {
                     space: Space::Register,
                     offset: *offset,
@@ -421,7 +465,7 @@ fn used_phis(f: &SsaFunction, abi: &Abi) -> BTreeSet<Value> {
                 };
                 if let crate::ssa::Reaching::Defined(v) =
                     f.reaching(*at, n, |v| v.location == location)
-                    && !crate::proto::is_entry_or_clobber(f, &definitions, v, location, 0)
+                    && !crate::proto::is_entry_or_clobber(f, &definitions, v, location)
                 {
                     work.push(v);
                 }
@@ -456,7 +500,8 @@ pub(crate) fn facts(f: &SsaFunction, abi: &Abi) -> Facts {
             // `phi(fa0_in, clobbered)` after a branch with a call in it is a
             // merge the SSA builder made, not an argument the function takes.
             let counts = op.kind != SsaKind::Phi || op.out.is_some_and(|v| used_phis.contains(&v));
-            for i in &op.inputs {
+            // Not a system call's arguments past its least count (certain_reads).
+            for i in &op.inputs[..certain_reads(op)] {
                 if let Operand::Undefined(l) = i
                     && counts
                 {

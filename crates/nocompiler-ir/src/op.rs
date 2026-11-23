@@ -423,8 +423,9 @@ impl fmt::Display for Op {
     }
 }
 
-/// The most inputs any operation takes.
-pub const MAX_INPUTS: usize = 3;
+/// The most inputs any operation takes: eight, for a system call (its target,
+/// the call number and six argument registers, crate::syscall).
+pub const MAX_INPUTS: usize = 8;
 
 /// One IR operation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

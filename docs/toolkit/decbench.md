@@ -166,7 +166,7 @@ Two things that DecBench does not score, and which are ours:
 
 ### Against what the roadmap asked for
 
-`ROADMAP.md` sets M6's exit criterion as beating Ghidra's published unoptimized
+`ROADMAP-toolkit.md` sets M6's exit criterion as beating Ghidra's published unoptimized
 score, 32.2 union and 29.3 structure, and G12 as holding union and recompile at
 or above the last release per dataset. **M6's bar is not met.** 23.4 union and
 22.9 structure are short of it even before allowing that Ghidra's 32.2 was
@@ -239,8 +239,9 @@ number is optimistic.
 **2. Locals reach the metric with no name, no offset and no type.** type_match
 scores parameters and locals together, and 444 of libz's 768 ground-truth
 variables (58%) are locals. DecBench matches locals by stack offset when the
-backend supplies `VariableInfo`, and by name otherwise. `nocompiler decompile
---json` emits only a *count* of locals, so the adapter can supply neither, and
+backend supplies `VariableInfo`, and by name otherwise. At the recorded run
+`nocompiler decompile --json` emitted only a *count* of locals, so the adapter could
+supply neither (fixed since: see the status paragraph below), and
 every local is a guaranteed miss: 596 of nocompiler's 764 scored functions score
 exactly 0. Parameters are not much better: across libz's 151 functions nocompiler
 emits 410 of them, 308 as a bare `uint64_t`, against angr's spread of
@@ -407,9 +408,9 @@ Three things, in the order they are worth doing:
 2. Submit to the 250-function sample set, which needs no harness at all:
    download the eval kit, decompile the listed functions, mail back the zip.
 3. Upstream the backend. Ours is deliberately out-of-tree; moving it to
-   `decbench/decompilers/raw/nocompiler_raw.py` is a rename and an import, plus
-   filling in `VariableInfo` with ABI argument positions so type_match scores
-   the recovered types rather than parsing them back out of the C.
+   `decbench/decompilers/raw/nocompiler_raw.py` is a rename and an import (the adapter already
+   fills in `VariableInfo` with ABI argument positions, `variable_info` in
+   scripts/toolkit/decbench_nocompiler.py).
 
 Steps 2 and 3 both send something to DecBench, and its `AGENTS.md` refuses
 end-to-end autonomous contributions: a person has to read, own and send the
@@ -419,7 +420,7 @@ anywhere.
 ## The corpus as fixtures, separately from the score
 
 Everything above is DecBench grading our decompiler. The corpus itself is
-worth having for a second reason, which `ROADMAP.md` states as an M12 task:
+worth having for a second reason, which `ROADMAP-toolkit.md` states as an M12 task:
 39 projects built at several optimization levels **with DWARF retained** is
 function-boundary ground truth that already exists, and it feeds the G4 gate
 as much as it feeds the decompiler work.

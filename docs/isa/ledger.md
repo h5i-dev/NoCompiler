@@ -135,8 +135,8 @@ per binary, self-check included:
 - **The CLI:** `nocompiler module FILE --namespace NS --format chunks`
   writes the module in chunks (tests/module_chunks.rs: it is the committed
   Link/{One,Two}Chunks.lean). The reuse files are written by
-  `module::reuse_lean`, which has no command yet; the measurement used a
-  driver over it.
+  `module::reuse_lean`. The measurement used a driver over it. The command
+  for them is `nocompiler status --lean` (docs/toolkit/proof-status.md).
 - **Callees in another order.** When the new build puts a callee before its
   caller, the closure is found in the new order and the theorem carried
   through `Verified.of_perm` (`of_groups_perm`; the `List.Perm` is between

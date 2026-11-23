@@ -10,8 +10,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use nocompiler_analysis::{Function, Program};
 use nocompiler_core::{Addr, Evidence};
 use nocompiler_decomp::{Callee, Output, Param, Prototype};
+use nocompiler_ir::Op;
 use nocompiler_ir::proto::Asserted;
-use nocompiler_ir::ssa::SsaFunction;
+use nocompiler_ir::ssa::{SsaFunction, SsaKind};
 use nocompiler_types::ctype::{Type, TypeId, Types};
 
 pub use nocompiler_decomp::expr::{Home, Role, Variable};
@@ -207,8 +208,10 @@ pub fn decompile_program_with(
                 Callee {
                     name: nocompiler_decomp::identifier(&name),
                     arity: out.arity,
+                    variadic: out.variadic,
                     parameters_known: out.parameters_known,
                     pointer_parameters: out.pointer_parameters.clone(),
+                    floating_parameters: out.floating_parameters.clone(),
                     parameter_widths: out.parameter_widths.clone(),
                     returns_value: !out.signature.starts_with("void "),
                     signature: out.signature.clone(),
@@ -296,23 +299,27 @@ struct One {
 /// Put a recovered signature onto a callee entry, keeping the callee's name.
 fn apply_prototype(callee: &mut Callee, proto: &Prototype) {
     callee.arity = proto.parameters.len();
+    callee.variadic = proto.varargs;
     callee.parameters_known = proto.parameters_known;
     callee.pointer_parameters = proto.parameters.iter().map(|p| p.pointer).collect();
+    callee.floating_parameters = proto.parameters.iter().map(|p| p.floating).collect();
     callee.parameter_widths = proto.parameters.iter().map(|p| p.size).collect();
     let ret = proto
         .returns
         .clone()
         .unwrap_or_else(|| "uint64_t".to_string());
     callee.returns_value = ret != "void";
-    let params = if proto.parameters.is_empty() {
-        "void".to_string()
-    } else {
-        proto
-            .parameters
-            .iter()
-            .map(|p| p.decl.clone())
-            .collect::<Vec<_>>()
-            .join(", ")
+    let fixed = proto
+        .parameters
+        .iter()
+        .map(|p| p.decl.clone())
+        .collect::<Vec<_>>()
+        .join(", ");
+    let params = match (proto.parameters.is_empty(), proto.varargs) {
+        (true, true) => String::new(),
+        (true, false) => "void".to_string(),
+        (false, true) => format!("{fixed}, ..."),
+        (false, false) => fixed,
     };
     callee.signature = format!("{ret} {}({params})", callee.name);
 }
@@ -335,6 +342,182 @@ fn resolved_thunks(
         out.insert(*addr, real.clone());
     }
     out
+}
+
+/// A call to a function declared to return a float leaves its result in
+/// fa0, not a0 (RISC-V lp64d). The lifting makes the call define a0 and the
+/// `Undefine` right after it define fa0, so the result read as
+/// `__clobbered()` (`return __bits(__clobbered())` after `rint`). The same for
+/// an indirect call (or an undeclared callee) whose caller reads fa0 after it
+/// and never a0. Swapping the
+/// two operations' outputs makes the call define fa0 and a0 the clobbered
+/// one; every reader's SSA value stays what it was.
+fn float_results(
+    ssa: &mut SsaFunction,
+    callees: &BTreeMap<u64, Callee>,
+    abi: &nocompiler_ir::abi::Abi,
+) {
+    if abi.name != nocompiler_ir::abi::Named::Lp64d {
+        return;
+    }
+    let (a0, fa0) = (abi.results[0], abi.results[2]);
+    // Values something other than a phi reads: an operation's inputs, and
+    // the argument registers a call to a known callee passes (a call lists
+    // none of its arguments as inputs), and the result at a return.
+    let mut read: std::collections::BTreeSet<nocompiler_ir::ssa::Value> = ssa
+        .blocks
+        .values()
+        .flat_map(|b| b.ops.iter())
+        .filter(|op| op.kind != SsaKind::Phi)
+        .flat_map(|op| op.inputs.iter().filter_map(|i| i.as_value()))
+        .collect();
+    for (at, b) in &ssa.blocks {
+        for (index, op) in b.ops.iter().enumerate() {
+            let mut registers: Vec<u64> = Vec::new();
+            if op.kind == SsaKind::Op(Op::Return) {
+                registers.extend([a0, fa0]);
+            }
+            let tail = op.kind == SsaKind::Op(Op::Branch)
+                && op
+                    .inputs
+                    .first()
+                    .and_then(|o| o.as_const())
+                    .is_some_and(|t| !ssa.blocks.contains_key(&Addr(t)));
+            if (op.kind == SsaKind::Op(Op::Call) || tail)
+                && let Some(c) = op
+                    .inputs
+                    .first()
+                    .and_then(|o| o.as_const())
+                    .and_then(|t| callees.get(&t))
+            {
+                let (mut ints, mut floats) = (0, 0);
+                for slot in 0..c.arity {
+                    if c.floating_parameters.get(slot).copied().unwrap_or(false) {
+                        registers.extend(abi.float_arguments.get(floats));
+                        floats += 1;
+                    } else {
+                        registers.extend(abi.integer_arguments.get(ints));
+                        ints += 1;
+                    }
+                }
+            }
+            for offset in registers {
+                if let nocompiler_ir::ssa::Reaching::Defined(v) = ssa.reaching(*at, index, |v| {
+                    v.location.space == nocompiler_ir::op::Space::Register
+                        && v.location.offset == offset
+                }) {
+                    read.insert(v);
+                }
+            }
+        }
+    }
+    for b in ssa.blocks.values_mut() {
+        for i in 0..b.ops.len() {
+            if !matches!(b.ops[i].kind, SsaKind::Op(Op::Call | Op::CallInd)) {
+                continue;
+            }
+            let target = b.ops[i].inputs.first().and_then(|o| o.as_const());
+            let floating = target.and_then(|t| callees.get(&t)).is_some_and(|c| {
+                c.signature.starts_with("double ") || c.signature.starts_with("float ")
+            });
+            if b.ops[i].out.is_none_or(|v| v.location.offset != a0) {
+                continue;
+            }
+            let at = b.ops[i].addr;
+            let Some(j) = (i + 1..b.ops.len()).find(|&j| {
+                b.ops[j].addr == at
+                    && b.ops[j].kind == SsaKind::Op(Op::Undefine)
+                    && b.ops[j].out.is_some_and(|v| v.location.offset == fa0)
+            }) else {
+                continue;
+            };
+            // Otherwise the caller says what it got by what it reads: fa0
+            // after the call and never a0 is a float result. Micropython's
+            // math_generic_1 calls a function pointer and passes fa0 on;
+            // musl's atanh, recovered as returning a0 (its body also writes
+            // a0), is called by mp_math_atanh, which passes fa0 on.
+            let inferred = b.ops[j].out.is_some_and(|v| read.contains(&v))
+                && b.ops[i].out.is_some_and(|v| !read.contains(&v));
+            if !floating && !inferred {
+                continue;
+            }
+            // The outputs move, not the operations: the call stays before
+            // the Undefine, so what it passes is still read before anything
+            // the call clobbers.
+            let (call, undefine) = (b.ops[i].out, b.ops[j].out);
+            b.ops[i].out = undefine;
+            b.ops[j].out = call;
+        }
+    }
+}
+
+/// How many integer and float argument registers reach a call (or a tail
+/// call) to a known callee, as one of the parameters it declares, with the
+/// value this function was entered with. Counted as "the highest such
+/// register, plus one", as recovery counts the ones the body reads.
+fn passed_through(
+    ssa: &SsaFunction,
+    callees: &BTreeMap<u64, Callee>,
+    abi: &nocompiler_ir::abi::Abi,
+) -> (usize, usize) {
+    let (mut ints, mut floats) = (0, 0);
+    for (at, b) in &ssa.blocks {
+        for (index, op) in b.ops.iter().enumerate() {
+            let call = op.kind == SsaKind::Op(Op::Call)
+                || (op.kind == SsaKind::Op(Op::Branch)
+                    && op
+                        .inputs
+                        .first()
+                        .and_then(|i| i.as_const())
+                        .is_some_and(|t| !ssa.blocks.contains_key(&Addr(t))));
+            if !call {
+                continue;
+            }
+            let Some(callee) = op
+                .inputs
+                .first()
+                .and_then(|i| i.as_const())
+                .and_then(|t| callees.get(&t))
+            else {
+                continue;
+            };
+            if !callee.parameters_known {
+                continue;
+            }
+            let (mut i, mut fl) = (0, 0);
+            for slot in 0..callee.arity {
+                let floating = callee
+                    .floating_parameters
+                    .get(slot)
+                    .copied()
+                    .unwrap_or(false);
+                let (n, registers) = if floating {
+                    fl += 1;
+                    (fl, &abi.float_arguments)
+                } else {
+                    i += 1;
+                    (i, &abi.integer_arguments)
+                };
+                let Some(&offset) = registers.get(n - 1) else {
+                    continue;
+                };
+                let entry = matches!(
+                    ssa.reaching(*at, index, |v| v.location.space
+                        == nocompiler_ir::op::Space::Register
+                        && v.location.offset == offset),
+                    nocompiler_ir::ssa::Reaching::Entry
+                );
+                if entry {
+                    if floating {
+                        floats = floats.max(n);
+                    } else {
+                        ints = ints.max(n);
+                    }
+                }
+            }
+        }
+    }
+    (ints, floats)
 }
 
 /// One function through the whole pipeline.
@@ -378,22 +561,26 @@ fn one(
     let promoted = nocompiler_ir::stack::promote(&mut ir);
     let mut ssa = nocompiler_ir::ssa::build(&ir);
     nocompiler_ir::opt::optimize(&mut ssa);
+    float_results(&mut ssa, callees, &nocompiler_ir::abi::of(&p.object.arch));
     // The SSA the emitter runs on is the SSA prototype recovery reads, rather
     // than a second build of the same thing: lifting a function twice is not
     // free and the two could drift apart.
-    let mut shape = prototype(p, f, &ssa, declarations);
+    let mut shape = prototype(p, f, &ssa, declarations, callees);
     // A thunk borrows the signature of the function it reaches. Its own body
     // still does not read the arguments; the signature is for the callers.
     if borrowed.is_some() && !shape.asserted {
         shape.prototype = borrowed.cloned();
     }
     let name = f.display_name();
-    let output = nocompiler_decomp::decompile_full(
+    // A complete CFG proved every computed jump with no successors a tail call
+    // through a pointer (the rest are switches or made the CFG incomplete).
+    let output = nocompiler_decomp::decompile_complete(
         &name,
         &ssa,
         shape.prototype.as_ref(),
         callees,
         &switches,
+        f.cfg.is_complete(),
     );
     let mut variables =
         nocompiler_decomp::expr::variables(&ssa, shape.prototype.as_ref(), &output.text);
@@ -461,6 +648,7 @@ fn prototype(
     f: &Function,
     ssa: &SsaFunction,
     declarations: &BTreeMap<Addr, String>,
+    callees: &BTreeMap<u64, Callee>,
 ) -> Shape {
     if let Some(a) = asserted(p, f, declarations) {
         let abi = nocompiler_ir::abi::of(&p.object.arch);
@@ -474,7 +662,7 @@ fn prototype(
     Shape {
         prototype: declared(p, f)
             .or_else(|| import_thunk(f))
-            .or_else(|| recovered(p, f, ssa)),
+            .or_else(|| recovered(p, f, ssa, callees)),
         conflicts: Vec::new(),
         asserted: false,
     }
@@ -567,6 +755,7 @@ fn asserted_prototype(a: &Asserted, recovered: &nocompiler_ir::proto::Prototype)
     }
 
     Prototype {
+        varargs: a.signature.varargs,
         parameters,
         parameters_known: true,
         returns: Some(returns),
@@ -592,6 +781,7 @@ fn import_thunk(f: &Function) -> Option<Prototype> {
     let thunk = f.provenance.best == Evidence::ImportThunk
         || f.provenance.corroborating.contains(&Evidence::ImportThunk);
     thunk.then(|| Prototype {
+        varargs: false,
         parameters: Vec::new(),
         parameters_known: false,
         returns: Some("uint64_t".to_string()),
@@ -601,12 +791,69 @@ fn import_thunk(f: &Function) -> Option<Prototype> {
 }
 
 /// The shape the code implies, for a function nothing declared.
-fn recovered(p: &Program, f: &Function, ssa: &SsaFunction) -> Option<Prototype> {
+/// Whether the function at `target` may return something, for a tail call
+/// to it: its own recovered result, through its own tail calls `depth` deep.
+/// A target that is no function here may (an import, or code not recovered).
+fn callee_returns(p: &Program, target: u64, abi: &nocompiler_ir::abi::Abi, depth: u32) -> bool {
+    let Some(g) = p.functions_by_address().find(|g| g.entry.get() == target) else {
+        return true;
+    };
+    if g.cfg.blocks.is_empty() {
+        return true;
+    }
+    let blocks: BTreeMap<Addr, (Addr, Vec<Addr>)> = g
+        .cfg
+        .blocks
+        .iter()
+        .map(|(a, b)| (*a, (b.range.end(), b.successors.clone())))
+        .collect();
+    let mut ir = nocompiler_ir::func::build(&p.object.memory, &p.object.arch, g.entry, &blocks);
+    nocompiler_ir::stack::promote(&mut ir);
+    let mut ssa = nocompiler_ir::ssa::build(&ir);
+    nocompiler_ir::opt::optimize(&mut ssa);
+    let r = nocompiler_ir::proto::recover(&ssa, abi);
+    match (r.returns, r.returns_by_tail.is_empty()) {
+        (None, _) => false,
+        (Some(_), true) => true,
+        (Some(_), false) if depth == 0 => true,
+        (Some(_), false) => r
+            .returns_by_tail
+            .iter()
+            .any(|t| callee_returns(p, *t, abi, depth - 1)),
+    }
+}
+
+fn recovered(
+    p: &Program,
+    f: &Function,
+    ssa: &SsaFunction,
+    callees: &BTreeMap<u64, Callee>,
+) -> Option<Prototype> {
     if f.cfg.blocks.is_empty() {
         return None;
     }
     let abi = nocompiler_ir::abi::of(&p.object.arch);
-    let recovered = nocompiler_ir::proto::recover(ssa, &abi);
+    let mut recovered = nocompiler_ir::proto::recover(ssa, &abi);
+    // An argument this function hands on unchanged is still one it takes:
+    // `square_half(x, n)` passes n to `tick` in a0 without reading it, and a
+    // call lists none of its arguments as inputs, so the body alone says
+    // nothing about a0.
+    let (ints, floats) = passed_through(ssa, callees, &abi);
+    if !recovered.varargs {
+        recovered.integer_arguments = recovered.integer_arguments.max(ints);
+    }
+    recovered.float_arguments = recovered.float_arguments.max(floats);
+    // A result that rests only on tail calls is the callees': none of them
+    // returning anything means this does not either (musl's __lctrans ends
+    // in a tail call to `dummy`, a bare `ret`).
+    if !recovered.returns_by_tail.is_empty()
+        && !recovered
+            .returns_by_tail
+            .iter()
+            .any(|t| callee_returns(p, *t, &abi, 3))
+    {
+        recovered.returns = None;
+    }
 
     // What each incoming pointer was used as, so an access at a known offset
     // reads as a field rather than as arithmetic.
@@ -708,6 +955,7 @@ fn recovered(p: &Program, f: &Function, ssa: &SsaFunction) -> Option<Prototype> 
     }
 
     Some(Prototype {
+        varargs: recovered.varargs,
         parameters,
         parameters_known: true,
         // A function that leaves nothing behind returns nothing, and saying
@@ -784,6 +1032,7 @@ fn declared(p: &Program, f: &Function) -> Option<Prototype> {
         })
         .collect();
     Some(Prototype {
+        varargs: false,
         parameters,
         parameters_known: true,
         returns: df.signature.returns.map(|t| d.types.name_of(t)),

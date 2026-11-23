@@ -34,6 +34,9 @@ const KNOWN: &[&str] = &[
     "__libc_fatal",
     "longjmp",
     "siglongjmp",
+    // MicroPython's non-local return (py/nlr.h, NORETURN): its longjmp.
+    "nlr_jump",
+    "nlr_jump_fail",
     "__longjmp_chk",
     "pthread_exit",
     "_Unwind_Resume",
@@ -121,18 +124,13 @@ fn never_returns(cfg: &Cfg) -> bool {
     if cfg.blocks.is_empty() || cfg.has_indirect || !cfg.is_complete() {
         return false;
     }
-    let mut terminal = 0;
-    for b in cfg.blocks.values() {
-        if !b.successors.is_empty() {
-            continue;
-        }
-        terminal += 1;
-        match b.terminator {
-            Terminator::Trap | Terminator::NoReturnCall => {}
-            _ => return false,
-        }
-    }
-    terminal > 0
+    // No terminal block at all, in a complete CFG with no indirect jump, is
+    // a loop nothing leaves (`for (;;) { ... }` as a failure handler): it
+    // does not return either.
+    cfg.blocks.values().all(|b| {
+        !b.successors.is_empty()
+            || matches!(b.terminator, Terminator::Trap | Terminator::NoReturnCall)
+    })
 }
 
 #[cfg(test)]
@@ -150,6 +148,12 @@ mod tests {
         assert!(name_never_returns(
             "_ZN4core9panicking5panic17habcdef0123456789E"
         ));
+    }
+
+    #[test]
+    fn micropython_nlr_jump_never_returns() {
+        assert!(name_never_returns("nlr_jump"));
+        assert!(!name_never_returns("nlr_push"));
     }
 
     #[test]

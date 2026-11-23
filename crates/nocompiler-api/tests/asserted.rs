@@ -329,6 +329,7 @@ fn a_declared_field_name_beats_the_one_the_offset_implies() {
     let abi = nocompiler_ir::abi::of(&p.object.arch);
     let first = abi.integer_arguments[0];
     let prototype = nocompiler_decomp::Prototype {
+        varargs: false,
         parameters: vec![nocompiler_decomp::Param {
             name: "p".to_string(),
             decl: "struct thing *p".to_string(),

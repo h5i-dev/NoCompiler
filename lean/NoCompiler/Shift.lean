@@ -93,6 +93,7 @@ def Instr.pcFree : Instr → Bool
     rd != 1 && rs1 != 1
   | .rop _ rd a b | .rwop _ rd a b => rd != 1 && a != 1 && b != 1
   | .ecall => true
+  | .unimp => true
 
 theorem aligned_add_iff {t δ : Word} (hδ : aligned δ 4) : aligned (t + δ) 4 ↔ aligned t 4 := by
   unfold aligned at *
@@ -188,6 +189,7 @@ theorem exec_shift {i : Instr} (hi : i.pcFree = true) {δ : Word} (hδ : aligned
     simp only [Instr.pcFree, Bool.and_eq_true] at hi
     simp [exec, shift_reg_of hi.2, hc, State.shift_setPc, State.shift_setReg _ _ (by simpa using hi.1)]
   | ecall => simp [exec_ecall]
+  | unimp => simp [exec_unimp]
 
 /-- A pcFree instruction leaves `ra` alone. -/
 theorem exec_reg_one {i : Instr} (hi : i.pcFree = true) {s s' : State} (h : exec i s = some s') :

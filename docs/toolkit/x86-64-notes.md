@@ -1,3 +1,6 @@
+> Background notes on the x86-64 instruction encoding, not a description of nocompiler's decoder (that is
+> crates/nocompiler-arch/src/x86). Note added 2026-11-23 (round 9 freeze).
+
 ## Opcode and Operand
 
 In assembly language, the opcode indicates the type of instruction, while the operand specifies the target of the instruction.
@@ -27,7 +30,7 @@ In x86-64, an instruction typically follows this format:
 ```
 |prefix | REX prefix  |     opcode      |   ModR/M    |   SIB       |     address offset     |      immediate         |
 |------ |-------------|------------------|-------------|-------------|------------------------|------------------------|
-|       | 0 or 1 byte | 1, 2, or 3 bytes | 0 or 1 byte | 0 or 1 byte | 0, 1, 2, 3, or 4 bytes | 0, 1, 2, 3, or 4 bytes |
+|       | 0 or 1 byte | 1, 2, or 3 bytes | 0 or 1 byte | 0 or 1 byte | 0, 1, 2, or 4 bytes | 0, 1, 2, 4, or 8 bytes (8 only for `mov r64, imm64`) |
 ```
 
 ### Prefix
@@ -225,7 +228,7 @@ Note that since rsp is generally used to point to the top of the stack, the inde
 
 ## Disassembler
 
-The disassembler we are implementing will decode each instruction one byte at a time, following these steps:
+A decoder reads each instruction one byte at a time, in these steps:
 
 ```
 1. If the current byte matches a byte of prefix instructions -> a prefix instruction exists & move forward one byte

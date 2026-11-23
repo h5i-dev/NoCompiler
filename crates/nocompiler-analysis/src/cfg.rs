@@ -636,6 +636,14 @@ pub(crate) fn build_raw(
                     at = next;
                     continue;
                 }
+                // Linux's exit and exit_group do not come back. Without this
+                // the walk ran on into the next function (musl's __unmapself
+                // ends in `li a7, 93; ecall`, and its decompilation carried
+                // __clone's code after it).
+                Flow::Syscall if riscv_exit(&body) => {
+                    term = Terminator::NoReturnCall;
+                    break (Vec::new(), false);
+                }
                 Flow::IndirectCall | Flow::Syscall => {
                     at = next;
                     continue;
@@ -656,6 +664,19 @@ pub(crate) fn build_raw(
                             let targets = t.targets.clone();
                             tables.push(t);
                             break (targets, false);
+                        }
+                        // A jump through a pointer loaded from memory with
+                        // no index computed for it is a tail call through a
+                        // function pointer, not a switch: it leaves the
+                        // function (micropython's fun_builtin_0_call ends in
+                        // `ld t1, 8(s0); ...; jr t1`).
+                        None if riscv_pointer_tail_call(
+                            &context,
+                            context.first().is_some_and(|i| i.addr == entry),
+                        ) =>
+                        {
+                            term = Terminator::TailCall;
+                            break (Vec::new(), false);
                         }
                         None => {
                             has_indirect = true;
@@ -890,4 +911,124 @@ fn decode_stateful(
         return Some(insn);
     }
     nocompiler_arch::decode(arch, window, at)
+}
+
+/// Whether the RISC-V `ecall` ending `body` is Linux's exit (93) or
+/// exit_group (94): the last instruction before it that writes a7 loads one of
+/// those. SLEIGH gives the operands as one text (`a7,zero,0x5d`).
+fn riscv_exit(body: &[Insn]) -> bool {
+    let Some((_, before)) = body.split_last() else {
+        return false;
+    };
+    for insn in before.iter().rev() {
+        let Some(nocompiler_arch::insn::Operand::Name(text)) = insn.operands().first() else {
+            continue;
+        };
+        let parts: Vec<&str> = text.split(',').map(str::trim).collect();
+        if parts.first() != Some(&"a7") {
+            continue;
+        }
+        let value = match (insn.mnemonic, parts.as_slice()) {
+            ("li", [_, v]) | ("addi", [_, "zero", v]) | ("addiw", [_, "zero", v]) => *v,
+            _ => return false,
+        };
+        let n = match value.strip_prefix("0x") {
+            Some(h) => u64::from_str_radix(h, 16).ok(),
+            None => value.parse().ok(),
+        };
+        return matches!(n, Some(93 | 94));
+    }
+    false
+}
+
+/// Whether the RISC-V `jalr zero, 0(r)` ending `body` jumps to a pointer
+/// loaded from memory: the last write to `r` is a 64-bit `ld`. Called only
+/// once the jump-table reader found no table (a switch has a bound check and
+/// is read as one), so this is a call through a function pointer, from a
+/// field or from an array of them (op_getitem's `type->slots[i]`); a switch's
+/// table of 32-bit offsets (`lw`, then `add`) is not. Register moves are
+/// followed, and a0 written by a call (a returned pointer) or an argument
+/// register the function was entered with (`entered`: the context starts at
+/// the entry) count as well. `body` is the block with its single-predecessor
+/// chain in front (with_predecessors), so a load in an earlier block counts.
+fn riscv_pointer_tail_call(body: &[Insn], entered: bool) -> bool {
+    let text = |insn: &Insn| match insn.operands().first() {
+        Some(nocompiler_arch::insn::Operand::Name(t)) => Some(*t),
+        _ => None,
+    };
+    let Some((last, before)) = body.split_last() else {
+        return false;
+    };
+    // SLEIGH names `jalr zero, 0(r)` as `jr r`.
+    if last.mnemonic != "jalr" && last.mnemonic != "jr" {
+        return false;
+    }
+    // `zero,0(t1)` or `t1` (as `jr`).
+    let Some(target) = text(last).and_then(|t| {
+        let t = t.trim();
+        let t = t.strip_prefix("zero,").unwrap_or(t).trim();
+        let reg = t
+            .strip_prefix("0(")
+            .and_then(|r| r.strip_suffix(')'))
+            .unwrap_or(t);
+        (!reg.is_empty() && reg != "ra").then_some(reg)
+    }) else {
+        return false;
+    };
+    // The first operand is the destination, except for a branch or a store,
+    // where it is read (`bne t1, zero, L` does not write t1).
+    let writes = |insn: &Insn, reg: &str| {
+        let m = insn.mnemonic;
+        let reads_first = m.starts_with('b')
+            || matches!(m, "sb" | "sh" | "sw" | "sd" | "fsw" | "fsd" | "jr" | "j");
+        !reads_first && text(insn).is_some_and(|t| t.split(',').next().map(str::trim) == Some(reg))
+    };
+    // A call writes a0 (and clobbers the rest; only a0 is followed here).
+    let calls = |insn: &Insn| {
+        insn.mnemonic == "call"
+            || (insn.mnemonic == "jalr" && text(insn).is_some_and(|t| t.starts_with("ra")))
+    };
+    // Follow register moves (`mv r, s`, as `addi r, s, 0`) back to where the
+    // value came from.
+    let mut reg = target.to_string();
+    let mut end = before.len();
+    for _ in 0..8 {
+        let found = before[..end]
+            .iter()
+            .rposition(|i| writes(i, &reg) || (reg == "a0" && calls(i)));
+        let Some(at) = found else {
+            // Nothing in the context wrote it: the value the function was
+            // entered with, when the context reaches the entry, and an
+            // argument register (wrapper_cmp is `jr a2`).
+            return entered && reg.starts_with('a') && reg[1..].parse::<u8>().is_ok_and(|n| n < 8);
+        };
+        let insn = &before[at];
+        // A pointer loaded from memory, or a code address formed by `auipc`
+        // (and its `addi`): musl's __libc_start_main jumps to
+        // libc_start_main_stage2 that way.
+        if matches!(insn.mnemonic, "ld" | "auipc") {
+            return true;
+        }
+        // A function pointer a call returned (mp_iternext_allow_raise).
+        if reg == "a0" && calls(insn) {
+            return true;
+        }
+        let parts: Vec<&str> = text(insn)
+            .map(|t| t.split(',').map(str::trim).collect())
+            .unwrap_or_default();
+        match (insn.mnemonic, parts.as_slice()) {
+            ("mv", [_, src]) | ("addi", [_, src, "0x0" | "0"]) => {
+                reg = (*src).to_string();
+                end = at;
+            }
+            // `addi r, r, lo` on top of `auipc r, hi`: follow to the auipc.
+            ("addi", [dst, src, _]) if dst == src => {
+                end = at;
+                let auipc = before[..end].iter().rposition(|i| writes(i, &reg));
+                return auipc.is_some_and(|k| before[k].mnemonic == "auipc");
+            }
+            _ => return false,
+        }
+    }
+    false
 }

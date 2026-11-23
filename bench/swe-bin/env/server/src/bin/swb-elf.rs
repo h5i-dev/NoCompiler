@@ -28,11 +28,16 @@ fn run(args: &[String]) -> Result<String, String> {
             std::fs::write(out, obj).map_err(|e| e.to_string())?;
             Ok(format!("{out}: {}", names.join(" ")))
         }
+        [cmd, bin, out] if cmd == "proofview" => {
+            let img = elf::proof_view(&read(bin)?).map_err(|e| e.to_string())?;
+            std::fs::write(out, img).map_err(|e| e.to_string())?;
+            Ok(format!("{out}: .text extended over .swb, for nocompiler export only"))
+        }
         [cmd, bin] if cmd == "check" => {
             elf::check_submission(&read(bin)?).map_err(|e| e.to_string())?;
             Ok("ok: a static RISC-V 64 executable".into())
         }
-        _ => Err("usage: swb-elf link BIN OBJ OUT | stub BIN OUT NAME... | isolate BIN FUNC OUT | extract BIN OUT.o NAME... | check BIN".into()),
+        _ => Err("usage: swb-elf link BIN OBJ OUT | stub BIN OUT NAME... | isolate BIN FUNC OUT | extract BIN OUT.o NAME... | proofview BIN OUT | check BIN".into()),
     }
 }
 

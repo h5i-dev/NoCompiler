@@ -93,6 +93,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: python3 scripts/gen/libindex.py --check
 
   # G2, G3, G4, G6, G7, G9: the whole suite, with the corpus built so the
   # oracle-backed gates actually run. Without fixtures they skip silently.

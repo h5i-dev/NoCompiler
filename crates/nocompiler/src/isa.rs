@@ -233,6 +233,11 @@ pub enum Instr {
     RWOp(RWOp, Reg, Reg, Reg),
     UOp(UOp, Reg, Reg),
     Ecall,
+    /// `unimp` (0xc0001073, `csrrw zero, cycle, zero`): defined to trap in every
+    /// implementation. The process dies with SIGILL, which LPS models as a
+    /// machine fault (RiscvSemantics.v `EDefinedIllegal` -> `MachineFault`); here,
+    /// as every fault, there is no step from it (lean/NoCompiler/Machine.lean).
+    Unimp,
 }
 
 fn bits(w: u32, lo: u32, len: u32) -> u32 {
@@ -444,6 +449,7 @@ pub fn decode(w: u32) -> Option<Instr> {
             }
         }
         0x73 if w == 0x0000_0073 => Instr::Ecall,
+        0x73 if w == 0xc000_1073 => Instr::Unimp,
         _ => return None,
     })
 }
@@ -465,7 +471,7 @@ impl Instr {
             | Instr::UOp(_, rd, _) => rd,
             // ECALL writes a0 (the result), which is never sp, gp, tp or ra.
             Instr::Ecall => Reg(10),
-            Instr::Branch(..) | Instr::Store(..) => return None,
+            Instr::Branch(..) | Instr::Store(..) | Instr::Unimp => return None,
         };
         (rd != ZERO).then_some(rd)
     }
@@ -473,7 +479,9 @@ impl Instr {
     /// The registers this instruction reads (x0 included when named).
     pub fn srcs(&self) -> Vec<Reg> {
         match *self {
-            Instr::Lui(..) | Instr::Auipc(..) | Instr::Jal(..) | Instr::Ecall => vec![],
+            Instr::Lui(..) | Instr::Auipc(..) | Instr::Jal(..) | Instr::Ecall | Instr::Unimp => {
+                vec![]
+            }
             Instr::Jalr(_, rs1, _)
             | Instr::Load(_, _, rs1, _)
             | Instr::IOp(_, _, rs1, _)
@@ -516,6 +524,7 @@ impl Instr {
             Instr::RWOp(op, rd, a, b) => format!(".rwop .{} {} {} {}", op.lean(), rd.0, a.0, b.0),
             Instr::UOp(op, rd, rs1) => format!(".uop .{} {} {}", op.lean(), rd.0, rs1.0),
             Instr::Ecall => ".ecall".into(),
+            Instr::Unimp => ".unimp".into(),
         }
     }
 
@@ -548,6 +557,7 @@ impl Instr {
             Instr::RWOp(op, rd, a, b) => format!("{} {rd}, {a}, {b}", op.mnemonic()),
             Instr::UOp(op, rd, rs1) => format!("{} {rd}, {rs1}", op.mnemonic()),
             Instr::Ecall => "ecall".into(),
+            Instr::Unimp => "unimp".into(),
         }
     }
 }

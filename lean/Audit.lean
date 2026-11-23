@@ -292,7 +292,21 @@ def checkModule (root : System.FilePath) (path : String) (M : Module) (L : Layou
     return true
 
 /-- The source roots whose every module the axiom audit covers. -/
-def auditRoots : List String := ["NoCompiler", "Examples", "Demo"]
+def auditRoots : List String := ["NoCompiler", "Examples", "LPS", "Demo"]
+
+/-- Modules that need generated, git-ignored images (they hold GPL-3.0 code, NOTICE): the images themselves
+    (`Examples.LPS.Images`, `Examples.Libc.Qdisc`) and the modules that import them. A clean checkout has no
+    images, so these are outside the default build (`Examples.lean` does not import them) and outside the
+    audit's module walk; the audit prints each one it skips. `examples/qdisc/gen_qdisc_images.sh` builds
+    the statement modules after generating the images. A module is listed if it is an entry or lies under one. -/
+def generatedImageModules : List Lean.Name :=
+  [`Examples.LPS.Images, `Examples.Libc.Qdisc,
+   `Examples.LPS.FuzzQdisc.E5r, `Examples.LPS.FuzzQdisc.Ovp,
+   `Examples.LPS.Test.BridgeDecodeTest, `Examples.LPS.Test.DiffQemuRun, `Examples.LPS.Test.DiffRunQdisc,
+   `Examples.LPS.Test.DiffRunQdiscModel, `Examples.LPS.Test.ImageAgreeQdisc, `Examples.LPS.Test.ImageFetchTest,
+   `Examples.LPS.Test.ImageWfTest, `Examples.LPS.Test.OvpImageWfTest]
+
+def needsGeneratedImages (m : Lean.Name) : Bool := generatedImageModules.any (·.isPrefixOf m)
 
 /-- The axiom audit over every module under `auditRoots` (`Audit.audit`). -/
 def axiomAudit (root : System.FilePath) : IO Bool := do
@@ -301,7 +315,10 @@ def axiomAudit (root : System.FilePath) : IO Bool := do
     -- A root with binaries only (scripts/core/check-audit-controls.sh's copies).
     IO.println s!"skip axiom audit: {root} has no lean/ source tree (the binaries were checked)"
     return true
-  let mods ← Audit.sourceModules lean auditRoots
+  let all ← Audit.sourceModules lean auditRoots
+  for m in all.filter needsGeneratedImages do
+    IO.println s!"skip axiom audit (needs generated images; Audit.generatedImageModules): {m}"
+  let mods := all.filter (!needsGeneratedImages ·)
   let mut ok := true
   for u in ← Audit.debugOptionUses lean mods do
     IO.println s!"FAIL debugging option turned on (it closes goals with sorry): {u}"

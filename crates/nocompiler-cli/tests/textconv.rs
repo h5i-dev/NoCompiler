@@ -98,3 +98,28 @@ fn git_diff_shows_the_changed_function() {
         .collect();
     assert_eq!(changed.len(), 4, "{d}");
 }
+
+/// `nocompiler link STACK --check` (Q-VC2): the committed stack's rebuild
+/// matches its recorded result.
+#[test]
+fn link_check_rebuilds_the_committed_stack() {
+    let exe = env!("CARGO_BIN_EXE_nocompiler");
+    let stack = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../nocompiler/tests/stack/sum.nocompiler-stack"
+    );
+    let out = Command::new(exe)
+        .args(["link", stack, "--check"])
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        String::from_utf8(out.stdout)
+            .unwrap()
+            .contains("matches the recorded result")
+    );
+}

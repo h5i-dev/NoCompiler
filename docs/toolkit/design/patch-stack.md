@@ -1,8 +1,15 @@
 # Design: binaries as a patch stack (Q-VC2) and proof status per version (Q-VC3)
 
-Status: DESIGN, for the lead's decision (lead 17:55: "design first, with the
-refinement benchmark; owner decided then"). Nothing here is implemented yet
-except what is named as existing.
+Status: Q-VC2 IMPLEMENTED (lead 21:10: "next is Q-VC2 implementation"; user
+docs: docs/toolkit/patch-stack.md). As built, it differs from the design
+below in two places: the stack file is a line format (`nocompiler-stack 1`,
+`base`, `patch`, `result` lines), not JSON lines, so the core crate needs no
+JSON parser; and the linker is option (a), ported to crates/nocompiler/src/
+link.rs, with `.swb` marked executable again (swb-elf had dropped the flag
+while nocompiler refused a second code section). Q-VC3 is IMPLEMENTED too, in another shape than the
+plan below: `nocompiler status FILE --proofs OLD.nocompiler-proofs` (FILE a linked ELF or a patch stack),
+states carries / invalidated / unknown, and `--lean OUT` for the reuse theorems; docs/toolkit/proof-status.md.
+The sections below are the design as it was planned; where they differ, the code and the user docs hold.
 
 ## What exists
 
@@ -53,9 +60,10 @@ Determinism (the test "rebuild == committed SHA-256" depends on it):
   the binary's; a stack's patches are text of the base, so this does not
   matter for a rebuild;
 - `link`: placement a function of (binary, object) only, as above.
-- CI: rebuild every committed stack and compare with its `result`.
+- CI (as built): crates/nocompiler/tests/stack.rs rebuilds `sum`'s committed stack and compares it with
+  its `result`; for all three committed stacks it checks the rebuilt binary's levels.
 
-Decision needed, the owner of `link`: (a) move the linker into
+Decided (see Status): (a). The options were: (a) move the linker into
 crates/nocompiler (one implementation; `swb-elf link` calls it), or (b) keep
 D's and have `nocompiler link` call it as a library. I recommend (a): the
 stack's determinism contract and its tests then live with `asm`.
@@ -66,9 +74,9 @@ and the Lean export refuses it ("the Lean image has one code section", item
 several code segments (Image.lean / the exporter: A's) or a relinked binary
 with one `.text`. To decide with the refinement benchmark.
 
-## Q-VC3: proof status per version (after Q-VC2)
+## Q-VC3: proof status per version (the plan; built as `nocompiler status`, see Status)
 
-`nocompiler status STACK [--ledger L]`: for the base and for each prefix of
+Planned: `nocompiler status STACK [--ledger L]`: for the base and for each prefix of
 the stack, the ledger of that binary (own and closure keys per function) and,
 from L, the theorems proved about the base. Per function:
 - **carried**: its closure key is unchanged; the theorem carries by
@@ -85,9 +93,8 @@ patches that touch data (measured on jq-2650: own keys changed 91 with
 section-relative names, 4 with object names; the change waits on A's audit,
 STATUS-B BLOCKED).
 
-## Questions for the lead
+## Questions that were open (answered; kept for the record)
 
-1. Owner of `link` (a or b above).
-2. The stack format: JSON lines as above, or TOML?
-3. Multi-section Lean images (for proofs about linked binaries): A's, or a
-   relink-to-one-`.text` step in `nocompiler link`?
+1. Owner of `link`: (a), the linker is crates/nocompiler/src/link.rs.
+2. The stack format: neither, a line format (`nocompiler-stack 1`; see Status).
+3. Multi-section Lean images (for proofs about linked binaries): still open.

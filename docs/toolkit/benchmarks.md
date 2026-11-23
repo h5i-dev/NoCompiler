@@ -348,8 +348,9 @@ architecture would blow through them for reasons that have nothing to do with a
 regression, so `--no-timing` drops that half, and any job that cannot reproduce
 the recording machine passes it.
 
-Each cost ceiling carries stated headroom over the measurement that set it,
-recorded beside it in the file: 2x on wall time, because this machine runs other
+Each cost ceiling carries stated headroom over the measurement that set it (the file records the
+measurement beside each ceiling; the factors are `TIME_HEADROOM` and `MEMORY_HEADROOM` in
+scripts/toolkit/check-bench-budget.py): 2x on wall time, because this machine runs other
 work and a gate that fails on a busy afternoon is a gate people switch off, and
 1.15x on peak memory, which barely varies. A 2x ceiling is a loose gate and is
 meant to be: the number to compare against when the question is "did this change
@@ -437,7 +438,8 @@ single `rizin -A` on `libstdc++` takes twelve and a half minutes. Their rows say
   here at all. The earlier function-recovery comparison against Ghidra 12.1.3 is
   in [`scorecard.md`](scorecard.md).
 - **Everything rizin does that nocompiler does not.** rizin is a debugger, a hex
-  editor, a shell, an assembler and a scriptable session; nocompiler is none of those.
+  editor and a shell; nocompiler is none of those (it has an assembler, `asm`, and a
+  scriptable session, `repl` and `batch`, but they are not what these columns measure).
   The columns here cover the part of rizin that overlaps nocompiler, which is a small
   part of rizin.
 - **Decompiler output quality**, which is [DecBench](decbench.md)'s job, and

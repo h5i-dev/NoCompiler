@@ -93,7 +93,26 @@ def segments : List Segment := [seg_rodata, seg_data, seg_sdata, seg_sbss, seg_b
 
 
 /-- Every function entry: where calls and tail calls may go. -/
-def entries : List Word := [0x111f0#64, 0x1121c#64, 0x112e8#64, 0x112ec#64, 0x112f0#64, 0x11534#64, 0x11584#64, 0x115e8#64, 0x11634#64, 0x116cc#64, 0x117a4#64, 0x11a50#64, 0x11a54#64, 0x11aa4#64, 0x11ad8#64, 0x11af4#64, 0x11c3c#64, 0x11d2c#64, 0x11d88#64, 0x11e1c#64, 0x11e24#64, 0x11fe8#64, 0x12124#64, 0x121f0#64, 0x12244#64, 0x1224c#64, 0x12278#64, 0x12288#64, 0x1228c#64, 0x122c0#64, 0x122fc#64, 0x12308#64, 0x12400#64, 0x1240c#64, 0x1247c#64, 0x125dc#64, 0x129f0#64, 0x12aec#64, 0x12d4c#64, 0x12dd0#64]
+def entries : List Word := [0x111d0#64, 0x111f0#64, 0x1121c#64, 0x112e8#64, 0x112ec#64, 0x112f0#64, 0x11534#64, 0x11584#64, 0x115e8#64, 0x11634#64, 0x116cc#64, 0x117a4#64, 0x11a50#64, 0x11a54#64, 0x11aa4#64, 0x11ad8#64, 0x11af4#64, 0x11c3c#64, 0x11d2c#64, 0x11d88#64, 0x11e1c#64, 0x11e24#64, 0x11fe8#64, 0x12124#64, 0x121f0#64, 0x12244#64, 0x1224c#64, 0x12278#64, 0x12288#64, 0x1228c#64, 0x122c0#64, 0x122fc#64, 0x12308#64, 0x12400#64, 0x1240c#64, 0x1247c#64, 0x125dc#64, 0x129f0#64, 0x12aec#64, 0x12d4c#64, 0x12dc4#64, 0x12dd0#64]
+
+/-- `_start`'s block/loop structure (rules R1 to R3, checked below with R4 to R6). -/
+def _start_func : Struct.Func := ⟨0x111d0#64, 8, []⟩
+/-- `_start`'s labels: where `$l` is, for `loop_inv $l` (a loop's head, a block's end). -/
+def _start_labels : List (String × Word) := []
+/-- `_start`'s frame (rule R6): 0 bytes, its slots and address-taken ranges. -/
+def _start_frame : Struct.Frame := ⟨0, [], []⟩
+/-- The certificate for rules R4 to R6 (NoCompiler/Frame.lean): the fact before each instruction. -/
+def _start_cert : Struct.Cert := []
+/-- `_start` is at level L1 (docs/isa/v1.md), as the kernel checks it. -/
+theorem _start_checked : Struct.level (chunk_0.code 0x111d0#64) _start_func entries _start_frame _start_cert = some .l1 := Struct.level_of_fast (by decide +kernel)
+/-- The image is `_start`'s chunk where the chunk is. -/
+theorem _start_chunk : ∀ x, Dom.mem [chunk_0.range 0x111d0#64] x → code.instr x = (chunk_0.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 0) chunks_contig (by decide +kernel) chunks_bound
+
+/-- `_start`: [0x111d0, 0x111f0), frame 0 bytes. -/
+def _start_entry : Word := 0x111d0#64
+/-- `_start` and every function it calls. -/
+def _start_dom : Dom := [(0x111d0#64, 32), (0x111f0#64, 44), (0x112ec#64, 4), (0x112f0#64, 580), (0x11584#64, 100), (0x117a4#64, 684), (0x125dc#64, 1044), (0x129f0#64, 252), (0x12dc4#64, 12)]
 
 /-- `_start_c`'s block/loop structure (rules R1 to R3, checked below with R4 to R6). -/
 def _start_c_func : Struct.Func := ⟨0x111f0#64, 11, []⟩
@@ -112,7 +131,7 @@ theorem _start_c_chunk : ∀ x, Dom.mem [chunk_1.range 0x111d0#64] x → code.in
 /-- `_start_c`: [0x111f0, 0x1121c), frame 0 bytes. -/
 def _start_c_entry : Word := 0x111f0#64
 /-- `_start_c` and every function it calls. -/
-def _start_c_dom : Dom := [(0x111f0#64, 44), (0x112ec#64, 4), (0x112f0#64, 580), (0x11584#64, 100), (0x117a4#64, 684), (0x125dc#64, 1044), (0x129f0#64, 252)]
+def _start_c_dom : Dom := [(0x111f0#64, 44), (0x112ec#64, 4), (0x112f0#64, 580), (0x11584#64, 100), (0x117a4#64, 684), (0x125dc#64, 1044), (0x129f0#64, 252), (0x12dc4#64, 12)]
 
 /-- `main`'s block/loop structure (rules R1 to R3, checked below with R4 to R6). -/
 def main_func : Struct.Func := ⟨0x1121c#64, 51, [⟨.loop, 0x1123c#64, 0x11260#64⟩, ⟨.loop, 0x11288#64, 0x112b4#64⟩]⟩
@@ -171,6 +190,25 @@ def __init_ssp_entry : Word := 0x112ec#64
 /-- `__init_ssp` and every function it calls. -/
 def __init_ssp_dom : Dom := [(0x112ec#64, 4)]
 
+/-- `__init_tp`'s block/loop structure (rules R1 to R3, checked below with R4 to R6). -/
+def __init_tp_func : Struct.Func := ⟨0x11634#64, 38, [⟨.block, 0x11654#64, 0x116bc#64⟩, ⟨.block, 0x11654#64, 0x116b8#64⟩, ⟨.block, 0x11660#64, 0x1166c#64⟩]⟩
+/-- `__init_tp`'s labels: where `$l` is, for `loop_inv $l` (a loop's head, a block's end). -/
+def __init_tp_labels : List (String × Word) := [("b0", 0x116bc#64), ("b1", 0x116b8#64), ("b2", 0x1166c#64)]
+/-- `__init_tp`'s frame (rule R6): 16 bytes, its slots and address-taken ranges. -/
+def __init_tp_frame : Struct.Frame := ⟨16, [⟨0, .save 8⟩, ⟨8, .save 1⟩], []⟩
+/-- The certificate for rules R4 to R6 (NoCompiler/Frame.lean): the fact before each instruction. -/
+def __init_tp_cert : Struct.Cert := Struct.Cert.ofRuns [(1, 0, 268174082, []), (1, 16, 268174082, []), (1, 16, 268174082, [(8, 1)]), (1, 16, 268174082, [(0, 8), (8, 1)]), (3, 16, 268173826, [(0, 8), (8, 1)]), (28, 16, 268173824, [(0, 8), (8, 1)]), (1, 16, 268173826, [(0, 8), (8, 1)]), (1, 16, 268174082, [(0, 8), (8, 1)]), (1, 0, 268174082, [(0, 8), (8, 1)])]
+/-- `__init_tp` is at level L2 (docs/isa/v1.md), as the kernel checks it. -/
+theorem __init_tp_checked : Struct.level (chunk_9.code 0x111d0#64) __init_tp_func entries __init_tp_frame __init_tp_cert = some .l2 := Struct.level_of_fast (by decide +kernel)
+/-- The image is `__init_tp`'s chunk where the chunk is. -/
+theorem __init_tp_chunk : ∀ x, Dom.mem [chunk_9.range 0x111d0#64] x → code.instr x = (chunk_9.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 9) chunks_contig (by decide +kernel) chunks_bound
+
+/-- `__init_tp`: [0x11634, 0x116cc), frame 16 bytes. -/
+def __init_tp_entry : Word := 0x11634#64
+/-- `__init_tp` and every function it calls. -/
+def __init_tp_dom : Dom := [(0x11634#64, 152), (0x12dc4#64, 12)]
+
 /-- `__copy_tls`'s block/loop structure (rules R1 to R3, checked below with R4 to R6). -/
 def __copy_tls_func : Struct.Func := ⟨0x116cc#64, 54, [⟨.block, 0x11724#64, 0x11774#64⟩, ⟨.loop, 0x11738#64, 0x11770#64⟩]⟩
 /-- `__copy_tls`'s labels: where `$l` is, for `loop_inv $l` (a loop's head, a block's end). -/
@@ -208,6 +246,25 @@ theorem __funcs_on_exit_chunk : ∀ x, Dom.mem [chunk_12.range 0x111d0#64] x →
 def __funcs_on_exit_entry : Word := 0x11a50#64
 /-- `__funcs_on_exit` and every function it calls. -/
 def __funcs_on_exit_dom : Dom := [(0x11a50#64, 4)]
+
+/-- `exit`'s block/loop structure (rules R1 to R3, checked below with R4 to R6). -/
+def exit_func : Struct.Func := ⟨0x11aa4#64, 13, []⟩
+/-- `exit`'s labels: where `$l` is, for `loop_inv $l` (a loop's head, a block's end). -/
+def exit_labels : List (String × Word) := []
+/-- `exit`'s frame (rule R6): 16 bytes, its slots and address-taken ranges. -/
+def exit_frame : Struct.Frame := ⟨16, [⟨0, .save 8⟩, ⟨8, .save 1⟩], []⟩
+/-- The certificate for rules R4 to R6 (NoCompiler/Frame.lean): the fact before each instruction. -/
+def exit_cert : Struct.Cert := Struct.Cert.ofRuns [(1, 0, 268174082, []), (1, 16, 268174082, []), (1, 16, 268174082, [(8, 1)]), (1, 16, 268174082, [(0, 8), (8, 1)]), (1, 16, 268173826, [(0, 8), (8, 1)]), (8, 16, 268173824, [(0, 8), (8, 1)])]
+/-- `exit` is at level L2 (docs/isa/v1.md), as the kernel checks it. -/
+theorem exit_checked : Struct.level (chunk_14.code 0x111d0#64) exit_func entries exit_frame exit_cert = some .l2 := Struct.level_of_fast (by decide +kernel)
+/-- The image is `exit`'s chunk where the chunk is. -/
+theorem exit_chunk : ∀ x, Dom.mem [chunk_14.range 0x111d0#64] x → code.instr x = (chunk_14.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 14) chunks_contig (by decide +kernel) chunks_bound
+
+/-- `exit`: [0x11aa4, 0x11ad8), frame 16 bytes. -/
+def exit_entry : Word := 0x11aa4#64
+/-- `exit` and every function it calls. -/
+def exit_dom : Dom := [(0x11a50#64, 4), (0x11a54#64, 80), (0x11aa4#64, 52), (0x11ad8#64, 28), (0x11c3c#64, 240), (0x11e24#64, 452), (0x1224c#64, 44), (0x12aec#64, 608)]
 
 /-- `_Exit`'s block/loop structure (rules R1 to R3, checked below with R4 to R6). -/
 def _Exit_func : Struct.Func := ⟨0x11ad8#64, 7, [⟨.loop, 0x11ae8#64, 0x11af4#64⟩]⟩
@@ -456,6 +513,25 @@ def memset_entry : Word := 0x129f0#64
 /-- `memset` and every function it calls. -/
 def memset_dom : Dom := [(0x129f0#64, 252)]
 
+/-- `__set_thread_area`'s block/loop structure (rules R1 to R3, checked below with R4 to R6). -/
+def __set_thread_area_func : Struct.Func := ⟨0x12dc4#64, 3, []⟩
+/-- `__set_thread_area`'s labels: where `$l` is, for `loop_inv $l` (a loop's head, a block's end). -/
+def __set_thread_area_labels : List (String × Word) := []
+/-- `__set_thread_area`'s frame (rule R6): 0 bytes, its slots and address-taken ranges. -/
+def __set_thread_area_frame : Struct.Frame := ⟨0, [], []⟩
+/-- The certificate for rules R4 to R6 (NoCompiler/Frame.lean): the fact before each instruction. -/
+def __set_thread_area_cert : Struct.Cert := []
+/-- `__set_thread_area` is at level L1 (docs/isa/v1.md), as the kernel checks it. -/
+theorem __set_thread_area_checked : Struct.level (chunk_40.code 0x111d0#64) __set_thread_area_func entries __set_thread_area_frame __set_thread_area_cert = some .l1 := Struct.level_of_fast (by decide +kernel)
+/-- The image is `__set_thread_area`'s chunk where the chunk is. -/
+theorem __set_thread_area_chunk : ∀ x, Dom.mem [chunk_40.range 0x111d0#64] x → code.instr x = (chunk_40.code 0x111d0#64).instr x :=
+  Code.ofChunks_instr (k := 40) chunks_contig (by decide +kernel) chunks_bound
+
+/-- `__set_thread_area`: [0x12dc4, 0x12dd0), frame 0 bytes. -/
+def __set_thread_area_entry : Word := 0x12dc4#64
+/-- `__set_thread_area` and every function it calls. -/
+def __set_thread_area_dom : Dom := [(0x12dc4#64, 12)]
+
 /-- `__lseek`'s block/loop structure (rules R1 to R3, checked below with R4 to R6). -/
 def __lseek_func : Struct.Func := ⟨0x12dd0#64, 4, []⟩
 /-- `__lseek`'s labels: where `$l` is, for `loop_inv $l` (a loop's head, a block's end). -/
@@ -483,7 +559,7 @@ def __init_libc_entry : Word := 0x112f0#64
 theorem __init_libc_chunk : ∀ x, Dom.mem [chunk_5.range 0x111d0#64] x → code.instr x = (chunk_5.code 0x111d0#64).instr x :=
   Code.ofChunks_instr (k := 5) chunks_contig (by decide +kernel) chunks_bound
 /-- `__init_libc` and every function it calls. -/
-def __init_libc_dom : Dom := [(0x112ec#64, 4), (0x112f0#64, 580), (0x117a4#64, 684), (0x125dc#64, 1044), (0x129f0#64, 252)]
+def __init_libc_dom : Dom := [(0x112ec#64, 4), (0x112f0#64, 580), (0x117a4#64, 684), (0x125dc#64, 1044), (0x129f0#64, 252), (0x12dc4#64, 12)]
 
 /-- `__libc_start_init`: [0x11534, 0x11584). Not checked (it does not pass the profile check, `nocompiler check`): no
     structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
@@ -503,7 +579,7 @@ def __libc_start_main_entry : Word := 0x11584#64
 theorem __libc_start_main_chunk : ∀ x, Dom.mem [chunk_7.range 0x111d0#64] x → code.instr x = (chunk_7.code 0x111d0#64).instr x :=
   Code.ofChunks_instr (k := 7) chunks_contig (by decide +kernel) chunks_bound
 /-- `__libc_start_main` and every function it calls. -/
-def __libc_start_main_dom : Dom := [(0x112ec#64, 4), (0x112f0#64, 580), (0x11584#64, 100), (0x117a4#64, 684), (0x125dc#64, 1044), (0x129f0#64, 252)]
+def __libc_start_main_dom : Dom := [(0x112ec#64, 4), (0x112f0#64, 580), (0x11584#64, 100), (0x117a4#64, 684), (0x125dc#64, 1044), (0x129f0#64, 252), (0x12dc4#64, 12)]
 
 /-- `libc_start_main_stage2`: [0x115e8, 0x11634). Not checked (it does not pass the profile check, `nocompiler check`): no
     structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
@@ -515,16 +591,6 @@ theorem libc_start_main_stage2_chunk : ∀ x, Dom.mem [chunk_8.range 0x111d0#64]
 /-- `libc_start_main_stage2` and every function it calls. -/
 def libc_start_main_stage2_dom : Dom := [(0x112e8#64, 4), (0x11534#64, 80), (0x115e8#64, 76), (0x11a50#64, 4), (0x11a54#64, 80), (0x11aa4#64, 52), (0x11ad8#64, 28), (0x11c3c#64, 240), (0x11e24#64, 452), (0x1224c#64, 44), (0x12aec#64, 608)]
 
-/-- `__init_tp`: [0x11634, 0x116cc). Not checked (it does not pass the profile check, `nocompiler check`): no
-    structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
-    targets, not an indirect call's. -/
-def __init_tp_func : Struct.Func := ⟨0x11634#64, 38, []⟩
-def __init_tp_entry : Word := 0x11634#64
-theorem __init_tp_chunk : ∀ x, Dom.mem [chunk_9.range 0x111d0#64] x → code.instr x = (chunk_9.code 0x111d0#64).instr x :=
-  Code.ofChunks_instr (k := 9) chunks_contig (by decide +kernel) chunks_bound
-/-- `__init_tp` and every function it calls. -/
-def __init_tp_dom : Dom := [(0x11634#64, 152)]
-
 /-- `__init_tls`: [0x117a4, 0x11a50). Not checked (it does not pass the profile check, `nocompiler check`): no
     structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
     targets, not an indirect call's. -/
@@ -533,7 +599,7 @@ def __init_tls_entry : Word := 0x117a4#64
 theorem __init_tls_chunk : ∀ x, Dom.mem [chunk_11.range 0x111d0#64] x → code.instr x = (chunk_11.code 0x111d0#64).instr x :=
   Code.ofChunks_instr (k := 11) chunks_contig (by decide +kernel) chunks_bound
 /-- `__init_tls` and every function it calls. -/
-def __init_tls_dom : Dom := [(0x117a4#64, 684), (0x125dc#64, 1044)]
+def __init_tls_dom : Dom := [(0x117a4#64, 684), (0x125dc#64, 1044), (0x12dc4#64, 12)]
 
 /-- `__libc_exit_fini`: [0x11a54, 0x11aa4). Not checked (it does not pass the profile check, `nocompiler check`): no
     structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
@@ -544,16 +610,6 @@ theorem __libc_exit_fini_chunk : ∀ x, Dom.mem [chunk_13.range 0x111d0#64] x �
   Code.ofChunks_instr (k := 13) chunks_contig (by decide +kernel) chunks_bound
 /-- `__libc_exit_fini` and every function it calls. -/
 def __libc_exit_fini_dom : Dom := [(0x11a50#64, 4), (0x11a54#64, 80)]
-
-/-- `exit`: [0x11aa4, 0x11ad8). Not checked (it does not pass the profile check, `nocompiler check`): no
-    structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call
-    targets, not an indirect call's. -/
-def exit_func : Struct.Func := ⟨0x11aa4#64, 13, []⟩
-def exit_entry : Word := 0x11aa4#64
-theorem exit_chunk : ∀ x, Dom.mem [chunk_14.range 0x111d0#64] x → code.instr x = (chunk_14.code 0x111d0#64).instr x :=
-  Code.ofChunks_instr (k := 14) chunks_contig (by decide +kernel) chunks_bound
-/-- `exit` and every function it calls. -/
-def exit_dom : Dom := [(0x11a50#64, 4), (0x11a54#64, 80), (0x11aa4#64, 52), (0x11ad8#64, 28), (0x11c3c#64, 240), (0x11e24#64, 452), (0x1224c#64, 44), (0x12aec#64, 608)]
 
 /-- `fread`: [0x11af4, 0x11c3c). Not checked (it does not pass the profile check, `nocompiler check`): no
     structure and no level, its entry and region only. Its `_dom` has its direct call and tail-call

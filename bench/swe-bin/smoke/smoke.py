@@ -117,6 +117,18 @@ def tools_check(env, f, fname):
         print(f"[tools] diff {f} rt.elf: {call('diff', file=f, other='rt.elf')}")
     except RuntimeError as e:
         print(f"[tools] link: error: {str(e)[:140]}")
+    # check_proof (QUEUE-D 2a): nothing replaced yet, then a replaced function and no theorem for it
+    env.call_tool("write_file", file="proof.lean", content="import SweBin.Base\nimport SweBin.Patched\n")
+    r = env.call_tool("check_proof", file="proof.lean")
+    rs = [x["result"].get("reasons", x["result"].get("error")) for x in r["subjects"]]
+    print(f"[proof] check_proof on the starting {f}: checked={r['checked']}; {str(rs)[:200]}")
+    env.call_tool("link", binary=f, object="rt.o", out=f)
+    t0 = time.time()
+    r = env.call_tool("check_proof", file="proof.lean")
+    s0 = r["subjects"][0]["result"]
+    print(f"[proof] check_proof after linking {fname} into {f}: checked={r['checked']}, replaced={s0.get('replaced')}, "
+          f"{time.time() - t0:.0f} s; {' | '.join(x.replace(chr(10), ' ')[:160] for x in s0.get('reasons', []))[:400]}")
+    print(f"[proof]   (a), recorded: {s0.get('unchanged_identical')}")
 
 
 def main():

@@ -1,6 +1,6 @@
 name = "nocompiler"
 version = "0.1.0"
-defaultTargets = ["NoCompiler", "Examples", "Demo", "nocompiler-audit"]
+defaultTargets = ["NoCompiler", "Examples", "LPS", "Demo", "nocompiler-audit"]
 
 # No dependencies on purpose: the trusted base of an nocompiler proof is the Lean
 # kernel plus the definitions docs/isa/trust.md lists.
@@ -9,6 +9,13 @@ name = "NoCompiler"
 
 [[lean_lib]]
 name = "Examples"
+
+# A Lean port of LPS (theorem-labs/rocq-linux-process-semantics, MIT) at f1006fe8, the model oss-verify's
+# statements are written against (docs/design/lps-bridge.md).
+[[lean_lib]]
+name = "LPS"
+# No root file: every module under lean/LPS.
+globs = ["LPS.+"]
 
 # The A-vs-B demo (examples/demo/README.md).
 [[lean_lib]]

@@ -444,6 +444,45 @@ fn func_v1(r: &mut Reader) -> Result<Record, String> {
     })
 }
 
+/// One version-2 table of decoded records (`decode`'s inverse for version
+/// 2). A version-1 callee, by entry, is named by `name_at`.
+pub fn encode_records(
+    recs: &[Record],
+    name_at: &dyn Fn(u64) -> Option<String>,
+) -> Result<Vec<u8>, String> {
+    // Each callee as a stand-in address that `names` maps to its name.
+    let mut names: BTreeMap<u64, String> = BTreeMap::new();
+    let mut funcs = Vec::new();
+    for r in recs {
+        let mut callees = Vec::new();
+        for c in &r.callees {
+            let n = match c {
+                Callee::Sym(s) => s.clone(),
+                Callee::Entry(e) => name_at(*e).ok_or_else(|| {
+                    format!(
+                        "{SECTION}: {} calls {e:#x}, which has no symbol",
+                        r.meta.name
+                    )
+                })?,
+            };
+            let k = match names.iter().find(|(_, v)| **v == n) {
+                Some((k, _)) => *k,
+                None => {
+                    let k = names.len() as u64 + 1;
+                    names.insert(k, n);
+                    k
+                }
+            };
+            callees.push(k);
+        }
+        funcs.push(FuncMeta {
+            callees,
+            ..r.meta.clone()
+        });
+    }
+    encode(&funcs, &names)
+}
+
 /// Every function of every table in the section.
 pub fn decode(d: &[u8]) -> Result<Vec<Record>, String> {
     let mut r = Reader { d, o: 0 };

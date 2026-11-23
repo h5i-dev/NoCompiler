@@ -25,7 +25,7 @@ namespace NoCompiler.Linux
 def writeSpec (i : SyscallInput) : Outcome → Prop
   | .ret e ev => e.writes = [] ∧ e.zeros = [] ∧
     ((∃ r : Nat, r ≤ (i.arg 2).toNat ∧ r ≤ maxRW ∧ (0 < (i.arg 2).toNat → 0 < r) ∧
-        e.ret = BitVec.ofNat 64 r ∧ ev = some (.write (i.arg 0) (readBytes i.mem (i.arg 1) r))) ∨
+        e.ret = BitVec.ofNat 64 r ∧ ev = some (.write (i.fd 0) (readBytes i.mem (i.arg 1) r))) ∨
       (∃ n : Nat, 1 ≤ n ∧ n ≤ 4095 ∧ e.ret = -(BitVec.ofNat 64 n) ∧ ev = none))
   | .exit _ => False
 
@@ -35,7 +35,7 @@ def readSpec (i : SyscallInput) : Outcome → Prop
   | .ret e ev => e.zeros = [] ∧
     ((∃ ds : List Byte, ds.length ≤ (i.arg 2).toNat ∧ ds.length ≤ maxRW ∧
         e.writes = [(i.arg 1, ds)] ∧ e.ret = BitVec.ofNat 64 ds.length ∧
-        ev = some (.read (i.arg 0) ds)) ∨
+        ev = some (.read (i.fd 0) ds)) ∨
       (∃ n : Nat, 1 ≤ n ∧ n ≤ 4095 ∧ e.writes = [] ∧ e.ret = -(BitVec.ofNat 64 n) ∧ ev = none))
   | .exit _ => False
 
@@ -107,7 +107,7 @@ theorem basic_iff_sys {s s' : State} : Basic s s' ↔ Sys s s' := by
     cases h with
     | writeOk r ha h1 h2 h3 =>
       refine Basic.step (o := .ret { ret := BitVec.ofNat 64 r }
-        (some (.write (s.reg Reg.a0) (readBytes s.mem (s.reg Reg.a1) r)))) ?_
+        (some (.write (s.reg Reg.a0 &&& 0xffffffff#64) (readBytes s.mem (s.reg Reg.a1) r)))) ?_
       simp only [spec, hno, ha, Ne.symm hr, ↓reduceIte]
       exact ⟨rfl, rfl, .inl ⟨r, h1, h2, h3, rfl, rfl⟩⟩
     | writeErr n ha h1 h2 =>
@@ -116,7 +116,7 @@ theorem basic_iff_sys {s s' : State} : Basic s s' ↔ Sys s s' := by
       exact ⟨rfl, rfl, .inr ⟨n, h1, h2, rfl, rfl⟩⟩
     | readOk ds ha h1 h2 =>
       refine Basic.step (o := .ret { ret := BitVec.ofNat 64 ds.length, writes := [(s.reg Reg.a1, ds)] }
-        (some (.read (s.reg Reg.a0) ds))) ?_
+        (some (.read (s.reg Reg.a0 &&& 0xffffffff#64) ds))) ?_
       simp only [spec, hno, ha, ↓reduceIte]
       exact ⟨rfl, .inl ⟨ds, h1, h2, rfl, rfl, rfl⟩⟩
     | readErr n ha h1 h2 =>

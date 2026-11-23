@@ -14,7 +14,7 @@
 //! The [`Insn`] built here carries what the shared analyses read: length,
 //! mnemonic, a [`Flow`] taken from the p-code's branches, the direct target as
 //! an [`Operand::Addr`], and the rendered operand text as an
-//! [`Operand::Name`] for [`format`], and last the encoding as an
+//! [`Operand::Name`] for [`format`](fn@format), and last the encoding as an
 //! [`Operand::UImm`], from which `nocompiler-ir` re-derives the p-code. Registers and memory operands are not
 //! broken out into [`Operand::Reg`] and [`Operand::Mem`]; the IR, which every
 //! dataflow consumer reads, has them exactly.

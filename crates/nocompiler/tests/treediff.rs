@@ -109,3 +109,28 @@ fn a_function_against_itself_has_no_region() {
         "{out}"
     );
 }
+
+/// A change at the very start: rustc's bcmp against it unrolled by two
+/// (both as `sum`, tests/stack/{bytewise,unrolled}.nocompiler-stack). The
+/// inserted first instruction is a region with no pair before it, which
+/// once overflowed (`a0 - 1` with `a0 = 0`). The unrolled loop is not
+/// lockstep, so it is refused with a reason.
+#[test]
+fn an_insertion_before_the_first_instruction_is_refused_not_a_panic() {
+    let dir = root().join("crates/nocompiler/tests/stack");
+    let build = |v: &str| {
+        let t = std::fs::read_to_string(dir.join(format!("{v}.nocompiler-stack"))).unwrap();
+        let s = nocompiler::stack::parse(&t).unwrap();
+        let bin = nocompiler::stack::build(&s, &dir).unwrap();
+        assert_eq!(Some(nocompiler::stack::result_sha(&bin)), s.result, "{v}");
+        let p = std::env::temp_dir().join(format!("nc-treediff-{v}-{}.elf", std::process::id()));
+        std::fs::write(&p, bin).unwrap();
+        p
+    };
+    let (a, b) = (build("bytewise"), build("unrolled"));
+    let mut out = String::new();
+    let r = nocompiler::cmd::refine(&a, &b, "sum", None, None, None, None, false, &mut out);
+    let _ = (std::fs::remove_file(&a), std::fs::remove_file(&b));
+    let e = r.unwrap_err();
+    assert!(e.contains("a region has one exit"), "{e}");
+}

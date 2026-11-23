@@ -7,7 +7,6 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-homepage.workspace = true
 documentation.workspace = true
 # Inherited, so the path is the workspace README rather than a second copy.
 readme.workspace = true

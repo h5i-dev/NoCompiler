@@ -2,8 +2,8 @@ import NoCompiler.Step
 import NoCompiler.Lemmas
 
 /-
-Reflective verification conditions, milestone 1 (docs/isa/vcgen.md,
-docs/design/prior-art-others.md "Implementation plan", step 2): straight-line
+Reflective verification conditions, milestone 1 (docs/design/prior-art-others.md
+"Implementation plan", step 2): straight-line
 ALU code. Started by A (next-a, d61cbf7); continued by C.
 
 Symbolic values are data (`Sym`) whose denotation is the machine's own
@@ -194,7 +194,7 @@ theorem runW_sound {ρ : Nat → Word} {c : Code} :
         obtain ⟨s₁, he, hm₁⟩ := sstep_sound hm hst
         have hpc₁ : S₁.pc = c.base + BitVec.ofNat 64 (4 * (k + 1)) := by
           cases i <;> simp only [sstep, Option.some.injEq] at hst <;> (try subst hst) <;>
-            simp_all [BitVec.ofNat_add] <;> bv_omega
+            simp_all <;> bv_omega
         have hd₁ : c.words.toList.drop (k + 1) = ws := by
           rw [← List.drop_drop, hd]; rfl
         obtain ⟨s', hr, hm'⟩ := runW_sound hd₁ (by simp at hb ⊢; omega) hpc₁ hm₁ h

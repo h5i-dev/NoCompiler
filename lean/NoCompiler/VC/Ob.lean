@@ -53,6 +53,18 @@ def Ob.check (facts : List Fact) : Ob → Bool
         | .region m size wr => m == n && wr && k.toNat + w ≤ size
         | _ => false
     | none => false
+  | .canReadS a w =>
+    match a.lin with
+    | some (n, k) => facts.any fun f => match f with
+        | .region m size _ => m == n && k.toNat + w ≤ size
+        | _ => false
+    | none => false
+  | .canWriteS a w =>
+    match a.lin with
+    | some (n, k) => facts.any fun f => match f with
+        | .region m size wr => m == n && wr && k.toNat + w ≤ size
+        | _ => false
+    | none => false
 
 /-- A sub-range of a covered range is covered (wrapping only shrinks the offset). -/
 theorem covers_sub {r : Region} {b k : Word} {w size : Nat} (h : r.covers b size)
@@ -121,6 +133,46 @@ theorem Ob.check_sound {ρ : Nat → Word} {μ : Word → Byte} {P : Perm} {fact
       | aligned => simp at hfa
     · simp at h
   | canWrite a w =>
+    simp only [Ob.check] at h
+    split at h
+    · rename_i n k hl
+      simp only [List.any_eq_true] at h
+      obtain ⟨f, hfm, hfa⟩ := h
+      cases f with
+      | region m size wr =>
+        simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at hfa
+        obtain ⟨⟨rfl, rfl⟩, hle⟩ := hfa
+        simp only [Ob.den, Sym.lin_den hl]
+        have hr := hf _ hfm
+        simp only [Fact.den, ite_true] at hr
+        rcases hr with h0 | ⟨r, hr, hc⟩
+        · exact .inl (by omega)
+        · exact .inr ⟨r, hr, covers_sub hc hle⟩
+      | aligned => simp at hfa
+    · simp at h
+  | canReadS a w =>
+    simp only [Ob.check] at h
+    split at h
+    · rename_i n k hl
+      simp only [List.any_eq_true] at h
+      obtain ⟨f, hfm, hfa⟩ := h
+      cases f with
+      | region m size wr =>
+        simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at hfa
+        obtain ⟨rfl, hle⟩ := hfa
+        simp only [Ob.den, Sym.lin_den hl]
+        have hr := hf _ hfm
+        simp only [Fact.den] at hr
+        split at hr
+        · rcases hr with h0 | ⟨r, hr, hc⟩
+          · exact .inl (by omega)
+          · exact .inr ⟨r, List.mem_append_right _ hr, covers_sub hc hle⟩
+        · rcases hr with h0 | ⟨r, hr, hc⟩
+          · exact .inl (by omega)
+          · exact .inr ⟨r, hr, covers_sub hc hle⟩
+      | aligned => simp at hfa
+    · simp at h
+  | canWriteS a w =>
     simp only [Ob.check] at h
     split at h
     · rename_i n k hl

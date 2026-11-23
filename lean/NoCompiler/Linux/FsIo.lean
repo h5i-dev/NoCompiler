@@ -39,20 +39,20 @@ def scatter : List (Word × Nat) → List Byte → List (Word × List Byte)
 def iovTotal (vs : List (Word × Nat)) : Nat := (vs.map (·.2)).sum
 
 def readvSpec (k : Kern) (i : SyscallInput) (o : Outcome) (k' : Kern) : Prop :=
-  if i.arg 0 ∈ k.fds then
+  if i.fd 0 ∈ k.fds then
     if 1024 < (i.arg 2).toNat then o = .ret { ret := einval } none ∧ k' = k
     else
       let vs := iovs i.mem (i.arg 1) (i.arg 2).toNat
-      match k.files.lookup (i.arg 0) with
+      match k.files.lookup (i.fd 0) with
       | some f =>
         let ds := f.chunk (iovTotal vs)
-        o = .ret { ret := BitVec.ofNat 64 ds.length, writes := scatter vs ds } (some (.read (i.arg 0) ds)) ∧
+        o = .ret { ret := BitVec.ofNat 64 ds.length, writes := scatter vs ds } (some (.read (i.fd 0) ds)) ∧
           k' = { k with files := k.files.map fun p =>
-            if p.1 = i.arg 0 then (p.1, { p.2 with off := p.2.off + ds.length }) else p }
+            if p.1 = i.fd 0 then (p.1, { p.2 with off := p.2.off + ds.length }) else p }
       | none =>
         k' = k ∧
         ((∃ ds : List Byte, ds.length ≤ iovTotal vs ∧ ds.length ≤ maxRW ∧
-            o = .ret { ret := BitVec.ofNat 64 ds.length, writes := scatter vs ds } (some (.read (i.arg 0) ds))) ∨
+            o = .ret { ret := BitVec.ofNat 64 ds.length, writes := scatter vs ds } (some (.read (i.fd 0) ds))) ∨
           (∃ n : Nat, 1 ≤ n ∧ n ≤ 4095 ∧ o = .ret { ret := -(BitVec.ofNat 64 n) } none))
   else o = .ret { ret := ebadf } none ∧ k' = k
 
@@ -76,13 +76,13 @@ def seekTo (f : OpenFile) (off whence : Word) : Word × Option Nat :=
   else (einval, none)
 
 def lseekSpec (k : Kern) (i : SyscallInput) (o : Outcome) (k' : Kern) : Prop :=
-  if i.arg 0 ∈ k.fds then
-    match k.files.lookup (i.arg 0) with
+  if i.fd 0 ∈ k.fds then
+    match k.files.lookup (i.fd 0) with
     | some f =>
       let r := seekTo f (i.arg 1) (i.arg 2)
       o = .ret { ret := r.1 } none ∧
       match r.2 with
-      | some t => k' = { k with files := k.files.map fun p => if p.1 = i.arg 0 then (p.1, { p.2 with off := t }) else p }
+      | some t => k' = { k with files := k.files.map fun p => if p.1 = i.fd 0 then (p.1, { p.2 with off := t }) else p }
       | none => k' = k
     | none => k' = k ∧ (o = .ret { ret := espipe } none ∨ ∃ t : Nat, t < 2 ^ 63 ∧ o = .ret { ret := BitVec.ofNat 64 t } none)
   else o = .ret { ret := ebadf } none ∧ k' = k
@@ -144,7 +144,7 @@ example : seekTo ⟨[0, 0, 0, 0, 0, 0], 1⟩ 6 3 = (enxio, none) := by decide
 example : seekTo ⟨[0, 0, 0, 0, 0, 0], 1⟩ 0 5 = (einval, none) := by decide
 
 /-- Control: `lseek` on a closed fd gives only EBADF. -/
-theorem lseek_closed {k k' : Kern} {i : SyscallInput} {o : Outcome} (h0 : i.arg 0 ∉ k.fds)
+theorem lseek_closed {k k' : Kern} {i : SyscallInput} {o : Outcome} (h0 : i.fd 0 ∉ k.fds)
     (h : lseekSpec k i o k') : o = .ret { ret := ebadf } none := by
   simp only [lseekSpec, h0, ↓reduceIte] at h
   exact h.1

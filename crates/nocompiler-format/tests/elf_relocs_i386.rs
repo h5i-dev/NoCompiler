@@ -165,6 +165,13 @@ fn file_addend(obj: &Object, data: &[u8], section: &str, offset: u64) -> Option<
     Some(i32::from_le_bytes([b[0], b[1], b[2], b[3]]))
 }
 
+/// One byte of a section as the file has it.
+fn read_byte(data: &[u8], obj: &Object, section: &str, offset: u64) -> Option<u8> {
+    let s = obj.section(section)?;
+    data.get(usize::try_from(s.file_offset + offset).ok()?)
+        .copied()
+}
+
 #[test]
 fn every_relocation_matches_readelf_entry_for_entry() {
     let Some(_) = corpus() else { return };
@@ -224,10 +231,35 @@ fn every_relocation_matches_readelf_entry_for_entry() {
                     None => addend,
                 },
                 // R_386_PC32 and R_386_PLT32: S + A - P.
-                2 | 4 => match s {
-                    Some(s) => s.wrapping_add(addend).wrapping_sub(place),
-                    None => addend,
-                },
+                // Undefined: a call or jump goes to the import stub the loader
+                // made for the symbol, which a PLT32 always is and a PC32 is
+                // after `call`/`jmp`; a data reference stays as it was.
+                2 | 4 => {
+                    let stub = obj
+                        .imports
+                        .iter()
+                        .find(|im| im.name == sym.name)
+                        .and_then(|im| im.thunk)
+                        .map(|t| t.get());
+                    if rel.kind == 4 && s.is_none() {
+                        assert!(
+                            stub.is_some(),
+                            "{fixture}: a PLT32 call to {} got no import stub",
+                            sym.name
+                        );
+                    }
+                    let branch = rel.kind == 4
+                        || (rel.offset >= 1
+                            && matches!(
+                                read_byte(&data, &obj, &rel.applies_to, rel.offset - 1),
+                                Some(0xe8 | 0xe9)
+                            ));
+                    match (s, stub) {
+                        (Some(s), _) => s.wrapping_add(addend).wrapping_sub(place),
+                        (None, Some(t)) if branch => t.wrapping_add(addend).wrapping_sub(place),
+                        (None, _) => addend,
+                    }
+                }
                 // R_386_GOTOFF: S + A - GOT.
                 9 => {
                     let got = got.expect("a GOTOFF relocation but no GOT base");
@@ -341,10 +373,12 @@ fn an_intra_file_call_reaches_its_target() {
     }
 }
 
-/// A call out of the file has no address here. It must stay as the compiler
-/// left it rather than be relocated to point at address zero.
+/// A call out of the file has no address here. It must not be relocated to
+/// point at address zero: it reaches the import stub the loader made for its
+/// symbol, outside every section and named after it. A reference that is not a
+/// call or jump stays as the compiler left it, and is reported as unresolved.
 #[test]
-fn an_external_call_is_left_alone_rather_than_pointed_at_zero() {
+fn an_external_call_reaches_its_stub_rather_than_zero() {
     let Some(_) = corpus() else { return };
     let Some((obj, data)) = open("relocs32.nopic.O2.o") else {
         return;
@@ -354,7 +388,8 @@ fn an_external_call_is_left_alone_rather_than_pointed_at_zero() {
     if syms.is_empty() || rels.is_empty() {
         return;
     }
-    let mut checked = 0;
+    let sec = obj.section(".text").unwrap();
+    let (mut calls, mut left) = (0, 0);
     for rel in rels.iter().filter(|r| r.applies_to == ".text") {
         let Some(sym) = syms.get(&rel.symbol) else {
             continue;
@@ -362,23 +397,59 @@ fn an_external_call_is_left_alone_rather_than_pointed_at_zero() {
         if sym.section.is_some() {
             continue;
         }
-        let sec = obj.section(".text").unwrap();
         let place = sec.range.start().get() + rel.offset;
         let before = file_addend(&obj, &data, ".text", rel.offset).unwrap();
+        let after = read_u32(&obj, place).unwrap() as i32;
+        let branch = rel.kind == 4
+            || (rel.kind == 2
+                && rel.offset >= 1
+                && matches!(
+                    read_byte(&data, &obj, ".text", rel.offset - 1),
+                    Some(0xe8 | 0xe9)
+                ));
+        if !branch {
+            assert_eq!(
+                after, before,
+                "{} against the undefined {} was patched anyway",
+                rel.type_name, sym.name
+            );
+            left += 1;
+            continue;
+        }
+        let target = (place as i64 + 4 + after as i64) as u64;
+        let stub = obj
+            .imports
+            .iter()
+            .find(|im| im.name == sym.name)
+            .and_then(|im| im.thunk)
+            .unwrap_or_else(|| panic!("{} has no import stub", sym.name));
         assert_eq!(
-            read_u32(&obj, place).unwrap() as i32,
-            before,
-            "{} against the undefined {} was patched anyway",
-            rel.type_name,
+            target,
+            stub.get(),
+            "the call to {} does not reach its stub",
             sym.name
         );
-        checked += 1;
+        assert_ne!(target, 0, "the call to {} points at zero", sym.name);
+        assert!(
+            obj.sections.iter().all(|s| !s.range.contains(stub)),
+            "{}'s stub is inside a section",
+            sym.name
+        );
+        let named = obj
+            .function_hints
+            .iter()
+            .find(|h| h.addr == stub)
+            .and_then(|h| h.name.clone());
+        assert_eq!(named, Some(format!("{}@plt", sym.name)));
+        calls += 1;
     }
-    assert!(checked > 0, "the fixture has no undefined symbol to check");
-    assert!(
-        obj.metadata.contains_key("elf.relocations.unresolved"),
-        "unresolved relocations were not reported"
-    );
+    assert!(calls > 0, "the fixture has no call to an undefined symbol");
+    if left > 0 {
+        assert!(
+            obj.metadata.contains_key("elf.relocations.unresolved"),
+            "unresolved relocations were not reported"
+        );
+    }
 }
 
 /// Nothing may be dropped without being counted.

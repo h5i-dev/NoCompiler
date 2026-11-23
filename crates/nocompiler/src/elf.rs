@@ -204,15 +204,40 @@ impl<'a> Elf<'a> {
         &self.data[s.offset as usize..(s.offset + s.size) as usize]
     }
 
-    /// Function symbols with a nonzero size, by address, one per address.
-    pub fn functions(&self) -> Vec<&Symbol> {
-        let mut f: Vec<&Symbol> = self
-            .symbols
-            .iter()
-            .filter(|s| s.kind == STT_FUNC && s.size > 0)
-            .collect();
+    /// Function symbols, by address, one per address, each with its size. A
+    /// function symbol of size 0 in an executable section (assembly without a
+    /// `.size` directive: musl's `__set_thread_area`, `__syscall_cp_asm`) runs
+    /// to the next function symbol or the end of its section, whichever is
+    /// first; one with nothing after it is left out.
+    pub fn functions(&self) -> Vec<Symbol> {
+        let mut f: Vec<&Symbol> = self.symbols.iter().filter(|s| s.kind == STT_FUNC).collect();
         f.sort_by_key(|s| (s.value, s.name.clone()));
+        // At one address, a sized symbol is preferred to an unsized one.
+        f.sort_by_key(|s| (s.value, s.size == 0));
         f.dedup_by_key(|s| s.value);
-        f
+        let starts: Vec<u64> = f.iter().map(|s| s.value).collect();
+        f.iter()
+            .enumerate()
+            .filter_map(|(k, s)| {
+                if s.size > 0 {
+                    return Some((*s).clone());
+                }
+                let sec = self.sections.iter().find(|x| {
+                    x.flags & SHF_EXECINSTR != 0
+                        && x.kind != SHT_NOBITS
+                        && s.value >= x.addr
+                        && s.value < x.addr + x.size
+                })?;
+                let end = starts
+                    .get(k + 1)
+                    .copied()
+                    .unwrap_or(u64::MAX)
+                    .min(sec.addr + sec.size);
+                (end > s.value).then(|| Symbol {
+                    size: end - s.value,
+                    ..(*s).clone()
+                })
+            })
+            .collect()
     }
 }
