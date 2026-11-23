@@ -68,3 +68,11 @@ FILE.s ──asm.rs──▶ functions, labels, annotations, data symbols
 What the tests cannot show: that no hole exists. The Lean checker (T) is to replace this
 trust by a proof; until then `docs/typed/disagreements.md` records any case where the two
 checkers differ.
+
+## Speed (the note's failure condition 3, "検査が遅い")
+
+Release build, one core, 2026-11-23, all 38 functions of `tests/typed/corpus` the checker
+accepts: 46.9 ms in total, median 0.4 ms, slowest musl `memset` at 14 ms (80 solver queries).
+Rejections are faster (they stop at the first failure). No query has hit the solver's budget
+or `i128` overflow on the corpus. The 2^64 coefficients the note worried about (fresh
+`u = e − 2^64·k`) have not been a problem at this size.
