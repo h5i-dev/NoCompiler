@@ -8,8 +8,8 @@
 #                               ubuntu:24.04 container like CI's runner (CI job `test`)
 #   scripts/ci/local.sh all     the three above
 #
-# Which to run before landing: always `check`; `core` when lean/**, crates/nocompiler/**,
-# crates/nocompiler-cli/** or examples/** change; `test` when any crate changes.
+# Which to run before landing: always `check`; `core` when lean/**, crates/nocompiler-typed/**,
+# tests/typed/** or examples/** change; `test` when any crate changes.
 # Lean runs under a memory cap (MEMCAP, default 6G), as everywhere on the shared machine.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
@@ -23,7 +23,6 @@ job_check() {
 
 job_core() {
   (cd lean && cap lake build)
-  cargo test -p nocompiler --no-fail-fast
   cargo test -p nocompiler-typed --no-fail-fast
 }
 

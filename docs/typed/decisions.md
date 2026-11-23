@@ -107,3 +107,50 @@ comments can cite them.
 - **I19 Total meaning first.** ⟦σ⟧ is `VerifiedImg c D entry (σ.spec Tok)`: the existing
   total judgment. The partial judgment is added only when a `partial` function is needed
   (note decision 1).
+
+## Rust checker (agent U)
+
+- **I20 Access address modulo 2^64.** The memory rule asks `b ≤ a ∧ a + w ≤ b + n ∧ w ∣ a`
+  for `a = e_rs + c`. When that fails, the checker retries with `u(a)`, the unsigned
+  representative (fresh `x`, `k`, `a = x + 2^64·k`, `0 ≤ x < 2^64`), which is the actual
+  address by the proof's Lemma 1. Needed for `bgeu i, n` bounds checks on an index `i`
+  about which nothing else is known: `ρ + i` is then only known modulo 2^64. Sound: Lemma 5
+  only uses that the word's unsigned value lies in the capability.
+- **I21 `call`/`tail` pairs.** clang emits `call f` / `tail f` as `auipc t, %pcrel_hi(f)`
+  + `jalr rd, %pcrel_lo(f)(t)` (two words, `R_RISCV_CALL_PLT`). With `-mno-relax` this pair
+  is what runs. The checker types the pair as one call (`rd = ra`) or tail call
+  (`rd = zero`, `t = t1`) of `f`, with `t` clobbered; the Lean side sees two instructions
+  whose combined effect is a jump to `f`'s address after linking. The object comparison
+  (I15) checks the pair against the relocation's symbol. Hand-written `jal ra, f` is the
+  one-word form.
+- **I22 The note's `read_sum` and S2.** As written in the note, `fail:` jumps back to `out:`,
+  a backward edge to a label that is not a loop head. S2 (note and proof) forbids it, so the
+  checker rejects the literal example (`tests/typed/corpus/note_read_sum.s`, rule `cfg`); with
+  the error block before the join it is accepted (`note_read_sum_fwd.s`). S2 is kept: it is
+  what Theorem C's termination argument uses.
+- **I23 Arithmetic rules beyond the note's table** (all instances of "any register may be
+  weakened", so they only widen what passes): constant folding with the reference
+  evaluator when every operand is a syntactic constant; `xori rd, rs, -1` is `int(−1 − e)`;
+  `andi` with `c = 2^k−1` gives `e = x + 2^k·j` (note), with `c = −2^k` gives
+  `x = u(e) − (u(e) mod 2^k)`, with a single bit `c = 2^k` gives `x = 2^k·bit` where `bit` is
+  bit k of `e`; `and` with a constant operand is `andi`; `slt[i][u]` give `x ∈ {0,1}` with
+  `x = 1 ⇔` the comparison of the representatives; `min[u]`/`max[u]` also give
+  `x = u1 ∨ x = u2`; `divu`/`remu` by a constant `c > 0` give `u(e) = c·q + r`;
+  `srai` uses `s(e)`; `slliw`, `mulw` by a constant, `addiw` use the 32-bit rule;
+  `add.uw`/`shNadd.uw`/`slli.uw`/`zext.h` use zero-extension facts; `clz`/`ctz`/`cpop` give
+  `x ≤ 64` (or 32); `lui` is a constant.
+- **I24 Contradictory edges.** A branch edge whose facts are contradictory is not followed
+  (it is never taken). Sound: no state satisfies the edge's type.
+- **I25 Conditional capabilities.** A guarded capability `ψ ⇒ c` is used where Ψ ⊢ ψ and
+  then held unguarded from that point. At a join where guards differ, the guard becomes the
+  conjunction (a weaker capability, valid on every edge).
+- **I26 Stack default.** A signature without `stack` has `stack 0`.
+- **I27 Lending.** A held capability can serve several `ro` clauses of one call; a `rw`
+  clause served by the same capability as another clause must be provably disjoint from it
+  (note step 3). `take` and token clauses use a capability exclusively. A clause whose
+  length is a bare unknown variable takes the length of a held capability with the same
+  base (the note: "n は能力の照合から決まる").
+- **I28 Loop-head constraints on back edges.** The back-edge check proves θ(fact) for every
+  fact of the head that mentions a variable bound at the head, even when the edge inherited
+  the fact itself: the inherited one is about the current iteration. (An early version
+  skipped them — unsound; regression test `neg_loop_inv_back.s`.)
