@@ -5,11 +5,11 @@ What a run of a checked function has to establish, abstracted over total and par
 correctness, so that the per-instruction part of the soundness proof is written once.
 
 A `Runner` gives the predicate `R` to prove at the current state, `next` for the state one
-instruction later, and `later` for a state after a callee returned. `Runner.total` is `Reach`
-(all three the same, Theorems A-C). `Runner.fuel n` is `ReachP` with `n + 1` steps of fuel:
-one step leaves `n`, a call leaves at most `n` (the callee takes at least one step, since its
-entry lies in its domain). The callee judgment is `VerifiedImg` for total runs and
-`VerifiedImgP` for partial ones; a total callee is accepted by both (`ofTotal`).
+instruction later, and `later` for a state after a callee returned (or a final one).
+`Runner.total` is `Reach` (all three the same, Theorems A-C). `Runner.fuel n` is `ReachP` with
+`n + 1` steps of fuel: one step leaves `n`; a call (its instruction, then the callee's run)
+leaves at most `n`. The callee judgment is `VerifiedImg` for total runs and `VerifiedImgP` for
+partial ones; a total callee is accepted by both (`ofTotal`).
 
 No checker definitions here.
 -/
@@ -25,14 +25,18 @@ structure Runner (c : Code) (P : Perm) (D : Dom) (Q : State → Prop) where
     callee Dg entry sp
   later_next : ∀ s, later s → next s
   done : ∀ s, Q s → R s
+  done_later : ∀ s, Q s → later s
   exec : ∀ {s s₁ : State} {i : Instr}, D.mem s.pc → s.exit = none → c.instr s.pc = some i →
     InstrOk P i s → exec i s = some s₁ → next s₁ → R s
   sys : ∀ {s : State}, D.mem s.pc → s.exit = none → c.instr s.pc = some .ecall → SysOk P s →
     (∃ s', Sys s s') → (∀ s', Sys s s' → next s') → R s
-  call : ∀ {α : Type} {Dg : Dom} {entry : Word} {sp : Spec α} {s : State},
-    callee Dg entry sp → ∀ a, Entry Dg entry s → Dg.mem entry → sp.pre a s → Dg.sub D →
-    (sp.perm a s).le P →
-    (∀ s', sp.Done a s s' → (∀ x, ¬ (sp.perm a s).writable x → s'.mem x = s.mem x) → later s') →
+  /-- A call: the instruction at `s` enters the callee at `s₁`, whose whole run is one step. -/
+  call : ∀ {α : Type} {Dg : Dom} {entry : Word} {sp : Spec α} {s s₁ : State} {i : Instr},
+    D.mem s.pc → s.exit = none → c.instr s.pc = some i → InstrOk P i s →
+    NoCompiler.exec i s = some s₁ → callee Dg entry sp → ∀ a, Entry Dg entry s₁ → sp.pre a s₁ → Dg.sub D →
+    (sp.perm a s₁).le P →
+    (∀ s', sp.Done a s₁ s' → (∀ x, ¬ (sp.perm a s₁).writable x → s'.mem x = s₁.mem x) →
+      later s') →
     R s
 
 variable {c : Code} {P : Perm} {D : Dom} {Q : State → Prop}
@@ -46,9 +50,11 @@ def Runner.total (c : Code) (P : Perm) (D : Dom) (Q : State → Prop) : Runner c
   ofTotal := fun h => h
   later_next := fun _ h => h
   done := fun _ h => .done h
+  done_later := fun _ h => .done h
   exec := fun hd hx hi hok hs h => Reach.exec_step hd hx hi hok (by rw [hs, Reach.opt_some]; exact h)
   sys := fun hd hx hi hok hex h => Reach.sys_step hd hx hi hok hex h
-  call := fun hg a he _ hpre hD hP k => VerifiedImg.call hg a he hpre hD hP k
+  call := fun hd hx hi hok hs hg a he hpre hD hP k =>
+    Reach.exec_step hd hx hi hok (by rw [hs, Reach.opt_some]; exact VerifiedImg.call hg a he hpre hD hP k)
 
 namespace ReachP
 
@@ -75,22 +81,15 @@ def Runner.fuel (c : Code) (P : Perm) (D : Dom) (Q : State → Prop) (n : Nat) :
   ofTotal := fun h => h.toP
   later_next := fun _ h => h n (Nat.le_refl n)
   done := fun _ h => .done h
+  done_later := fun _ h m _ => by
+    cases m with
+    | zero => exact .zero
+    | succ m => exact .done h
   exec := fun hd hx hi hok hs h => ReachP.exec_step hd hx hi hok hs h
   sys := fun hd hx hi hok hex h => ReachP.sys_step hd hx hi hok hex h
-  call := by
-    intro α Dg entry sp s hg a he hent hpre hD hP k
-    have h := hg.frame a s he hpre (n + 1)
-    cases h with
-    | done hq =>
-      -- the callee cannot stop at its entry: the entry is in its domain and the run is live
-      exfalso
-      rcases hq.1.1 with hn | hn
-      · exact hn (he.pc ▸ hent)
-      · exact hn he.live
-    | step hd hex hs =>
-      obtain ⟨s₁, h₁⟩ := hex
-      exact .step (hD _ hd) ⟨s₁, h₁.mono hP⟩ (fun s' h' =>
-        ReachP.bind_le (hs s' (h₁.restrict h')) hP hD
-          (fun m hm s'' ⟨⟨_, hdn⟩, hfr⟩ => k s'' hdn hfr m hm))
+  call := fun hd hx hi hok hs hg a he hpre hD hP k =>
+    ReachP.exec_step hd hx hi hok hs
+      (ReachP.bind_le (hg.frame a _ he hpre n) hP hD
+        (fun m hm s' ⟨⟨_, hdn⟩, hfr⟩ => k s' hdn hfr m hm))
 
 end NoCompiler
