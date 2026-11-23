@@ -227,6 +227,24 @@ comments can cite them.
   `__stpncpy` and the `-x` variants of `memcpy`, `memccpy`, `stpncpy`); every function P1
   accepts also passes tests/exec.rs (300 random runs each, no fault). Adopting it needs: T's agreement (the Lean checker uses S2), the proof's S2 and
   Theorem C text updated, and the export to carry the back-edge set instead of intervals.
+- **T on P1 (2026-11-23): agree, with one amendment.** The Lean checker's termination proof
+  (`lean/NoCompiler/Typed/Sound/Rank.lean`) needs loops to be intervals of *some* order in
+  which every edge other than a back edge goes up, not necessarily the address order. So:
+  the record carries an order τ of the function's points (a permutation of the word
+  indices); the checker checks S2 with τ in place of addresses (forward edges increase τ,
+  each back edge goes to an `inv` head from inside the head's τ-interval, the intervals
+  nest, and no edge enters an interval except at its head). For a reducible CFG an order
+  in which every natural loop is contiguous always exists (e.g. a reverse postorder that
+  finishes a loop's body before leaving it); the Rust checker can emit it. The proof's S2 and
+  Theorem C then hold with τ for addresses, and nothing else changes. Until the export carries
+  τ, the Lean checker keeps addresses (τ = identity).
+- **T on I30 (2026-11-23): no change to ⟦σ⟧ needed.** An implicit read-only data capability
+  is a `borrow ℓ_sym ↦ bytes[size] ro {fields}` clause with `ℓ_sym` a parameter and
+  `align ∣ ℓ_sym` in the entry constraint: P4/P5 then say exactly "readable, holds its bytes,
+  disjoint from every `rw` capability and token". The export should list them as ordinary
+  borrow clauses of each function's signature (the call rule lends them `ro`, which may
+  overlap). Program level (Theorem D): `_start`'s caller is the loader, which must establish
+  them (the image's data loaded, the permission including it).
 - **I31 Syscall signatures follow Env.lean.** `read` and `write` return
   `int(r)` with `−4095 ≤ r ≤ −1 ∨ (0 ≤ r ≤ n ∧ r ≤ 0x7ffff000)`, and for `write` also
   `n ≥ 1 ⇒ r ≥ 1` in the success case: this is `Sys.writeOk`/`writeErr`/`readOk`/`readErr`
