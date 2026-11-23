@@ -420,6 +420,18 @@ Asks for U from this stage:
 3. A corpus expectation per loop mode (e.g. `#! expect-natural NAME: …`), so these results are
    tested too. Until then they live in this section and in check.sh.
 
+### Stage 5: writable static data through signatures (U's I32) (2026-11-23T18:45Z)
+
+Only l64a is affected. Its signature now lends the buffer, `borrow @l64a.s ↦ bytes[7] rw` (the
+note's rule: writable data comes in through signatures). The loop runs at most 6 times, since
+after k shifts by 6 the 32-bit value is below 2^(32−6k). That is a finite disjunction over
+k = 0…5, so linear: `inv [k, y] a1: int(@l64a.s + k), a0: int(y) where (k = 0 ∨ (k = 1 ∧ 0 ≤ y < 2^26) ∨ …) decreases 5 − k`.
+Result in both loop modes: reject `loop-inv` at the back edge, because `srliw` is typed as an
+unknown word. **Ask for U:** `srliw rd, rs, c` with `c ≥ 1` gives `x` with
+`zext32(e) = 2^c·x + r`, `0 ≤ r < 2^c` (so `0 ≤ x < 2^(32−c)`, and `x` is also the 64-bit result);
+`srlw` likewise for a constant amount. No other verdict changed (19 checked by default, 24 with
+`--loops natural`, counting variants).
+
 ## Files
 
 - `scripts/musl-trial/build.sh` — pinned build (musl tree digest, clang 15.0.7, flags);
