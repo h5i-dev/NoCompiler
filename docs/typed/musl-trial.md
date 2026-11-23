@@ -153,6 +153,18 @@ Ordered by how many trial functions each blocks.
    free: `free(NULL)` needs a conditional `take`). The C contracts need either "readable up
    to the first NUL or n" (not v0) or conditional capabilities on the entry side.
 
+### Added cases (predictions written before compiling them)
+
+2026-11-23, after stage 1. Variants built with the extra flag
+`-mllvm -riscv-disable-using-constant-pool-for-large-ints` (constants inline, no static data),
+so that a checker without I14 reaches the remaining rules. Same source, same signatures.
+
+| function | predicted |
+|----------|-----------|
+| memchr-ic | reject: same as memchr without the static-data failure (S2 layout, branch-free `&&`, join). Expect the block layout to stay similar. |
+| memccpy-ic | reject: same as memccpy without static data (S2, xor alignment, branch-free `&&`). |
+| strlen-ic | not expressible (as strlen). |
+
 ## Files
 
 - `scripts/musl-trial/build.sh` — pinned build (musl tree digest, clang 15.0.7, flags);
