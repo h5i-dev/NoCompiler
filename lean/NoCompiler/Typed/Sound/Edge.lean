@@ -16,6 +16,7 @@ structure Fn.StructSpec (f : Fn) : Prop where
   borrowBytes : ∀ b ∈ f.sig.borrow, ∃ x, b.cap.kind = .bytes x
   kept : ∀ r ∈ keptRegs, (f.regVar.lookup r).isSome
   protNodup : f.protectedVars.Nodup
+  entryIds : ((List.range f.sig.borrow.length).map f.entryId).Nodup
   protFresh : ∀ x ∈ f.protectedVars, x < f.fresh
   loopsIn : ∀ L ∈ f.loops, L.head ≤ L.last ∧ L.last < f.size
   measFresh : ∀ L ∈ f.loops, ∀ x ∈ L.meas.vars, x < f.fresh
@@ -37,10 +38,10 @@ theorem Fn.structOk_spec (h : f.structOk = true) : f.StructSpec := by
   simp only [Bool.and_eq_true, List.all_eq_true, List.isEmpty_iff, beq_iff_eq, decide_eq_true_eq,
     Bool.or_eq_true, List.contains_iff_mem, Bool.not_eq_true', Option.isSome_iff_exists] at h
   simp only [and_assoc] at h
-  obtain ⟨htake, hgive, hstack, hbb, hkept, hnd, hpf, hloops, hsorted, hal, hsz, hnest, -, hin, hpre,
+  obtain ⟨htake, hgive, hstack, hbb, hkept, hnd, hei, hpf, hloops, hsorted, hal, hsz, hnest, hin, hpre,
     hbv, hout, hpost, hop, -⟩ := h
   refine ⟨htake, hgive, hstack, ?_, fun r hr => by simpa [Option.isSome_iff_exists] using hkept r hr,
-    hnd, hpf, fun L hL => ⟨(hloops L hL).1, (hloops L hL).2.1⟩, fun L hL => (hloops L hL).2.2.2,
+    hnd, hei, hpf, fun L hL => ⟨(hloops L hL).1, (hloops L hL).2.1⟩, fun L hL => (hloops L hL).2.2.2,
     hsorted, hal, hsz, ?_, hin, hpre, ?_, hout, hpost, fun x hx => by simpa using hop x hx⟩
   · intro b hb
     have := hbb b hb

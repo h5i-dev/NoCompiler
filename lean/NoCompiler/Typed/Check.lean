@@ -291,15 +291,25 @@ def protectedVars : List Var := f.sig.params ++ f.regVar.map (·.2)
 
 def inside (L : Loop) (k : Nat) : Bool := L.head ≤ k && k ≤ L.last
 
+/-- The identity of the entry capability of `borrow` clause `i`: the record's at the entry, if
+    it lists one with that origin (a hint; `structOk` requires them distinct). -/
+def entryId (i : Nat) : Nat :=
+  match f.tyAt 0 with
+  | some S => ((S.caps.find? (·.origin == some i)).map (·.id)).getD i
+  | none => i
+
 /-- The type at the entry, from the signature (T0). -/
 def initTy : STy where
-  regs := f.sig.inRegs ++ f.regVar.map (fun p => (p.1, .var p.2))
+  regs := f.sig.inRegs ++ f.regVar.map (fun p => (p.1, .var p.2)) ++
+    -- every register's entry value, as a variable from `fresh` up
+    (List.finRange 32).map (fun r => (r, .var (f.fresh + r.val)))
   facts := f.sig.pre ::
     (match f.regVar.lookup 2 with
      | some x => [.le (.lit 0) (.var x), .lt (.var x) (.lit (2 ^ 64)), .dvd 16 (.var x),
                   .le (.lit f.sig.stack) (.var x)]
      | none => [])
-  caps := (f.sig.borrow.zipIdx.map fun (b, i) => ({ id := i, cap := b.cap, origin := some i } : HCap))
+  caps := (f.sig.borrow.zipIdx.map fun (b, i) =>
+    ({ id := f.entryId i, cap := b.cap, origin := some i } : HCap))
 
 /-! ### Edges -/
 
@@ -332,8 +342,14 @@ def edge (k : Option Nat) (S : STy) (k' : Nat) : Bool :=
   | some S' =>
     let back := match k with | some k => decide (k' ≤ k) | none => false
     let sv := S.vars
+    -- new: the loop's variables at a backward edge, the target's variables the source does
+    -- not have, and the target's bare register variables whose register changed
+    let changed := S'.regs.filterMap fun (r, e') =>
+      match e'.asVar with
+      | some y => if S.reg r == some e' then none else some y
+      | none => none
     let nv := (if back then ((f.loopAt k').map (·.vars)).getD [] else []) ++
-      (S'.vars.filter (fun x => !sv.contains x)).eraseDups
+      (S'.vars.filter (fun x => !sv.contains x)).eraseDups ++ changed.eraseDups
     f.edgeOk k S S' k' (S.instantiate S' nv)
 
 /-! ### The rules -/
@@ -566,6 +582,7 @@ def structOk : Bool :=
   σ.borrow.all (fun b => match b.cap.kind with | .bytes _ => b.cap.guard == .tt | .token _ => false) &&
   (keptRegs.all fun r => (f.regVar.lookup r).isSome) &&
   (f.protectedVars.Nodup) &&
+  ((List.range f.sig.borrow.length).map f.entryId).Nodup &&
   (f.protectedVars.all (· < f.fresh)) &&
   (f.loops.all fun L => L.head ≤ L.last && L.last < f.size &&
      L.vars.all (fun x => x < f.fresh && !f.protectedVars.contains x) &&
@@ -576,7 +593,6 @@ def structOk : Bool :=
     K.head == L.head || L.last < K.head || K.last < L.head ||
     (K.head < L.head && L.last ≤ K.last) || (L.head < K.head && K.last ≤ L.last)) &&
   -- the signature mentions parameters on entry and parameters and `out` variables on exit
-  (f.initTy.maxVar < f.fresh) &&
   (σ.inRegs.all fun p => p.2.vars.all σ.params.contains) &&
   (σ.pre.vars.all σ.params.contains) &&
   (σ.borrow.all fun b => b.cap.guard.vars.all σ.params.contains &&

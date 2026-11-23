@@ -15,7 +15,10 @@ variable {f : Fn} {T : TokEnv}
 def Fn.entryVal (f : Fn) (ι : Val) (s0 : State) : Val := fun x =>
   match f.regVar.find? (·.2 == x) with
   | some p => (s0.reg p.1).toNat
-  | none => ι x
+  | none =>
+    match (List.finRange 32).find? (fun r => f.fresh + r.val == x) with
+    | some r => (s0.reg r).toNat
+    | none => ι x
 
 theorem Fn.regVar_nodup (hst : f.StructSpec) : (f.regVar.map (·.2)).Nodup := by
   have := hst.protNodup; unfold Fn.protectedVars at this
@@ -46,11 +49,43 @@ theorem Fn.entryVal_reg (hst : f.StructSpec) (ι : Val) (s0 : State) {r : Reg} {
     have : p = (r, x) := eq_of_map_eq (f.regVar_nodup hst) hp h (by simpa using hpx)
     rw [this]
 
+theorem Fn.entryVal_entry (hst : f.StructSpec) (ι : Val) (s0 : State) (r : Reg) :
+    f.entryVal ι s0 (f.fresh + r.val) = (s0.reg r).toNat := by
+  unfold Fn.entryVal
+  cases hf : f.regVar.find? (·.2 == f.fresh + r.val) with
+  | some p =>
+    exfalso
+    have hp := List.mem_of_find?_eq_some hf
+    have hpx : p.2 = f.fresh + r.val := by simpa using List.find?_some hf
+    have h1 : p.2 < f.fresh := hst.protFresh p.2 (f.regVar_prot (r := p.1) (by simpa using hp))
+    rw [hpx] at h1
+    exact absurd h1 (Nat.not_lt.2 (Nat.le_add_right _ _))
+  | none =>
+    simp only
+    cases hg : (List.finRange 32).find? (fun q => f.fresh + q.val == f.fresh + r.val) with
+    | none =>
+      have := List.find?_eq_none.1 hg r (List.mem_finRange r)
+      simp at this
+    | some q =>
+      have := List.find?_some hg
+      simp only [beq_iff_eq, Nat.add_left_cancel_iff] at this
+      have : q = r := Fin.ext this
+      subst this; rfl
+
 theorem Fn.entryVal_param (hst : f.StructSpec) (ι : Val) (s0 : State) {x : Var}
     (h : x ∈ f.sig.params) : f.entryVal ι s0 x = ι x := by
   unfold Fn.entryVal
   cases hf : f.regVar.find? (·.2 == x) with
-  | none => rfl
+  | none =>
+    simp only
+    cases hg : (List.finRange 32).find? (fun q => f.fresh + q.val == x) with
+    | none => rfl
+    | some q =>
+      exfalso
+      have e : f.fresh + q.val = x := by simpa using List.find?_some hg
+      have h1 : x < f.fresh := hst.protFresh x (f.param_prot h)
+      rw [← e] at h1
+      exact absurd h1 (Nat.not_lt.2 (Nat.le_add_right _ _))
   | some p =>
     exfalso
     have hp := List.mem_of_find?_eq_some hf
@@ -92,6 +127,11 @@ theorem Fn.pcOf_mem (hst : f.StructSpec) {k : Nat} (hk : k < f.size) :
   have : f.entry + BitVec.ofNat 64 (4 * k) - f.entry = BitVec.ofNat 64 (4 * k) := by bv_omega
   rw [this, BitVec.toNat_ofNat]; omega
 
+theorem zipIdx_map_snd {α : Type} : ∀ (l : List α) (k : Nat),
+    (l.zipIdx k).map (·.2) = List.range' k l.length
+  | [], _ => rfl
+  | a :: l, k => by simp [List.zipIdx_cons, List.range'_succ, zipIdx_map_snd l (k + 1)]
+
 theorem zipIdx_snd_nodup {α : Type} : ∀ (l : List α) (k : Nat), ((l.zipIdx k).map (·.2)).Nodup
   | [], _ => by simp
   | a :: l, k => by
@@ -101,7 +141,7 @@ theorem zipIdx_snd_nodup {α : Type} : ∀ (l : List α) (k : Nat), ((l.zipIdx k
     omega
 
 theorem Fn.initTy_caps_mem {c : HCap} (h : c ∈ f.initTy.caps) :
-    ∃ i, ∃ hi : i < f.sig.borrow.length, c = ⟨i, f.sig.borrow[i].cap, some i⟩ := by
+    ∃ i, ∃ hi : i < f.sig.borrow.length, c = ⟨f.entryId i, f.sig.borrow[i].cap, some i⟩ := by
   simp only [Fn.initTy, List.mem_map] at h
   obtain ⟨⟨b, i⟩, hm, rfl⟩ := h
   obtain ⟨-, hi, hb⟩ := List.mem_zipIdx hm
@@ -152,9 +192,10 @@ theorem Fn.entry_inv (hst : f.StructSpec) {D : Dom} {a : Val × TokFp} {s0 : Sta
       · simp at hp'
   · intro p hp'
     simp only [Fn.initTy, List.mem_append, List.mem_map] at hp'
-    rcases hp' with hp' | ⟨⟨r, x⟩, hrx, rfl⟩
+    rcases hp' with (hp' | ⟨⟨r, x⟩, hrx, rfl⟩) | ⟨r, -, rfl⟩
     · exact (hregs p hp').of_eq (IExpr.eval_congr _ (fun x hx => (hpar x (hst.inRegs p hp' x hx)).symm))
     · exact hasInt_toNat _ _ _ (f.entryVal_reg hst a.1 s0 hrx)
+    · exact hasInt_toNat _ _ _ (f.entryVal_entry hst a.1 s0 r)
   · intro c hc
     obtain ⟨i, hi, rfl⟩ := f.initTy_caps_mem hc
     exact ((hcg i hi).2 _).1 (hvalid _ (hmemE i hi))
@@ -163,7 +204,8 @@ theorem Fn.entry_inv (hst : f.StructSpec) {D : Dom} {a : Val × TokFp} {s0 : Sta
     obtain ⟨j, hj, rfl⟩ := f.initTy_caps_mem hd
     have hl : i < f.sig.entryCaps.length := by rw [hentry, List.length_map]; exact hi
     have hl' : j < f.sig.entryCaps.length := by rw [hentry, List.length_map]; exact hj
-    have := hsep i j hl hl' hne
+    have hij : i ≠ j := fun e => hne (by subst e; rfl)
+    have := hsep i j hl hl' hij
     simp only [hentry, List.getElem_map] at this
     exact this hex x (((hcg i hi).1 x).2 hx) (((hcg j hj).1 x).2 hy)
   · intro c hc x hx
@@ -185,9 +227,9 @@ theorem Fn.entry_inv (hst : f.StructSpec) {D : Dom} {a : Val × TokFp} {s0 : Sta
       simp only [Spec.perm, Sig.spec, Sig.readRegions, List.mem_append, List.mem_flatMap,
         List.mem_filter]
       exact .inl ⟨_, ⟨hmemE i hi, by simpa using hex⟩, hr⟩
-  · have : f.initTy.caps.map (·.id) = f.sig.borrow.zipIdx.map (·.2) := by
+  · have : f.initTy.caps.map (·.id) = (f.sig.borrow.zipIdx.map (·.2)).map f.entryId := by
       simp only [Fn.initTy, List.map_map]; rfl
-    rw [this]; exact zipIdx_snd_nodup _ _
+    rw [this, zipIdx_map_snd, ← List.range_eq_range']; exact hst.entryIds
 
 /-! ## Theorems A–C -/
 
