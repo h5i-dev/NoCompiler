@@ -185,6 +185,26 @@ comments can cite them.
   signature, e.g. `borrow @data ↦ bytes[40] rw`, passed on to callees as any other.
   **For ⟦σ⟧ (T):** `@sym` in a signature is the linked address (a constant of the image, not
   a parameter); P4/P5 apply to such capabilities as to any other.
+- **I33 Findings of an independent soundness review (2026-11-23), fixed.** Regression cases in
+  `tests/typed/corpus/review/`.
+  1. *Fields of a lent sub-range.* The call rule checked that a clause's fields exist in the
+     held capability with equal values, but not that they lie inside the **lent** length; the
+     callee then assumed `k + 8 ≤ n` (D2) and could write outside everything the caller
+     held. Now every field the clause names, on entry or exit, needs `Ψ ⊢ k + 8 ≤ θn`.
+     **For T:** the proof's Lemma 8 P4 has the same gap ("フィールドは、検査が求める一致と I4
+     から" — I4 only covers the held capability's offsets); the check above closes it.
+  2. *`in ra`.* A contract could require `ra` on entry; the call rule compared it before
+     `jal` overwrites it. `in` and `out` may not type `zero`, `ra`, `sp` in any signature.
+  3. *Directives.* `.pushsection`, `.org`, `.uleb128`, … were ignored; now any directive
+     outside a known list is an error. `.p2align`'s fill byte is used in data and refused in
+     code; a maximum skip is refused; `.fill` is implemented; `.ascii "a", "b"` is a list.
+  4. *Section flags* decide read-only-ness when given (`.rodata` with `"aw"` is writable).
+  5. *Mergeable sections.* The linker deduplicates `M` sections piece by piece: a symbol in
+     one is usable only if it is exactly one entry-size piece; in `MS` (strings) never.
+  Known gap, not fixed: **S5 sees one file.** Two files that each check (`f: tail g` with `g`
+  declared, and `g: tail f`) together recurse forever. Theorem D needs the call graph of the
+  whole program acyclic; the ledger of the linked program has to check that across files
+  (not done yet).
 
 ## Proposals (not adopted: the default checker does not use them)
 

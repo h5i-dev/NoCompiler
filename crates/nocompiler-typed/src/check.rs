@@ -212,6 +212,8 @@ pub struct Checker {
     pub sym_vars: BTreeMap<String, Var>,
     /// Size and alignment of every data symbol.
     pub sym_info: BTreeMap<String, (i128, i128)>,
+    /// Data symbols that cannot be relied on, with the reason.
+    pub unusable_data: BTreeMap<String, String>,
     /// Loops as natural loops of a reducible CFG (proposal P1) instead of address
     /// intervals (S2). Off by default.
     pub natural_loops: bool,
@@ -257,9 +259,14 @@ pub fn check_program_opts(p: &Program, opts: Options) -> (Checker, Report) {
         writable_data: BTreeSet::new(),
         sym_vars: BTreeMap::new(),
         sym_info: BTreeMap::new(),
+        unusable_data: BTreeMap::new(),
         natural_loops: opts.natural_loops,
     };
     for (name, d) in &p.data {
+        if let Some(why) = &d.unusable {
+            ck.unusable_data.insert(name.clone(), why.clone());
+            continue;
+        }
         let clean: String = name
             .chars()
             .filter(|c| c.is_alphanumeric() || *c == '_')
@@ -860,6 +867,13 @@ impl<'a> FnCheck<'a> {
                 Instr::Auipc { .. } => {
                     match &pi.reloc {
                         Some(Reloc::PcrelHi(sym)) if self.ck.sym_vars.contains_key(sym) => {}
+                        Some(Reloc::PcrelHi(sym)) if self.ck.unusable_data.contains_key(sym) => {
+                            let why = self.ck.unusable_data[sym].clone();
+                            return self.err(
+                                Rule::StaticData,
+                                format!("{why}: the linker may change it (I33)"),
+                            );
+                        }
                         Some(Reloc::PcrelHi(sym)) => {
                             return self.err(Rule::StaticData, format!("auipc to '{sym}', which is not a data symbol of this file (I30)"));
                         }
@@ -3169,6 +3183,22 @@ impl<'a> FnCheck<'a> {
                     self.show(&n)
                 ),
             );
+        }
+        // every field the clause names, on entry and on exit, lies inside the lent range
+        // (D2's k + 8 ≤ n for the callee's capability; Lemma 8 P4, I33)
+        let mut offs: BTreeSet<i128> = fields.keys().copied().collect();
+        offs.extend(clause.exit_fields().keys().copied());
+        for k in offs {
+            let g = Formula::le(&Lin::konst(k + 8), &n).ok_or_else(ovf_)?;
+            if !self.prove(st, &g, "field inside the lent range") {
+                return self.err(
+                    Rule::CallCap,
+                    format!(
+                        "{what}: field {k} does not provably lie inside the lent length {}",
+                        self.show(&n)
+                    ),
+                );
+            }
         }
         if fields.is_empty() {
             return Ok(());

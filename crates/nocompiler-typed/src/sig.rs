@@ -227,6 +227,14 @@ pub fn resolve_with(s: &SSig, line: usize, names: &mut Names, syms: &Scope) -> R
     let mut pre = Vec::new();
     let mut ins = Vec::new();
     for r in &s.ins {
+        // the calling convention fixes these at a call: `jal` writes ra, sp is the
+        // caller's, x0 is 0 (review finding, I33)
+        if r.reg == Reg(0) || r.reg == Reg(1) || r.reg == Reg(2) {
+            return Err(format!(
+                "'in' may not type {} (fixed by the calling convention)",
+                r.reg
+            ));
+        }
         if ins.iter().any(|(q, _)| *q == r.reg) {
             return Err(format!("register {} typed twice in 'in'", r.reg));
         }
@@ -315,6 +323,12 @@ pub fn resolve_with(s: &SSig, line: usize, names: &mut Names, syms: &Scope) -> R
     let mut post = Vec::new();
     let mut outs = Vec::new();
     for r in &s.outs {
+        if r.reg == Reg(0) || r.reg == Reg(1) || r.reg == Reg(2) {
+            return Err(format!(
+                "'out' may not type {} (fixed by the calling convention)",
+                r.reg
+            ));
+        }
         if outs.iter().any(|(q, _): &(Reg, Lin)| *q == r.reg) {
             return Err(format!("register {} typed twice in 'out'", r.reg));
         }

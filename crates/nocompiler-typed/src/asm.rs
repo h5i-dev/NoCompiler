@@ -64,6 +64,8 @@ pub struct DataSym {
     /// The section is read-only (`.rodata*`, `.srodata*`, or flags without `w`).
     pub ro: bool,
     pub line: usize,
+    /// Why the symbol cannot be used (its bytes or place may change at link time).
+    pub unusable: Option<String>,
 }
 
 #[derive(Default)]
@@ -71,6 +73,8 @@ struct DataCtx {
     bytes: BTreeMap<String, Vec<Option<u8>>>,
     align: BTreeMap<String, u64>,
     writable: BTreeMap<String, bool>,
+    /// Mergeable sections: (strings?, entry size).
+    merge: BTreeMap<String, (bool, u64)>,
     /// (name, section, offset, line)
     syms: Vec<(String, String, u64, usize)>,
 }
@@ -228,9 +232,21 @@ pub fn parse(src: &str) -> R<Program> {
         } else {
             1u64 << off.trailing_zeros()
         };
-        let ro = sec.starts_with(".rodata")
-            || sec.starts_with(".srodata")
-            || !dc.writable.get(sec).copied().unwrap_or(true);
+        // flags, when given, decide; otherwise the name (review finding: "aw" .rodata)
+        let ro = match dc.writable.get(sec) {
+            Some(w) => !w,
+            None => sec.starts_with(".rodata") || sec.starts_with(".srodata"),
+        };
+        let size = end.saturating_sub(*off);
+        // the linker deduplicates a mergeable section piece by piece: a symbol is safe only
+        // if it is exactly one fixed-size piece (review finding)
+        let unusable = match dc.merge.get(sec) {
+            Some((true, _)) => Some(format!("'{name}' is in a mergeable string section ({sec})")),
+            Some((false, e)) if *e == 0 || size != *e || off % e != 0 => Some(format!(
+                "'{name}' is not exactly one {e}-byte piece of mergeable section {sec}"
+            )),
+            _ => None,
+        };
         prog.data.insert(
             name.clone(),
             DataSym {
@@ -243,6 +259,7 @@ pub fn parse(src: &str) -> R<Program> {
                 align: oal.min(sal),
                 ro,
                 line: *line,
+                unusable,
             },
         );
     }
@@ -297,8 +314,34 @@ fn unescape(s: &str) -> Option<Vec<u8>> {
     Some(out)
 }
 
+/// Splits `"a", "b\"c"` into its quoted strings (quotes kept).
+fn split_strings(args: &str) -> Option<Vec<String>> {
+    let mut out = Vec::new();
+    let mut cur = String::new();
+    let (mut in_str, mut esc) = (false, false);
+    for c in args.trim().chars() {
+        if in_str {
+            cur.push(c);
+            if esc {
+                esc = false;
+            } else if c == '\\' {
+                esc = true;
+            } else if c == '"' {
+                in_str = false;
+                out.push(std::mem::take(&mut cur));
+            }
+        } else if c == '"' {
+            in_str = true;
+            cur.push(c);
+        } else if c != ',' && !c.is_whitespace() {
+            return None;
+        }
+    }
+    (!in_str).then_some(out)
+}
+
 /// Appends a data directive's bytes to the current data section.
-fn data_directive(name: &str, args: &str, sec: &str, dc: &mut DataCtx) {
+fn data_directive(name: &str, args: &str, sec: &str, dc: &mut DataCtx) -> Result<(), String> {
     let buf = dc.bytes.entry(sec.to_string()).or_default();
     let width = match name {
         "quad" | "dword" | "8byte" => 8,
@@ -319,7 +362,7 @@ fn data_directive(name: &str, args: &str, sec: &str, dc: &mut DataCtx) {
                 None => buf.extend(std::iter::repeat_n(None, width)),
             }
         }
-        return;
+        return Ok(());
     }
     match name {
         "zero" | "space" | "skip" => {
@@ -332,17 +375,46 @@ fn data_directive(name: &str, args: &str, sec: &str, dc: &mut DataCtx) {
                 .unwrap_or(Some(0));
             buf.extend(std::iter::repeat_n(fill, n));
         }
-        "ascii" | "asciz" | "string" => match unescape(args) {
-            Some(mut b) => {
+        "ascii" | "asciz" | "string" => {
+            // a comma-separated list of strings, each its own (NUL-terminated for asciz)
+            for item in split_strings(args).ok_or("bad string list")? {
+                let mut b = unescape(&item).ok_or("bad string")?;
                 if name != "ascii" {
                     b.push(0);
                 }
                 buf.extend(b.into_iter().map(Some));
             }
-            None => buf.push(None),
-        },
-        _ => {}
+        }
+        "fill" => {
+            // .fill repeat, size = 1, value = 0 (little-endian, size ≤ 8)
+            let parts: Vec<&str> = args.split(',').collect();
+            let rep = parts
+                .first()
+                .and_then(|x| parse_int(x))
+                .ok_or("bad .fill")?;
+            let size = parts
+                .get(1)
+                .map(|x| parse_int(x))
+                .unwrap_or(Some(1))
+                .ok_or("bad .fill")?;
+            let val = parts
+                .get(2)
+                .map(|x| parse_int(x))
+                .unwrap_or(Some(0))
+                .ok_or("bad .fill")?;
+            if !(0..=1 << 20).contains(&rep) || !(0..=8).contains(&size) {
+                return Err(".fill out of range".into());
+            }
+            for _ in 0..rep {
+                for k in 0..size {
+                    let byte = if k < 4 { (val >> (8 * k)) as u8 } else { 0 };
+                    buf.push(Some(byte));
+                }
+            }
+        }
+        _ => return Err(format!("directive .{name} is not supported")),
     }
+    Ok(())
 }
 
 fn handle_code(
@@ -371,22 +443,49 @@ fn handle_code(
                 items.push(Item::Section(section.clone()));
             }
             "section" => {
-                let mut it = args.split(',');
-                *section = it.next().unwrap_or("").trim().to_string();
-                if let Some(flags) = it.next() {
+                let parts: Vec<&str> = args.split(',').map(|x| x.trim()).collect();
+                *section = parts.first().copied().unwrap_or("").to_string();
+                if let Some(flags) = parts.get(1) {
+                    let flags = flags.trim_matches('"');
                     dc.writable.insert(section.clone(), flags.contains('w'));
+                    if flags.contains('M') {
+                        let e = parts
+                            .get(3)
+                            .and_then(|x| x.parse::<u64>().ok())
+                            .unwrap_or(0);
+                        dc.merge.insert(section.clone(), (flags.contains('S'), e));
+                    }
                 }
                 items.push(Item::Section(section.clone()));
             }
             "p2align" | "align" | "balign" => {
-                let n: u64 = args
-                    .split(',')
-                    .next()
-                    .and_then(|s| s.trim().parse().ok())
+                let parts: Vec<&str> = args.split(',').map(|x| x.trim()).collect();
+                let n: u64 = parts
+                    .first()
+                    .and_then(|s| s.parse().ok())
                     .ok_or(ParseError {
                         line: l.no,
                         msg: format!("bad .{name}"),
                     })?;
+                if parts.len() > 2 {
+                    return err(
+                        l.no,
+                        format!(".{name} with a maximum skip is not supported"),
+                    );
+                }
+                let fill: Option<u8> = match parts.get(1) {
+                    None | Some(&"") => None,
+                    Some(f) => Some(parse_int(f).ok_or(ParseError {
+                        line: l.no,
+                        msg: format!("bad fill in .{name}"),
+                    })? as u8),
+                };
+                if in_text && fill.is_some() {
+                    return err(
+                        l.no,
+                        format!(".{name} with a fill value in a code section is not supported"),
+                    );
+                }
                 let al = if name == "balign" {
                     n
                 } else {
@@ -397,7 +496,7 @@ fn handle_code(
                     *e = (*e).max(al);
                     let buf = dc.bytes.entry(section.clone()).or_default();
                     while (buf.len() as u64) % al != 0 {
-                        buf.push(Some(0));
+                        buf.push(Some(fill.unwrap_or(0)));
                     }
                 }
                 if in_text {
@@ -433,18 +532,40 @@ fn handle_code(
             "word" | "half" | "byte" | "quad" | "dword" | "zero" | "space" | "ascii" | "asciz"
             | "string" | "insn" | "2byte" | "4byte" | "8byte" | "fill" | "long" | "short"
             | "int" | "skip" => {
+                if name == "insn" {
+                    return err(l.no, ".insn is not supported");
+                }
                 if in_text {
                     return err(l.no, format!("data directive .{name} in a code section"));
                 }
-                data_directive(name, args, section, dc);
+                data_directive(name, args, section, dc)
+                    .map_err(|m| ParseError { line: l.no, msg: m })?;
             }
-            "option" if in_text && args.contains("rvc") && !args.contains("norvc") => {
-                return err(
-                    l.no,
-                    ".option rvc: compressed instructions are outside the profile",
-                );
+            "option" => {
+                let a = args.trim();
+                if a == "rvc" || a.contains("+c") || a.contains("rv64gc") || a.contains("rv64imac")
+                {
+                    return err(
+                        l.no,
+                        format!(".option {a}: compressed instructions are outside the profile"),
+                    );
+                }
+                if !["norvc", "push", "pop", "relax", "norelax", "pic", "nopic"].contains(&a)
+                    && !a.starts_with("arch")
+                {
+                    return err(l.no, format!(".option {a} is not supported"));
+                }
             }
-            _ => {} // .globl, .file, .size, .attribute, .ident, .cfi_*, .addrsig, …
+            // directives that emit nothing and do not move code
+            "globl" | "global" | "local" | "weak" | "hidden" | "protected" | "internal"
+            | "size" | "file" | "ident" | "attribute" | "addrsig" | "addrsig_sym" | "loc"
+            | "variant_cc" => {}
+            n if n.starts_with("cfi_") => {}
+            n => {
+                // anything else could emit bytes or switch sections (review finding:
+                // .pushsection, .org, .uleb128, …): refuse rather than guess
+                return err(l.no, format!("directive .{n} is not supported"));
+            }
         }
         return Ok(());
     }
