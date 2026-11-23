@@ -17,8 +17,7 @@
 
 **Potential pushback**
 
-- *"Is the proof shorter on the profile?"* → Not yet shown: with the same automation, a plain rv64gc build needs the same proof.
-- *"Why not verify the C source?"* → Then you trust the compiler. A miscompilation makes our proof fail, never succeed.
+- *"Why not verify the C source?"* → Then you trust the compiler.
 - *"Isn't this NaCl, eBPF or WebAssembly?"* → It borrows from all three, on real RISC-V with no runtime.
 - *"Why trust your semantics?"* → They are tested against llvm-mc, qemu and Sail, not yet proved equal to Sail.
 - *"Does it run on real hardware?"* → The binaries are plain static RV64 Linux ELFs; we run them under qemu and Sail.
