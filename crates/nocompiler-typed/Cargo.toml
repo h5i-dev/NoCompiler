@@ -1,0 +1,17 @@
+[package]
+name = "nocompiler-typed"
+description = "Checker for typed RISC-V assembly (safe/unsafe, docs/Tab 1.md): parser, typing rules, a quantifier-free Presburger procedure, ledger."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[[bin]]
+name = "nocompiler-typed"
+path = "src/main.rs"

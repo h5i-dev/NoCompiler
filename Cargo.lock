@@ -362,6 +362,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "nocompiler-typed"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "nocompiler-types"
 version = "0.1.0"
 
