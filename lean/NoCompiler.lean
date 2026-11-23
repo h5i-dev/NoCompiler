@@ -19,3 +19,5 @@ import NoCompiler.Typed.Sound.Rank
 import NoCompiler.Typed.Sound.Congr
 import NoCompiler.Typed.Sound.Step
 import NoCompiler.Typed.Sound.Arith
+import NoCompiler.Typed.Sound.Branch
+import NoCompiler.Typed.Sound.Mem
