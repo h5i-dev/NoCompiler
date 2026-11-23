@@ -95,6 +95,13 @@ theorem Fn.store_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' : 
         inCap_sound hcin hI.hyps (hI.valid c hcm) hA (StOp.width_pos op)
       have hrw := hrw rfl
       have hex : c.cap.exclusive = true := by simp [Cap.exclusive, hk, hrw]
+      have hu : b.heap = true → (T heapTok).unit (F heapTok) (b.region ι1) := by
+        intro hh
+        have hv := hI.valid c hcm
+        unfold Cap.valid at hv
+        have := hv hg
+        rw [hk] at this
+        exact this.2.2.2.2 hh
       have hfp := access_fp (F := F) hk hg h0 h1 h2 (A := ea s rs1 off) (w := op.width) (by omega) (by omega)
       have haligned : aligned (ea s rs1 off) op.width := by
         unfold aligned
@@ -138,7 +145,7 @@ theorem Fn.store_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' : 
           simp only [upd, hdc, beq_self_eq_true, ite_true]
           intro _
           simp only
-          refine ⟨h0, h1, h2, ?_⟩
+          refine ⟨h0, h1, h2, ?_, fun hh => by simpa [BytesCap.region, nb] using hu hh⟩
           exact storeFields_sound hI.hyps h0 h1 h2 hf hlo hhi hAt hal
             (fun t ht _ => STy.reg_hasInt hI.regs ht)
         · simp only [upd, hdc, beq_iff_eq, ite_false]

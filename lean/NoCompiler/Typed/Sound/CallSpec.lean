@@ -22,6 +22,22 @@ theorem Fn.lendFrom_spec {S : STy} {b : BytesCap} {c : HCap} (h : Fn.lendFrom S 
     exact ⟨hm, hg, hb, hkb, hk.1.1, hk.1.2⟩
   · cases hk
 
+/-- A `heap` clause is lent from a held `heap` capability with the same range. -/
+theorem Fn.lendFrom_heap {S : STy} {b : BytesCap} {c : HCap} (h : Fn.lendFrom S b = some c)
+    (hh : b.heap = true) : ∃ hb, c.cap.kind = .bytes hb ∧ hb.heap = true ∧
+      S.ent (.and (.eq hb.base b.base) (.eq hb.len b.len)) = true := by
+  have hp := List.find?_some h
+  simp only [Bool.and_eq_true] at hp
+  obtain ⟨-, hk⟩ := hp
+  split at hk
+  · rename_i hb hkb
+    simp only [Bool.and_eq_true, Bool.or_eq_true, Bool.not_eq_true', hh] at hk
+    obtain ⟨-, hk⟩ := hk
+    rcases hk with h | ⟨h1, h2⟩
+    · cases h
+    · exact ⟨hb, hkb, h1, h2⟩
+  · cases hk
+
 /-- What `calleeOk` says about a callee's signature. -/
 structure CalleeSpec (g : Sig) : Prop where
   params : g.params.Nodup
@@ -36,7 +52,8 @@ structure CalleeSpec (g : Sig) : Prop where
   outNodup : g.outVars.Nodup
   outApart : ∀ y ∈ g.outVars, y ∉ g.params
   takeScoped : ∀ c ∈ g.take, ∀ y ∈ c.vars, y ∈ g.params
-  giveKind : ∀ c ∈ g.give, (∃ x, c.kind = .bytes x ∧ x.fields = []) ∨ ∃ t, c.kind = .token t
+  giveKind : ∀ c ∈ g.give, (∃ x, c.kind = .bytes x ∧ x.fields = [] ∧ (x.heap = true → heapTok ∈ g.tokNames)) ∨
+    ∃ t, c.kind = .token t
   giveScoped : ∀ c ∈ g.give, ∀ y ∈ c.vars, y ∈ g.params ∨ y ∈ g.outVars
 
 theorem Fn.calleeOk_spec {g : Sig} (h : Fn.calleeOk g = true) : CalleeSpec g := by
@@ -51,7 +68,13 @@ theorem Fn.calleeOk_spec {g : Sig} (h : Fn.calleeOk g = true) : CalleeSpec g := 
   · intro c hc
     obtain ⟨hk, -⟩ := hgv c hc
     split at hk
-    · rename_i x hx; exact .inl ⟨x, hx, by simpa using hk⟩
+    · rename_i x hx
+      simp only [Bool.and_eq_true, Bool.or_eq_true, Bool.not_eq_true', List.isEmpty_iff,
+        List.contains_iff_mem] at hk
+      refine .inl ⟨x, hx, hk.1, fun hh => ?_⟩
+      rcases hk.2 with h | h
+      · rw [hh] at h; cases h
+      · exact h
     · rename_i t ht; exact .inr ⟨t, ht⟩
 
 theorem Fn.lends_spec {S : STy} {g : Sig} {θ : Subst} {ls : List (BytesCap × HCap)}
@@ -145,6 +168,26 @@ theorem Inv.sp_toNat (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {Ft :
   rw [hI.sp]
   have := below_sp_toNat (s0.reg Reg.sp) S.depth 0 (by omega) (by have := (s0.reg Reg.sp).isLt; omega)
   simpa using this
+
+/-- No held capability meets a callee's stack region (it lies below the caller's `sp`). -/
+theorem Fn.caps_miss_stack (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {Ft : TokFp}
+    (hI : Inv f T P s0 ι0 S s ι Ft) {s1 : State} (hregs : ∀ r : Reg, r ≠ 1 → s1.reg r = s.reg r)
+    {n : Nat} (hstk : S.depth + n ≤ f.sig.stack) :
+    ∀ c ∈ S.caps, ∀ x, c.cap.fp ι Ft x → ¬ (Spec.stackRegion s1 n).mem x := by
+  have hspn := hI.sp_toNat hst
+  have hK := hI.stackLe
+  have hsp1 : (s1.reg Reg.sp).toNat = (s0.reg Reg.sp).toNat - S.depth := by
+    rw [hregs _ (by decide)]; exact hspn.1
+  intro c hc x hx hm
+  rw [stack_mem_iff s1 n (by omega) x, hsp1] at hm
+  have h0 : (Spec.stackRegion s0 f.sig.stack).mem x := (stack_mem_iff s0 _ hK x).2 ⟨by omega, by omega⟩
+  obtain ⟨Fr, hfr, hd, hF0, -⟩ := hI.stack c hc x hx h0
+  have hg := f.frame_geom hst.frameDecl hfr
+  have hF0' : Fr.size ≠ 0 := hd ▸ hF0
+  have h2 := (inFrame_iff hfr hF0' s0 (by have := hg.sizeLe; omega) hg.addr x).1
+    (by rw [← hd]; exact hI.stack c hc x hx h0)
+  rw [← hd] at h2
+  omega
 
 /-- The clause `i` of a callee, as a capability under the callee's valuation, has the footprint
     of its instantiated range, which lies in the held capability it is lent from. -/

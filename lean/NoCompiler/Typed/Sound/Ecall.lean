@@ -52,8 +52,8 @@ theorem Inv.writeInside {S : STy} {s : State} {ι : Val} {F : TokFp} (hI : Inv f
         intro hg
         have hv := hv hg
         rw [hk] at hv
-        obtain ⟨h0, h1, h2, -⟩ := hv
-        exact ⟨h0, h1, h2, fun fd hfd => by simp at hfd⟩
+        obtain ⟨h0, h1, h2, -, hh⟩ := hv
+        exact ⟨h0, h1, h2, fun fd hfd => by simp at hfd, hh⟩
       · rename_i t ht; rw [hk0] at ht; cases ht
     · unfold HCap.dropFields
       simp only [beq_iff_eq, hdc, ite_false]
@@ -196,7 +196,7 @@ theorem Fn.ecall_step (hst : f.StructSpec) {c : Code} {D : Dom} {Q : State → P
   have hv := hI.valid cap hcm hg
   unfold Cap.valid at hv
   rw [hkind] at hv
-  obtain ⟨h0, h1, h2, -⟩ := hv
+  obtain ⟨h0, h1, h2, -, -⟩ := hv
   have hfp : ∀ i < (s.reg Reg.a2).toNat, cap.cap.fp ι Ft (s.reg Reg.a1 + BitVec.ofNat 64 i) := by
     intro i hi
     have hA : ((s.reg Reg.a1).toNat : Int) = b.eval ι := hB.toNat_eq (by omega) (by omega)

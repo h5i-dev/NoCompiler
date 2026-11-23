@@ -67,11 +67,15 @@ theorem Cap.fp_F_congr {c : Cap} {F F' : TokFp} (h : ∀ t, c.kind = .token t �
   | token t => simp [h t hk]
 
 theorem Cap.valid_F_congr {T : TokEnv} {c : Cap} {F F' : TokFp}
-    (h : ∀ t, c.kind = .token t → F t = F' t) (ι : Val) (m : Word → Byte) :
+    (h : ∀ t, c.kind = .token t → F t = F' t)
+    (hH : ∀ b, c.kind = .bytes b → b.heap = true → F heapTok = F' heapTok) (ι : Val) (m : Word → Byte) :
     c.valid T ι F m ↔ c.valid T ι F' m := by
   unfold Cap.valid
   cases hk : c.kind with
-  | bytes b => simp
+  | bytes b =>
+    by_cases hh : b.heap = true
+    · simp [hH b hk hh]
+    · simp [hh]
   | token t => simp [h t hk]
 
 /-- The token footprints after a call: the callee's for the tokens it was lent. -/

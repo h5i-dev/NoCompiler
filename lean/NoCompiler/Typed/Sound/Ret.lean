@@ -40,14 +40,14 @@ theorem Cap.congr_vars {ι ι' : Val} {F : TokFp} {c : Cap} (h : ∀ x ∈ c.var
     · simp only [Cap.valid, hk, Constr.holds, hg, hb, hl]
       constructor
       · intro hv' hg'
-        obtain ⟨a, b', c', d⟩ := hv' hg'
-        refine ⟨a, b', c', fun fd hfd => ?_⟩
+        obtain ⟨a, b', c', d, u⟩ := hv' hg'
+        refine ⟨a, b', c', fun fd hfd => ?_, fun hh => by simpa [BytesCap.region, hb, hl] using u hh⟩
         obtain ⟨e1, e2, e3⟩ := d fd hfd
         refine ⟨by simpa [Cap.Field.holds, hl] using e1, by simpa [hb] using e2, ?_⟩
         rw [← hb]; exact e3.of_eq (IExpr.eval_congr _ (hf fd hfd))
       · intro hv' hg'
-        obtain ⟨a, b', c', d⟩ := hv' hg'
-        refine ⟨a, b', c', fun fd hfd => ?_⟩
+        obtain ⟨a, b', c', d, u⟩ := hv' hg'
+        refine ⟨a, b', c', fun fd hfd => ?_, fun hh => by simpa [BytesCap.region, hb, hl] using u hh⟩
         obtain ⟨e1, e2, e3⟩ := d fd hfd
         refine ⟨by simpa [Cap.Field.holds, hl] using e1, by simpa [hb] using e2, ?_⟩
         rw [hb]; exact e3.of_eq (IExpr.eval_congr _ (hf fd hfd)).symm
@@ -164,7 +164,9 @@ theorem Fn.retOkOn_sound (hst : f.StructSpec) {rs : List Reg} {S : STy} {s : Sta
     (hI : Inv f T P s0 ι0 S s ι F) (hr : f.retOkOn rs S θ = true)
     (hι0r : ∀ r x, (r, x) ∈ f.regVar → ι0 x = (s0.reg r).toNat)
     {ια : Val} {Fα : TokFp} (hι0p : ∀ x ∈ f.sig.params, ι0 x = ια x)
-    (hP : P = (f.sig.spec T).perm (ια, Fα) s0) :
+    (hP : P = (f.sig.spec T).perm (ια, Fα) s0)
+    (hU : ∀ r, (T heapTok).unit (Fα heapTok) r → (∀ x, r.mem x → ¬ f.sig.pool ια Fα x ∧
+      ¬ (Spec.stackRegion s0 f.sig.stack).mem x) → (T heapTok).unit (F heapTok) r) :
     (∀ r ∈ rs, s.reg r = s0.reg r) ∧ f.sig.Post T ια Fα s0 s := by
   unfold Fn.retOkOn at hr
   simp only [Bool.and_eq_true, List.all_eq_true, List.any_eq_true, List.contains_iff_mem] at hr
@@ -274,7 +276,7 @@ theorem Fn.retOkOn_sound (hst : f.StructSpec) {rs : List Reg} {S : STy} {s : Sta
       have e : f.sig.exitCaps[k] = f.sig.give[k - f.sig.borrow.length] := by
         simp only [Sig.exitCaps]; rw [List.getElem_append_right (by simpa using hkb)]; simp
       rw [e]; exact ⟨_, .inr ⟨by omega, hj', rfl⟩, hfp, hex, hv⟩
-  refine ⟨ι', F, fun x hx => by simp [ι', hx], ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨ι', F, fun x hx => by simp [ι', hx], ?_, ?_, ?_, ?_, ?_, hU⟩
   · intro p hp
     exact (hS'.regs p hp).of_eq (IExpr.eval_congr _ (fun x hx => hag x (hst.outRegs p hp x hx)))
   · have := hS'.facts f.sig.post (by simp)
@@ -355,8 +357,10 @@ theorem Fn.retOk_sound (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {F 
     (hI : Inv f T P s0 ι0 S s ι F) (hr : f.retOk S θ = true)
     (hι0r : ∀ r x, (r, x) ∈ f.regVar → ι0 x = (s0.reg r).toNat)
     {ια : Val} {Fα : TokFp} (hι0p : ∀ x ∈ f.sig.params, ι0 x = ια x)
-    (hP : P = (f.sig.spec T).perm (ια, Fα) s0) :
+    (hP : P = (f.sig.spec T).perm (ια, Fα) s0)
+    (hU : ∀ r, (T heapTok).unit (Fα heapTok) r → (∀ x, r.mem x → ¬ f.sig.pool ια Fα x ∧
+      ¬ (Spec.stackRegion s0 f.sig.stack).mem x) → (T heapTok).unit (F heapTok) r) :
     (∀ r ∈ keptRegs, s.reg r = s0.reg r) ∧ f.sig.Post T ια Fα s0 s :=
-  f.retOkOn_sound hst hI hr hι0r hι0p hP
+  f.retOkOn_sound hst hI hr hι0r hι0p hP hU
 
 end NoCompiler.Typed

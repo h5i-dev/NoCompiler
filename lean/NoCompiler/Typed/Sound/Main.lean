@@ -269,6 +269,7 @@ theorem Fn.tail_step (hst : f.StructSpec) {c : Code} {D : Dom}
     (hι0p : ∀ x ∈ f.sig.params, f.entryVal a.1 s0 x = a.1 x)
     {S : STy} {s : State} {ι : Val} {rs : Reg} {off : BitVec 12}
     {F : TokFp} (hI : Inv f T ((f.sig.spec T).perm a s0) s0 (f.entryVal a.1 s0) S s ι F)
+    (hUF : f.UnitFrame T a s0 F)
     (hd : D.mem s.pc) (hi : c.instr s.pc = some (.jalr 0 rs off)) (hk : f.tailRegOk S rs off = true) :
     rn.R s := by
   unfold Fn.tailRegOk at hk
@@ -325,9 +326,9 @@ theorem Fn.tail_step (hst : f.StructSpec) {c : Code} {D : Dom}
     omega
   · intro s2 hdone hfr
     rcases hdone with ⟨hlive, hpc2, hpres, hpost⟩ | ⟨hex, -⟩
-    · obtain ⟨ι', F1, -, hI'⟩ := f.afterCall_inv hst hI hok hθ hstk hls htx huq hids hregs1 hmem1 hpres
+    · obtain ⟨ι', F1, -, hI', hUF1⟩ := f.afterCall_inv hst hI hok hθ hstk hls htx huq rfl hι0p hUF hids hregs1 hmem1 hpres
         hlive hpost hfr
-      obtain ⟨hkept, hpost'⟩ := f.retOkOn_sound (Fα := a.2) hst hI' hret hι0r hι0p rfl
+      obtain ⟨hkept, hpost'⟩ := f.retOkOn_sound (Fα := a.2) hst hI' hret hι0r hι0p rfl hUF1
       have hpc2' : s2.pc = s0.reg 1 := by rw [hpc2]; exact hra1
       refine rn.done_later _ ⟨.inl (by rw [hpc2']; exact he.ret), .inl ⟨hlive, hpc2', hkept, hpost'⟩⟩
     · exact rn.done_later _ ⟨.inr hex, .inr ⟨hex, trivial⟩⟩
@@ -346,11 +347,13 @@ theorem Fn.runStep (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.i
     {k : Nat} {ι : Val} {F : TokFp} {S : STy} {s : State}
     (hS : f.tyAt k = some S) (hk : k < f.size) (hpc : s.pc = f.pcOf k)
     (hI : Inv f T ((f.sig.spec T).perm a s0) s0 (f.entryVal a.1 s0) S s ι F)
+    (hUF : f.UnitFrame T a s0 F)
     (contF : ∀ (F1 : TokFp) (S1 : STy) (s' : State) (ι1 : Val) (k' : Nat), s'.pc = f.pcOf k' →
       Inv f T ((f.sig.spec T).perm a s0) s0 (f.entryVal a.1 s0) S1 s' ι1 F1 →
+      f.UnitFrame T a s0 F1 →
       (∀ y : Nat, y < f.fresh → ι1 y = ι y) → f.edge (some k) S1 k' = true → rn.later s') :
     rn.R s := by
-  have cont := contF F
+  have cont := fun S1 s' ι1 k' hpc' hI1 hag he' => contF F S1 s' ι1 k' hpc' hI1 hUF hag he'
   have hd : Dom.mem D s.pc := hpc ▸ hDf k hk
   have hprot := hst.protFresh
   obtain ⟨S', i, hS', hci, hk1⟩ := Fn.instr_spec hS (hinstr k hk)
@@ -402,9 +405,9 @@ theorem Fn.runStep (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.i
     by_cases hr1 : rd = 1
     · subst hr1
       simp only [beq_self_eq_true, if_true] at hk1
-      exact f.call_step hst rn hI hd hpc hi hk1 hcall
+      exact f.call_step hst rn hI hd hpc hi hk1 hcall rfl hι0p hUF
         (fun s' hx => rn.done_later _ ⟨Or.inr hx, Or.inr ⟨hx, trivial⟩⟩)
-        (fun F1 S1 s' ι1 hpc' hI1 hag he' => contF F1 S1 s' ι1 (k + 1) hpc' hI1 hag he')
+        (fun F1 S1 s' ι1 hpc' hI1 hUF1 hag he' => contF F1 S1 s' ι1 (k + 1) hpc' hI1 hUF1 hag he')
     rw [if_neg (by simpa using hr1)] at hk1
     simp only [Bool.and_eq_true, beq_iff_eq] at hk1
     obtain ⟨rfl, hk1⟩ := hk1
@@ -424,19 +427,19 @@ theorem Fn.runStep (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.i
     by_cases hr1 : rd = 1
     · subst hr1
       simp only [beq_self_eq_true, if_true] at hk1
-      exact f.callReg_step hst rn hI hd hpc hi hk1 hcall
+      exact f.callReg_step hst rn hI hd hpc hi hk1 hcall rfl hι0p hUF
         (fun s' hx => rn.done_later _ ⟨Or.inr hx, Or.inr ⟨hx, trivial⟩⟩)
-        (fun F1 S1 s' ι1 hpc' hI1 hag he' => contF F1 S1 s' ι1 (k + 1) hpc' hI1 hag he')
+        (fun F1 S1 s' ι1 hpc' hI1 hUF1 hag he' => contF F1 S1 s' ι1 (k + 1) hpc' hI1 hUF1 hag he')
     rw [if_neg (by simpa using hr1)] at hk1
     simp only [Bool.and_eq_true, Bool.or_eq_true, beq_iff_eq] at hk1
     obtain ⟨rfl, hk1⟩ := hk1
     by_cases htl : f.tailRegOk S rs1 off = true
-    · exact f.tail_step hst he rn hcall hι0r hι0p hI hd hi htl
+    · exact f.tail_step hst he rn hcall hι0r hι0p hI hUF hd hi htl
     have hk2 := hk1.resolve_right htl
     clear hk1
     obtain ⟨⟨rfl, rfl⟩, hk1⟩ := hk2
     unfold Fn.ret at hk1
-    obtain ⟨hkept, hpost⟩ := f.retOk_sound (Fα := a.2) hst hI hk1 hι0r hι0p rfl
+    obtain ⟨hkept, hpost⟩ := f.retOk_sound (Fα := a.2) hst hI hk1 hι0r hι0p rfl hUF
     refine rn.exec' hd hI.live hi trivial ?_
     have hs0 : s.setReg 0 (s.pc + 4) = s := by simp [State.setReg]
     have hra : s.reg 1 = s0.reg 1 := hkept 1 (by simp [keptRegs])
@@ -547,25 +550,25 @@ theorem Fn.run (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.instr
     (hι0p : ∀ x ∈ f.sig.params, f.entryVal a.1 s0 x = a.1 x) :
     ∀ p : Nat × Val, ∀ (F : TokFp) S s, f.tyAt p.1 = some S → p.1 < f.size → s.pc = f.pcOf p.1 →
       Inv f T ((f.sig.spec T).perm a s0) s0 (f.entryVal a.1 s0) S s p.2 F →
-      Exec c ((f.sig.spec T).perm a s0) D ((f.sig.spec T).Done a s0) s := by
+      f.UnitFrame T a s0 F → Exec c ((f.sig.spec T).perm a s0) D ((f.sig.spec T).Done a s0) s := by
   intro p
   refine WellFounded.induction (C := fun p : Nat × Val => ∀ (F : TokFp) S s, f.tyAt p.1 = some S →
       p.1 < f.size → s.pc = f.pcOf p.1 →
       Inv f T ((f.sig.spec T).perm a s0) s0 (f.entryVal a.1 s0) S s p.2 F →
-      Exec c ((f.sig.spec T).perm a s0) D ((f.sig.spec T).Done a s0) s)
+      f.UnitFrame T a s0 F → Exec c ((f.sig.spec T).perm a s0) D ((f.sig.spec T).Done a s0) s)
     (InvImage.wf (fun p : Nat × Val => f.rank p.1 p.2) LexN.wf) p ?_
   intro p ih
   obtain ⟨k, ι⟩ := p
-  intro F S s hS hk hpc hI
+  intro F S s hS hk hpc hI hUF
   simp only at hS hk hpc hI
-  exact f.runStep hst hinstr hDf he (Runner.total _ _ _ _) hcall hι0r hι0p hS hk hpc hI
-    (fun F1 S1 s' ι1 k' hpc' hI1 hag he' => by
+  exact f.runStep hst hinstr hDf he (Runner.total _ _ _ _) hcall hι0r hι0p hS hk hpc hI hUF
+    (fun F1 S1 s' ι1 k' hpc' hI1 hUF1 hag he' => by
       unfold Fn.edge at he'
       split at he'
       · cases he'
       · rename_i S2 hS2
         obtain ⟨hk', hI2, hrk⟩ := f.edgeOk_sound hst he' hI1 hag
-        exact ih (k', _) (hrk hp k rfl) F1 S2 s' hS2 hk' hpc' hI2)
+        exact ih (k', _) (hrk hp k rfl) F1 S2 s' hS2 hk' hpc' hI2 hUF1)
 
 /-- A partial run (`partial` signatures, I19): the same dispatch with `n` steps of fuel in
     place of the rank; no measure is needed. -/
@@ -578,22 +581,22 @@ theorem Fn.runP (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.inst
     (hι0p : ∀ x ∈ f.sig.params, f.entryVal a.1 s0 x = a.1 x) :
     ∀ n (k : Nat) (ι : Val) (F : TokFp) S s, f.tyAt k = some S → k < f.size → s.pc = f.pcOf k →
       Inv f T ((f.sig.spec T).perm a s0) s0 (f.entryVal a.1 s0) S s ι F →
-      ReachP c ((f.sig.spec T).perm a s0) D (fun s => Final D s ∧ (f.sig.spec T).Done a s0 s) n s := by
+      f.UnitFrame T a s0 F → ReachP c ((f.sig.spec T).perm a s0) D (fun s => Final D s ∧ (f.sig.spec T).Done a s0 s) n s := by
   intro n
   induction n using Nat.strongRecOn with
   | _ n ih =>
-  intro k ι F S s hS hk hpc hI
+  intro k ι F S s hS hk hpc hI hUF
   cases n with
   | zero => exact .zero
   | succ n =>
-  exact f.runStep hst hinstr hDf he (Runner.fuel _ _ _ _ n) hcall hι0r hι0p hS hk hpc hI
-    (fun F1 S1 s' ι1 k' hpc' hI1 hag he' m hm => by
+  exact f.runStep hst hinstr hDf he (Runner.fuel _ _ _ _ n) hcall hι0r hι0p hS hk hpc hI hUF
+    (fun F1 S1 s' ι1 k' hpc' hI1 hUF1 hag he' m hm => by
       unfold Fn.edge at he'
       split at he'
       · cases he'
       · rename_i S2 hS2
         obtain ⟨hk', hI2, -⟩ := f.edgeOk_sound hst he' hI1 hag
-        exact ih m (by omega) k' _ F1 S2 s' hS2 hk' hpc' hI2)
+        exact ih m (by omega) k' _ F1 S2 s' hS2 hk' hpc' hI2 hUF1)
 
 /-- **Soundness of the Lean checker** (theorems A–C for one function): a function it accepts
     meets its signature (⟦σ⟧, total) on the code image it was checked against, for every
@@ -618,7 +621,7 @@ theorem Fn.check_sound (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = true)
     obtain ⟨hk0, hI1, -⟩ := f.edgeOk_sound hst hentry hI0 (ιpre := f.entryVal a.1 s0) (fun _ _ => rfl)
     exact f.run hst hinstr hp hDf hcall he (fun r x h => f.entryVal_reg hst a.1 s0 h)
       (fun x h => f.entryVal_param hst a.1 s0 h) (0, _) a.2 S0 s0 hS0 hk0
-      (by simp [Fn.pcOf, he.pc]) hI1
+      (by simp [Fn.pcOf, he.pc]) hI1 (Fn.unitFrame_entry a s0)
 
 /-- A function with no calls, on its own code. -/
 theorem Fn.check_sound_leaf (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = true)
@@ -648,6 +651,6 @@ theorem Fn.check_soundP (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = true) 
     intro n
     exact f.runP hst hinstr hDf hcall he (fun r x h => f.entryVal_reg hst a.1 s0 h)
       (fun x h => f.entryVal_param hst a.1 s0 h) n 0 _ a.2 S0 s0 hS0 hk0
-      (by simp [Fn.pcOf, he.pc]) hI1
+      (by simp [Fn.pcOf, he.pc]) hI1 (Fn.unitFrame_entry a s0)
 
 end NoCompiler.Typed

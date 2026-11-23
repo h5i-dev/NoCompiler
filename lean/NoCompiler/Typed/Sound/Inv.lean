@@ -200,13 +200,18 @@ theorem capSub_sound {T : TokEnv} {ι : Val} {F : TokFp} {S : STy} {θ : Subst} 
     split at hk
     · rename_i b b' hb hb'
       simp only [Bool.and_eq_true, beq_iff_eq, List.all_eq_true, List.any_eq_true] at hk
-      obtain ⟨⟨⟨⟨-, -⟩, he1⟩, he2⟩, hfs⟩ := hk
+      obtain ⟨⟨⟨⟨-, hheap⟩, he1⟩, he2⟩, hfs⟩ := hk
       have e1 := ent_sound he1 hh
       have e2 := ent_sound he2 hh
       simp only [Constr.holds, Constr.eval, decide_eq_true_eq, IExpr.eval_subst] at e1 e2
       simp only [hb] at hv; simp only [hb']
-      obtain ⟨h0, h1, h2, hf⟩ := hv
-      refine ⟨by omega, by omega, by omega, ?_⟩
+      obtain ⟨h0, h1, h2, hf, hu⟩ := hv
+      have hU : b'.heap = true → (T heapTok).unit (F heapTok) (b'.region (IExpr.upd ι θ)) := by
+        intro hh'
+        have hr : b'.region (IExpr.upd ι θ) = b.region ι := by
+          simp only [BytesCap.region, IExpr.eval_subst] at *; rw [← e1, ← e2]
+        rw [hr]; exact hu (by rw [hheap]; exact hh')
+      refine ⟨by omega, by omega, by omega, ?_, hU⟩
       intro fd hfd
       obtain ⟨g, hg, hgo⟩ := hfs fd hfd
       obtain ⟨ho, heq⟩ := hgo

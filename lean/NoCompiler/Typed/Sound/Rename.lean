@@ -152,11 +152,14 @@ theorem Cap.subst_fp {c : Cap} {b : BytesCap} (hk : c.kind = .bytes b) (ρ : Sub
   simp [BytesCap.region, IExpr.eval_subst]
 
 theorem Cap.subst_valid {T : TokEnv} {c : Cap} {b : BytesCap} (hk : c.kind = .bytes b) (hf : b.fields = [])
-    (ρ : Subst) (ι : Val) (F F' : TokFp) (m : Word → Byte) :
+    (ρ : Subst) (ι : Val) (F F' : TokFp) (hF : b.heap = true → F heapTok = F' heapTok)
+    (m : Word → Byte) :
     (c.subst ρ).valid T ι F m ↔ c.valid T (IExpr.upd ι ρ) F' m := by
   unfold Cap.subst Cap.valid
   rw [hk]
-  simp [Constr.holds, Constr.eval_subst, IExpr.eval_subst, hf]
+  by_cases hh : b.heap = true
+  · simp [Constr.holds, Constr.eval_subst, IExpr.eval_subst, hf, hF hh, BytesCap.region]
+  · simp [Constr.holds, Constr.eval_subst, IExpr.eval_subst, hf, hh]
 
 theorem Cap.subst_fp_tok {c : Cap} {t : String} (hk : c.kind = .token t) (ρ : Subst) (ι : Val)
     (F : TokFp) (z : Word) : (c.subst ρ).fp ι F z ↔ c.fp (IExpr.upd ι ρ) F z := by

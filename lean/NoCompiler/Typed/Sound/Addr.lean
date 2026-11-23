@@ -118,8 +118,8 @@ theorem Cap.valid_congr {T : TokEnv} {ι : Val} {F : TokFp} {c : Cap} {m m' : Wo
   have hg' : c.guard.eval ι = true := hg
   split at hv
   · rename_i b hk
-    obtain ⟨h0, h1, h2, hf⟩ := hv
-    refine ⟨h0, h1, h2, fun fd hfd => field_congr h0 h1 h2 (hf fd hfd) (fun x hx => hm x ?_)⟩
+    obtain ⟨h0, h1, h2, hf, hu⟩ := hv
+    refine ⟨h0, h1, h2, fun fd hfd => field_congr h0 h1 h2 (hf fd hfd) (fun x hx => hm x ?_), hu⟩
     unfold Cap.fp Cap.regions; rw [if_pos hg', hk]; exact ⟨_, List.mem_singleton_self _, hx⟩
   · rename_i t hk
     refine (T t).local_ _ _ _ (fun x hx => hm x ?_) hv

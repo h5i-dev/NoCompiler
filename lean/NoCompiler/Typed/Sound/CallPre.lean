@@ -95,7 +95,7 @@ theorem Fn.callee_pre (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {Ft 
       have hg := STy.ent_sound (Fn.lendFrom_spec hlf).2.1 hh
       unfold Cap.valid at hv
       rw [hkb] at hv
-      obtain ⟨-, -, -, hfs⟩ := hv hg
+      obtain ⟨-, -, -, hfs, -⟩ := hv hg
       obtain ⟨-, hal, hread⟩ := hfs fh hfh
       have e1 := STy.ent_sound hadr hh
       have e2 := STy.ent_sound hlen8 hh
@@ -117,8 +117,24 @@ theorem Fn.callee_pre (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {Ft 
       · simp [Cap.exclusive, hkb, h]
     · intro _
       rw [hk]
+      -- a heap clause: the held heap unit with the same range
+      have hU0 : xb.heap = true → (T heapTok).unit (Ft heapTok) (xb.region (IExpr.upd ι θ)) := by
+        intro hhp
+        have hhp' : ls[i].1.heap = true := by rw [he]; exact hhp
+        obtain ⟨hb2, hkb2, hhb, hent⟩ := Fn.lendFrom_heap hlf hhp'
+        have hv := hI.valid _ hm
+        unfold Cap.valid at hv
+        have := hv (STy.ent_sound (Fn.lendFrom_spec hlf).2.1 hh)
+        rw [hkb2] at this
+        have hu := this.2.2.2.2 hhb
+        have e := STy.ent_sound hent hh
+        rw [he] at e
+        simp only [Constr.holds, Constr.eval, Bool.and_eq_true, decide_eq_true_eq, IExpr.eval_subst] at e
+        have hr : xb.region (IExpr.upd ι θ) = hb2.region ι := by
+          simp only [BytesCap.region]; rw [e.1, e.2]
+        rw [hr]; exact hu
       rw [he] at r0 r1 r2; simp only [IExpr.eval_subst] at r0 r1 r2
-      exact ⟨r0, r1, r2, hf0⟩
+      exact ⟨r0, r1, r2, hf0, hU0⟩
   -- the callee's stack region lies in ours, below every capability's footprint there
   have hsg : ∀ x, (Spec.stackRegion s1 g.stack).mem x → (Spec.stackRegion s0 f.sig.stack).mem x ∧
       x.toNat < (s0.reg Reg.sp).toNat - S.depth := by

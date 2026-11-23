@@ -16,16 +16,16 @@ theorem drop_all_getElem {α : Type} {ls : List α} {p : α → Bool} {n : Nat}
     rw [List.getElem_drop]; simp only [Nat.add_sub_cancel' hi]
   exact List.all_eq_true.1 h _ hm
 
-theorem Fn.fresh_in {S : STy} {s : State} {ι : Val} {Ft : TokFp} (hI : Inv f T P s0 ι0 S s ι Ft)
+/-- A byte of the callee's Pool lies in a held capability that went to it: one a `take` clause
+    was lent from, or a lent token. -/
+theorem Fn.pool_in {S : STy} {s : State} {ι : Val} {Ft : TokFp} (hI : Inv f T P s0 ι0 S s ι Ft)
     {g : Sig} (hok : CalleeSpec g) {θ : Subst} {ls : List (BytesCap × HCap)}
     (hls : Fn.lends S g θ = some ls) (htx : (ls.drop g.borrow.length).all (·.2.cap.exclusive) = true)
-    {ιg : Val} {Fg : TokFp}
-    (hpool : ∀ c ∈ g.fresh, ∀ x, c.fp ιg Fg x → g.pool (IExpr.upd ι θ) Ft x)
-    {c : Cap} (hc : c ∈ g.fresh) {z : Word} (hz : c.fp ιg Fg z) :
+    {z : Word} (hz : g.pool (IExpr.upd ι θ) Ft z) :
     ∃ i, ∃ hl : i < ls.length, ls[i].2 ∈ S.caps ∧ ls[i].2.cap.exclusive = true ∧ ls[i].2.cap.fp ι Ft z ∧
       (g.borrow.length ≤ i ∨ ∃ t, ls[i].2.cap.kind = .token t ∧ t ∈ g.tokNames) := by
   obtain ⟨hlen, -⟩ := Fn.lends_spec hls
-  rcases hpool c hc z hz with ⟨t, ht, htz⟩ | ⟨b, hb, htok, hbz⟩
+  rcases hz with ⟨t, ht, htz⟩ | ⟨b, hb, htok, hbz⟩
   · obtain ⟨i', hi', rfl⟩ := List.getElem_of_mem ht
     have hi : g.borrow.length + i' < g.entryCaps.length := by simp [Sig.entryCaps]; omega
     have hl : g.borrow.length + i' < ls.length := by omega
@@ -51,5 +51,15 @@ theorem Fn.fresh_in {S : STy} {s : State} {ι : Val} {Ft : TokFp} (hI : Inv f T 
       have hfz := clause_sub hok hls hI.hyps hI.valid hie hl z (by rw [e]; exact hbz)
       refine ⟨i, hl, hmc, by simp [Cap.exclusive, hkc], hfz, .inr ⟨t, hkc, ?_⟩⟩
       exact List.mem_filterMap.2 ⟨_, List.getElem_mem hie, by simp [hk]⟩
+
+theorem Fn.fresh_in {S : STy} {s : State} {ι : Val} {Ft : TokFp} (hI : Inv f T P s0 ι0 S s ι Ft)
+    {g : Sig} (hok : CalleeSpec g) {θ : Subst} {ls : List (BytesCap × HCap)}
+    (hls : Fn.lends S g θ = some ls) (htx : (ls.drop g.borrow.length).all (·.2.cap.exclusive) = true)
+    {ιg : Val} {Fg : TokFp}
+    (hpool : ∀ c ∈ g.fresh, ∀ x, c.fp ιg Fg x → g.pool (IExpr.upd ι θ) Ft x)
+    {c : Cap} (hc : c ∈ g.fresh) {z : Word} (hz : c.fp ιg Fg z) :
+    ∃ i, ∃ hl : i < ls.length, ls[i].2 ∈ S.caps ∧ ls[i].2.cap.exclusive = true ∧ ls[i].2.cap.fp ι Ft z ∧
+      (g.borrow.length ≤ i ∨ ∃ t, ls[i].2.cap.kind = .token t ∧ t ∈ g.tokNames) :=
+  f.pool_in hI hok hls htx (hpool c hc z hz)
 
 end NoCompiler.Typed

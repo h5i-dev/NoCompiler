@@ -373,6 +373,20 @@ def tokHeldOk (S : STy) (g : Sig) : Bool :=
   (g.tokNames.all fun t => (S.caps.filter fun c => c.cap.kind == .token t).length == 1) &&
   (g.giveToks.all fun t => g.tokNames.contains t || (S.caps.filter fun c => c.cap.kind == .token t).isEmpty)
 
+/-- The held capabilities at a call (decisions.md I38): the token conditions; no `take`
+    clause is lent from a capability that came from one of this function's borrows (it must be
+    given back); and every borrow of this function is still held, a byte borrow with its whole
+    range. -/
+def callHeldOk (S : STy) (g : Sig) (ls : List (BytesCap × HCap)) : Bool :=
+  tokHeldOk S g &&
+  (ls.drop g.borrow.length).all (fun p => !(p.2.origin.any (· < f.sig.borrow.length))) &&
+  (f.sig.borrow.zipIdx.all fun (b, i) => S.caps.any fun c =>
+    c.origin == some i && S.ent c.cap.guard &&
+    match c.cap.kind, b.cap.kind with
+    | .bytes hb, .bytes xb => S.ent (.and (.eq hb.base xb.base) (.eq hb.len xb.len))
+    | _, .token _ => true
+    | _, _ => false)
+
 /-- The callee's `borrow` and `take` clauses (instantiated) and the held capabilities they
     are lent from. -/
 def lends (S : STy) (g : Sig) (θ : Subst) : Option (List (BytesCap × HCap)) :=
@@ -445,7 +459,7 @@ def callAt (k : Nat) (S : STy) (t : Word) : Bool :=
       | some ls =>
         let S' := f.afterCall S g θ ls (f.callIds k S)
         lendsApart S ls && (ls.drop g.borrow.length).all (·.2.cap.exclusive) &&
-        tokHeldOk S g &&
+        f.callHeldOk S g ls &&
         decide ((S'.caps.map (·.id)).Nodup) && f.edge (some k) S' (k + 1)
 
 /-- `jal ra, off` to a callee in the table. -/
@@ -481,7 +495,7 @@ def tailAt (S : STy) (t : Word) : Bool :=
       | some ls =>
         let S' := f.afterCall S g θ ls []
         lendsApart S ls && (ls.drop g.borrow.length).all (·.2.cap.exclusive) &&
-        tokHeldOk S g &&
+        f.callHeldOk S g ls &&
         decide ((S'.caps.map (·.id)).Nodup) &&
         f.retOkOn preservedRegs S'
           (S'.instantiate { regs := f.sig.outRegs, facts := [f.sig.post] } f.sig.outVars)
@@ -559,7 +573,9 @@ def calleeOk (g : Sig) : Bool :=
   (g.inRegs.all fun p => p.1 != 1) &&
   (g.outRegs.all fun p => !preservedRegs.contains p.1) &&
   (g.take.all fun c => c.vars.all g.params.contains) &&
-  (g.give.all fun c => (match c.kind with | .bytes x => x.fields.isEmpty | .token _ => true) &&
+  (g.give.all fun c => (match c.kind with
+      | .bytes x => x.fields.isEmpty && (!x.heap || g.tokNames.contains heapTok)
+      | .token _ => true) &&
     c.vars.all (fun y => g.params.contains y || g.outVars.contains y))
 
 /-- The structural conditions: loops nested, variables apart. -/

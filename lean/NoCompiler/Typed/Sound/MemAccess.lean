@@ -30,7 +30,7 @@ theorem inCap_sound {S : STy} {ι : Val} {F : TokFp} {m : Word → Byte} {a : IE
       IExpr.eval_lit] at hin
     have hv := hv hg
     rw [hk] at hv
-    obtain ⟨h0, h1, h2, hf⟩ := hv
+    obtain ⟨h0, h1, h2, hf, -⟩ := hv
     refine ⟨b, hk, fun hn => by rcases hrw with h | h <;> simp_all, hg, h0, h1, h2, hf, hin.1, hin.2.1,
       hA.toNat_eq (by omega) (by omega), hin.2.2⟩
   · cases h

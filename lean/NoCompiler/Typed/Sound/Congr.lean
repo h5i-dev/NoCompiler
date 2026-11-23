@@ -108,14 +108,14 @@ theorem Cap.congr {T : TokEnv} {ι ι' : Val} {F : TokFp} {c : HCap}
     · simp only [Cap.valid, hk, Constr.holds, hg, hb, hl]
       constructor
       · intro hv hg'
-        obtain ⟨a, b', c', d⟩ := hv hg'
-        refine ⟨a, b', c', fun fd hfd => ?_⟩
+        obtain ⟨a, b', c', d, u⟩ := hv hg'
+        refine ⟨a, b', c', fun fd hfd => ?_, fun hh => by simpa [BytesCap.region, hb, hl] using u hh⟩
         obtain ⟨e1, e2, e3⟩ := d fd hfd
         refine ⟨by simpa [Cap.Field.holds, hl] using e1, by simpa [hb] using e2, ?_⟩
         rw [← hb]; exact e3.of_eq (IExpr.eval_congr _ (hf fd hfd))
       · intro hv hg'
-        obtain ⟨a, b', c', d⟩ := hv hg'
-        refine ⟨a, b', c', fun fd hfd => ?_⟩
+        obtain ⟨a, b', c', d, u⟩ := hv hg'
+        refine ⟨a, b', c', fun fd hfd => ?_, fun hh => by simpa [BytesCap.region, hb, hl] using u hh⟩
         obtain ⟨e1, e2, e3⟩ := d fd hfd
         refine ⟨by simpa [Cap.Field.holds, hl] using e1, by simpa [hb] using e2, ?_⟩
         rw [hb]; exact e3.of_eq (IExpr.eval_congr _ (hf fd hfd)).symm

@@ -102,8 +102,8 @@ theorem Fn.kept_cap (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {Ft : 
       · rw [hcg.1 z]; simp [Cap.fp, Cap.regions, hk, BytesCap.region]
       · have hv := (hcg.2 s.mem).1 (hI.valid c0 hc0)
         unfold Cap.valid at hv ⊢; rw [hk] at hv
-        intro hg; obtain ⟨a0, a1, a2, -⟩ := hv hg
-        exact ⟨a0, a1, a2, by simp⟩
+        intro hg; obtain ⟨a0, a1, a2, -, hu⟩ := hv hg
+        exact ⟨a0, a1, a2, by simp, hu⟩
     | token t =>
       simp only
       refine ⟨by simp, by simp, fun z => (hcg.1 z).symm, ?_⟩

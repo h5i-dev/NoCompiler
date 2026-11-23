@@ -32,8 +32,14 @@ namespace NoCompiler.Typed
 structure TokDef where
   inv : List Region → (Word → Byte) → Prop
   local_ : ∀ fp m m', (∀ x, (∃ r ∈ fp, r.mem x) → m x = m' x) → inv fp m → inv fp m'
+  /-- The live allocation units, for the allocator's token (`heapTok`): a function of the
+      token's footprint (decisions.md I38). -/
+  unit : List Region → Region → Prop := fun _ _ => False
 
 abbrev TokEnv := String → TokDef
+
+/-- The allocator's token: a `heap` byte capability is one of its live units. -/
+def heapTok : String := "Heap"
 /-- The footprint of each token, a logical value chosen with the valuation. -/
 abbrev TokFp := String → List Region
 
@@ -72,7 +78,8 @@ def valid (T : TokEnv) (ι : Val) (F : TokFp) (m : Word → Byte) (c : Cap) : Pr
     match c.kind with
     | .bytes b =>
       0 ≤ b.base.eval ι ∧ 0 ≤ b.len.eval ι ∧ b.base.eval ι + b.len.eval ι ≤ 2 ^ 64 ∧
-        ∀ f ∈ b.fields, Field.holds ι m b f
+        (∀ f ∈ b.fields, Field.holds ι m b f) ∧
+        (b.heap = true → (T heapTok).unit (F heapTok) (b.region ι))
     | .token t => (T t).inv (F t) m
 
 end Cap
@@ -128,11 +135,14 @@ def Pre (T : TokEnv) (ι : Val) (F : TokFp) (s : State) : Prop :=
     σ.stack ≤ (s.reg Reg.sp).toNat
 
 /-- The exit conditions Q2–Q4 (Q1 is `Spec.Done`'s `Preserved`). -/
-def Post (T : TokEnv) (ι : Val) (F : TokFp) (_s : State) (s' : State) : Prop :=
+def Post (T : TokEnv) (ι : Val) (F : TokFp) (s : State) (s' : State) : Prop :=
   ∃ ι' : Val, ∃ F' : TokFp, (∀ x, x ∉ σ.outVars → ι' x = ι x) ∧
     RegsHave ι' s' σ.outRegs ∧ σ.post.holds ι' ∧
     (∀ c ∈ σ.exitCaps, c.valid T ι' F' s'.mem) ∧ Separated ι' F' σ.exitCaps ∧
-    (∀ c ∈ σ.fresh, ∀ x, c.fp ι' F' x → σ.pool ι F x)
+    (∀ c ∈ σ.fresh, ∀ x, c.fp ι' F' x → σ.pool ι F x) ∧
+    -- Q5: the allocator's units that miss the Pool and the stack survive (I38)
+    (∀ r, (T heapTok).unit (F heapTok) r → (∀ x, r.mem x → ¬ σ.pool ι F x ∧
+      ¬ (Spec.stackRegion s σ.stack).mem x) → (T heapTok).unit (F' heapTok) r)
 
 /-- The signature as a specification: the logical argument is the valuation of the
     parameters and the footprints of the entry tokens. -/

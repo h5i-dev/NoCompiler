@@ -51,9 +51,11 @@ theorem Fn.callAt_step (hst : f.StructSpec) {c : Code} {D : Dom} {Q : State → 
     (hk : f.callAt k S t = true)
     (hcall : ∀ p ∈ f.callees, aligned p.1 4 ∧ ∃ Dg, rn.callee Dg p.1 (p.2.spec T) ∧ Dg.sub D ∧
       ∀ j < f.size, ¬ Dg.mem (f.pcOf j))
+    {a : Val × TokFp} (hP : P = (f.sig.spec T).perm a s0) (hι0p : ∀ x ∈ f.sig.params, ι0 x = a.1 x)
+    (hUF : f.UnitFrame T a s0 Ft)
     (hexit : ∀ s', s'.exit ≠ none → rn.later s')
     (cont : ∀ (F1 : TokFp) S1 s' ι1, s'.pc = f.pcOf (k + 1) → Inv f T P s0 ι0 S1 s' ι1 F1 →
-      (∀ y : Nat, y < f.fresh → ι1 y = ι y) → f.edge (some k) S1 (k + 1) = true →
+      f.UnitFrame T a s0 F1 → (∀ y : Nat, y < f.fresh → ι1 y = ι y) → f.edge (some k) S1 (k + 1) = true →
       rn.later s') :
     rn.R s := by
   unfold Fn.callAt at hk
@@ -98,9 +100,9 @@ theorem Fn.callAt_step (hst : f.StructSpec) {c : Code} {D : Dom} {Q : State → 
     omega
   · intro s2 hdone hfr
     rcases hdone with ⟨hlive, hpc2, hpres, hpost⟩ | ⟨hex, -⟩
-    · obtain ⟨ι', F1, g1, hI'⟩ := f.afterCall_inv hst hI hok hθ hstk hls htx huq hids hregs1 hmem1 hpres
+    · obtain ⟨ι', F1, g1, hI', hUF1⟩ := f.afterCall_inv hst hI hok hθ hstk hls htx huq hP hι0p hUF hids hregs1 hmem1 hpres
         hlive hpost hfr
-      refine cont F1 _ _ ι' ?_ hI' g1 hedge
+      refine cont F1 _ _ ι' ?_ hI' hUF1 g1 hedge
       rw [hpc2]; exact hra
     · exact hexit s2 hex
 
@@ -110,13 +112,15 @@ theorem Fn.call_step (hst : f.StructSpec) {c : Code} {D : Dom} {Q : State → Pr
     (hi : c.instr s.pc = some (.jal 1 off)) (hk : f.callOk k S off = true)
     (hcall : ∀ p ∈ f.callees, aligned p.1 4 ∧ ∃ Dg, rn.callee Dg p.1 (p.2.spec T) ∧ Dg.sub D ∧
       ∀ j < f.size, ¬ Dg.mem (f.pcOf j))
+    {a : Val × TokFp} (hP : P = (f.sig.spec T).perm a s0) (hι0p : ∀ x ∈ f.sig.params, ι0 x = a.1 x)
+    (hUF : f.UnitFrame T a s0 Ft)
     (hexit : ∀ s', s'.exit ≠ none → rn.later s')
     (cont : ∀ (F1 : TokFp) S1 s' ι1, s'.pc = f.pcOf (k + 1) → Inv f T P s0 ι0 S1 s' ι1 F1 →
-      (∀ y : Nat, y < f.fresh → ι1 y = ι y) → f.edge (some k) S1 (k + 1) = true →
+      f.UnitFrame T a s0 F1 → (∀ y : Nat, y < f.fresh → ι1 y = ι y) → f.edge (some k) S1 (k + 1) = true →
       rn.later s') :
     rn.R s :=
   f.callAt_step hst rn hI hd hpc hi trivial
-    (fun hal => by simp only [exec, jumpTo, hpc, hal, if_true]) hk hcall hexit cont
+    (fun hal => by simp only [exec, jumpTo, hpc, hal, if_true]) hk hcall hP hι0p hUF hexit cont
 
 theorem IExpr.eval_of_terms_nil {e : IExpr} (h : e.terms.isEmpty = true) (ι : Val) :
     e.eval ι = e.const := by
@@ -143,9 +147,11 @@ theorem Fn.callReg_step (hst : f.StructSpec) {c : Code} {D : Dom} {Q : State →
     (hi : c.instr s.pc = some (.jalr 1 rs off)) (hk : f.callRegOk k S rs off = true)
     (hcall : ∀ p ∈ f.callees, aligned p.1 4 ∧ ∃ Dg, rn.callee Dg p.1 (p.2.spec T) ∧ Dg.sub D ∧
       ∀ j < f.size, ¬ Dg.mem (f.pcOf j))
+    {a : Val × TokFp} (hP : P = (f.sig.spec T).perm a s0) (hι0p : ∀ x ∈ f.sig.params, ι0 x = a.1 x)
+    (hUF : f.UnitFrame T a s0 Ft)
     (hexit : ∀ s', s'.exit ≠ none → rn.later s')
     (cont : ∀ (F1 : TokFp) S1 s' ι1, s'.pc = f.pcOf (k + 1) → Inv f T P s0 ι0 S1 s' ι1 F1 →
-      (∀ y : Nat, y < f.fresh → ι1 y = ι y) → f.edge (some k) S1 (k + 1) = true →
+      f.UnitFrame T a s0 F1 → (∀ y : Nat, y < f.fresh → ι1 y = ι y) → f.edge (some k) S1 (k + 1) = true →
       rn.later s') :
     rn.R s := by
   unfold Fn.callRegOk at hk
@@ -159,6 +165,6 @@ theorem Fn.callReg_step (hst : f.StructSpec) {c : Code} {D : Dom} {Q : State →
     ofInt_const_eq (STy.reg_hasInt hI.regs hr) hnil
   rw [hv] at hk
   exact f.callAt_step hst rn hI hd hpc hi trivial
-    (fun hal => by simp only [exec, jumpTo, hal, if_true]) hk hcall hexit cont
+    (fun hal => by simp only [exec, jumpTo, hal, if_true]) hk hcall hP hι0p hUF hexit cont
 
 end NoCompiler.Typed
