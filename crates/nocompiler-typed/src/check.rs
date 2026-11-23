@@ -152,6 +152,21 @@ pub struct Query {
     pub verdict: Verdict,
 }
 
+/// What the exporter needs about a checked function (docs/typed/export.md).
+#[derive(Clone, Debug, Default)]
+pub struct FnExport {
+    /// The variable of each register's entry value: ra, then sp, gp, tp, s0–s11.
+    pub reg_var: Vec<(Reg, Var)>,
+    /// (head index, last index, bound variables, measure) per loop.
+    pub loops: Vec<(usize, usize, Vec<Var>, Option<Lin>)>,
+    /// Identity of each entry `borrow` capability, by clause.
+    pub borrow_ids: Vec<u32>,
+    /// The state type before each reached instruction (instruction index).
+    pub snapshots: Vec<(usize, State)>,
+    /// Variables are numbered below this.
+    pub fresh: u32,
+}
+
 /// What the checker did for one function (the ledger's "判断の記録").
 #[derive(Clone, Debug, Default)]
 pub struct FnReport {
@@ -165,6 +180,7 @@ pub struct FnReport {
     pub queries: Vec<Query>,
     pub retries: usize,
     pub micros: u128,
+    pub export: Option<FnExport>,
     /// Solver queries made (all of them; `queries` keeps them only when recording).
     pub nqueries: usize,
 }
@@ -286,6 +302,7 @@ pub fn check_program(p: &Program, record: bool) -> (Checker, Report) {
             loop {
                 let mut fc = FnCheck::new(&mut ck, &sg, f, &drops);
                 let r = fc.run();
+                let exp = fc.export_info();
                 let (states, insts, queries) = (fc.states, fc.insts, fc.queries);
                 fr.nqueries += fc.nqueries;
                 match r {
@@ -309,6 +326,7 @@ pub fn check_program(p: &Program, record: bool) -> (Checker, Report) {
                         break;
                     }
                     Ok(()) => {
+                        fr.export = Some(exp);
                         fr.states = states;
                         fr.insts = insts;
                         fr.queries = queries;
@@ -381,6 +399,7 @@ struct FnCheck<'a> {
     heads: BTreeMap<usize, Head>,
     loops: Vec<Loop>,
     states: Vec<(usize, usize, String)>,
+    snapshots: Vec<(usize, State)>,
     insts: Vec<(usize, String, String)>,
     queries: Vec<Query>,
     nqueries: usize,
@@ -418,10 +437,44 @@ impl<'a> FnCheck<'a> {
             heads: BTreeMap::new(),
             loops: vec![],
             states: vec![],
+            snapshots: vec![],
             insts: vec![],
             queries: vec![],
             nqueries: 0,
             line: f.line,
+        }
+    }
+
+    fn export_info(&self) -> FnExport {
+        let mut reg_var = vec![(RA, self.x_ra), (SP, self.sigma0)];
+        for r in [GP, TP]
+            .into_iter()
+            .chain(Reg::all().filter(|r| r.is_saved()))
+        {
+            if let Some(v) = self.entry_preserved.get(&r) {
+                reg_var.push((r, *v));
+            }
+        }
+        let loops = self
+            .loops
+            .iter()
+            .map(|l| {
+                let h = self.heads.get(&l.head);
+                (
+                    l.head,
+                    l.end,
+                    h.map(|h| h.inv_vars.iter().map(|x| x.1).collect())
+                        .unwrap_or_default(),
+                    h.and_then(|h| h.measure.clone()),
+                )
+            })
+            .collect();
+        FnExport {
+            reg_var,
+            loops,
+            borrow_ids: self.borrow_ids.clone(),
+            snapshots: self.snapshots.clone(),
+            fresh: self.ck.names.len() as u32,
         }
     }
 
@@ -869,6 +922,7 @@ impl<'a> FnCheck<'a> {
             if self.ck.record {
                 let s = self.fstate(&st);
                 self.states.push((ix, self.f.instrs[ix].line, s));
+                self.snapshots.push((ix, st.clone()));
             }
             let succs = self.step(ix, st)?;
             for (t, s) in succs {

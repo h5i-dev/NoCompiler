@@ -5,6 +5,7 @@
 
 pub mod asm;
 pub mod check;
+pub mod export;
 pub mod formula;
 pub mod isa;
 pub mod ledger;
