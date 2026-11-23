@@ -10,7 +10,7 @@
 #:   borrow d |-> bytes[n] rw
 #:   where  0 <= n < 2^63
 #:   stack  0
-	.text
+	.section .text.swab,"ax",@progbits
 	.globl swab
 	.p2align 2
 	.type swab,@function

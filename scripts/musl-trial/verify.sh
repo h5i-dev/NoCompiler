@@ -21,9 +21,9 @@ while read -r name src sym extra; do
       || { echo "$name: .s IS NOT skeleton + ann (run annotate.py)"; fail=1; continue; }
   fi
   clang --target=riscv64-linux-musl -march=rv64im_zba_zbb -mabi=lp64 -mno-relax -c "$f" -o "$OUT/$name.ann.o"
-  llvm-objcopy -O binary --only-section=.text "$OUT/$name.ann.o" "$OUT/$name.ann.text"
+  llvm-objcopy -O binary --only-section=".text.$sym" "$OUT/$name.ann.o" "$OUT/$name.ann.text"
   if ! cmp -s "$OUT/$name.ann.text" "$OUT/$name.text"; then echo "$name: BYTES DIFFER"; fail=1; continue; fi
-  r1=$(llvm-objdump -r "$OUT/$name.ann.o" | awk '/R_RISCV/{if ($2 ~ /PCREL_LO12/) $3="(auipc)"; print $1,$2,$3}')
+  r1=$(llvm-objdump -r "$OUT/$name.ann.o" | awk -v s="[.text.$sym]:" '/^RELOCATION RECORDS/{on=($4==s)} on && /R_RISCV/{if ($2 ~ /PCREL_LO12/) $3="(auipc)"; print $1,$2,$3}')
   r2=$(llvm-objdump -r "$OUT/$name.o" | awk -v s="[.text.$sym]:" '/^RELOCATION RECORDS/{on=($4==s)} on && /R_RISCV/{if ($2 ~ /PCREL_LO12/) $3="(auipc)"; print $1,$2,$3}')
   if [ "$r1" != "$r2" ]; then echo "$name: RELOCATIONS DIFFER"; fail=1; continue; fi
   # Read-only data the function references (constant pools) must be byte-identical too.

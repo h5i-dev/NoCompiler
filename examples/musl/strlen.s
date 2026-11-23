@@ -10,7 +10,7 @@
 #:   out    a0: int
 #:   stack  0
 # Not the C contract: C needs "a NUL at some s+k with s..s+k readable", not a v0 signature.
-	.text
+	.section .text.strlen,"ax",@progbits
 	.globl strlen
 	.p2align 2
 	.type strlen,@function

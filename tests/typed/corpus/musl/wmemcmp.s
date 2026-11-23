@@ -11,7 +11,7 @@
 #:   where  4 | l, 4 | r
 #:   out    a0: int
 #:   stack  0
-	.text
+	.section .text.wmemcmp,"ax",@progbits
 	.globl wmemcmp
 	.p2align 2
 	.type wmemcmp,@function

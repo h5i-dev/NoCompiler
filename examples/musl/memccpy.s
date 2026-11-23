@@ -10,7 +10,7 @@
 #:   borrow s |-> bytes[n] ro
 #:   out    a0: int
 #:   stack  0
-	.text
+	.section .text.memccpy,"ax",@progbits
 	.globl memccpy
 	.p2align 2
 	.type memccpy,@function

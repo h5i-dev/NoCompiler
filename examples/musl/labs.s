@@ -8,7 +8,7 @@
 #:   in     a0: int(x)
 #:   out    a0: int
 #:   stack  0
-	.text
+	.section .text.labs,"ax",@progbits
 	.globl labs
 	.p2align 2
 	.type labs,@function

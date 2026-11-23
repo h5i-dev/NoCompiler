@@ -10,7 +10,7 @@
 #:   borrow r |-> bytes[n] ro
 #:   out    a0: int
 #:   stack  0
-	.text
+	.section .text.strncmp,"ax",@progbits
 	.globl strncmp
 	.p2align 2
 	.type strncmp,@function

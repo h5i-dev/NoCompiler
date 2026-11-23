@@ -15,7 +15,7 @@
 #:   out    a0: int
 #:   stack  32
 #:   frame  32 slots 8, 16, 24
-	.text
+	.section .text.strnlen,"ax",@progbits
 	.globl strnlen
 	.p2align 2
 	.type strnlen,@function

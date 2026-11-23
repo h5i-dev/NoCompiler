@@ -10,7 +10,7 @@
 #:   where  4 | d
 #:   out    a0: int(d)
 #:   stack  0
-	.text
+	.section .text.wmemset,"ax",@progbits
 	.globl wmemset
 	.p2align 2
 	.type wmemset,@function

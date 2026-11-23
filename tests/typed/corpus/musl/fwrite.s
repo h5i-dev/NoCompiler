@@ -33,7 +33,7 @@
 #:   stack  64
 #:   frame  64 slots 8, 16, 24, 32, 40, 48, 56
 # len should be size*nmemb; v0 index expressions are linear, so len is left unrelated.
-	.text
+	.section .text.fwrite,"ax",@progbits
 	.globl fwrite
 	.p2align 2
 	.type fwrite,@function

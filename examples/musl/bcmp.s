@@ -16,7 +16,7 @@
 #:   borrow r |-> bytes[n] ro
 #:   out    a0: int
 #:   stack  0
-	.text
+	.section .text.bcmp,"ax",@progbits
 	.globl bcmp
 	.p2align 2
 	.type bcmp,@function

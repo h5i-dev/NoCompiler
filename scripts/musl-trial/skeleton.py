@@ -31,7 +31,7 @@ for off, enc, mn, ops in insns:
 label = lambda t: f".L{sym}_{t:x}"
 
 datasyms, last_hi = set(), None
-out = [f"\t.text", f"\t.globl {sym}", f"\t.p2align 2", f"\t.type {sym},@function", f"{sym}:"]
+out = [f"\t.section .text.{sym},\"ax\",@progbits", f"\t.globl {sym}", f"\t.p2align 2", f"\t.type {sym},@function", f"{sym}:"]
 i = 0
 while i < len(insns):
     off, enc, mn, ops = insns[i]

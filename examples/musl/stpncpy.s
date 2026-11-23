@@ -16,7 +16,7 @@
 #:   out    a0: int
 #:   stack  16
 #:   frame  16 slots 0, 8
-	.text
+	.section .text.__stpncpy,"ax",@progbits
 	.globl __stpncpy
 	.p2align 2
 	.type __stpncpy,@function

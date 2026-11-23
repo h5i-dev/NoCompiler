@@ -9,7 +9,7 @@
 #:   borrow s |-> bytes[n] ro
 #:   out    a0: int
 #:   stack  0
-	.text
+	.section .text.__memrchr,"ax",@progbits
 	.globl __memrchr
 	.p2align 2
 	.type __memrchr,@function

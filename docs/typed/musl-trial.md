@@ -264,6 +264,11 @@ fixed before compiling (17 functions): 7 of the 9 predicted accepts were accepte
 were not), all 4 predicted rejects were rejected, strlen was not accepted, and fwrite moved from
 "unsafe contract" to rejected. Batch 2: 6 of 6 as predicted.
 
+Text versus object (I15): `scripts/musl-trial/check.sh` runs the checker with `--object` on the
+objects compiled from musl, so each accepted function's checked instructions are compared with the
+compiled bytes. All 13 accepted files pass. (This first needed the skeleton to keep the function's
+section name, `.text.<sym>` from `-ffunction-sections`, instead of `.text`.)
+
 Annotation fixes made after running the checker, all visible in the history:
 - Every `.s` file had lost its signature block: `annotate.py` dropped the lines before the first
   `[at …]` (my bug, reported by U). Fixed; the instructions were unaffected.

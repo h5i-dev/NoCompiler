@@ -9,7 +9,7 @@
 #:   borrow s |-> bytes[n] rw
 #:   out    a0: int(s)
 #:   stack  0
-	.text
+	.section .text.memset,"ax",@progbits
 	.globl memset
 	.p2align 2
 	.type memset,@function

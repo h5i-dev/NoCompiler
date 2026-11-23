@@ -13,7 +13,7 @@
 #:   in     a0: int(s), a1: int(n)
 #:   borrow s |-> bytes[n] rw
 #:   stack  0
-	.text
+	.section .text.bzero,"ax",@progbits
 	.globl bzero
 	.p2align 2
 	.type bzero,@function

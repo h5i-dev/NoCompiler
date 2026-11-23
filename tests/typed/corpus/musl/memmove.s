@@ -16,7 +16,7 @@
 #:   where  b <= d, d + n <= b + len, b <= s, s + n <= b + len
 #:   out    a0: int(d)
 #:   stack  0
-	.text
+	.section .text.memmove,"ax",@progbits
 	.globl memmove
 	.p2align 2
 	.type memmove,@function

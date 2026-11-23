@@ -17,7 +17,7 @@
 #:   out    a0: int(d)
 #:   stack  32
 #:   frame  16 slots 0, 8
-	.text
+	.section .text.strncpy,"ax",@progbits
 	.globl strncpy
 	.p2align 2
 	.type strncpy,@function

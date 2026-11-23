@@ -11,7 +11,7 @@
 #:   where  4 | d, 4 | s
 #:   out    a0: int(d)
 #:   stack  0
-	.text
+	.section .text.wmemcpy,"ax",@progbits
 	.globl wmemcpy
 	.p2align 2
 	.type wmemcpy,@function

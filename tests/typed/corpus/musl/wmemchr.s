@@ -10,7 +10,7 @@
 #:   where  4 | s
 #:   out    a0: int
 #:   stack  0
-	.text
+	.section .text.wmemchr,"ax",@progbits
 	.globl wmemchr
 	.p2align 2
 	.type wmemchr,@function
