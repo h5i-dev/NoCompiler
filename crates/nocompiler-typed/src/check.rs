@@ -320,15 +320,6 @@ pub fn check_program(p: &Program, record: bool) -> (Checker, Report) {
         fr.micros = t0.elapsed().as_micros();
         rep.funcs.push(fr);
     }
-    for s in ck.sigs.values() {
-        if s.kind == FnKind::Safe && !bodies.contains_key(s.name.as_str()) {
-            rep.global.push(CheckError {
-                rule: Rule::Sig,
-                line: s.line,
-                msg: format!("safe function '{}' has no body in this file", s.name),
-            });
-        }
-    }
     (ck, rep)
 }
 
@@ -712,6 +703,12 @@ impl<'a> FnCheck<'a> {
                     return self.err(
                         Rule::StaticData,
                         "auipc: static data and pc-relative addresses are postponed (I14)",
+                    );
+                }
+                _ if pi.reloc => {
+                    return self.err(
+                        Rule::StaticData,
+                        "relocation operator (%hi/%lo/%pcrel_*): static data is postponed (I14)",
                     );
                 }
                 _ => {}

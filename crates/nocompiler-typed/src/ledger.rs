@@ -36,10 +36,10 @@ pub fn to_json(file: &str, _prog: &Program, ck: &Checker, rep: &Report) -> Value
         }));
     }
     for (name, s) in &ck.sigs {
-        if !with_body.contains(name.as_str()) && s.kind != FnKind::Safe {
+        if !with_body.contains(name.as_str()) {
             funcs.push(json!({
                 "name": name,
-                "status": if s.kind == FnKind::Unsafe { "assumed" } else { "external" },
+                "status": match s.kind { FnKind::Unsafe => "assumed", FnKind::Extern => "external", FnKind::Safe => "declared" },
             }));
         }
     }

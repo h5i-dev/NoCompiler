@@ -16,6 +16,9 @@ pub struct PInstr {
     pub addr: u64,
     /// `with` hints written right before the instruction.
     pub hints: Vec<(String, SLin)>,
+    /// An operand was a relocation (`%hi(sym)`, `%pcrel_lo(l)`, …), parsed as 0: the
+    /// value is the linker's, so the checker rejects the function (static data, I14).
+    pub reloc: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -228,6 +231,7 @@ fn handle_code(
                                 line: l.no,
                                 addr: *a,
                                 hints: vec![],
+                                reloc: false,
                             }));
                             *a += 4;
                         }
@@ -261,7 +265,8 @@ fn handle_code(
     if !in_text {
         return Ok(());
     }
-    let instrs = parse_instr(code).map_err(|m| ParseError { line: l.no, msg: m })?;
+    let (code, reloc) = strip_relocs(code);
+    let instrs = parse_instr(&code).map_err(|m| ParseError { line: l.no, msg: m })?;
     let a = addr.entry(section.clone()).or_insert(0);
     let mut first = true;
     for ins in instrs {
@@ -271,6 +276,7 @@ fn handle_code(
             line: l.no,
             addr: *a,
             hints: if first { std::mem::take(hints) } else { vec![] },
+            reloc,
         }));
         first = false;
         *a += 4 * w;
@@ -377,6 +383,31 @@ fn group(mut prog: Program, items: Vec<Item>) -> R<Program> {
     finish(cur.take(), tg, &mut funcs)?;
     prog.funcs = funcs;
     Ok(prog)
+}
+
+/// Replaces relocation operators `%name(arg)` by `0`.
+fn strip_relocs(code: &str) -> (String, bool) {
+    if !code.contains('%') {
+        return (code.to_string(), false);
+    }
+    let mut out = String::new();
+    let mut rest = code;
+    while let Some(i) = rest.find('%') {
+        out.push_str(&rest[..i]);
+        let after = &rest[i..];
+        match (after.find('('), after.find(')')) {
+            (Some(o), Some(c)) if o < c => {
+                out.push('0');
+                rest = &after[c + 1..];
+            }
+            _ => {
+                out.push_str(after);
+                rest = "";
+            }
+        }
+    }
+    out.push_str(rest);
+    (out, true)
 }
 
 fn sym_target(i: &Instr) -> Option<String> {
@@ -1000,6 +1031,14 @@ done:
         assert!(parse_instr("li a0, 0x100000000").is_err());
         assert!(parse_instr("c.addi a0, 1").is_err());
         assert!(parse_instr("lw a0, %lo(x)(a1)").is_err());
+        assert_eq!(
+            strip_relocs("ld a0, %pcrel_lo(.Lpcrel_hi0)(a0)"),
+            ("ld a0, 0(a0)".to_string(), true)
+        );
+        assert_eq!(
+            strip_relocs("auipc a0, %pcrel_hi(.LCPI0_0)"),
+            ("auipc a0, 0".to_string(), true)
+        );
         assert_eq!(
             parse_instr("bgtz a1, .L").unwrap(),
             vec![Instr::Branch {
