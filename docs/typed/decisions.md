@@ -271,3 +271,48 @@ comments can cite them.
   read as a signature (E1), and it implies the note's weaker `−4095 ≤ r ≤ n, r ≤ 0x7ffff000`.
   Without `r ≥ 1`, a write loop cannot be shown to terminate (`write_all`, note-trial.md).
   The assumption is Env.lean's (docs/isa/environment.md lists it as a kernel assumption).
+
+The following come from the v0 rejections in the trials (note-trial.md, musl-trial.md). Each
+is a design proposal only: nothing is implemented, and the user decides. Each would be a
+general extension of the type language or the profile; none is a rule for a particular
+function.
+
+- **P2 Per-byte content facts at joins** (musl `memchr`, `memchr-x`). clang joins the head
+  loop's "byte found" exit (`p` unaligned) with its aligned exits, re-reads `b[p]`, and enters
+  the word loop only if it is not the target. `8 ∣ p` there holds only because "`p` unaligned ⇒
+  `b[p] = c`": a fact about memory contents at a symbolic offset, carried across a join.
+  v0 has fields only for 8-byte words at constant offsets, and decision 2 drops path
+  conditions at joins. Options: (a) *indexed fields* `{[e]: u8(x)}` — a byte at offset `e`, an
+  index expression, with the same invalidation rules as fields (a store that may overlap drops
+  it); a `join where` could then state `8 ∣ p ∨ b[p − b] = c` with `[p − b]` named;
+  (b) fields of width 1/2/4 at constant offsets only (cheaper; does not cover memchr). Cost:
+  (a) adds a memory-content sort to Ψ and makes field invalidation a query per store.
+- **P3 NUL-terminated strings** (musl `strlen`, and `a64l` through `strchr`'s missing
+  contract). "There is a NUL inside readable memory" is not a v0 signature (note item 5). A
+  *string capability* `s ↦ str[n] ro` would mean `s ↦ bytes[n + 1] ro`, the byte at `n` is 0
+  and none before it is: then `strlen [s, n] in a0: int(s) borrow s ↦ str[n] ro out a0: int(n)`
+  is expressible and its body checkable (the loop reads `b[i]` for `i ≤ n`; reading 0 at `i`
+  gives `i = n`). It needs: the per-byte "is not 0 before n" fact (an indexed fact as in P2,
+  quantified over `i < n`, i.e. the first quantified fact in v0) and a way to create such
+  capabilities (string literals in `.rodata`, whose bytes are known; or a check loop that
+  establishes it). Alternative without quantifiers: keep strings as pointer + length in safe
+  code (`strnlen` form, as the note suggests) and give `strlen`/`strchr` only unsafe contracts
+  with a length bound — which is what v0 already allows.
+- **P4 Function pointers** (musl `bsearch`'s comparator, `__fwritex`'s `f->write`). Calls
+  through a register are outside the profile (S1). A value type `fn σ` — "the word is the
+  entry of a function meeting σ" — would let `jalr ra, 0(rs)` be typed as a call of σ when
+  `rs : fn σ`. Values of the type come from `auipc`/`addi` of a function symbol whose
+  signature is σ, from signature `in` clauses, and from fields typed `fn σ` (`f->write`).
+  Needs: the profile to admit `jalr ra, 0(rs)` (a change to S1 and to T's Lean model, where the
+  jump target must be shown to be such an entry), and Theorem D's induction to range over the
+  functions whose address is taken (S5 with indirect edges: a conservative call graph that
+  links every `fn σ` call to every function of signature σ).
+- **P5 Products of two variables** (musl `fwrite`: `__fwritex` is lent `size·nmemb` bytes).
+  `mul` of two non-constant values gives `int` today, and lengths must be linear. Proposal:
+  *product terms* — `mul rd, a, b` gives `int(a ⋆ b)` where `a ⋆ b` is an uninterpreted atom
+  (a fresh variable remembered with its two factors), with the facts the representatives allow
+  (`0 ≤ u(a)·u(b)` is not linear, so only sign facts and `mulhu = 0 ⇒ a ⋆ b < 2^64`), matched
+  syntactically against a callee's `bytes[size ⋆ nmemb]`. Signatures could then state
+  `borrow b ↦ bytes[size ⋆ nmemb] ro`. Cost: Ψ stays linear (the atom is a variable); the
+  matching rule must keep atoms identical across the call.
+- **P6 Writable static data in signatures beyond `_start`** is in (I32); no proposal.
