@@ -13,3 +13,4 @@ import NoCompiler.Typed.Sem
 import NoCompiler.Typed.Lin
 import NoCompiler.Typed.Presburger
 import NoCompiler.Typed.Search
+import NoCompiler.Typed.Check

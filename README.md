@@ -57,7 +57,7 @@ The syntax is provisional.
 | Lean: machine model, byte-wise permissions (decision 10) | done ([Step.lean](lean/NoCompiler/Step.lean)) |
 | Lean: type language and ⟦σ⟧, total version | done ([Typed/Lang.lean](lean/NoCompiler/Typed/Lang.lean), [Typed/Sem.lean](lean/NoCompiler/Typed/Sem.lean)) |
 | Rust checker: parser, typing rules, Presburger decision, ledger | in progress |
-| Lean checker, proved sound against ⟦σ⟧ (theorems A–D) | in progress |
+| Lean checker, proved sound against ⟦σ⟧ (theorems A–D) | in progress: Presburger entailment with checked certificates, proved sound ([Typed/Presburger.lean](lean/NoCompiler/Typed/Presburger.lean)); the checker runs on decoded images without calls, frames or syscalls yet ([Typed/Check.lean](lean/NoCompiler/Typed/Check.lean)); its soundness is not proved yet |
 | Trial set: musl 1.2.5 functions as compiled, annotated, with verdicts predicted in advance | in progress |
 | `partial` functions; pointer structures of unbounded size (lists, trees) | not started; unsafe for now |
 

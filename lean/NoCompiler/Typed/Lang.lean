@@ -150,5 +150,6 @@ structure Sig where
   post : Constr := .tt
   /-- `stack`: bytes below the entry `sp` the function may use. -/
   stack : Nat := 0
+  deriving DecidableEq, Repr
 
 end NoCompiler.Typed
