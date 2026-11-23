@@ -119,7 +119,7 @@ pub fn lean_sig(s: &Sig) -> String {
             .join(", ")
     };
     format!(
-        "{{ params := [{}], inRegs := {}, borrow := [{}], take := [{}], pre := {}, outVars := [{}], outRegs := {}, give := [{}], post := {}, stack := {} }}",
+        "{{ params := [{}], inRegs := {}, borrow := [{}], take := [{}], pre := {}, outVars := [{}], outRegs := {}, give := [{}], post := {}, stack := {}{} }}",
         vars(&s.params),
         lean_regs(&s.ins),
         borrow.join(", "),
@@ -129,7 +129,9 @@ pub fn lean_sig(s: &Sig) -> String {
         lean_regs(&s.outs),
         give.join(", "),
         lean_formula(&conj(&s.post)),
-        s.stack
+        s.stack,
+        // I19: printed only when set, so total signatures read as before
+        if s.partial { ", partial := true" } else { "" }
     )
 }
 
