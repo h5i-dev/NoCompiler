@@ -140,7 +140,9 @@ comments can cite them.
   `add.uw`/`shNadd.uw`/`slli.uw`/`zext.h` use zero-extension facts; `clz`/`ctz`/`cpop` give
   `x ≤ 64` (or 32); `lui` is a constant.
 - **I24 Contradictory edges.** A branch edge whose facts are contradictory is not followed
-  (it is never taken). Sound: no state satisfies the edge's type.
+  (it is never taken). Sound: no state satisfies the edge's type. Asked as `Ψ ⊢ ¬cond` (so
+  the relevance filter applies) with a smaller solver budget: an unanswered query only keeps
+  the edge, which costs precision, not soundness.
 - **I25 Conditional capabilities.** A guarded capability `ψ ⇒ c` is used where Ψ ⊢ ψ and
   then held unguarded from that point. At a join where guards differ, the guard becomes the
   conjunction (a weaker capability, valid on every edge).

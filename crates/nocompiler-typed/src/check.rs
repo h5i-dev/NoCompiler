@@ -150,6 +150,7 @@ pub struct Query {
     pub hyps: Vec<String>,
     pub goal: String,
     pub verdict: Verdict,
+    pub micros: u128,
 }
 
 /// What the exporter needs about a checked function (docs/typed/export.md).
@@ -711,7 +712,18 @@ impl<'a> FnCheck<'a> {
         }
         let hyps = self.hyps(st);
         self.nqueries += 1;
-        let v = presburger::prove(&hyps, goal);
+        let t0 = std::time::Instant::now();
+        // reachability pruning only sharpens (I24): a small budget suffices
+        let budget = if why == "edge reachable?" {
+            presburger::Budget {
+                constraints: 20_000,
+                ..Default::default()
+            }
+        } else {
+            presburger::Budget::default()
+        };
+        let v = presburger::prove_with(&hyps, goal, budget);
+        let micros = t0.elapsed().as_micros();
         if self.ck.record || v != Verdict::Proved {
             let q = Query {
                 line: self.line,
@@ -723,6 +735,7 @@ impl<'a> FnCheck<'a> {
                 },
                 goal: self.showf(goal),
                 verdict: v,
+                micros,
             };
             if self.ck.record {
                 self.queries.push(q);
@@ -2429,12 +2442,13 @@ impl<'a> FnCheck<'a> {
                 };
                 let mut out = Vec::new();
                 for (tgt, f) in [(t, taken), (next, not)] {
-                    let mut s = st.clone();
-                    self.add_fact(&mut s, f);
-                    // an edge whose facts are contradictory is never taken
-                    if self.prove(&s, &Formula::False, "edge reachable?") {
+                    // an edge whose condition the facts refute is never taken (I24); asked as
+                    // Ψ ⊢ ¬f rather than Ψ ∧ f ⊢ false, so unrelated facts are left out
+                    if self.prove(&st, &Formula::negate(f.clone()), "edge reachable?") {
                         continue;
                     }
+                    let mut s = st.clone();
+                    self.add_fact(&mut s, f);
                     out.push((tgt, s));
                 }
                 Ok(out)

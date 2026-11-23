@@ -30,7 +30,7 @@ pub fn to_json(file: &str, _prog: &Program, ck: &Checker, rep: &Report) -> Value
             "states": f.states.iter().map(|(ix, line, s)| json!({"index": ix, "line": line, "state": s})).collect::<Vec<_>>(),
             "instantiations": f.insts.iter().map(|(line, what, s)| json!({"line": line, "at": what, "binding": s})).collect::<Vec<_>>(),
             "queries": f.queries.iter().map(|q| json!({
-                "line": q.line, "why": q.why, "hyps": q.hyps, "goal": q.goal,
+                "line": q.line, "why": q.why, "micros": q.micros, "hyps": q.hyps, "goal": q.goal,
                 "verdict": match q.verdict { Verdict::Proved => "proved", Verdict::Refuted => "refuted", Verdict::Unknown => "unknown" },
             })).collect::<Vec<_>>(),
         }));
