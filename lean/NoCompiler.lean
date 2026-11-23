@@ -21,3 +21,5 @@ import NoCompiler.Typed.Sound.Step
 import NoCompiler.Typed.Sound.Arith
 import NoCompiler.Typed.Sound.Branch
 import NoCompiler.Typed.Sound.Mem
+import NoCompiler.Typed.Sound.Edge
+import NoCompiler.Typed.Sound.Ret

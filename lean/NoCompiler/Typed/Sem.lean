@@ -83,6 +83,12 @@ def Separated (ι : Val) (F : TokFp) (cs : List Cap) : Prop :=
   ∀ i j (hi : i < cs.length) (hj : j < cs.length), i ≠ j → cs[i].exclusive = true →
     ∀ x, cs[i].fp ι F x → ¬ cs[j].fp ι F x
 
+/-- A borrowed capability as it comes back: the same range, the exit fields. -/
+def Borrow.exitCap (b : Borrow) : Cap :=
+  match b.cap.kind with
+  | .bytes x => { b.cap with kind := .bytes { x with fields := b.outFields } }
+  | .token _ => b.cap
+
 namespace Sig
 variable (σ : Sig)
 
@@ -90,10 +96,7 @@ variable (σ : Sig)
 def entryCaps : List Cap := σ.borrow.map (·.cap) ++ σ.take
 
 /-- The capabilities held on exit: borrowed (with their exit fields), then given. -/
-def exitCaps : List Cap :=
-  σ.borrow.map (fun b => match b.cap.kind with
-    | .bytes x => { b.cap with kind := .bytes { x with fields := b.outFields } }
-    | .token _ => b.cap) ++ σ.give
+def exitCaps : List Cap := σ.borrow.map Borrow.exitCap ++ σ.give
 
 /-- Where returned tokens and given capabilities may come from: the `take`
     capabilities and the borrowed tokens, at entry (the proof's Pool, D4). -/

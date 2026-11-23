@@ -300,31 +300,35 @@ def initTy : STy where
 
 /-- Check the edge from instruction `k` (or the entry, `k = none`) to `k'`, the type after
     the instruction being `S`. -/
+def edgeOk (k : Option Nat) (S S' : STy) (k' : Nat) (θ : Subst) : Bool :=
+  let back := match k with | some k => decide (k' ≤ k) | none => false
+  decide (k' < f.size) &&
+  -- θ never binds a protected variable, nor a measure variable of a loop containing both
+  -- ends of the edge (other than at the loop's own backward edge)
+  θ.all (fun p => !f.protectedVars.contains p.1 &&
+    f.loops.all fun K =>
+      (match k with
+       | some k => !(inside K k && inside K k' && !(back && K.head == k'))
+       | none => true) || !K.meas.vars.contains p.1) &&
+  S.sub θ S' &&
+  (if back then
+    match f.loopAt k', k with
+    | some L, some k => decide (k ≤ L.last) && S.ent (.le (.lit 0) L.meas) &&
+        S.ent (.lt (L.meas.subst θ) L.meas)
+    | _, _ => false
+   else true)
+
+/-- Check the edge from instruction `k` (or the entry, `k = none`) to `k'`, the type after
+    the instruction being `S`; the instantiation is found heuristically. -/
 def edge (k : Option Nat) (S : STy) (k' : Nat) : Bool :=
   match f.tyAt k' with
   | none => false
   | some S' =>
     let back := match k with | some k => decide (k' ≤ k) | none => false
-    let L := f.loopAt k'
-    decide (k' < f.size) &&
-    (if back then (match L, k with | some L, some k => decide (k ≤ L.last) | _, _ => false) else true) &&
     let sv := S.vars
-    let nv := (if back then (L.map (·.vars)).getD [] else []) ++
+    let nv := (if back then ((f.loopAt k').map (·.vars)).getD [] else []) ++
       (S'.vars.filter (fun x => !sv.contains x)).eraseDups
-    let θ := S.instantiate S' nv
-    -- θ binds only new variables, never protected ones, never a measure variable of an
-    -- enclosing loop (other than at its own backward edge)
-    θ.all (fun (y, _) => nv.contains y && !f.protectedVars.contains y &&
-      f.loops.all fun K =>
-        (match k with
-         | some k => !(inside K k && inside K k' && !(back && K.head == k'))
-         | none => true) || !K.meas.vars.contains y) &&
-    S.sub θ S' &&
-    (if back then
-      match L with
-      | some L => S.ent (.le (.lit 0) L.meas) && S.ent (.lt (L.meas.subst θ) L.meas)
-      | none => false
-     else true)
+    f.edgeOk k S S' k' (S.instantiate S' nv)
 
 /-! ### The rules -/
 
@@ -476,21 +480,20 @@ def branchFacts (S : STy) (op : BrOp) (e1 e2 : IExpr) : List Constr × List Cons
 def target (k : Nat) (off : Int) : Option Nat :=
   if off % 4 = 0 && 0 ≤ (k : Int) + off / 4 then some ((k : Int) + off / 4).toNat else none
 
-/-- The return check. -/
-def ret (S : STy) : Bool :=
+/-- The return check, under an instantiation of the `out` variables. -/
+def retOk (S : STy) (θ : Subst) : Bool :=
   let σ := f.sig
   keptRegs.all (fun r => match S.reg r, f.regVar.lookup r with
     | some e, some x => S.entEqMod e (.var x)
     | _, _ => false) &&
-  let S' : STy := { regs := σ.outRegs, facts := [σ.post] }
-  let θ := S.instantiate S' σ.outVars
   θ.all (fun p => σ.outVars.contains p.1) &&
-  S.sub θ S' &&
+  S.sub θ { regs := σ.outRegs, facts := [σ.post] } &&
   σ.borrow.zipIdx.all fun (b, i) =>
-    S.caps.any fun c => c.origin == some i && S.capSub θ c
-      { id := c.id, origin := some i, cap := match b.cap.kind with
-          | .bytes x => { b.cap with kind := .bytes { x with fields := b.outFields } }
-          | .token _ => b.cap }
+    S.caps.any fun c => c.origin == some i && S.capSub θ c { id := c.id, origin := some i, cap := b.exitCap }
+
+/-- The return check. -/
+def ret (S : STy) : Bool :=
+  f.retOk S (S.instantiate { regs := f.sig.outRegs, facts := [f.sig.post] } f.sig.outVars)
 
 /-- Check instruction `k`. -/
 def instr (c : Code) (k : Nat) : Bool :=
