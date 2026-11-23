@@ -19,12 +19,6 @@ theorem hasInt_lui (ι : Val) (imm : BitVec 20) :
   have := hasInt_signExtend (by omega) ι (imm.setWidth 32 <<< 12)
   rwa [lui_toInt] at this
 
-/-- The instructions whose only effect is a register write, and the register. -/
-def writesReg : Instr → Option Reg
-  | .lui rd _ | .auipc rd _ | .iop _ rd _ _ | .addiw rd _ _ | .shift _ rd _ _
-  | .shiftw _ rd _ _ | .rop _ rd _ _ | .rwop _ rd _ _ | .uop _ rd _ => some rd
-  | _ => none
-
 set_option hygiene false in
 /-- The default rule: the register is a fresh word. -/
 local macro "arith_any" : tactic => `(tactic| (

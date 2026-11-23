@@ -57,7 +57,7 @@ The syntax is provisional.
 | Lean: machine model, byte-wise permissions (decision 10) | done ([Step.lean](lean/NoCompiler/Step.lean)) |
 | Lean: type language and ⟦σ⟧, total version | done ([Typed/Lang.lean](lean/NoCompiler/Typed/Lang.lean), [Typed/Sem.lean](lean/NoCompiler/Typed/Sem.lean)) |
 | Rust checker: parser, typing rules, Presburger decision, ledger | first version running ([crates/nocompiler-typed](crates/nocompiler-typed)): the note's examples and 60 corpus verdicts as expected; trusted, not yet cross-checked by Lean |
-| Lean checker, proved sound against ⟦σ⟧ (theorems A–D) | in progress: Presburger entailment with checked certificates, proved sound ([Typed/Presburger.lean](lean/NoCompiler/Typed/Presburger.lean)); the checker runs on decoded images without calls, frames or syscalls yet ([Typed/Check.lean](lean/NoCompiler/Typed/Check.lean)); its soundness is not proved yet |
+| Lean checker, proved sound against ⟦σ⟧ (theorems A–D) | milestone 1 done: `Fn.check_sound` (check on the decoded image ⇒ ⟦σ⟧ total, standard axioms only) for functions without calls, frames, syscalls, tokens, take/give, `partial` ([docs/typed/lean-checker.md](docs/typed/lean-checker.md)); calls and frames next |
 | Trial set: musl 1.2.5 functions as compiled, annotated, with verdicts predicted in advance | 29 functions (+8 flag variants) compiled, annotated, byte-verified, qemu-sanity-checked; Rust checker: 18 of 29 accepted as compiled; 6 rejections are S2 (block layout), 2 function pointers, 3 NUL strings or writable data ([musl-trial.md](docs/typed/musl-trial.md)) |
 | `partial` functions; pointer structures of unbounded size (lists, trees) | not started; unsafe for now |
 

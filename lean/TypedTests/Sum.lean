@@ -1,4 +1,4 @@
-import NoCompiler.Typed.Check
+import NoCompiler.Typed.Sound.Main
 /-! The note's `sum` (docs/Tab 1.md, 例), assembled by clang, checked by the Lean checker.
     The record below is written by hand (the Rust export will produce it). -/
 open NoCompiler NoCompiler.Typed
@@ -49,7 +49,11 @@ def fn : Fn where
     (8, { regs := kept ++ [(10, .var 27)], facts := [], caps := [cap] })]
 
 /-- Accepted (checked by the kernel). -/
-example : fn.check code = true := by decide
+theorem fn_checked : fn.check code = true := by decide
+
+/-- So `sum` meets its signature, for every meaning of tokens: the note's ⟦σ⟧, total. -/
+theorem sum_meets (T : TokEnv) : Meets code [(fn.entry, 4 * fn.size)] fn.entry T sig :=
+  Fn.check_sound fn code T fn_checked
 
 /-! Rejected variants. -/
 /-- The buffer one word too short: the last load is out of range. -/

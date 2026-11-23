@@ -270,6 +270,12 @@ structure Fn where
   fresh : Nat
   deriving Repr
 
+/-- The instructions whose only effect is a register write, and the register. -/
+def writesReg : Instr → Option Reg
+  | .lui rd _ | .auipc rd _ | .iop _ rd _ _ | .addiw rd _ _ | .shift _ rd _ _
+  | .shiftw _ rd _ _ | .rop _ rd _ _ | .rwop _ rd _ _ | .uop _ rd _ => some rd
+  | _ => none
+
 /-- The registers the return check compares with their entry values (I7). -/
 def keptRegs : List Reg := 1 :: preservedRegs
 
@@ -495,43 +501,62 @@ def retOk (S : STy) (θ : Subst) : Bool :=
 def ret (S : STy) : Bool :=
   f.retOk S (S.instantiate { regs := f.sig.outRegs, facts := [f.sig.post] } f.sig.outVars)
 
-/-- Check instruction `k`. -/
+def branchOk (k : Nat) (S : STy) (op : BrOp) (rs1 rs2 : Reg) (off : BitVec 13) : Bool :=
+  match target k off.toInt with
+  | none => false
+  | some k' =>
+    match S.reg rs1, S.reg rs2 with
+    | some e1, some e2 =>
+      f.edge (some k) (S.addFacts (f.branchFacts S op e1 e2).1) k' &&
+        f.edge (some k) (S.addFacts (f.branchFacts S op e1 e2).2) (k + 1)
+    | _, _ => f.edge (some k) S k' && f.edge (some k) S (k + 1)
+
+def jalOk (k : Nat) (S : STy) (off : BitVec 21) : Bool :=
+  match target k off.toInt with
+  | some k' => f.edge (some k) S k'
+  | none => false
+
+def loadOk (k : Nat) (S : STy) (op : LdOp) (rd rs : Reg) (off : BitVec 12) : Bool :=
+  rd != 2 && match f.load S op rd rs off with
+    | some S' => f.edge (some k) S' (k + 1)
+    | none => false
+
+def storeOk (k : Nat) (S : STy) (op : StOp) (rs1 rs2 : Reg) (off : BitVec 12) : Bool :=
+  match store S op rs1 rs2 off with
+  | some S' => f.edge (some k) S' (k + 1)
+  | none => false
+
+/-- A register write; `sp` is written only by the frame rules (not yet supported). -/
+def arithOk (k : Nat) (S : STy) (i : Instr) : Bool :=
+  match writesReg i with
+  | some rd => rd != 2 && match f.arith S i with
+    | some S' => f.edge (some k) S' (k + 1)
+    | none => false
+  | none => false
+
+/-- Check instruction `k`, decoded as `i`, at a point of type `S`. -/
+def instrAt (k : Nat) (S : STy) : Instr → Bool
+  | .branch op rs1 rs2 off => f.branchOk k S op rs1 rs2 off
+  | .jal rd off => rd == 0 && f.jalOk k S off
+  | .jalr rd rs1 off => rd == 0 && rs1 == 1 && off == 0 && f.ret S
+  | .load op rd rs off => f.loadOk k S op rd rs off
+  | .store op rs1 rs2 off => f.storeOk k S op rs1 rs2 off
+  | .ecall => false
+  | .unimp => false
+  | .lui rd imm => f.arithOk k S (.lui rd imm)
+  | .auipc rd imm => f.arithOk k S (.auipc rd imm)
+  | .iop op rd rs imm => f.arithOk k S (.iop op rd rs imm)
+  | .addiw rd rs imm => f.arithOk k S (.addiw rd rs imm)
+  | .shift op rd rs sh => f.arithOk k S (.shift op rd rs sh)
+  | .shiftw op rd rs sh => f.arithOk k S (.shiftw op rd rs sh)
+  | .rop op rd a b => f.arithOk k S (.rop op rd a b)
+  | .rwop op rd a b => f.arithOk k S (.rwop op rd a b)
+  | .uop op rd a => f.arithOk k S (.uop op rd a)
+
+/-- Check instruction `k` of the image. -/
 def instr (c : Code) (k : Nat) : Bool :=
   match f.tyAt k, c.instr (f.pcOf k) with
-  | some S, some i =>
-    match i with
-    | .branch op rs1 rs2 off =>
-      match target k off.toInt with
-      | none => false
-      | some k' =>
-        match S.reg rs1, S.reg rs2 with
-        | some e1, some e2 =>
-          let (ft, ff) := f.branchFacts S op e1 e2
-          f.edge (some k) (S.addFacts ft) k' && f.edge (some k) (S.addFacts ff) (k + 1)
-        | _, _ => f.edge (some k) S k' && f.edge (some k) S (k + 1)
-    | .jal 0 off =>
-      match target k off.toInt with
-      | some k' => f.edge (some k) S k'
-      | none => false
-    | .jalr 0 1 0 => f.ret S
-    | .load op rd rs off =>
-      rd != 2 && match f.load S op rd rs off with
-        | some S' => f.edge (some k) S' (k + 1)
-        | none => false
-    | .store op rs1 rs2 off =>
-      match store S op rs1 rs2 off with
-      | some S' => f.edge (some k) S' (k + 1)
-      | none => false
-    | _ =>
-      match f.arith S i with
-      | some S' =>
-        -- `sp` is written only by the frame rules (not yet supported)
-        (match i with
-         | .lui rd _ | .auipc rd _ | .iop _ rd _ _ | .addiw rd _ _ | .shift _ rd _ _
-         | .shiftw _ rd _ _ | .rop _ rd _ _ | .rwop _ rd _ _ | .uop _ rd _ => rd != 2
-         | _ => false) &&
-        f.edge (some k) S' (k + 1)
-      | none => false
+  | some S, some i => f.instrAt k S i
   | _, _ => false
 
 /-- The structural conditions: loops nested, variables apart. -/
