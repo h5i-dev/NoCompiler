@@ -197,6 +197,23 @@ are single loops with branches (accept); strncpy is a frame + one call (accept w
 stpncpy is rejected for all three predicted reasons, plus one I did not predict: it also loads its
 word constants from a constant pool (static data, I14). All six pass the qemu harness.
 
+### Variant family `-x` (predictions written before building the variants)
+
+2026-11-23. Flags `-mllvm -riscv-disable-using-constant-pool-for-large-ints
+-mllvm -jump-is-expensive=false`. The second one makes LLVM keep `a && b` conditions as
+branches. Found by trying flags and counting `slt*` instructions only: strncmp 3→0, memcpy 4→0,
+memchr 5→2, memccpy 5→2, stpncpy 5→2. I also looked at the first 30 lines of memchr under the
+flag, where the remaining `sltu` is the saved value of `n != 0`. Written before the variants
+were built and annotated:
+
+| function | predicted | why |
+|----------|-----------|-----|
+| strncmp-x | accept | the only stage-1 obstacle was the branch-free loop test |
+| memcpy-x | reject | `andi n, 2^k` tails remain; S2 layout probably remains |
+| memchr-x | reject | the join before the word loop (alignment only on some paths) remains; S2 probably |
+| memccpy-x | reject | xor alignment remains; S2 probably |
+| stpncpy-x | reject | xor alignment remains; S2 probably |
+
 ## Files
 
 - `scripts/musl-trial/build.sh` — pinned build (musl tree digest, clang 15.0.7, flags);
