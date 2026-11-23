@@ -586,6 +586,26 @@ fn sample(
             layout.push((a, n as u64, *mode, fields.clone()));
             next_area += 0x100_0000;
         }
+        // pointers into a capability: a parameter used in no range may be re-drawn as
+        // some capability's base plus a small offset
+        let in_ranges: Vec<Var> = caps
+            .iter()
+            .filter_map(|c| match &c.kind {
+                CapKind::Bytes { base, len, .. } => {
+                    Some(base.vars().chain(len.vars()).collect::<Vec<_>>())
+                }
+                _ => None,
+            })
+            .flatten()
+            .collect();
+        if !layout.is_empty() {
+            for p in &s.params {
+                if !in_ranges.contains(p) && rng.below(2) == 0 {
+                    let (a, n, _, _) = layout[rng.below(layout.len() as u64) as usize];
+                    v.insert(*p, (a + rng.below(n + 1)) as i128);
+                }
+            }
+        }
         let pre = Formula::and(s.pre.clone());
         if eval_f(&pre, &v) != Some(true) {
             continue;

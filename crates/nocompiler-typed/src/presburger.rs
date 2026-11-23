@@ -116,6 +116,29 @@ pub fn prove(hyps: &[Formula], goal: &Formula) -> Verdict {
 }
 
 pub fn prove_with(hyps: &[Formula], goal: &Formula, budget: Budget) -> Verdict {
+    // Ψ ⊢ A ∧ B iff Ψ ⊢ A and Ψ ⊢ B: smaller queries, fewer disjunctions in ¬goal.
+    if let Formula::And(gs) = goal {
+        let mut worst = Verdict::Proved;
+        for g in gs {
+            match prove_with(hyps, g, budget) {
+                Verdict::Proved => {}
+                Verdict::Refuted => return Verdict::Refuted,
+                Verdict::Unknown => worst = Verdict::Unknown,
+            }
+        }
+        return worst;
+    }
+    // A goal that is a hypothesis, or a conjunct of one, needs no search.
+    if hyps
+        .iter()
+        .any(|h| h == goal || matches!(h, Formula::And(hs) if hs.contains(goal)))
+    {
+        return Verdict::Proved;
+    }
+    prove_search(hyps, goal, budget)
+}
+
+fn prove_search(hyps: &[Formula], goal: &Formula, budget: Budget) -> Verdict {
     let rel = relevant(hyps, goal);
     let mut max = 0u32;
     let mut vs = BTreeSet::new();
@@ -226,6 +249,9 @@ impl Solver {
             return here;
         }
         if self.used_leaves > self.budget.leaves {
+            if std::env::var_os("NC_TYPED_SOLVER_DEBUG").is_some() {
+                eprintln!("solver: leaf budget");
+            }
             return Sat::Unknown;
         }
         let first = ors.remove(0);
@@ -292,7 +318,11 @@ impl Solver {
 
     fn charge(&mut self, n: usize) -> bool {
         self.used_constraints += n;
-        self.used_constraints <= self.budget.constraints
+        let ok = self.used_constraints <= self.budget.constraints;
+        if !ok && std::env::var_os("NC_TYPED_SOLVER_DEBUG").is_some() {
+            eprintln!("solver: constraint budget");
+        }
+        ok
     }
 
     /// Satisfiability of `eqs = 0 ∧ ges ≥ 0` over the integers.
@@ -457,6 +487,29 @@ impl Solver {
             let rest: Vec<Lin> = ges.into_iter().filter(|e| e.coef(x) == 0).collect();
             return self.ineqs(rest);
         }
+        // One lower bound c·x ≥ β and one upper bound c·x ≤ α, same c, α − β a constant
+        // ≥ c − 1: for every value of the other variables some integer x lies between, so
+        // both constraints can be dropped (exact). This is the shape of x = ⌊e / c⌋, e.g.
+        // the wrap count k of an unsigned representative e = u + 2^64·k.
+        for (&x, &(l, u, _, _)) in &vars {
+            if l != 1 || u != 1 {
+                continue;
+            }
+            let lo = ges.iter().find(|e| e.coef(x) > 0).unwrap();
+            let up = ges.iter().find(|e| e.coef(x) < 0).unwrap();
+            let c = lo.coef(x);
+            if up.coef(x) != -c {
+                continue;
+            }
+            // lo: c·x − β ≥ 0, up: −c·x + α ≥ 0; lo + up = α − β
+            if let Some(sum) = lo.add(up)
+                && sum.is_const()
+                && sum.konst >= c - 1
+            {
+                let rest: Vec<Lin> = ges.into_iter().filter(|e| e.coef(x) == 0).collect();
+                return self.ineqs(rest);
+            }
+        }
         let score = |(l, u, _, _): &(usize, usize, bool, bool)| l * u;
         let exact = vars
             .iter()
@@ -530,6 +583,9 @@ impl Solver {
             };
             let top = floor_div(top, a_max);
             if top + 1 > self.budget.splinters {
+                if std::env::var_os("NC_TYPED_SOLVER_DEBUG").is_some() {
+                    eprintln!("solver: splinter budget ({} splinters needed)", top + 1);
+                }
                 return Sat::Unknown;
             }
             for i in 0..=top {
@@ -754,6 +810,26 @@ mod tests {
             ),
             Verdict::Proved
         );
+    }
+
+    #[test]
+    fn wrap_counts_do_not_need_splinters() {
+        // e = u + 2^64·k, 0 ≤ u < 2^64 twice over, with an unrelated goal: needs the exact
+        // drop of k (one lower and one upper bound, coefficient 2^64, gap 2^64 − 1)
+        let mut n = Names::default();
+        let e = n.fresh("e");
+        let f = n.fresh("f");
+        let mut hyps = Vec::new();
+        for z in [e, f] {
+            let u = n.fresh("u");
+            let k = n.fresh("k");
+            hyps.push(Formula::eq(&v(z), &v(u).add(&v(k).scale(TWO64).unwrap()).unwrap()).unwrap());
+            hyps.push(Formula::in_u64(&v(u)).unwrap());
+        }
+        hyps.push(le(v(e), v(f)));
+        hyps.push(le(v(f), v(e).add_const(3).unwrap()));
+        let goal = le(v(f).add_const(-4).unwrap(), v(e));
+        assert_eq!(prove(&hyps, &goal), Verdict::Proved);
     }
 
     /// Brute force on small boxes against the procedure.
