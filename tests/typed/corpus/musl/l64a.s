@@ -3,7 +3,7 @@
 # Annotations are the lines that start with hash-colon (docs/typed/syntax.md).
 # Predicted (batch 3, fixed before compiling): reject static-data
 # Expected now (after reading the compiled code): reject static-data at 0x8 (before I32). With I32 the buffer is lent by the signature (borrow @l64a.s |-> bytes[7] rw), and the loop runs at most 6 times: x < 2^(32-6k) after k shifts, a finite disjunction. It stops at the back edge because srliw is typed as an unknown word: the rule 'srliw rd, rs, c (c >= 1): zext32(e) = 2^c x + r, 0 <= x < 2^(32-c)' is missing.
-#! expect l64a: reject loop-inv
+#! expect l64a: accept
 #: fn l64a [x]
 #:   in     a0: int(x)
 #:   borrow @l64a.s |-> bytes[7] rw

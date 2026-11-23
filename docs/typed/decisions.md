@@ -208,6 +208,11 @@ comments can cite them.
   defined in exactly one file with the identical signature (as parsed); unsafe/extern
   declarations stay contracts; S5 is checked on the call graph of all files together. A
   program is safe when every file checks and `link` reports no error.
+- **I35 More arithmetic** (asked by the musl trial; facts about the operations): the fresh
+  result x of `xor a, b` also gets `x = 0 ⇔ 2^64 ∣ a − b` (so `snez` of it is `a ≠ b`);
+  `srliw rd, rs, c` and `srlw` by a constant c (mod 32) ≥ 1 give `zext32(e) = 2^c·x + r`,
+  `0 ≤ r < 2^c` (the shifted low word is below 2^31, so its sign extension is itself).
+  Under P1 an `inv` on a label that heads no loop needs no measure (it is a `join`).
 
 ## Proposals (not adopted: the default checker does not use them)
 

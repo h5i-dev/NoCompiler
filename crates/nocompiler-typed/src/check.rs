@@ -1491,7 +1491,9 @@ impl<'a> FnCheck<'a> {
             })?),
             None => None,
         };
-        if inv.is_loop && measure.is_none() && !self.me.partial {
+        // (P1: an `inv` on a label that heads no loop is a `join` and needs no measure)
+        let heads_loop = self.loops.iter().any(|l| l.head == ix);
+        if inv.is_loop && heads_loop && measure.is_none() && !self.me.partial {
             return self.err(
                 Rule::LoopDecreases,
                 "a loop of a function that is not 'partial' needs 'decreases'",
@@ -2067,6 +2069,13 @@ impl<'a> FnCheck<'a> {
                         let m = e.scale(1i128 << sh).ok_or_else(ovf_)?;
                         self.word32(&mut st, &m)?
                     }
+                    // srliw by c ≥ 1: the low word shifted right, < 2^31, so sign extension
+                    // keeps it: zext32(e) = 2^c·x + r
+                    ShWOp::Srliw if sh >= 1 => {
+                        let z = self.zext32(&mut st, &e)?;
+                        let (q, _) = self.divmod(&mut st, &z, 1i128 << sh)?;
+                        q
+                    }
                     _ => self.unknown_word(&mut st, "x"),
                 };
                 self.set(&mut st, rd, v)?;
@@ -2166,6 +2175,13 @@ impl<'a> FnCheck<'a> {
                     RWOp::Subw => {
                         let s = a.sub(&b).ok_or_else(ovf_)?;
                         self.word32(&mut st, &s)?
+                    }
+                    // srlw by a constant amount c (mod 32) ≥ 1: as srliw
+                    RWOp::Srlw if b.as_const().is_some_and(|c| c.rem_euclid(32) >= 1) => {
+                        let c = b.as_const().unwrap().rem_euclid(32);
+                        let z = self.zext32(&mut st, &a)?;
+                        let (q, _) = self.divmod(&mut st, &z, 1i128 << c)?;
+                        q
                     }
                     RWOp::Mulw if a.is_const() || b.is_const() => {
                         let s = match (a.as_const(), b.as_const()) {
@@ -2402,6 +2418,17 @@ impl<'a> FnCheck<'a> {
             && let Some(v) = x.as_var()
         {
             self.xor_defs.insert(v, (a.clone(), b.clone()));
+            // a xor b = 0 ⇔ a ≡ b (mod 2^64)
+            let d = a.sub(b).ok_or_else(|| ovf(self.line))?;
+            let zero = Formula::Eq(x.clone());
+            let f = Formula::or(vec![
+                Formula::and(vec![zero.clone(), Formula::Dvd(TWO64, d.clone())]),
+                Formula::and(vec![
+                    Formula::negate(zero),
+                    Formula::negate(Formula::Dvd(TWO64, d)),
+                ]),
+            ]);
+            self.add_fact(st, f);
         }
         Ok(x)
     }
