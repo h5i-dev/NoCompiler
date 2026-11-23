@@ -532,3 +532,10 @@ unchanged.
 | `div` | accept | accept |
 | `a64l` | reject call-sig | reject call-sig |
 | `l64a` | accept | accept |
+
+Note on `memchr` (U, same date): the rejection is an expressiveness limit, not a missing rule.
+clang joins the "byte found" exit of the head loop (`beq a4, a3` at 0x20, `p` unaligned) with
+the aligned exits at 0x60, then re-reads `b[p]` and only falls into the word loop if it is not
+the target. So `8 ∣ p` at 0x9c holds only because "p unaligned ⇒ b[p] = c", a fact about memory
+contents at a join; v0 has fields for 8-byte words only and keeps no per-byte facts, and
+decision 2 (no disjunctive joins) drops the path condition. The `-x` variant fails the same way.
