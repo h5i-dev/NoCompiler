@@ -154,3 +154,10 @@ comments can cite them.
   fact of the head that mentions a variable bound at the head, even when the edge inherited
   the fact itself: the inherited one is about the current iteration. (An early version
   skipped them — unsound; regression test `neg_loop_inv_back.s`.)
+- **I29 Bitwise operations** (asked for by the musl trial; facts about the operations, not
+  about musl): `and`/`or`/`xor` of two values provably in {0, 1} are exact (a four-case
+  disjunction); `or`/`xor` with a constant `c` are `u(e) + c` when Ψ proves the other
+  operand's bits disjoint from `c`'s (`u(e) < 2^tz(c)`, or `2^bitlen(c) ∣ u(e)`); the fresh
+  result `x` of `xor a, b` remembers `(a, b)`, and `andi x, 2^k − 1` then also gives
+  `r = 0 ⇔ a ≡ b (mod 2^k)`. Sound: (a xor b) mod 2^k = (a mod 2^k) xor (b mod 2^k), which is
+  0 exactly when the two residues are equal.

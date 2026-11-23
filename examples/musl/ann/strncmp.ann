@@ -3,7 +3,7 @@
 # Annotations are the lines that start with hash-colon (provisional syntax of docs/Tab 1.md; see docs/typed/musl-trial.md).
 # Predicted (fixed before compiling): accept (signature stronger than C)
 # Expected now (after reading the compiled code): reject (v0 rules). The loop test 'l[i] && r[i] && n && l[i]==r[i]' is compiled branch-free (sltu/sltiu/and/xor at 0x18-0x30, one beq at 0x34). Those ops are 'not in the table' (int only), so the fall-through of 0x34 has no fact m >= 1, and the load lbu a3, 0(a0) at 0x38 (address l + n - m) is not provably below l + n. First failure: memory rule at 0x38.
-#! expect strncmp: reject mem-bounds
+#! expect strncmp: accept
 #: fn strncmp [l, r, n]
 #:   in     a0: int(l), a1: int(r), a2: int(n)
 #:   borrow l |-> bytes[n] ro

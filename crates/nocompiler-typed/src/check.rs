@@ -403,6 +403,8 @@ struct FnCheck<'a> {
     insts: Vec<(usize, String, String)>,
     queries: Vec<Query>,
     nqueries: usize,
+    /// `x = a xor b` for the fresh variables xor results get (true in every state).
+    xor_defs: BTreeMap<Var, (Lin, Lin)>,
     line: usize,
 }
 
@@ -441,6 +443,7 @@ impl<'a> FnCheck<'a> {
             insts: vec![],
             queries: vec![],
             nqueries: 0,
+            xor_defs: BTreeMap::new(),
             line: f.line,
         }
     }
@@ -1631,6 +1634,8 @@ impl<'a> FnCheck<'a> {
                     IOp::Addi => e.add_const(imm as i128).ok_or_else(ovf_)?,
                     IOp::Xori if imm == -1 => Lin::konst(-1).sub(&e).ok_or_else(ovf_)?,
                     IOp::Andi => self.and_const(&mut st, &e, imm as i128)?,
+                    IOp::Ori => self.bitop(&mut st, BitOp::Or, &e, &Lin::konst(imm as i128))?,
+                    IOp::Xori => self.bitop(&mut st, BitOp::Xor, &e, &Lin::konst(imm as i128))?,
                     IOp::Sltiu => {
                         let u = self.urep(&mut st, &e)?;
                         self.set_less(&mut st, &u, &Lin::konst((imm as i128).rem_euclid(TWO64)))?
@@ -1712,8 +1717,10 @@ impl<'a> FnCheck<'a> {
                     ROp::And => match (a.as_const(), b.as_const()) {
                         (Some(c), _) => self.and_const(&mut st, &b, signed64(c))?,
                         (_, Some(c)) => self.and_const(&mut st, &a, signed64(c))?,
-                        _ => self.unknown_word(&mut st, "x"),
+                        _ => self.bitop(&mut st, BitOp::And, &a, &b)?,
                     },
+                    ROp::Or => self.bitop(&mut st, BitOp::Or, &a, &b)?,
+                    ROp::Xor => self.bitop(&mut st, BitOp::Xor, &a, &b)?,
                     ROp::Sltu => {
                         let (ua, ub) = (self.urep(&mut st, &a)?, self.urep(&mut st, &b)?);
                         self.set_less(&mut st, &ua, &ub)?
@@ -1951,6 +1958,78 @@ impl<'a> FnCheck<'a> {
         }
     }
 
+    /// `and`/`or`/`xor` (I29): exact on two values provably in {0, 1}; `or`/`xor` with a
+    /// constant whose bits are provably disjoint from the other operand's is `+`; an `xor`
+    /// result remembers its operands for the mask rule in `and_const`.
+    fn bitop(&mut self, st: &mut State, op: BitOp, a: &Lin, b: &Lin) -> F<Lin> {
+        let line_ = self.line;
+        let ovf_ = move || ovf(line_);
+        // constant operand (or both: folded earlier)
+        let (x, c) = match (a.as_const(), b.as_const()) {
+            (_, Some(c)) => (a.clone(), Some(c)),
+            (Some(c), _) => (b.clone(), Some(c)),
+            _ => (a.clone(), None),
+        };
+        if let (Some(c), BitOp::Or | BitOp::Xor) = (c, op) {
+            let cu = c.rem_euclid(TWO64);
+            if cu == 0 {
+                return Ok(x);
+            }
+            let u = self.urep(st, &x)?;
+            let j = cu.trailing_zeros();
+            if j > 0
+                && self.prove(
+                    st,
+                    &Formula::lt(&u, &Lin::konst(1i128 << j)).ok_or_else(ovf_)?,
+                    "bits below the constant's",
+                )
+            {
+                return Ok(u.add_const(cu).ok_or_else(ovf_)?);
+            }
+            let top = 128 - cu.leading_zeros();
+            if top < 64
+                && self.prove(
+                    st,
+                    &Formula::Dvd(1i128 << top, u.clone()),
+                    "bits above the constant's",
+                )
+            {
+                return Ok(u.add_const(cu).ok_or_else(ovf_)?);
+            }
+        }
+        if c.is_none() {
+            let bit = |e: &Lin| {
+                Formula::and(vec![
+                    Formula::Ge(e.clone()),
+                    Formula::le(e, &Lin::konst(1)).unwrap_or(Formula::False),
+                ])
+            };
+            if self.prove(st, &bit(a), "0/1 operand") && self.prove(st, &bit(b), "0/1 operand") {
+                let x = Lin::var(self.fresh("b"));
+                let eqc =
+                    |e: &Lin, v: i128| Formula::eq(e, &Lin::konst(v)).unwrap_or(Formula::False);
+                let mut cases = Vec::new();
+                for (p, q) in [(0, 0), (0, 1), (1, 0), (1, 1)] {
+                    let r = match op {
+                        BitOp::And => p & q,
+                        BitOp::Or => p | q,
+                        BitOp::Xor => p ^ q,
+                    };
+                    cases.push(Formula::and(vec![eqc(a, p), eqc(b, q), eqc(&x, r)]));
+                }
+                self.add_fact(st, Formula::or(cases));
+                return Ok(x);
+            }
+        }
+        let x = self.unknown_word(st, "x");
+        if op == BitOp::Xor
+            && let Some(v) = x.as_var()
+        {
+            self.xor_defs.insert(v, (a.clone(), b.clone()));
+        }
+        Ok(x)
+    }
+
     /// `andi`-style rule for a constant mask `c` (signed 64-bit).
     fn and_const(&mut self, st: &mut State, e: &Lin, c: i128) -> F<Lin> {
         let line_ = self.line;
@@ -1958,6 +2037,19 @@ impl<'a> FnCheck<'a> {
         if c >= 0 && (c + 1).count_ones() == 1 {
             // c = 2^k − 1: x = e mod 2^k
             let (_, r) = self.divmod(st, e, c + 1)?;
+            // (a xor b) mod 2^k = 0 ⇔ a ≡ b (mod 2^k)
+            if let Some((a, b)) = e.as_var().and_then(|v| self.xor_defs.get(&v)).cloned() {
+                let d = a.sub(&b).ok_or_else(ovf_)?;
+                let zero = Formula::Eq(r.clone());
+                let f = Formula::or(vec![
+                    Formula::and(vec![zero.clone(), Formula::Dvd(c + 1, d.clone())]),
+                    Formula::and(vec![
+                        Formula::negate(zero),
+                        Formula::negate(Formula::Dvd(c + 1, d)),
+                    ]),
+                ]);
+                self.add_fact(st, f);
+            }
             return Ok(r);
         }
         if c < 0 && (-c).count_ones() == 1 {
@@ -3040,6 +3132,13 @@ impl<'a> FnCheck<'a> {
         }
         Ok(())
     }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum BitOp {
+    And,
+    Or,
+    Xor,
 }
 
 struct Match {
