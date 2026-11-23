@@ -41,6 +41,29 @@ structure Runner (c : Code) (P : Perm) (D : Dom) (Q : State → Prop) where
 
 variable {c : Code} {P : Perm} {D : Dom} {Q : State → Prop}
 
+namespace Runner
+
+/-- What `exec` leaves must satisfy `next`; a fault never does (as `Reach.opt`). -/
+def optR (rn : Runner c P D Q) : Option State → Prop
+  | none => False
+  | some s => rn.next s
+
+@[simp] theorem optR_some (rn : Runner c P D Q) {s : State} : rn.optR (some s) = rn.next s := rfl
+@[simp] theorem optR_none (rn : Runner c P D Q) : rn.optR none = False := rfl
+
+/-- Step over one instruction other than ECALL, in `Reach.exec_step`'s shape. -/
+theorem exec' (rn : Runner c P D Q) {s : State} {i : Instr} (hd : D.mem s.pc) (hx : s.exit = none)
+    (hi : c.instr s.pc = some i) (hok : InstrOk P i s) (h : rn.optR (NoCompiler.exec i s)) :
+    rn.R s := by
+  cases hxs : NoCompiler.exec i s with
+  | none => rw [hxs] at h; exact h.elim
+  | some s₁ => rw [hxs] at h; exact rn.exec hd hx hi hok hxs h
+
+end Runner
+
+-- never unfolded by unification (a goal `optR (exec i s)` would reduce through `exec`)
+attribute [irreducible] Runner.optR
+
 /-- Total runs: `Reach` (the checker's Theorems A-C). -/
 def Runner.total (c : Code) (P : Perm) (D : Dom) (Q : State → Prop) : Runner c P D Q where
   R := Reach c P D Q

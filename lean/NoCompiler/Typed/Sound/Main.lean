@@ -219,13 +219,13 @@ theorem writesReg_step {P : Perm} {i : Instr} {rd : Reg} (hw : writesReg i = som
   cases i <;> simp_all [writesReg, InstrOk, exec]
 
 /-- A register-writing instruction, then the edge to the next one. -/
-theorem Fn.arith_step (hst : f.StructSpec) {c : Code} {P : Perm} {D : Dom} {Q : State → Prop}
+theorem Fn.arith_step (hst : f.StructSpec) {c : Code} {P : Perm} {D : Dom} {Q : State → Prop} (rn : Runner c P D Q)
     {s0 : State} {ι0 : Val} {F : TokFp} {k : Nat} {S : STy} {s : State} {ι : Val} {i : Instr}
     (cont : ∀ (S1 : STy) (s' : State) (ι1 : Val) (k' : Nat), s'.pc = f.pcOf k' →
       Inv f T P s0 ι0 S1 s' ι1 F → (∀ y : Nat, y < f.fresh → ι1 y = ι y) →
-      f.edge (some k) S1 k' = true → Reach c P D Q s')
+      f.edge (some k) S1 k' = true → rn.later s')
     (hd : D.mem s.pc) (hI : Inv f T P s0 ι0 S s ι F) (hi : c.instr s.pc = some i)
-    (hpc : s.pc = f.pcOf k) (hk : f.arithOk k S i = true) : Reach c P D Q s := by
+    (hpc : s.pc = f.pcOf k) (hk : f.arithOk k S i = true) : rn.R s := by
   unfold Fn.arithOk at hk
   cases hw : writesReg i with
   | none => rw [hw] at hk; cases hk
@@ -237,41 +237,40 @@ theorem Fn.arith_step (hst : f.StructSpec) {c : Code} {P : Perm} {D : Dom} {Q : 
     · rename_i S' ha
       obtain ⟨hok, s', hx⟩ := writesReg_step (P := P) hw s
       obtain ⟨ι', g1, hI', hpc'⟩ := f.arith_sound hst.protFresh hI hw hrd ha hx
-      refine Reach.exec_step hd hI.live hi hok ?_
-      rw [hx, Reach.opt_some]
-      exact cont _ _ ι' (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' g1 hk
+      exact rn.exec hd hI.live hi hok hx (rn.later_next _ (cont _ _ ι' (k + 1)
+        (by rw [hpc', hpc, f.pcOf_succ]) hI' g1 hk))
     · cases hk
 
 /-- `auipc rd, imm` with its exact address. -/
-theorem Fn.auipc_step (hst : f.StructSpec) {c : Code} {P : Perm} {D : Dom} {Q : State → Prop}
+theorem Fn.auipc_step (hst : f.StructSpec) {c : Code} {P : Perm} {D : Dom} {Q : State → Prop} (rn : Runner c P D Q)
     {s0 : State} {ι0 : Val} {F : TokFp} {k : Nat} {S : STy} {s : State} {ι : Val}
     {rd : Reg} {imm : BitVec 20}
     (cont : ∀ (S1 : STy) (s' : State) (ι1 : Val) (k' : Nat), s'.pc = f.pcOf k' →
       Inv f T P s0 ι0 S1 s' ι1 F → (∀ y : Nat, y < f.fresh → ι1 y = ι y) →
-      f.edge (some k) S1 k' = true → Reach c P D Q s')
+      f.edge (some k) S1 k' = true → rn.later s')
     (hd : D.mem s.pc) (hI : Inv f T P s0 ι0 S s ι F) (hi : c.instr s.pc = some (.auipc rd imm))
-    (hpc : s.pc = f.pcOf k) (hk : f.auipcOk k S rd imm = true) : Reach c P D Q s := by
+    (hpc : s.pc = f.pcOf k) (hk : f.auipcOk k S rd imm = true) : rn.R s := by
   unfold Fn.auipcOk at hk
   simp only [Bool.and_eq_true, bne_iff_ne, ne_eq] at hk
   obtain ⟨hrd, hk⟩ := hk
-  refine Reach.exec_step hd hI.live hi trivial ?_
-  simp only [exec, Reach.opt_some]
-  refine cont _ _ ι (k + 1) (by simp only [State.setPc_pc]; rw [hpc, f.pcOf_succ])
+  refine rn.exec' hd hI.live hi trivial ?_
+  simp only [exec, Runner.optR_some]
+  refine rn.later_next _ <| cont _ _ ι (k + 1) (by simp only [State.setPc_pc]; rw [hpc, f.pcOf_succ])
     (hI.exact hrd ?_ _) (fun _ _ => rfl) hk
   rw [hpc]; unfold HasInt; simp [IExpr.eval_lit]
 
 /-- A tail call (I21 `tail`): the callee returns to this function's caller. -/
 theorem Fn.tail_step (hst : f.StructSpec) {c : Code} {D : Dom}
-    (hcall : ∀ p ∈ f.callees, aligned p.1 4 ∧ ∃ Dg, Meets c Dg p.1 T p.2 ∧ Dg.sub D ∧
-      ∀ j < f.size, ¬ Dg.mem (f.pcOf j))
     {a : Val × TokFp} {s0 : State} (he : Entry D f.entry s0)
+    (rn : Runner c ((f.sig.spec T).perm a s0) D (fun s => Final D s ∧ (f.sig.spec T).Done a s0 s))
+    (hcall : ∀ p ∈ f.callees, aligned p.1 4 ∧ ∃ Dg, rn.callee Dg p.1 (p.2.spec T) ∧ Dg.sub D ∧
+      ∀ j < f.size, ¬ Dg.mem (f.pcOf j))
     (hι0r : ∀ r x, (r, x) ∈ f.regVar → f.entryVal a.1 s0 x = (s0.reg r).toNat)
     (hι0p : ∀ x ∈ f.sig.params, f.entryVal a.1 s0 x = a.1 x)
     {S : STy} {s : State} {ι : Val} {rs : Reg} {off : BitVec 12}
     {F : TokFp} (hI : Inv f T ((f.sig.spec T).perm a s0) s0 (f.entryVal a.1 s0) S s ι F)
     (hd : D.mem s.pc) (hi : c.instr s.pc = some (.jalr 0 rs off)) (hk : f.tailRegOk S rs off = true) :
-    Exec c ((f.sig.spec T).perm a s0) D ((f.sig.spec T).Done a s0) s := by
-  unfold Exec
+    rn.R s := by
   unfold Fn.tailRegOk at hk
   cases hr : S.reg rs with
   | none => rw [hr] at hk; cases hk
@@ -306,11 +305,9 @@ theorem Fn.tail_step (hst : f.StructSpec) {c : Code} {D : Dom}
   have hok := Fn.calleeOk_spec (hst.callees _ hgm)
   have hra0 : s.reg 1 = s0.reg 1 := f.kept_reg_sound hI hι0r hra
   have hstk : S.depth + g.stack ≤ f.sig.stack := by omega
-  refine Reach.exec_step hd hI.live hi trivial ?_
   have hs0 : s.setReg 0 (s.pc + 4) = s := by simp [State.setReg]
   have hx : exec (.jalr 0 rs off) s = some (s.setPc t) := by
     simp only [exec, hs0, ht, jumpTo, hal, if_true]
-  rw [hx, Reach.opt_some]
   have hregs1 : ∀ r : Reg, r ≠ 1 → (s.setPc t).reg r = s.reg r := fun r _ => by simp
   have hmem1 : (s.setPc t).mem = s.mem := by simp
   obtain ⟨hpre', hle⟩ := f.callee_pre hst hI hok
@@ -318,7 +315,7 @@ theorem Fn.tail_step (hst : f.StructSpec) {c : Code} {D : Dom}
     hregs1 hmem1
   have hspn := hI.sp_toNat hst
   have hra1 : (s.setPc t).reg 1 = s0.reg 1 := by simp [hra0]
-  refine VerifiedImg.call hmeets (IExpr.upd ι θ, F) ⟨by simp, by simp [hI.live], ?_, ?_, ?_⟩
+  refine rn.call hd hI.live hi trivial hx hmeets (IExpr.upd ι θ, F) ⟨by simp, by simp [hI.live], ?_, ?_, ?_⟩
     hpre' hDg hle ?_
   · rw [hra1]; exact fun hm => he.ret (hDg _ hm)
   · rw [hra1]; exact he.retAligned
@@ -332,8 +329,210 @@ theorem Fn.tail_step (hst : f.StructSpec) {c : Code} {D : Dom}
         hlive hpost hfr
       obtain ⟨hkept, hpost'⟩ := f.retOkOn_sound (Fα := a.2) hst hI' hret hι0r hι0p rfl
       have hpc2' : s2.pc = s0.reg 1 := by rw [hpc2]; exact hra1
-      refine Reach.done ⟨.inl (by rw [hpc2']; exact he.ret), .inl ⟨hlive, hpc2', hkept, hpost'⟩⟩
-    · exact Reach.done ⟨.inr hex, .inr ⟨hex, trivial⟩⟩
+      refine rn.done_later _ ⟨.inl (by rw [hpc2']; exact he.ret), .inl ⟨hlive, hpc2', hkept, hpost'⟩⟩
+    · exact rn.done_later _ ⟨.inr hex, .inr ⟨hex, trivial⟩⟩
+
+/-- One point of a run, for any kind of run (`Runner`: total or partial): from a point of the
+    record whose invariant holds, the instruction there, given that every accepted edge
+    continues (`contF`). -/
+theorem Fn.runStep (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.instr c k = true)
+    {D : Dom} (hDf : ∀ k < f.size, D.mem (f.pcOf k))
+    {a : Val × TokFp} {s0 : State} (he : Entry D f.entry s0)
+    (rn : Runner c ((f.sig.spec T).perm a s0) D (fun s => Final D s ∧ (f.sig.spec T).Done a s0 s))
+    (hcall : ∀ p ∈ f.callees, aligned p.1 4 ∧ ∃ Dg, rn.callee Dg p.1 (p.2.spec T) ∧ Dg.sub D ∧
+      ∀ j < f.size, ¬ Dg.mem (f.pcOf j))
+    (hι0r : ∀ r x, (r, x) ∈ f.regVar → f.entryVal a.1 s0 x = (s0.reg r).toNat)
+    (hι0p : ∀ x ∈ f.sig.params, f.entryVal a.1 s0 x = a.1 x)
+    {k : Nat} {ι : Val} {F : TokFp} {S : STy} {s : State}
+    (hS : f.tyAt k = some S) (hk : k < f.size) (hpc : s.pc = f.pcOf k)
+    (hI : Inv f T ((f.sig.spec T).perm a s0) s0 (f.entryVal a.1 s0) S s ι F)
+    (contF : ∀ (F1 : TokFp) (S1 : STy) (s' : State) (ι1 : Val) (k' : Nat), s'.pc = f.pcOf k' →
+      Inv f T ((f.sig.spec T).perm a s0) s0 (f.entryVal a.1 s0) S1 s' ι1 F1 →
+      (∀ y : Nat, y < f.fresh → ι1 y = ι y) → f.edge (some k) S1 k' = true → rn.later s') :
+    rn.R s := by
+  have cont := contF F
+  have hd : Dom.mem D s.pc := hpc ▸ hDf k hk
+  have hprot := hst.protFresh
+  obtain ⟨S', i, hS', hci, hk1⟩ := Fn.instr_spec hS (hinstr k hk)
+  rw [hS] at hS'; cases hS'
+  have hi : c.instr s.pc = some i := hpc ▸ hci
+  cases i with
+  | branch op rs1 rs2 off =>
+    simp only [Fn.instrAt] at hk1
+    unfold Fn.branchOk at hk1
+    cases ht : Fn.target k off.toInt with
+    | none => rw [ht] at hk1; cases hk1
+    | some k' =>
+    rw [ht] at hk1
+    simp only at hk1
+    have htgt := f.pcOf_target (by omega) ht
+    refine rn.exec' hd hI.live hi trivial ?_
+    simp only [exec]
+    cases h1 : S.reg rs1 with
+    | none =>
+      rw [h1] at hk1; simp only [Bool.and_eq_true] at hk1
+      split
+      · simp only [jumpTo, hpc, htgt, if_pos (f.pcOf_aligned hst k'), Runner.optR_some]
+        exact rn.later_next _ <| cont _ _ ι k' (by simp) (hI.setPc _) (fun _ _ => rfl) hk1.1
+      · simp only [Runner.optR_some]
+        exact rn.later_next _ <| cont _ _ ι (k + 1) (by simp only [State.setPc_pc]; rw [hpc, f.pcOf_succ]) (hI.setPc _) (fun _ _ => rfl) hk1.2
+    | some e1 =>
+    cases h2 : S.reg rs2 with
+    | none =>
+      rw [h1, h2] at hk1; simp only [Bool.and_eq_true] at hk1
+      split
+      · simp only [jumpTo, hpc, htgt, if_pos (f.pcOf_aligned hst k'), Runner.optR_some]
+        exact rn.later_next _ <| cont _ _ ι k' (by simp) (hI.setPc _) (fun _ _ => rfl) hk1.1
+      · simp only [Runner.optR_some]
+        exact rn.later_next _ <| cont _ _ ι (k + 1) (by simp only [State.setPc_pc]; rw [hpc, f.pcOf_succ]) (hI.setPc _) (fun _ _ => rfl) hk1.2
+    | some e2 =>
+      rw [h1, h2] at hk1; simp only [Bool.and_eq_true] at hk1
+      obtain ⟨ι', g1, g2, gt, gf⟩ := f.branch_sound hprot hI h1 h2 op
+      split
+      · rename_i hb
+        simp only [jumpTo, hpc, htgt, if_pos (f.pcOf_aligned hst k'), Runner.optR_some]
+        exact rn.later_next _ <| cont _ _ ι' k' (by simp) (((hI.congr g2 (fun y hy => g1 y (hprot y hy))).addFacts
+          (gt hb)).setPc _) g1 hk1.1
+      · rename_i hb
+        simp only [Runner.optR_some]
+        exact rn.later_next _ <| cont _ _ ι' (k + 1) (by simp only [State.setPc_pc]; rw [hpc, f.pcOf_succ]) (((hI.congr g2
+          (fun y hy => g1 y (hprot y hy))).addFacts (gf (by simpa using hb))).setPc _) g1 hk1.2
+  | jal rd off =>
+    simp only [Fn.instrAt] at hk1
+    by_cases hr1 : rd = 1
+    · subst hr1
+      simp only [beq_self_eq_true, if_true] at hk1
+      exact f.call_step hst rn hI hd hpc hi hk1 hcall
+        (fun s' hx => rn.done_later _ ⟨Or.inr hx, Or.inr ⟨hx, trivial⟩⟩)
+        (fun F1 S1 s' ι1 hpc' hI1 hag he' => contF F1 S1 s' ι1 (k + 1) hpc' hI1 hag he')
+    rw [if_neg (by simpa using hr1)] at hk1
+    simp only [Bool.and_eq_true, beq_iff_eq] at hk1
+    obtain ⟨rfl, hk1⟩ := hk1
+    unfold Fn.jalOk at hk1
+    cases ht : Fn.target k off.toInt with
+    | none => rw [ht] at hk1; cases hk1
+    | some k' =>
+    rw [ht] at hk1
+    simp only at hk1
+    have htgt := f.pcOf_target (by omega) ht
+    refine rn.exec' hd hI.live hi trivial ?_
+    have hs0 : s.setReg 0 (s.pc + 4) = s := by simp [State.setReg]
+    simp only [exec, hs0, jumpTo, hpc, htgt, if_pos (f.pcOf_aligned hst k'), Runner.optR_some]
+    exact rn.later_next _ <| cont _ _ ι k' (by simp) (hI.setPc _) (fun _ _ => rfl) hk1
+  | jalr rd rs1 off =>
+    simp only [Fn.instrAt] at hk1
+    by_cases hr1 : rd = 1
+    · subst hr1
+      simp only [beq_self_eq_true, if_true] at hk1
+      exact f.callReg_step hst rn hI hd hpc hi hk1 hcall
+        (fun s' hx => rn.done_later _ ⟨Or.inr hx, Or.inr ⟨hx, trivial⟩⟩)
+        (fun F1 S1 s' ι1 hpc' hI1 hag he' => contF F1 S1 s' ι1 (k + 1) hpc' hI1 hag he')
+    rw [if_neg (by simpa using hr1)] at hk1
+    simp only [Bool.and_eq_true, Bool.or_eq_true, beq_iff_eq] at hk1
+    obtain ⟨rfl, hk1⟩ := hk1
+    by_cases htl : f.tailRegOk S rs1 off = true
+    · exact f.tail_step hst he rn hcall hι0r hι0p hI hd hi htl
+    have hk2 := hk1.resolve_right htl
+    clear hk1
+    obtain ⟨⟨rfl, rfl⟩, hk1⟩ := hk2
+    unfold Fn.ret at hk1
+    obtain ⟨hkept, hpost⟩ := f.retOk_sound (Fα := a.2) hst hI hk1 hι0r hι0p rfl
+    refine rn.exec' hd hI.live hi trivial ?_
+    have hs0 : s.setReg 0 (s.pc + 4) = s := by simp [State.setReg]
+    have hra : s.reg 1 = s0.reg 1 := hkept 1 (by simp [keptRegs])
+    have hal := he.retAligned
+    unfold aligned at hal
+    have ht : (s0.reg 1 + BitVec.signExtend 64 (0 : BitVec 12)) &&& ~~~1 = s0.reg 1 := by
+      have hz : s0.reg 1 + BitVec.signExtend 64 (0 : BitVec 12) = s0.reg 1 := by
+        apply BitVec.eq_of_toNat_eq; simp
+      rw [hz]; exact and_not_one_of_aligned _ hal
+    simp only [exec, hs0, hra, ht, jumpTo, if_pos he.retAligned, Runner.optR_some]
+    refine rn.later_next _ (rn.done_later _ ⟨.inl (by simpa using he.ret), .inl ⟨by simpa using hI.live, by simp, ?_, ?_⟩⟩)
+    · intro r hr; simpa using hkept r (List.mem_cons_of_mem _ hr)
+    · exact Sig.Post_setPc _ hpost
+  | load op rd rs off =>
+    simp only [Fn.instrAt, Fn.loadOk, Bool.and_eq_true, bne_iff_ne, ne_eq] at hk1
+    obtain ⟨hrd, hk1⟩ := hk1
+    split at hk1
+    · -- a frame slot
+      rename_i j hj
+      obtain ⟨hok, s', hx, hI', hpc'⟩ := f.slotLoad_sound hst hI hrd hj
+      refine rn.exec' hd hI.live hi hok ?_
+      rw [hx, Runner.optR_some]
+      exact rn.later_next _ <| cont _ _ ι (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' (fun _ _ => rfl) hk1
+    · split at hk1
+      · rename_i S' hl
+        obtain ⟨hok, s', hx, ι', g1, hI', hpc'⟩ := f.load_sound hprot hI hl hrd
+        refine rn.exec' hd hI.live hi hok ?_
+        rw [hx, Runner.optR_some]
+        exact rn.later_next _ <| cont _ _ ι' (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' g1 hk1
+      · cases hk1
+  | store op rs1 rs2 off =>
+    simp only [Fn.instrAt, Fn.storeOk] at hk1
+    split at hk1
+    · -- a frame slot
+      rename_i j hj
+      obtain ⟨hok, s', hx, hI', hpc'⟩ := f.slotStore_sound (rs2 := rs2) hst hI hj
+      refine rn.exec' hd hI.live hi hok ?_
+      rw [hx, Runner.optR_some]
+      exact rn.later_next _ <| cont _ _ ι (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' (fun _ _ => rfl) hk1
+    · split at hk1
+      · rename_i S' hl
+        obtain ⟨hok, s', hx, ι', g1, hI', hpc'⟩ := f.store_sound hprot hI hl
+        refine rn.exec' hd hI.live hi hok ?_
+        rw [hx, Runner.optR_some]
+        exact rn.later_next _ <| cont _ _ ι' (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' g1 hk1
+      · cases hk1
+  | iop op rd rs imm =>
+    simp only [Fn.instrAt] at hk1
+    split at hk1
+    · -- `sp` moves: the prologue or the epilogue
+      rename_i hrd2
+      simp only [beq_iff_eq] at hrd2; subst hrd2
+      unfold Fn.frameOk at hk1
+      simp only [Bool.and_eq_true, beq_iff_eq] at hk1
+      obtain ⟨⟨hop, hrs⟩, hk1⟩ := hk1
+      subst hop; subst hrs
+      split at hk1
+      · rename_i Fr e hfr he
+        split at hk1
+        · rename_i hc
+          simp only [Bool.and_eq_true, beq_iff_eq, bne_iff_ne, ne_eq] at hc hk1
+          obtain ⟨⟨hd0, hF0⟩, himm⟩ := hc
+          obtain ⟨⟨⟨hids, h1⟩, h2⟩, hedge⟩ := hk1
+          obtain ⟨s', hx, hI', hpc'⟩ := f.framePush_sound (k := k) hst hI hfr hd0 hF0 he himm h1 h2
+            (of_decide_eq_true hids)
+          refine rn.exec' hd hI.live hi trivial ?_
+          rw [hx, Runner.optR_some]
+          exact rn.later_next _ <| cont _ _ ι (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' (fun _ _ => rfl) hedge
+        · split at hk1
+          · rename_i _ hc
+            simp only [Bool.and_eq_true, beq_iff_eq, bne_iff_ne, ne_eq] at hc
+            obtain ⟨⟨hd1, hF0⟩, himm⟩ := hc
+            split at hk1
+            · rename_i cs hcs
+              simp only [Bool.and_eq_true] at hk1
+              obtain ⟨-, hedge⟩ := hk1
+              obtain ⟨s', hx, hI', hpc'⟩ := f.framePop_sound hst hI hfr hd1 hF0 he himm hcs
+              refine rn.exec' hd hI.live hi trivial ?_
+              rw [hx, Runner.optR_some]
+              exact rn.later_next _ <| cont _ _ ι (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' (fun _ _ => rfl) hedge
+            · cases hk1
+          · cases hk1
+      · cases hk1
+    · exact f.arith_step hst rn cont hd hI hi hpc hk1
+  | auipc rd imm =>
+    simp only [Fn.instrAt] at hk1
+    exact f.auipc_step hst rn cont hd hI hi hpc hk1
+  | ecall =>
+    simp only [Fn.instrAt] at hk1
+    exact f.ecall_step hst rn hI hd hpc hi hk1
+      (fun s' hx => rn.done_later _ ⟨Or.inr hx, Or.inr ⟨hx, trivial⟩⟩)
+      (fun S1 s' ι1 hpc' hI1 hag he' => cont S1 s' ι1 (k + 1) hpc' hI1 hag he')
+  | unimp => simp [Fn.instrAt] at hk1
+  | _ =>
+    simp only [Fn.instrAt] at hk1
+    exact f.arith_step hst rn cont hd hI hi hpc hk1
 
 /-- Theorems A, B and C together, for the instructions of `f`: from any point of the record
     whose invariant holds, every run stays in the function, is allowed by the permission,
@@ -358,201 +557,42 @@ theorem Fn.run (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.instr
   obtain ⟨k, ι⟩ := p
   intro F S s hS hk hpc hI
   simp only at hS hk hpc hI
-  -- continuing along an accepted edge, with any token footprints (a call may change them)
-  have contF : ∀ (F1 : TokFp) (S1 : STy) (s' : State) (ι1 : Val) (k' : Nat), s'.pc = f.pcOf k' →
-      Inv f T ((f.sig.spec T).perm a s0) s0 (f.entryVal a.1 s0) S1 s' ι1 F1 →
-      (∀ y : Nat, y < f.fresh → ι1 y = ι y) → f.edge (some k) S1 k' = true →
-      Exec c ((f.sig.spec T).perm a s0) D ((f.sig.spec T).Done a s0) s' := by
-    intro F1 S1 s' ι1 k' hpc' hI1 hag he'
-    unfold Fn.edge at he'
-    split at he'
-    · cases he'
-    · rename_i S2 hS2
-      obtain ⟨hk', hI2, hrk⟩ := f.edgeOk_sound hst he' hI1 hag
-      exact ih (k', _) (hrk k rfl) F1 S2 s' hS2 hk' hpc' hI2
-  have cont := contF F
-  have hd : Dom.mem D s.pc := hpc ▸ hDf k hk
-  have hprot := hst.protFresh
-  obtain ⟨S', i, hS', hci, hk1⟩ := Fn.instr_spec hS (hinstr k hk)
-  rw [hS] at hS'; cases hS'
-  have hi : c.instr s.pc = some i := hpc ▸ hci
-  cases i with
-  | branch op rs1 rs2 off =>
-    simp only [Fn.instrAt] at hk1
-    unfold Fn.branchOk at hk1
-    cases ht : Fn.target k off.toInt with
-    | none => rw [ht] at hk1; cases hk1
-    | some k' =>
-    rw [ht] at hk1
-    simp only at hk1
-    have htgt := f.pcOf_target (by omega) ht
-    refine Reach.exec_step hd hI.live hi trivial ?_
-    simp only [exec]
-    cases h1 : S.reg rs1 with
-    | none =>
-      rw [h1] at hk1; simp only [Bool.and_eq_true] at hk1
-      split
-      · simp only [jumpTo, hpc, htgt, if_pos (f.pcOf_aligned hst k'), Reach.opt_some]
-        exact cont _ _ ι k' (by simp) (hI.setPc _) (fun _ _ => rfl) hk1.1
-      · simp only [Reach.opt_some]
-        exact cont _ _ ι (k + 1) (by simp only [State.setPc_pc]; rw [hpc, f.pcOf_succ]) (hI.setPc _) (fun _ _ => rfl) hk1.2
-    | some e1 =>
-    cases h2 : S.reg rs2 with
-    | none =>
-      rw [h1, h2] at hk1; simp only [Bool.and_eq_true] at hk1
-      split
-      · simp only [jumpTo, hpc, htgt, if_pos (f.pcOf_aligned hst k'), Reach.opt_some]
-        exact cont _ _ ι k' (by simp) (hI.setPc _) (fun _ _ => rfl) hk1.1
-      · simp only [Reach.opt_some]
-        exact cont _ _ ι (k + 1) (by simp only [State.setPc_pc]; rw [hpc, f.pcOf_succ]) (hI.setPc _) (fun _ _ => rfl) hk1.2
-    | some e2 =>
-      rw [h1, h2] at hk1; simp only [Bool.and_eq_true] at hk1
-      obtain ⟨ι', g1, g2, gt, gf⟩ := f.branch_sound hprot hI h1 h2 op
-      split
-      · rename_i hb
-        simp only [jumpTo, hpc, htgt, if_pos (f.pcOf_aligned hst k'), Reach.opt_some]
-        exact cont _ _ ι' k' (by simp) (((hI.congr g2 (fun y hy => g1 y (hprot y hy))).addFacts
-          (gt hb)).setPc _) g1 hk1.1
-      · rename_i hb
-        simp only [Reach.opt_some]
-        exact cont _ _ ι' (k + 1) (by simp only [State.setPc_pc]; rw [hpc, f.pcOf_succ]) (((hI.congr g2
-          (fun y hy => g1 y (hprot y hy))).addFacts (gf (by simpa using hb))).setPc _) g1 hk1.2
-  | jal rd off =>
-    simp only [Fn.instrAt] at hk1
-    by_cases hr1 : rd = 1
-    · subst hr1
-      simp only [beq_self_eq_true, if_true] at hk1
-      exact f.call_step hst hI hd hpc hi hk1 hcall
-        (fun s' hx => Reach.done ⟨Or.inr hx, Or.inr ⟨hx, trivial⟩⟩)
-        (fun F1 S1 s' ι1 hpc' hI1 hag he' => contF F1 S1 s' ι1 (k + 1) hpc' hI1 hag he')
-    rw [if_neg (by simpa using hr1)] at hk1
-    simp only [Bool.and_eq_true, beq_iff_eq] at hk1
-    obtain ⟨rfl, hk1⟩ := hk1
-    unfold Fn.jalOk at hk1
-    cases ht : Fn.target k off.toInt with
-    | none => rw [ht] at hk1; cases hk1
-    | some k' =>
-    rw [ht] at hk1
-    simp only at hk1
-    have htgt := f.pcOf_target (by omega) ht
-    refine Reach.exec_step hd hI.live hi trivial ?_
-    have hs0 : s.setReg 0 (s.pc + 4) = s := by simp [State.setReg]
-    simp only [exec, hs0, jumpTo, hpc, htgt, if_pos (f.pcOf_aligned hst k'), Reach.opt_some]
-    exact cont _ _ ι k' (by simp) (hI.setPc _) (fun _ _ => rfl) hk1
-  | jalr rd rs1 off =>
-    simp only [Fn.instrAt] at hk1
-    by_cases hr1 : rd = 1
-    · subst hr1
-      simp only [beq_self_eq_true, if_true] at hk1
-      exact f.callReg_step hst hI hd hpc hi hk1 hcall
-        (fun s' hx => Reach.done ⟨Or.inr hx, Or.inr ⟨hx, trivial⟩⟩)
-        (fun F1 S1 s' ι1 hpc' hI1 hag he' => contF F1 S1 s' ι1 (k + 1) hpc' hI1 hag he')
-    rw [if_neg (by simpa using hr1)] at hk1
-    simp only [Bool.and_eq_true, Bool.or_eq_true, beq_iff_eq] at hk1
-    obtain ⟨rfl, hk1⟩ := hk1
-    by_cases htl : f.tailRegOk S rs1 off = true
-    · exact f.tail_step hst hcall he hι0r hι0p hI hd hi htl
-    have hk2 := hk1.resolve_right htl
-    clear hk1
-    obtain ⟨⟨rfl, rfl⟩, hk1⟩ := hk2
-    unfold Fn.ret at hk1
-    obtain ⟨hkept, hpost⟩ := f.retOk_sound (Fα := a.2) hst hI hk1 hι0r hι0p rfl
-    refine Reach.exec_step hd hI.live hi trivial ?_
-    have hs0 : s.setReg 0 (s.pc + 4) = s := by simp [State.setReg]
-    have hra : s.reg 1 = s0.reg 1 := hkept 1 (by simp [keptRegs])
-    have hal := he.retAligned
-    unfold aligned at hal
-    have ht : (s0.reg 1 + BitVec.signExtend 64 (0 : BitVec 12)) &&& ~~~1 = s0.reg 1 := by
-      have hz : s0.reg 1 + BitVec.signExtend 64 (0 : BitVec 12) = s0.reg 1 := by
-        apply BitVec.eq_of_toNat_eq; simp
-      rw [hz]; exact and_not_one_of_aligned _ hal
-    simp only [exec, hs0, hra, ht, jumpTo, if_pos he.retAligned, Reach.opt_some]
-    refine .done ⟨.inl (by simpa using he.ret), .inl ⟨by simpa using hI.live, by simp, ?_, ?_⟩⟩
-    · intro r hr; simpa using hkept r (List.mem_cons_of_mem _ hr)
-    · exact Sig.Post_setPc _ hpost
-  | load op rd rs off =>
-    simp only [Fn.instrAt, Fn.loadOk, Bool.and_eq_true, bne_iff_ne, ne_eq] at hk1
-    obtain ⟨hrd, hk1⟩ := hk1
-    split at hk1
-    · -- a frame slot
-      rename_i j hj
-      obtain ⟨hok, s', hx, hI', hpc'⟩ := f.slotLoad_sound hst hI hrd hj
-      refine Reach.exec_step hd hI.live hi hok ?_
-      rw [hx, Reach.opt_some]
-      exact cont _ _ ι (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' (fun _ _ => rfl) hk1
-    · split at hk1
-      · rename_i S' hl
-        obtain ⟨hok, s', hx, ι', g1, hI', hpc'⟩ := f.load_sound hprot hI hl hrd
-        refine Reach.exec_step hd hI.live hi hok ?_
-        rw [hx, Reach.opt_some]
-        exact cont _ _ ι' (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' g1 hk1
-      · cases hk1
-  | store op rs1 rs2 off =>
-    simp only [Fn.instrAt, Fn.storeOk] at hk1
-    split at hk1
-    · -- a frame slot
-      rename_i j hj
-      obtain ⟨hok, s', hx, hI', hpc'⟩ := f.slotStore_sound (rs2 := rs2) hst hI hj
-      refine Reach.exec_step hd hI.live hi hok ?_
-      rw [hx, Reach.opt_some]
-      exact cont _ _ ι (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' (fun _ _ => rfl) hk1
-    · split at hk1
-      · rename_i S' hl
-        obtain ⟨hok, s', hx, ι', g1, hI', hpc'⟩ := f.store_sound hprot hI hl
-        refine Reach.exec_step hd hI.live hi hok ?_
-        rw [hx, Reach.opt_some]
-        exact cont _ _ ι' (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' g1 hk1
-      · cases hk1
-  | iop op rd rs imm =>
-    simp only [Fn.instrAt] at hk1
-    split at hk1
-    · -- `sp` moves: the prologue or the epilogue
-      rename_i hrd2
-      simp only [beq_iff_eq] at hrd2; subst hrd2
-      unfold Fn.frameOk at hk1
-      simp only [Bool.and_eq_true, beq_iff_eq] at hk1
-      obtain ⟨⟨hop, hrs⟩, hk1⟩ := hk1
-      subst hop; subst hrs
-      split at hk1
-      · rename_i Fr e hfr he
-        split at hk1
-        · rename_i hc
-          simp only [Bool.and_eq_true, beq_iff_eq, bne_iff_ne, ne_eq] at hc hk1
-          obtain ⟨⟨hd0, hF0⟩, himm⟩ := hc
-          obtain ⟨⟨⟨hids, h1⟩, h2⟩, hedge⟩ := hk1
-          obtain ⟨s', hx, hI', hpc'⟩ := f.framePush_sound (k := k) hst hI hfr hd0 hF0 he himm h1 h2
-            (of_decide_eq_true hids)
-          refine Reach.exec_step hd hI.live hi trivial ?_
-          rw [hx, Reach.opt_some]
-          exact cont _ _ ι (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' (fun _ _ => rfl) hedge
-        · split at hk1
-          · rename_i _ hc
-            simp only [Bool.and_eq_true, beq_iff_eq, bne_iff_ne, ne_eq] at hc
-            obtain ⟨⟨hd1, hF0⟩, himm⟩ := hc
-            split at hk1
-            · rename_i cs hcs
-              simp only [Bool.and_eq_true] at hk1
-              obtain ⟨-, hedge⟩ := hk1
-              obtain ⟨s', hx, hI', hpc'⟩ := f.framePop_sound hst hI hfr hd1 hF0 he himm hcs
-              refine Reach.exec_step hd hI.live hi trivial ?_
-              rw [hx, Reach.opt_some]
-              exact cont _ _ ι (k + 1) (by rw [hpc', hpc, f.pcOf_succ]) hI' (fun _ _ => rfl) hedge
-            · cases hk1
-          · cases hk1
-      · cases hk1
-    · exact f.arith_step hst cont hd hI hi hpc hk1
-  | auipc rd imm =>
-    simp only [Fn.instrAt] at hk1
-    exact f.auipc_step hst cont hd hI hi hpc hk1
-  | ecall =>
-    simp only [Fn.instrAt] at hk1
-    exact f.ecall_step hst hI hd hpc hi hk1
-      (fun s' hx => Reach.done ⟨Or.inr hx, Or.inr ⟨hx, trivial⟩⟩)
-      (fun S1 s' ι1 hpc' hI1 hag he' => cont S1 s' ι1 (k + 1) hpc' hI1 hag he')
-  | unimp => simp [Fn.instrAt] at hk1
-  | _ =>
-    simp only [Fn.instrAt] at hk1
-    exact f.arith_step hst cont hd hI hi hpc hk1
+  exact f.runStep hst hinstr hDf he (Runner.total _ _ _ _) hcall hι0r hι0p hS hk hpc hI
+    (fun F1 S1 s' ι1 k' hpc' hI1 hag he' => by
+      unfold Fn.edge at he'
+      split at he'
+      · cases he'
+      · rename_i S2 hS2
+        obtain ⟨hk', hI2, hrk⟩ := f.edgeOk_sound hst he' hI1 hag
+        exact ih (k', _) (hrk k rfl) F1 S2 s' hS2 hk' hpc' hI2)
+
+/-- A partial run (`partial` signatures, I19): the same dispatch with `n` steps of fuel in
+    place of the rank; no measure is needed. -/
+theorem Fn.runP (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.instr c k = true)
+    {D : Dom} (hDf : ∀ k < f.size, D.mem (f.pcOf k))
+    (hcall : ∀ p ∈ f.callees, aligned p.1 4 ∧ ∃ Dg, VerifiedImgP c Dg p.1 (p.2.spec T) ∧ Dg.sub D ∧
+      ∀ j < f.size, ¬ Dg.mem (f.pcOf j))
+    {a : Val × TokFp} {s0 : State} (he : Entry D f.entry s0)
+    (hι0r : ∀ r x, (r, x) ∈ f.regVar → f.entryVal a.1 s0 x = (s0.reg r).toNat)
+    (hι0p : ∀ x ∈ f.sig.params, f.entryVal a.1 s0 x = a.1 x) :
+    ∀ n (k : Nat) (ι : Val) (F : TokFp) S s, f.tyAt k = some S → k < f.size → s.pc = f.pcOf k →
+      Inv f T ((f.sig.spec T).perm a s0) s0 (f.entryVal a.1 s0) S s ι F →
+      ReachP c ((f.sig.spec T).perm a s0) D (fun s => Final D s ∧ (f.sig.spec T).Done a s0 s) n s := by
+  intro n
+  induction n using Nat.strongRecOn with
+  | _ n ih =>
+  intro k ι F S s hS hk hpc hI
+  cases n with
+  | zero => exact .zero
+  | succ n =>
+  exact f.runStep hst hinstr hDf he (Runner.fuel _ _ _ _ n) hcall hι0r hι0p hS hk hpc hI
+    (fun F1 S1 s' ι1 k' hpc' hI1 hag he' m hm => by
+      unfold Fn.edge at he'
+      split at he'
+      · cases he'
+      · rename_i S2 hS2
+        obtain ⟨hk', hI2, -⟩ := f.edgeOk_sound hst he' hI1 hag
+        exact ih m (by omega) k' _ F1 S2 s' hS2 hk' hpc' hI2)
 
 /-- **Soundness of the Lean checker** (theorems A–C for one function): a function it accepts
     meets its signature (⟦σ⟧, total) on the code image it was checked against, for every
@@ -584,5 +624,28 @@ theorem Fn.check_sound_leaf (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = tr
   have hso : f.structOk = true := by
     unfold Fn.check at h; simp only [Bool.and_eq_true] at h; exact h.1.1
   exact f.check_sound c T h (fun k hk => f.pcOf_mem (Fn.structOk_spec hso) hk) (by simp [hnc])
+
+/-- **Partial soundness** (I19): a function the checker accepts meets its signature's partial
+    meaning (⟦σ⟧ without termination); callees may be partial. -/
+theorem Fn.check_soundP (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = true) {D : Dom}
+    (hDf : ∀ k < f.size, D.mem (f.pcOf k))
+    (hcall : ∀ p ∈ f.callees, aligned p.1 4 ∧ ∃ Dg, MeetsP c Dg p.1 T p.2 ∧ Dg.sub D ∧
+      ∀ j < f.size, ¬ Dg.mem (f.pcOf j)) :
+    MeetsP c D f.entry T f.sig := by
+  unfold Fn.check at h
+  simp only [Bool.and_eq_true, List.all_eq_true, List.mem_range] at h
+  obtain ⟨⟨hso, hentry⟩, hinstr⟩ := h
+  have hst := Fn.structOk_spec hso
+  intro a s0 he hpre
+  have hI0 := f.entry_inv (T := T) hst he hpre
+  unfold Fn.edge at hentry
+  split at hentry
+  · cases hentry
+  · rename_i S0 hS0
+    obtain ⟨hk0, hI1, -⟩ := f.edgeOk_sound hst hentry hI0 (ιpre := f.entryVal a.1 s0) (fun _ _ => rfl)
+    intro n
+    exact f.runP hst hinstr hDf hcall he (fun r x h => f.entryVal_reg hst a.1 s0 h)
+      (fun x h => f.entryVal_param hst a.1 s0 h) n 0 _ a.2 S0 s0 hS0 hk0
+      (by simp [Fn.pcOf, he.pc]) hI1
 
 end NoCompiler.Typed

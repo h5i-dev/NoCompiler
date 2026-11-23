@@ -1,4 +1,5 @@
 import NoCompiler.Typed.Sound.Frame
+import NoCompiler.Typed.Sound.Runner
 
 /-
 Soundness of the `ecall` rule (Lemma 9). Owned by agent U (STATUS.md).
@@ -121,15 +122,15 @@ theorem sysWrite_ne_read : sysWrite ≠ sysRead := by decide
 theorem sysExit_ne : sysExit ≠ sysWrite ∧ sysExit ≠ sysRead := by decide
 theorem sysExitGroup_ne : sysExitGroup ≠ sysWrite ∧ sysExitGroup ≠ sysRead := by decide
 
-theorem Fn.ecall_step (hst : f.StructSpec) {c : Code} {D : Dom} {Q : State → Prop}
+theorem Fn.ecall_step (hst : f.StructSpec) {c : Code} {D : Dom} {Q : State → Prop} (rn : Runner c P D Q)
     {S : STy} {s : State} {ι : Val} {Ft : TokFp} {k : Nat}
     (hI : Inv f T P s0 ι0 S s ι Ft) (hd : D.mem s.pc) (hpc : s.pc = f.pcOf k)
     (hi : c.instr s.pc = some .ecall) (hk : f.ecallOk k S = true)
-    (hexit : ∀ s', s'.exit ≠ none → Reach c P D Q s')
+    (hexit : ∀ s', s'.exit ≠ none → rn.later s')
     (cont : ∀ S1 s' ι1, s'.pc = f.pcOf (k + 1) → Inv f T P s0 ι0 S1 s' ι1 Ft →
       (∀ y : Nat, y < f.fresh → ι1 y = ι y) → f.edge (some k) S1 (k + 1) = true →
-      Reach c P D Q s') :
-    Reach c P D Q s := by
+      rn.later s') :
+    rn.R s := by
   have hpc4 : s.pc + 4 = f.pcOf (k + 1) := by
     rw [hpc]; unfold Fn.pcOf; apply BitVec.eq_of_toNat_eq
     simp only [BitVec.toNat_add, BitVec.toNat_ofNat, show (4 : Word).toNat = 4 from rfl]; omega
@@ -153,14 +154,14 @@ theorem Fn.ecall_step (hst : f.StructSpec) {c : Code} {D : Dom} {Q : State → P
       rcases hx with h | h <;> rw [h]
       · exact sysExit_ne
       · exact sysExitGroup_ne
-    refine Reach.sys_step hd hI.live hi ⟨fun h => absurd (h7 ▸ h) hnw.1,
+    refine rn.sys hd hI.live hi ⟨fun h => absurd (h7 ▸ h) hnw.1,
       fun h => absurd (h7 ▸ h) hnw.2⟩ ⟨_, Sys.exit (h7 ▸ hx)⟩ (fun s' hs => ?_)
     cases hs with
     | writeOk _ h => exact absurd (h7 ▸ h) hnw.1
     | writeErr _ h => exact absurd (h7 ▸ h) hnw.1
     | readOk _ h => exact absurd (h7 ▸ h) hnw.2
     | readErr _ h => exact absurd (h7 ▸ h) hnw.2
-    | exit _ => exact hexit _ (by simp [State.emit, State.halt])
+    | exit _ => exact rn.later_next _ (hexit _ (by simp [State.emit, State.halt]))
   rw [if_neg hx] at hk
   by_cases hrw : w = sysWrite ∨ w = sysRead
   case neg => rw [if_neg hrw] at hk; cases hk
@@ -217,7 +218,7 @@ theorem Fn.ecall_step (hst : f.StructSpec) {c : Code} {D : Dom} {Q : State → P
   have hn' : ∀ S1 : STy, S1.reg 12 = some n → ∀ vs,
       n.eval (setFrom ι (f.freshAt S1) vs) = n.eval ι :=
     fun S1 h vs => Fn.eval_setFrom_old (STy.reg_maxVar' h) ι vs
-  refine Reach.sys_step hd hI.live hi hok hex (fun s' hs => ?_)
+  refine rn.sys hd hI.live hi hok hex (fun s' hs => ?_)
   cases hs with
   | writeOk r h hr1 hr2 hr3 =>
     have hW : w = sysWrite := h7 ▸ h
@@ -229,7 +230,7 @@ theorem Fn.ecall_step (hst : f.StructSpec) {c : Code} {D : Dom} {Q : State → P
         refine sysResult_holds setFrom_x (Or.inr ⟨by omega, ?_, by unfold maxRW at hr2; omega, ?_⟩)
         · rw [hn' S hn]; omega
         · intro _ h1; rw [hn' S hn] at h1; have := hr3 (by omega); omega) (s.pc + 4)
-    exact cont _ _ ι' hpc4 (hI'.emit _) g hk
+    exact rn.later_next _ (cont _ _ ι' hpc4 (hI'.emit _) g hk)
   | writeErr e h he1 he2 =>
     have hW : w = sysWrite := h7 ▸ h
     simp only [hW, decide_true, sysWrite_ne_read.symm, decide_false, Fn.sysAfter, ite_true] at hk
@@ -238,7 +239,7 @@ theorem Fn.ecall_step (hst : f.StructSpec) {c : Code} {D : Dom} {Q : State → P
       (hasInt_err _ _ e he2 setFrom_x) (by
         intro p hp; simp only [List.mem_singleton] at hp; subst hp
         exact sysResult_holds setFrom_x (Or.inl ⟨by omega, by omega⟩)) (s.pc + 4)
-    exact cont _ _ ι' hpc4 hI' g hk
+    exact rn.later_next _ (cont _ _ ι' hpc4 hI' g hk)
   | readOk ds h hl1 hl2 =>
     have hR : w = sysRead := h7 ▸ h
     simp only [hR, decide_true, sysWrite_ne_read.symm, decide_false, Fn.sysAfter,
@@ -257,7 +258,7 @@ theorem Fn.ecall_step (hst : f.StructSpec) {c : Code} {D : Dom} {Q : State → P
           fun h => by cases h⟩)
         rw [hn' _ hn1]; omega) (s.pc + 4)
     rw [State.sysRet_setMem]
-    exact cont _ _ ι' hpc4 (hI'.emit _) g hk
+    exact rn.later_next _ (cont _ _ ι' hpc4 (hI'.emit _) g hk)
   | readErr e h he1 he2 =>
     have hR : w = sysRead := h7 ▸ h
     simp only [hR, decide_true, sysWrite_ne_read.symm, decide_false, Fn.sysAfter,
@@ -269,7 +270,7 @@ theorem Fn.ecall_step (hst : f.StructSpec) {c : Code} {D : Dom} {Q : State → P
       (-(BitVec.ofNat 64 e)) (hasInt_err _ _ e he2 setFrom_x) (by
         intro p hp; simp only [List.mem_singleton] at hp; subst hp
         exact sysResult_holds setFrom_x (Or.inl ⟨by omega, by omega⟩)) (s.pc + 4)
-    exact cont _ _ ι' hpc4 hI' g hk
+    exact rn.later_next _ (cont _ _ ι' hpc4 hI' g hk)
   | exit h => exact absurd (h7 ▸ h) hx
 
 end NoCompiler.Typed
