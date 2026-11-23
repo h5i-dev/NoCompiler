@@ -10,9 +10,8 @@ variable {f : Fn} {T : TokEnv} {P : Perm} {s0 : State} {ι0 : Val}
 
 /-- What `structOk` gives the proof. -/
 structure Fn.StructSpec (f : Fn) : Prop where
-  take : ∀ c ∈ f.sig.take, (∃ x, c.kind = .bytes x) ∧ ∀ y ∈ c.vars, y ∈ f.sig.params
-  give : ∀ c ∈ f.sig.give, (∃ x, c.kind = .bytes x) ∧ c.exclusive = true ∧
-    ∀ y ∈ c.vars, y ∈ f.sig.params ∨ y ∈ f.sig.outVars
+  take : ∀ c ∈ f.sig.take, ∀ y ∈ c.vars, y ∈ f.sig.params
+  give : ∀ c ∈ f.sig.give, c.exclusive = true ∧ ∀ y ∈ c.vars, y ∈ f.sig.params ∨ y ∈ f.sig.outVars
   callees : ∀ p ∈ f.callees, Fn.calleeOk p.2 = true
   frameDecl : f.frameDeclOk = true
   borrowGuard : ∀ b ∈ f.sig.borrow, b.cap.guard = .tt
@@ -46,14 +45,11 @@ theorem Fn.structOk_spec (h : f.structOk = true) : f.StructSpec := by
   refine ⟨?_, ?_, hcal, hstack, ?_, fun r hr => by simpa [Option.isSome_iff_exists] using hkept r hr,
     hnd, hei, hpf, ?_, fun L hL => ⟨(hloops L hL).1, (hloops L hL).2.1⟩, fun L hL => (hloops L hL).2.2.2,
     hsorted, hal, hsz, ?_, hin, hpre, ?_, hout, hpost, fun x hx => by simpa using hop x hx⟩
+  · intro c hc y hy
+    simpa using htake c hc y hy
   · intro c hc
-    obtain ⟨hm, hv⟩ := htake c hc
-    refine ⟨?_, fun y hy => by simpa using hv y hy⟩
-    revert hm; cases c.kind <;> simp
-  · intro c hc
-    obtain ⟨hm, hx, hv⟩ := hgive c hc
-    refine ⟨?_, hx, fun y hy => by simpa using hv y hy⟩
-    revert hm; cases c.kind <;> simp
+    obtain ⟨hx, hv⟩ := hgive c hc
+    exact ⟨hx, fun y hy => by simpa using hv y hy⟩
   · intro b hb
     simpa using hbb b hb
   · rcases htau with h | ⟨hl, hall⟩

@@ -156,7 +156,7 @@ theorem Fn.entryCap_vars (hst : f.StructSpec) : ∀ c ∈ f.sig.entryCaps, ∀ x
     · split at hx
       · rename_i xb hxb; exact (hk xb hxb).1 x (by simpa only [List.mem_append] using hx)
       · simp at hx
-  · exact (hst.take c hc).2 x hx
+  · exact hst.take c hc x hx
 
 /-- Lemma 10 (Q1–Q4), for the registers `rs`. -/
 theorem Fn.retOkOn_sound (hst : f.StructSpec) {rs : List Reg} {S : STy} {s : State} {ι : Val}
@@ -235,7 +235,7 @@ theorem Fn.retOkOn_sound (hst : f.StructSpec) {rs : List Reg} {S : STy} {s : Sta
     obtain ⟨hm, -, -, -, _hj, hcs⟩ := hgsp j hj'
     obtain ⟨-, hex, hfp, hv⟩ := STy.capSub_sound (T := T) (F := F) hcs hh
     have hvars : ∀ x ∈ (f.sig.give[j]'hj).vars, IExpr.upd ι θ x = ι' x := fun x hx =>
-      hag x ((hst.give _ (List.getElem_mem hj)).2.2 x hx)
+      hag x ((hst.give _ (List.getElem_mem hj)).2 x hx)
     have hcg := Cap.congr_vars (T := T) (F := F) hvars
     exact ⟨hj', fun x hx => hfp x ((hcg.1 x).2 hx), hex, (hcg.2 _).1 (hv _ (hI.valid _ hm))⟩
   -- which held capability each exit capability comes from
@@ -348,7 +348,7 @@ theorem Fn.retOkOn_sound (hst : f.StructSpec) {rs : List Reg} {S : STy} {s : Sta
     have e : f.sig.exitCaps[f.sig.borrow.length + j] = f.sig.give[j] := by
       simp only [Sig.exitCaps]; rw [List.getElem_append_right (by simp)]; simp
     rw [e] at hfd hed
-    have hdx : d.cap.exclusive = true := by rw [← hed]; exact (hst.give _ hc).2.1
+    have hdx : d.cap.exclusive = true := by rw [← hed]; exact (hst.give _ hc).1
     exact hpoolOf _ d hdc hdx (fun i hi _ => by omega) (hd0 (.inl (List.ne_nil_of_mem hc))) x (hfd x hx)
 
 theorem Fn.retOk_sound (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {F : TokFp} {θ : Subst}

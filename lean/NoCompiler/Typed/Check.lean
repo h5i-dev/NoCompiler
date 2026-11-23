@@ -553,9 +553,8 @@ def calleeOk (g : Sig) : Bool :=
 /-- The structural conditions: loops nested, variables apart. -/
 def structOk : Bool :=
   let σ := f.sig
-  σ.take.all (fun c => (match c.kind with | .bytes _ => true | .token _ => false) &&
-    c.vars.all σ.params.contains) &&
-  σ.give.all (fun c => (match c.kind with | .bytes _ => true | .token _ => false) && c.exclusive &&
+  σ.take.all (fun c => c.vars.all σ.params.contains) &&
+  σ.give.all (fun c => c.exclusive &&
     c.vars.all (fun y => σ.params.contains y || σ.outVars.contains y)) &&
   (f.callees.all fun p => calleeOk p.2) &&
   f.frameDeclOk &&
