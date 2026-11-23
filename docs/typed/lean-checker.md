@@ -62,12 +62,21 @@ the callee's `give` capabilities (bytes, no fields) are added. In a function's o
 `take` capabilities are held from the entry and each `give` must be covered at the return (depth
 0) by a distinct held exclusive capability not returned for a borrow; the Pool condition follows
 from the invariant (such a capability lies in the entry permission, misses the stack and the
-returned borrows). Syscalls (`ecall`, Lemma 9) are agent U's (`Typed/Ecall.lean`). Static data
+returned borrows). Syscalls are covered (Lemma 9, `Typed/Ecall.lean`, `Sound/Ecall.lean`):
+`a7` a known constant; `exit`/`exit_group` end the run; `write`/`read` of `[b, b + n)` need a
+held capability covering it (`rw` for `read`), then `a0` is a fresh value with Env.lean's
+relation (I31) and `read` drops the fields of the capability it wrote into; any other number is
+rejected (`lean/TypedTests/Ecall.lean`). Static data
 (I30/I32) needs no rule of its own on the linked image: `auipc` gives the exact address, a data
-symbol is a `borrow ℓ_sym ↦ bytes[n]` clause with `ℓ_sym = address` in the entry constraint, and
+symbol is a `borrow ℓ_sym ↦ bytes[n]` clause with `ℓ_sym = address` in the entry constraint
+(the export's `--image`, export.md "Linked image"; `lean/TypedTests/Static.lean`), and
 at a call such a parameter is instantiated from that equation (`Fn.pinned`). Callee clauses may
 carry fields: each must be a field of the held capability at the same address with an equal
-type, inside the lent length (`Fn.fieldsLent`, I33.1). Still rejected: tokens (agent U),
+type, inside the lent length (`Fn.fieldsLent`, I33.1). The arithmetic beyond `arith`
+(`Typed/ArithExt.lean`, `Sound/ArithExt.lean`: comparisons, min/max, the `.uw` forms, division
+and remainder by constants and by positive divisors, shifts, masks, single bits, disjoint
+`or`/`xor`, 0/1 bit tables, bit counts) follows decisions.md I23/I29/I35, as the Rust checker
+(`lean/TypedTests/ArithExt.lean`). Still rejected: tokens (T, in progress),
 `partial` (added when a partial function is needed, I19).
 
 ## Example
