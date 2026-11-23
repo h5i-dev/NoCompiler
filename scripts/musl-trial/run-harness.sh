@@ -18,7 +18,8 @@ link_run() { # $1 = label, rest = names
   echo -n "[$label] "; "$QEMU" "$OUT/harness-$label.elf"
 }
 link_run base $base
-variants=$(for n in $names; do case $n in *-*) echo "$n";; esac; done)
-if [ -n "$variants" ]; then
-  link_run variants $(for n in $base; do v=$(echo "$variants" | grep "^$n-" | head -1); echo "${v:-$n}"; done)
-fi
+# One run per variant suffix (-ic, -x, ...): NAME-SUFFIX replaces NAME where it exists.
+suffixes=$(for n in $names; do case $n in *-*) echo "${n#*-}";; esac; done | sort -u)
+for suf in $suffixes; do
+  link_run "$suf" $(for n in $base; do if echo "$names" | grep -qx "$n-$suf"; then echo "$n-$suf"; else echo "$n"; fi; done)
+done

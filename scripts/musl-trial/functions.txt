@@ -25,3 +25,8 @@ wmemcmp  string/wmemcmp.c   wmemcmp
 wmemchr  string/wmemchr.c   wmemchr
 stpncpy  string/stpncpy.c   __stpncpy
 strncpy  string/strncpy.c   strncpy
+strncmp-x  string/strncmp.c  strncmp   -mllvm -riscv-disable-using-constant-pool-for-large-ints -mllvm -jump-is-expensive=false
+memcpy-x   string/memcpy.c   memcpy    -mllvm -riscv-disable-using-constant-pool-for-large-ints -mllvm -jump-is-expensive=false
+memchr-x   string/memchr.c   memchr    -mllvm -riscv-disable-using-constant-pool-for-large-ints -mllvm -jump-is-expensive=false
+memccpy-x  string/memccpy.c  memccpy   -mllvm -riscv-disable-using-constant-pool-for-large-ints -mllvm -jump-is-expensive=false
+stpncpy-x  string/stpncpy.c  __stpncpy -mllvm -riscv-disable-using-constant-pool-for-large-ints -mllvm -jump-is-expensive=false

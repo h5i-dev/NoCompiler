@@ -214,6 +214,16 @@ were built and annotated:
 | memccpy-x | reject | xor alignment remains; S2 probably |
 | stpncpy-x | reject | xor alignment remains; S2 probably |
 
+Stage 1 for `-x` (expected from reading the code): all five verdicts as predicted, but one
+reason was wrong. **strncmp-x is accepted**, so strncmp's only stage-1 obstacle was the branch-free
+test, and a compiler flag removes it. memchr-x passes S2 (my "S2 probably" was wrong). It still
+fails on a *saved* boolean (`a5 = sltu zero, a2`, branched on later), so finding 2 is not fully
+avoided by the flag, and then on the alignment join (finding 7). memcpy-x, memccpy-x and
+stpncpy-x keep their S2, `andi` and xor failures. All five pass the qemu harness (run `x`).
+
+So, for findings 1–4: a flag removes most of 2 (the branch-free tests); 1, 3 and 4 need rule
+changes; static data (6) can be avoided by a flag.
+
 ## Files
 
 - `scripts/musl-trial/build.sh` — pinned build (musl tree digest, clang 15.0.7, flags);

@@ -25,3 +25,8 @@ examples/musl/wmemcmp.s	wmemcmp	accept	accept	-	batch 2; slt in the result only
 examples/musl/wmemchr.s	wmemchr	accept	accept	-	batch 2
 examples/musl/stpncpy.s	__stpncpy	reject	reject:parse:I14	0x9c	batch 2; static data; then S2 (9), xor alignment (sd at 0xcc), branch-free &&
 examples/musl/strncpy.s	strncpy	accept	accept	-	batch 2; call pair (I21) to __stpncpy's signature
+examples/musl/strncmp-x.s	strncmp	accept	accept	-	-x: && kept as branches
+examples/musl/memchr-x.s	memchr	reject	reject:join	0x4c	-x: S2 ok; 1 <= m at join 0x50 needs an sltu rule (saved boolean a5); then 8 | p at 0xb4 entry
+examples/musl/memcpy-x.s	memcpy	reject	reject:S2	-	-x: 33 violations; andi n,2^k tails; misaligned loops not annotated
+examples/musl/memccpy-x.s	memccpy	reject	reject:S2	-	-x: 6 violations; xor alignment (sd at 0x118)
+examples/musl/stpncpy-x.s	__stpncpy	reject	reject:S2	-	-x: 5 violations; xor alignment (sd at 0xec)
