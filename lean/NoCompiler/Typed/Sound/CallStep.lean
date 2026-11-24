@@ -36,7 +36,7 @@ theorem Fn.pcOf_aligned (hst : f.StructSpec) (k : Nat) : aligned (f.pcOf k) 4 :=
 theorem Fn.edge_lt {k : Option Nat} {S : STy} {k' : Nat} (h : f.edge k S k' = true) : k' < f.size := by
   unfold Fn.edge at h
   split at h
-  · cases h
+  · simp only [Bool.and_eq_true, decide_eq_true_eq] at h; exact h.1
   · unfold Fn.edgeOk at h
     simp only [Bool.and_eq_true, decide_eq_true_eq] at h
     exact h.1.1.1

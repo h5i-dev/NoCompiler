@@ -311,10 +311,11 @@ def entCaseN : Nat → STy → Constr → Bool
       let S' := S.pinFacts θ d
       let d' := (d.subst θ).fold
       let ψ' := (ψ.subst θ).fold
-      !ps.isEmpty && (S'.entIn d' ψ' || entCaseN n S' ψ')
+      -- (a disjunct that pins nothing is just a hypothesis of its case)
+      S'.entIn d' ψ' || entCaseN n S' ψ'
     | _ => false
 
-def entCase (S : STy) (ψ : Constr) : Bool := entCaseN 1 S ψ
+def entCase (S : STy) (ψ : Constr) : Bool := entCaseN 2 S ψ
 
 /-- `Ψ ⊢ ψ` by the decision procedure, after folding the goal's constant atoms (a goal like
     an invariant `k = 0 ∨ (k = 1 ∧ …) ∨ …` at `k := 0` is `tt`; unfolded, its negation's
@@ -622,7 +623,9 @@ def edgeOk (k : Option Nat) (S S' : STy) (k' : Nat) (θ : Subst) : Bool :=
     the instruction being `S`; the instantiation is found heuristically. -/
 def edge (k : Option Nat) (S : STy) (k' : Nat) : Bool :=
   match f.tyAt k' with
-  | none => false
+  -- no type at the target: only an edge no run takes (the facts are contradictory, e.g. a
+  -- branch direction the record found infeasible)
+  | none => decide (k' < f.size) && S.ent .ff
   | some S' =>
     let back := match k with | some k => decide (f.pos k' ≤ f.pos k) | none => false
     let sv := S.vars

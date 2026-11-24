@@ -565,7 +565,8 @@ theorem Fn.run (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.instr
     (fun F1 S1 s' ι1 k' hpc' hI1 hUF1 hag he' => by
       unfold Fn.edge at he'
       split at he'
-      · cases he'
+      · simp only [Bool.and_eq_true] at he'
+        exact absurd (hI1.ent he'.2) (by simp [Constr.holds, Constr.eval])
       · rename_i S2 hS2
         obtain ⟨hk', hI2, hrk⟩ := f.edgeOk_sound hst he' hI1 hag
         exact ih (k', _) (hrk hp k rfl) F1 S2 s' hS2 hk' hpc' hI2 hUF1)
@@ -593,7 +594,8 @@ theorem Fn.runP (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.inst
     (fun F1 S1 s' ι1 k' hpc' hI1 hUF1 hag he' m hm => by
       unfold Fn.edge at he'
       split at he'
-      · cases he'
+      · simp only [Bool.and_eq_true] at he'
+        exact absurd (hI1.ent he'.2) (by simp [Constr.holds, Constr.eval])
       · rename_i S2 hS2
         obtain ⟨hk', hI2, -⟩ := f.edgeOk_sound hst he' hI1 hag
         exact ih m (by omega) k' _ F1 S2 s' hS2 hk' hpc' hI2 hUF1)
@@ -616,7 +618,8 @@ theorem Fn.check_sound (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = true)
   have hI0 := f.entry_inv (T := T) hst he hpre
   unfold Fn.edge at hentry
   split at hentry
-  · cases hentry
+  · simp only [Bool.and_eq_true] at hentry
+    exact absurd (hI0.ent hentry.2) (by simp [Constr.holds, Constr.eval])
   · rename_i S0 hS0
     obtain ⟨hk0, hI1, -⟩ := f.edgeOk_sound hst hentry hI0 (ιpre := f.entryVal a.1 s0) (fun _ _ => rfl)
     exact f.run hst hinstr hp hDf hcall he (fun r x h => f.entryVal_reg hst a.1 s0 h)
@@ -645,7 +648,8 @@ theorem Fn.check_soundP (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = true) 
   have hI0 := f.entry_inv (T := T) hst he hpre
   unfold Fn.edge at hentry
   split at hentry
-  · cases hentry
+  · simp only [Bool.and_eq_true] at hentry
+    exact absurd (hI0.ent hentry.2) (by simp [Constr.holds, Constr.eval])
   · rename_i S0 hS0
     obtain ⟨hk0, hI1, -⟩ := f.edgeOk_sound hst hentry hI0 (ιpre := f.entryVal a.1 s0) (fun _ _ => rfl)
     intro n
