@@ -13,7 +13,6 @@
 #:   stack  16
 	.text
 	.attribute	4, 16
-	.attribute	5, "rv64i2p0_m2p0_zba1p0_zbb1p0"
 	.file	"hello.c"
 	.section	.text.write_all,"ax",@progbits
 	.globl	write_all                       # -- Begin function write_all
