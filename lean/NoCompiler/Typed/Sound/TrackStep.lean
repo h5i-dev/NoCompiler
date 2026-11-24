@@ -182,3 +182,70 @@ theorem regStep_ok {m0 d srcB n} {A A' : AState} {s s' : State} (h : A.ok m0 d s
   · cases hs
 
 end NoCompiler.Typed.Track
+
+namespace NoCompiler.Typed.Track
+open NoCompiler NoCompiler.Typed NoCompiler.Typed.Bytes
+
+/-- Advancing the cursor by `imm ≤ δ` into `rd` keeps the copied count. -/
+theorem AState.ok_advance {m0 d srcB n} {A : AState} {s : State} (h : A.ok m0 d srcB n s)
+    (hn : n < 2 ^ 64) {rd : Reg} (hrd0 : rd ≠ 0) {imm : Nat} (himm : imm ≤ A.δ) (p : Word) :
+    ({ cur := rd, δ := A.δ - imm, cells := (A.set rd []).cells } : AState).ok m0 d srcB n
+      ((s.setReg rd (s.reg A.cur + BitVec.ofNat 64 imm)).setPc p) := by
+  obtain ⟨hcn, hc, hr⟩ := h
+  have hrd : ((s.setReg rd (s.reg A.cur + BitVec.ofNat 64 imm)).setPc p).reg rd = s.reg A.cur + BitVec.ofNat 64 imm := by
+    rw [reg_setReg_setPc s _ p rd hrd0, if_pos rfl]
+  have hmem : ((s.setReg rd (s.reg A.cur + BitVec.ofNat 64 imm)).setPc p).mem = s.mem := by
+    simp [State.setPc, State.setReg]; split <;> rfl
+  have hcnt : (s.reg A.cur + BitVec.ofNat 64 imm - d).toNat + (A.δ - imm) = (s.reg A.cur - d).toNat + A.δ := by
+    have : (s.reg A.cur + BitVec.ofNat 64 imm - d).toNat = (s.reg A.cur - d).toNat + imm := by
+      have e : s.reg A.cur + BitVec.ofNat 64 imm - d = (s.reg A.cur - d) + BitVec.ofNat 64 imm := by bv_omega
+      rw [e, BitVec.toNat_add, BitVec.toNat_ofNat]
+      have := (s.reg A.cur - d).isLt
+      rw [Nat.mod_eq_of_lt (a := imm) (by omega), Nat.mod_eq_of_lt (by omega)]
+    omega
+  refine ⟨?_, ?_, ?_⟩
+  · simp only; rw [hrd, hcnt]; exact hcn
+  · simp only; rw [hrd, hcnt, hmem]; exact hc
+  · intro r
+    simp only [AState.set]
+    rw [hrd, hcnt, reg_setReg_setPc s _ p r hrd0]
+    split
+    · intro j hj; simp [Cell.ok]
+    · exact hr r
+
+/-- A load of the next source bytes into `rd` (not the cursor). -/
+theorem AState.ok_load {m0 d srcB n} {A : AState} {s : State} (h : A.ok m0 d srcB n s)
+    (hd : Disj d srcB n) {op : LdOp} (hop : op ≠ .lh ∧ op ≠ .lhu) {rd : Reg} (hrd : rd ≠ A.cur)
+    (hrd0 : rd ≠ 0) {o : Nat} {addr : Word}
+    (haddr : addr = srcB + BitVec.ofNat 64 ((s.reg A.cur - d).toNat + A.δ + o))
+    (hin : (s.reg A.cur - d).toNat + A.δ + o + op.width ≤ n) (p : Word) :
+    (A.set rd (Cells.load o op.width)).ok m0 d srcB n ((s.setReg rd (loadVal op s.mem addr)).setPc p) := by
+  refine AState.ok_set h hrd hrd0 ?_ p
+  rw [haddr]
+  exact Cells.load_ok h.2.1 hd h.1 op hop o hin
+
+/-- A store at the cursor of a register whose first `w` cells are the next source bytes. -/
+theorem AState.ok_store {m0 d srcB n} {A : AState} {s : State} (h : A.ok m0 d srcB n s)
+    (hn : n < 2 ^ 64) {w : Nat} (hw : w ≤ 8) {rs2 : Reg} {addr : Word}
+    (haddr : addr = s.reg A.cur + BitVec.ofNat 64 A.δ)
+    (hbound : (s.reg A.cur - d).toNat + A.δ + w ≤ n)
+    (hpre : ∀ i < w, (A.cells rs2).getD i .unk = .src i) (p : Word) :
+    ({ A with δ := A.δ + w, cells := fun r => (A.cells r).rebase w } : AState).ok m0 d srcB n
+      ((s.setMem (writeLE s.mem addr (s.reg rs2).toNat w)).setPc p) := by
+  obtain ⟨hcn, hc, hr⟩ := h
+  have hreg : ∀ r, ((s.setMem (writeLE s.mem addr (s.reg rs2).toNat w)).setPc p).reg r = s.reg r :=
+    fun r => rfl
+  have e : addr = d + BitVec.ofNat 64 ((s.reg A.cur - d).toNat + A.δ) := by
+    rw [haddr, BitVec.ofNat_add, BitVec.ofNat_toNat, BitVec.setWidth_eq]; bv_omega
+  refine ⟨?_, ?_, ?_⟩
+  · simp only [hreg]; omega
+  · simp only [hreg]
+    show Copied m0 (writeLE s.mem addr (s.reg rs2).toNat w) d srcB ((s.reg A.cur - d).toNat + (A.δ + w))
+    rw [e, ← Nat.add_assoc]
+    exact Cells.store_ok hc (hr rs2) hw (by omega) hpre
+  · intro r
+    simp only [hreg]
+    rw [← Nat.add_assoc]
+    exact Cells.rebase_ok w (hr r)
+
+end NoCompiler.Typed.Track
