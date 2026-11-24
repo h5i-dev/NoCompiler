@@ -450,3 +450,69 @@ theorem tstep_ok {m0 : Word → Byte} {d srcB : Word} {n : Nat} {S : STy} {P : P
   all_goals (simp only [tstep] at ht; exact regStep_ok h ht hx)
 
 end NoCompiler.Typed.Track
+
+namespace NoCompiler.Typed.Track
+open NoCompiler NoCompiler.Typed
+
+variable {f : Fn}
+
+/-- Points have distinct addresses (`4·size < 2^64`). -/
+theorem Fn.pcOf_inj {k k' : Nat} (hsz : 4 * f.size < 2 ^ 64) (hk : k < f.size) (hk' : k' < f.size)
+    (h : f.pcOf k = f.pcOf k') : k = k' := by
+  unfold Fn.pcOf at h
+  have h2 : BitVec.ofNat 64 (4 * k) = BitVec.ofNat 64 (4 * k') := by
+    have := congrArg (fun x => x - f.entry) h
+    simpa using this
+  have := congrArg BitVec.toNat h2
+  simp only [BitVec.toNat_ofNat] at this
+  rw [Nat.mod_eq_of_lt (by omega), Nat.mod_eq_of_lt (by omega)] at this
+  omega
+
+/-- The points an instruction at `k` can continue at (inside `f`): `jalr` is left out (a return,
+    handled apart). -/
+def succs (k : Nat) : Instr → List Nat
+  | .branch _ _ _ off => (k + 1) :: (Fn.target k off.toInt).toList
+  | .jal _ off => (Fn.target k off.toInt).toList
+  | .jalr _ _ _ => []
+  | _ => [k + 1]
+
+end NoCompiler.Typed.Track
+
+namespace NoCompiler.Typed.Track
+open NoCompiler NoCompiler.Typed
+
+variable {f : Fn}
+
+/-- A jump from point `k` by `off` lands on point `k'` exactly when the checker's `target` says so
+    (`4·size` far below `2^64`). -/
+theorem Fn.target_of_pc {k k' : Nat} {n : Nat} {off : BitVec n} (hn : n ≤ 21)
+    (hsz : 4 * f.size + 2 ^ 21 < 2 ^ 64) (hk : k < f.size) (hk' : k' < f.size)
+    (h : f.pcOf k' = f.pcOf k + off.signExtend 64) : Fn.target k off.toInt = some k' := by
+  unfold Fn.pcOf at h
+  have h2 : BitVec.ofNat 64 (4 * k') = BitVec.ofNat 64 (4 * k) + off.signExtend 64 := by
+    have := congrArg (fun x => x - f.entry) h
+    rw [show f.entry + BitVec.ofNat 64 (4 * k') - f.entry = BitVec.ofNat 64 (4 * k') by bv_omega,
+      show f.entry + BitVec.ofNat 64 (4 * k) + BitVec.signExtend 64 off - f.entry =
+        BitVec.ofNat 64 (4 * k) + BitVec.signExtend 64 off by bv_omega] at this
+    exact this
+  have hc := BitVec.toInt_eq_toNat_cond (off.signExtend 64)
+  rw [BitVec.toInt_signExtend_of_le (by omega)] at hc
+  have hlo := BitVec.le_toInt (x := off)
+  have hhi := BitVec.toInt_lt (x := off)
+  have hpow : (2 : Int) ^ (n - 1) ≤ 2 ^ 20 := by
+    have : n - 1 ≤ 20 := by omega
+    exact_mod_cast Nat.pow_le_pow_right (by decide) this
+  have := congrArg BitVec.toNat h2
+  rw [BitVec.toNat_add, BitVec.toNat_ofNat, BitVec.toNat_ofNat] at this
+  rw [Nat.mod_eq_of_lt (a := 4 * k') (by omega), Nat.mod_eq_of_lt (a := 4 * k) (by omega)] at this
+  have hlt := (off.signExtend 64).isLt
+  unfold Fn.target
+  split at hc
+  · have e : (4 * k' : Int) = 4 * k + off.toInt := by omega
+    rw [if_pos (by simp; omega)]
+    congr 1; omega
+  · have e : (4 * k' : Int) = 4 * k + off.toInt := by omega
+    rw [if_pos (by simp; omega)]
+    congr 1; omega
+
+end NoCompiler.Typed.Track
