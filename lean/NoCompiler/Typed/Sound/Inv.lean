@@ -390,6 +390,7 @@ theorem ent_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.ent ψ = true)
   · split at h
     · obtain ⟨d, hd, hh⟩ := List.any_eq_true.1 h
       exact Constr.eval_of_disjunct hd (ent0_sound hh hh')
+    · exact Constr.conjuncts_holds fun c hc => ent0_sound (List.all_eq_true.1 h c hc) hh'
     · simp at h
 theorem entEqMod_sound {ι : Val} {S : STy} {a b : IExpr} (h : S.entEqMod a b = true)
     (hh : ∀ p ∈ S.hyps, p.holds ι) : (a.eval ι - b.eval ι) % 2 ^ 64 = 0 := by

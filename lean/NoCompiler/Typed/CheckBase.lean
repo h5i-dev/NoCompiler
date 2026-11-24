@@ -364,6 +364,9 @@ def ent0 (S : STy) (ψ : Constr) : Bool :=
 def ent (S : STy) (ψ : Constr) : Bool :=
   S.ent0 ψ || (match ψ with
     | .or _ _ => ψ.disjuncts.any S.ent0
+    -- and a conjunction conjunct by conjunct, each through the fast path first (a bound
+    -- `0 ≤ x ∧ x ≤ 2^64 − 1` against the facts `0 ≤ x`, `x < 2^64`)
+    | .and _ _ => ψ.conjuncts.all S.ent0
     | _ => false)
 
 /-- `a ≡ b (mod 2^64)` under Ψ. -/
