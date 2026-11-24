@@ -170,7 +170,11 @@ theorem capSub_sound {T : TokEnv} {ι : Val} {F : TokFp} {S : STy} {θ : Subst} 
   unfold capSub at h
   simp only [Bool.and_eq_true, beq_iff_eq] at h
   obtain ⟨⟨⟨hid, -⟩, hg⟩, hk⟩ := h
-  have hgi := guard_imp hg hh
+  have hgi : c'.cap.guard.eval (IExpr.upd ι θ) = true → c.cap.guard.eval ι = true := by
+    rcases Bool.or_eq_true _ _ ▸ hg with h1 | h1
+    · simp only [Bool.and_eq_true, beq_iff_eq] at h1
+      rw [h1.2]; intro _; rfl
+    · exact guard_imp h1 hh
   refine ⟨hid, ?_, ?_, ?_⟩
   · split at hk
     · rename_i b b' hb hb'

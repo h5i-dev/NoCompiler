@@ -308,7 +308,8 @@ def instantiate (S S' : STy) (newVars : List Var) : Subst :=
 
 def capSub (S : STy) (θ : Subst) (c c' : HCap) : Bool :=
   c.id == c'.id && c.origin == c'.origin &&
-  S.ent (Constr.imp (c'.cap.guard.subst θ) c.cap.guard) &&
+  -- the guards: both unguarded (the common case), or the implication entailed
+  ((c'.cap.guard == .tt && c.cap.guard == .tt) || S.ent (Constr.imp (c'.cap.guard.subst θ) c.cap.guard)) &&
   match c.cap.kind, c'.cap.kind with
   | .bytes b, .bytes b' =>
     b.mode == b'.mode && b.heap == b'.heap &&
