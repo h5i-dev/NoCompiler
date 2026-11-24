@@ -601,6 +601,28 @@ bsearch, fwrite) are all things v0 deliberately leaves out.
 3. P4 function-pointer types (bsearch, __fwritex): 2.
 4. P5 product terms (fwrite): 1.
 
+## Lean on the linked image (2026-11-24, TWO-AGENTS.md "close the gap", agents T and U)
+
+Run: `lean/scripts/corpus.py --link --why tests/typed/corpus/musl`. Each file is linked with ld.lld, and every callee it only declares gets a `ret` stub. The record is exported against the linked image, and Lean checks each function on the linked `.text` at its address. Lean modules are precompiled (`#eval` runs native code).
+
+| pin | Rust accepts | Lean accepts of those | Lean rejects | no verdict |
+|-----|--------------|-----------------------|--------------|------------|
+| 998ae0df (v0, unlinked) | 26 | 9 | 13 | 4 |
+| 2a00c908 (linked, 2026-11-24T03:05Z, 4 min) | 26 | 24 | 2 (memccpy-x, stpncpy) | 0 |
+
+What closed the gap, by cause:
+* call/tail pairs at unlinked addresses: the harness links (callee stubs);
+* ffsl's constant pool has no symbol: its address comes from the linked `auipc`/`%pcrel_lo` pair;
+* memccpy-x, stpncpy-x were `struct=false`: loops are exported in τ order;
+* record facts written in another normal form: `coversS`, the bit table in the Rust form, and the conjunct fast path;
+* xor then mask: the record carries `2^k ∣ x ⇔ 2^k ∣ a − b` at each xor, and both mask rules give the zero test;
+* I29 operand ranges: `pinsBit`;
+* case tables: disjunct by disjunct (U), and T's case split and fold;
+* back edges: T's instantiation fix and search (fuel, equality elimination);
+* time: T's per-point defs request and precompiled modules.
+
+Every disagreement is still Rust accepts and Lean rejects; none goes the other way.
+
 ## Files
 
 - `scripts/musl-trial/build.sh` — pinned build (musl tree digest, clang 15.0.7, flags);
