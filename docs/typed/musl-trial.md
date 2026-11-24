@@ -624,6 +624,47 @@ What closed the gap, by cause:
 
 The Rust regression at 2a00c908 came from 3ee59fd6's xor-then-mask facts in the Rust checker's own queries, which made its solver give up on memccpy and memccpy-ic. Since e880cadf those facts go into the exported record only. At b5ff791c every function Rust accepts is accepted by Lean, except two that run out of memory; Lean rejects none, and none goes the other way. Theorem D (`Prog.check`): 19 files accept; 7 link stubbed callees (`external-callees`, theorem D needs every callee in `prog`).
 
+### Kernel-checked (2026-11-24T04:02Z, pinned to f2cb56f1, agent T)
+
+Each function Lean accepts on the linked image, as a theorem: `theorem chk_f : fn_f.check code = true := by decide +kernel` on the linked `.text` (`lean/scripts/kernelcheck.py`, one Lean process at a time under `systemd-run -p MemoryMax=8G`), then `#print axioms`. With `Fn.check_sound` each is `Meets` for the function, its callees' signatures assumed. Proved means only propext, Classical.choice and Quot.sound; nothing uses native_decide.
+
+| file | function | kernel-checked | time (s) | peak memory (GB) |
+|------|----------|----------------|----------|------------------|
+| _Exit.s | `_Exit` | proved | 1.5 | 0.6 |
+| __towrite.s | `__towrite` | proved | 12.1 | 1.7 |
+| bcmp.s | `bcmp` | proved | 1.9 | 0.6 |
+| bzero.s | `bzero` | proved | 1.9 | 0.6 |
+| div.s | `div` | proved | 3.3 | 0.8 |
+| ffsl.s | `ffsl` | proved | 11.1 | 1.7 |
+| l64a.s | `l64a` | out of memory (8 GB cap; oom-kill in the journal) | 64.5 | - |
+| labs.s | `labs` | proved | 3.6 | 0.7 |
+| memccpy-x.s | `memccpy` | out of memory (8 GB cap; oom-kill in the journal) | 76.9 | - |
+| memcmp.s | `memcmp` | proved | 7.6 | 1.2 |
+| memcpy-x.s | `memcpy` | out of memory (8 GB cap; oom-kill in the journal) | 100.4 | - |
+| memcpy.s | `memcpy` | out of memory (8 GB cap; oom-kill in the journal) | 113.1 | - |
+| memmove.s | `memmove` | out of memory (8 GB cap; oom-kill in the journal) | 83.7 | - |
+| memrchr.s | `__memrchr` | proved | 5.9 | 0.9 |
+| memset.s | `memset` | out of memory (8 GB cap; oom-kill in the journal) | 73.1 | - |
+| stpncpy-x.s | `__stpncpy` | out of memory (8 GB cap; oom-kill in the journal) | 91.3 | - |
+| stpncpy.s | `__stpncpy` | out of memory (8 GB cap; oom-kill in the journal) | 92.6 | - |
+| strncmp-x.s | `strncmp` | proved | 15.6 | 2.1 |
+| strncmp.s | `strncmp` | out of memory (8 GB cap; oom-kill in the journal) | 76.2 | - |
+| strncpy.s | `strncpy` | proved | 5.2 | 0.8 |
+| strnlen.s | `strnlen` | proved | 6.3 | 1.0 |
+| swab.s | `swab` | proved | 7.4 | 1.2 |
+| wmemchr.s | `wmemchr` | proved | 5.2 | 1.0 |
+| wmemcmp.s | `wmemcmp` | proved | 11.2 | 1.6 |
+| wmemcpy.s | `wmemcpy` | proved | 7.6 | 1.3 |
+| wmemset.s | `wmemset` | proved | 4.7 | 0.9 |
+
+17 of 26 proved.
+
+The nine out-of-memory runs are not timeouts or heartbeat limits: each Lean process was killed
+by its scope's 8 GB limit after 64–113 s (one `oom-kill` per run in the user journal). They are
+the functions with the largest records, where the kernel evaluates the Presburger search
+itself. They will be re-run with U's certificate-carrying check (the kernel checks recorded
+certificates instead of searching). Raw results: `docs/typed/musl-kernel.jsonl`.
+
 ## Files
 
 - `scripts/musl-trial/build.sh` — pinned build (musl tree digest, clang 15.0.7, flags);

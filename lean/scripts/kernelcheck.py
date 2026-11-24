@@ -33,6 +33,7 @@ import corpus  # noqa: E402  (link, section_words, section_addr, CLANG, CFLAGS)
 ROOT = corpus.ROOT
 MEM = os.environ.get("KERNEL_MEM", "8G")
 TIMEOUT = int(os.environ.get("KERNEL_TIMEOUT", "3600"))
+LOGDIR = os.environ.get("KERNEL_LOGDIR")
 STANDARD = {"propext", "Classical.choice", "Quot.sound"}
 
 
@@ -81,7 +82,8 @@ def prove(head, name, tmp):
     while mem_available() < mem_bytes(MEM):
         time.sleep(30)
     t0 = time.time()
-    r = subprocess.run(["systemd-run", "--user", "--scope", "--quiet", "-p", f"MemoryMax={MEM}",
+    unit = f"kernelcheck-{os.getpid()}-{ident}"
+    r = subprocess.run(["systemd-run", "--user", "--scope", "--quiet", f"--unit={unit}", "-p", f"MemoryMax={MEM}",
                         "-p", "MemorySwapMax=0", f"--setenv=PATH={os.environ.get('PATH', '')}",
                         "--", "/usr/bin/time", "-f", "PEAK %M", "timeout", str(TIMEOUT),
                         "lake", "env", "lean", f],
@@ -96,10 +98,19 @@ def prove(head, name, tmp):
     elif "does not depend on any axioms" in out:
         ax = []
     err = next((l for l in out.splitlines() if "error" in l), None)
-    if r.returncode in (137, 143) or "Killed" in out:
+    if LOGDIR:
+        with open(os.path.join(LOGDIR, f"{ident}.log"), "w", encoding="utf-8") as fh:
+            fh.write(f"returncode {r.returncode}\n{out}")
+    # the scope's OOM kill takes /usr/bin/time down too (no PEAK line); the journal says so
+    j = subprocess.run(["journalctl", "--user", "-u", f"{unit}.scope", "--no-pager", "-q"],
+                       capture_output=True, text=True).stdout
+    oom = "oom" in j.lower() or "memory" in j.lower() and "kill" in j.lower()
+    if oom or r.returncode in (137, 143) or "Killed" in out or (peak is None and r.returncode == -9):
         res = "out-of-memory"
     elif r.returncode == 124:
         res = "timeout"
+    elif err is not None and "heartbeat" in err:
+        res = "heartbeats"
     elif err is None and ax is not None and set(ax) <= STANDARD:
         res = "proved"
     elif err is not None and "decide" in err:
@@ -107,7 +118,7 @@ def prove(head, name, tmp):
     else:
         res = "lean-error"
     return {"function": name, "result": res, "seconds": secs, "peak_kb": peak, "axioms": ax,
-            "error": err}
+            "returncode": r.returncode, "error": err}
 
 
 def main():
