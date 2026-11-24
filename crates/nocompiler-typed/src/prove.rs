@@ -44,7 +44,13 @@ pub fn parse_axioms(text: &str) -> Option<Vec<String>> {
         if let Some(i) = line.find("depends on axioms: [") {
             let rest = &line[i + "depends on axioms: [".len()..];
             let inner = rest.split(']').next()?;
-            return Some(inner.split(',').map(|a| a.trim().to_string()).filter(|a| !a.is_empty()).collect());
+            return Some(
+                inner
+                    .split(',')
+                    .map(|a| a.trim().to_string())
+                    .filter(|a| !a.is_empty())
+                    .collect(),
+            );
         }
     }
     None

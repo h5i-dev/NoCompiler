@@ -29,7 +29,13 @@ pub fn to_json(file: &str, prog: &Program, ck: &Checker, rep: &Report) -> Value 
     to_json_proof(file, prog, ck, rep, None)
 }
 
-pub fn to_json_proof(file: &str, _prog: &Program, ck: &Checker, rep: &Report, proof: Option<&Proof>) -> Value {
+pub fn to_json_proof(
+    file: &str,
+    _prog: &Program,
+    ck: &Checker,
+    rep: &Report,
+    proof: Option<&Proof>,
+) -> Value {
     let mut funcs = Vec::new();
     let with_body: std::collections::BTreeSet<&str> =
         rep.funcs.iter().map(|f| f.name.as_str()).collect();

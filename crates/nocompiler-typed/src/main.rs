@@ -236,10 +236,17 @@ fn main() -> ExitCode {
             let partial_fns: Vec<&str> = nocompiler_typed::export::callee_first(&prog, &rep)
                 .into_iter()
                 .filter(|n| ck.sigs.get(n).is_some_and(|g| g.partial))
-                .map(|n| ck.sigs.get_key_value(&n).map(|(k, _)| k.as_str()).unwrap_or(""))
+                .map(|n| {
+                    ck.sigs
+                        .get_key_value(&n)
+                        .map(|(k, _)| k.as_str())
+                        .unwrap_or("")
+                })
                 .collect();
             if !nocompiler_typed::export::closed(&prog, &rep) {
-                println!("prove: not attempted (a callee is not checked here: theorem D needs every callee)");
+                println!(
+                    "prove: not attempted (a callee is not checked here: theorem D needs every callee)"
+                );
             } else if !partial_fns.is_empty() {
                 println!(
                     "prove: not attempted (partial functions {}: theorem D covers total programs; I19)",
@@ -249,9 +256,12 @@ fn main() -> ExitCode {
                 let dir = lean_dir
                     .clone()
                     .or_else(|| std::env::var("NOCOMPILER_LEAN_DIR").ok())
-                    .unwrap_or_else(|| concat!(env!("CARGO_MANIFEST_DIR"), "/../../lean").to_string());
+                    .unwrap_or_else(|| {
+                        concat!(env!("CARGO_MANIFEST_DIR"), "/../../lean").to_string()
+                    });
                 let theorem = format!("{module}.prog_meets");
-                match nocompiler_typed::prove::run_lean(std::path::Path::new(&dir), &text, &theorem) {
+                match nocompiler_typed::prove::run_lean(std::path::Path::new(&dir), &text, &theorem)
+                {
                     Ok(ax) if nocompiler_typed::prove::standard(&ax) => {
                         println!("prove: {theorem} (axioms: {})", ax.join(", "));
                         let order = nocompiler_typed::export::callee_first(&prog, &rep);
@@ -261,7 +271,9 @@ fn main() -> ExitCode {
                             axioms: ax,
                             functions: order
                                 .iter()
-                                .map(|n| (n.clone(), nocompiler_typed::export::callees_in(&prog, n)))
+                                .map(|n| {
+                                    (n.clone(), nocompiler_typed::export::callees_in(&prog, n))
+                                })
                                 .collect(),
                         });
                     }
