@@ -102,14 +102,15 @@ fn main() -> ExitCode {
                 .or_else(|| std::env::var("NOCOMPILER_LEAN_DIR").ok())
                 .unwrap_or_else(|| concat!(env!("CARGO_MANIFEST_DIR"), "/../../lean").to_string());
             let lean_dir = std::path::Path::new(&dir);
-            let result = nocompiler_typed::export::to_lean_linked(&checked, &image, &text, sizes.as_ref())
-                .and_then(|m| nocompiler_typed::prove::certgen_text(lean_dir, &m))
-                .and_then(|m| {
-                    if let Some(out) = &l_out {
-                        let _ = std::fs::write(out, &m);
-                    }
-                    nocompiler_typed::prove::run_lean(lean_dir, &m, "prog_meets")
-                });
+            let result =
+                nocompiler_typed::export::to_lean_linked(&checked, &image, &text, sizes.as_ref())
+                    .and_then(|m| nocompiler_typed::prove::certgen_text(lean_dir, &m))
+                    .and_then(|m| {
+                        if let Some(out) = &l_out {
+                            let _ = std::fs::write(out, &m);
+                        }
+                        nocompiler_typed::prove::run_lean(lean_dir, &m, "prog_meets")
+                    });
             match result {
                 Ok(ax) if nocompiler_typed::prove::standard(&ax) => {
                     println!("prove: prog_meets (axioms: {})", ax.join(", "))
@@ -356,7 +357,11 @@ fn main() -> ExitCode {
                 // --certs: the kernel checks recorded certificates, one theorem per point
                 let assumes = ext.clone().unwrap_or_default();
                 // theorem D, or relative to the external callees' contracts (P9)
-                let thm = if assumes.is_empty() { "prog_meets" } else { "prog_meets_rel" };
+                let thm = if assumes.is_empty() {
+                    "prog_meets"
+                } else {
+                    "prog_meets_rel"
+                };
                 let (proof_text, theorem) = if certs {
                     (
                         nocompiler_typed::prove::certify(lean_dir, &text, &module),

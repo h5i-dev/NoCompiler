@@ -2,8 +2,6 @@
 
 `nocompiler` is typed RISC-V assembly. A checker proves that safe functions are memory-safe. Unsafe functions state the same kind of signature as a contract.
 
-> **Status: restarted on 2026-11-23.** The design is new and the checkers are being written. Everything below the "Status" section describes the target, not what works today.
-
 **Motivation**
 
 - Compilers, code generators and LLMs write the code that runs. A proof about the source says nothing about the bytes they emit.
@@ -18,52 +16,63 @@
 - **Unsafe** functions (allocators, syscall wrappers, code outside the model) carry the same kind of signature as a contract. The contract is assumed, or proved by hand in Lean.
 - Every signature has one meaning ⟦σ⟧, defined in Lean over the RISC-V machine semantics. A ledger records why each function meets it: checked, proved, or assumed.
 
-```
-fn sum [ρ, n]
-  in     a0: int(ρ), a1: int(n)
-  borrow ρ ↦ bytes[8n] ro
-  where  8 ∣ ρ
-  out    a0: int
-  stack  0
+This is `examples/typed/sum.s`: clang's output for a C `sum`, unchanged, with the annotations as `#:` comments, so the same file goes to the assembler. The grammar is in [docs/typed/syntax.md](docs/typed/syntax.md).
 
+```asm
+#: fn sum [ρ, n]
+#:   in     a0: int(ρ), a1: int(n)
+#:   borrow ρ ↦ bytes[8n] ro
+#:   where  8 ∣ ρ
+#:   out    a0: int
+#:   stack  0
 sum:
-    addi a2, zero, 0
-    beq  a1, zero, done
-loop:                    # inv [m] a0: int(ρ + 8n − 8m), a1: int(m), a2: int
-                         #     where 1 ≤ m ≤ n   decreases m
-    ld   a3, 0(a0)
-    add  a2, a3, a2
-    addi a1, a1, -1
-    addi a0, a0, 8
-    bne  a1, zero, loop
-done:
-    addi a0, a2, 0
-    jalr zero, 0(ra)
+	li	a2, 0
+	beqz	a1, .LBB0_2
+.LBB0_1:
+	#: inv [k] a0: int(ρ + 8n − 8k), a1: int(k), a2: int where 1 ≤ k ≤ n decreases k
+	ld	a3, 0(a0)
+	add	a2, a3, a2
+	addi	a1, a1, -1
+	addi	a0, a0, 8
+	bnez	a1, .LBB0_1
+.LBB0_2:
+	mv	a0, a2
+	ret
 ```
 
-The syntax is provisional.
+## Running the checkers
 
-**What is claimed, and what is not**
+Requirements: a Rust toolchain, clang and ld.lld (to assemble and link), and for the Lean checker [elan](https://github.com/leanprover/elan) (the toolchain in `lean/lean-toolchain` is installed on first use).
 
-- Claimed: a checked safe function, given that the contracts of the functions it calls hold, satisfies ⟦σ⟧. It reads and writes only what its signature grants. It returns to `ra` with `sp` and the callee-saved registers intact, gives back what it borrowed, and terminates unless it is marked `partial`.
-- Not claimed: functional correctness (still a hand proof, now with fewer side conditions), the contents of memory, absence of leaks or of integer overflow, and the truth of unsafe contracts.
-- Until the Lean-verified checker exists, "safe" means "accepted by the Rust checker". The soundness argument is so far a proof in natural language.
+**Rust checker** (fast; trusted, not verified):
 
-## Status
+```sh
+cargo build --release -p nocompiler-typed
+target/release/nocompiler-typed check examples/typed/sum.s
+# sum: checked (9 queries, 439 µs)
+# sum2: checked (7 queries, 205 µs)
+# _start: checked (6 queries, 238 µs)
+```
 
-| Part | State |
-| --- | --- |
-| Design note v0 and soundness proof in natural language | written ([設計ノート](docs/Tab%201.md), [健全性の証明](docs/健全性の証明.md)) |
-| Lean: machine model, byte-wise permissions (decision 10) | done ([Step.lean](lean/NoCompiler/Step.lean)) |
-| Lean: type language and ⟦σ⟧, total version | done ([Typed/Lang.lean](lean/NoCompiler/Typed/Lang.lean), [Typed/Sem.lean](lean/NoCompiler/Typed/Sem.lean)) |
-| Rust checker: parser, typing rules, Presburger decision, ledger | running ([crates/nocompiler-typed](crates/nocompiler-typed)): loops are natural loops of a reducible CFG checked in a loop-contiguous order τ (user decision 2026-11-23; the address-interval rule stays as `--loops interval`); shared corpus of 140 verdicts as expected; static data; whole-program `link`; export for the Lean checker (with τ); every accepted function also run 300× on a permission-enforcing interpreter (no fault); an independent review's findings fixed (I33). The ledger says `proved` where the Lean checker established theorem D on the linked image (`--prove`), `checked` where only this checker accepted. The note's own trial ([note-trial.md](docs/typed/note-trial.md)): `sum`, `sum2`, `_start`, `write_all`, `hello`, `cobs_decode` accepted as compiled. Trusted, not yet cross-checked by Lean |
-| Lean checker, proved sound against ⟦σ⟧ (theorems A–D) | v0 complete (998ae0df): `Fn.check_sound` (check on the decoded image ⇒ ⟦σ⟧ total, standard axioms only) with frames, calls (`jal ra`, clang `call`/`tail` pairs), syscalls, `take`/`give`, tokens, static data, the heap mark's meaning (I38), every arithmetic rule of the Rust checker, `partial` functions (`Fn.check_soundP` ⇒ the partial meaning), and theorem D for whole programs (`Prog.check_sound`, callees first, external functions assumed). The note's `sum`, `sum2`, `_start`, linked, are proved by theorem D through the ledger (`--prove`) ([docs/typed/lean-checker.md](docs/typed/lean-checker.md)) |
-| Trial set: musl 1.2.5 functions as compiled, annotated, with verdicts predicted in advance | 29 functions (+8 flag variants) compiled, annotated, byte-verified, qemu-sanity-checked; Rust checker (default, natural loops): 23 of 29 accepted as compiled (19 with the old interval rule); rejected: 2 function pointers, `strlen` (NUL precondition not expressible), `memchr`, `fwrite`, `a64l` (missing `strchr` contract) ([musl-trial.md](docs/typed/musl-trial.md)) |
-| `partial` functions (I19) | done: partial meaning `Typed.MeetsP`, `Fn.check_soundP` (standard axioms) |
-| Kernel checks of the Lean checker's verdicts (`decide +kernel`) | all 26 musl functions Lean accepts on their linked images are kernel-checked, standard axioms only. The large ones use recorded search certificates, so the kernel only checks them ([export.md "Certificates"](docs/typed/export.md), `lean/scripts/certgen.py`); the ledger's `--prove --certs` proves theorem D this way |
-| Pointer structures of unbounded size (lists, trees) | not started; unsafe for now (v1) |
+The exit status is 0 iff every safe function is accepted. A rejection names the line, the rule, and the state. For example, changing the load to `ld a3, 8(a0)` gives
+`[mem-bounds] no capability provably covers the 8-byte access at ρ + 8*n - 8*k + 8`. Useful options:
+- `--ledger OUT.json`: the ledger, with every query and loop instantiation.
+- `--object FILE.o`: checks that the object's code is the text that was checked.
+- `--export-lean OUT.lean`: the record the Lean checker reads.
 
-Decisions taken where the design is silent are in [docs/typed/decisions.md](docs/typed/decisions.md).
+`nocompiler-typed link A.s B.s …` checks a whole program.
+
+**Lean checker** (verified; its verdict is a kernel-checked theorem):
+
+```sh
+(cd lean && lake build NoCompiler)        # once: the library and the proofs (a few minutes)
+python3 lean/scripts/kernelcheck.py --checker target/release/nocompiler-typed examples/typed/sum.s
+# {"function": "sum", "result": "proved", "seconds": 9.5, "axioms": ["propext", "Classical.choice", "Quot.sound"], ...}
+```
+
+For each function, the script assembles and links the file, exports the record against the linked image, and proves `fn_sum.check code = true` by `decide +kernel` in its own Lean process. `Fn.check_sound` (`lean/NoCompiler/Typed/Sound/Main.lean`) turns that theorem into `Typed.Meets` (⟦σ⟧) for those bytes, with only the standard axioms. Large functions can need several GB in the kernel; `KERNEL_MEM` (default `8G`) caps each process. `--ledger OUT.json` writes a ledger with the proved functions marked `proved`.
+
+More: [docs/typed/rust-checker.md](docs/typed/rust-checker.md), [docs/typed/lean-checker.md](docs/typed/lean-checker.md), the musl trial in [docs/typed/musl-trial.md](docs/typed/musl-trial.md).
 
 ## Trust
 
@@ -84,13 +93,10 @@ nocompiler diff /bin/true /bin/false
 
 See [docs/toolkit](docs/toolkit/README.md).
 
-## Layout
+## Contributing
 
-| Path | What |
-| --- | --- |
-| `lean/NoCompiler/` | machine semantics, `Spec`/`VerifiedImg`, adequacy to the hardware step, `Typed/` (type language, ⟦σ⟧, the Lean checker) |
-| `crates/nocompiler-*` | the binary analysis toolkit and decompiler; the typed checker crate is being added |
-| `docs/` | the design note, the soundness proof, `typed/` decisions, toolkit docs |
-| `fixtures/` | the toolkit's test corpus |
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-[Contributing](CONTRIBUTING.md) · Apache-2.0
+## License
+
+Apache-2.0

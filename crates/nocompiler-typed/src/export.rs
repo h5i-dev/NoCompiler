@@ -1065,7 +1065,11 @@ pub fn to_lean_text(
                     )
                 })
                 .collect();
-            let env = if ext.is_empty() { "[]".to_string() } else { "ext".to_string() };
+            let env = if ext.is_empty() {
+                "[]".to_string()
+            } else {
+                "ext".to_string()
+            };
             if !ext.is_empty() {
                 let _ = writeln!(
                     o,
@@ -1195,15 +1199,27 @@ pub fn to_lean_linked(
     for b in &bodies {
         let _ = writeln!(o, "{b}\n");
     }
-    let _ = writeln!(o, "open {}\nopen NoCompiler NoCompiler.Typed\n", modules.join(" "));
+    let _ = writeln!(
+        o,
+        "open {}\nopen NoCompiler NoCompiler.Typed\n",
+        modules.join(" ")
+    );
     let (base, words) = text;
     let ws: Vec<String> = words.iter().map(|w| format!("0x{w:08x}#32")).collect();
-    let _ = writeln!(o, "/-- The linked `.text`. -/\ndef code : Code := ⟨0x{base:x}#64, #[{}]⟩\n", ws.join(", "));
+    let _ = writeln!(
+        o,
+        "/-- The linked `.text`. -/\ndef code : Code := ⟨0x{base:x}#64, #[{}]⟩\n",
+        ws.join(", ")
+    );
     let names: Vec<String> = order
         .iter()
         .map(|n| format!("fn_{}", lean_ident(n).trim_matches(['«', '»'])))
         .collect();
-    let _ = writeln!(o, "/-- Every function of the linked files, callee-first (S5). -/\ndef prog : List Fn := [{}]\n", names.join(", "));
+    let _ = writeln!(
+        o,
+        "/-- Every function of the linked files, callee-first (S5). -/\ndef prog : List Fn := [{}]\n",
+        names.join(", ")
+    );
     Ok(o)
 }
 

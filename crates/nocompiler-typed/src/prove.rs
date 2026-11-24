@@ -77,7 +77,10 @@ pub fn certgen_text(lean_dir: &Path, input: &str) -> Result<String, String> {
     let _ = std::fs::remove_file(&inp);
     if !out.status.success() {
         let err = String::from_utf8_lossy(&out.stderr);
-        return Err(format!("certgen: {}", err.lines().last().unwrap_or("failed")));
+        return Err(format!(
+            "certgen: {}",
+            err.lines().last().unwrap_or("failed")
+        ));
     }
     let text = std::fs::read_to_string(&outp).map_err(|e| format!("{}: {e}", outp.display()))?;
     let _ = std::fs::remove_file(&outp);
