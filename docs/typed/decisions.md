@@ -361,6 +361,20 @@ function.
   `borrow b ↦ bytes[size ⋆ nmemb] ro`. Cost: Ψ stays linear (the atom is a variable); the
   matching rule must keep atoms identical across the call.
 - **P6 Writable static data in signatures beyond `_start`** is in (I32); no proposal.
+- **P8 Splitting and joining a held capability** (T, 2026-11-24; the design note's "足す順" lists it
+  as the cheapest v1 addition; needs the user's choice). Annotations without instructions:
+  `split κ at k` turns a held `b ↦ bytes[n] m` into `b ↦ bytes[k] m` and `b+k ↦ bytes[n−k] m`
+  (fields go to the part they lie in), and `join κ1 κ2` turns two held adjacent capabilities of
+  the same mode back into one. Uses: lending one half of a buffer `rw` and keeping the other, or
+  giving back part of a taken block. Lean side: the edge rule's subtyping already lets a target
+  capability shrink only to an equal range, so split/join become part of `sub`: a target capability
+  may be covered by one source capability (split: several targets from one source, pairwise
+  provably disjoint when exclusive) or a `join` target by two adjacent sources (both exclusive or
+  both `ro`, with the same guard). Soundness: footprints only move between capabilities the
+  function already held, so `Inv.perm`, `Inv.stack` and the Pool argument carry over; separation
+  needs the pairwise disjointness of split parts, which the rule asks for. `heap` capabilities
+  are not split or joined (an allocation unit stays whole, I38). Cost: the record names the split
+  points (untrusted hints); Rust: the two annotations.
 - **P7 The ledger across files: canonical signatures** (U, 2026-11-24; needs the user's choice).
   `--prove` proves theorem D for one file's functions on the linked image. For a program whose
   functions are in several files (`link`), the caller's copy of a callee's signature must be
