@@ -284,9 +284,17 @@ def relevant (hs : List Constr) (ψ : Constr) : List Constr :=
   let vs := grow (grow (grow (grow ψ.vars)))
   hs.filter fun p => p.vars.any vs.contains || p.vars.isEmpty
 
-/-- The hypotheses without case analysis first (no `∨`, `¬` only of `≤` and `∣`), then all:
-    a goal that follows from the plain facts is not drowned in the branches of unrelated
-    disjunctions (a bit table's facts multiply every branch). Dropping hypotheses is sound. -/
+/-- Certificates as Lean syntax for a `CertMode.table` (the log's compact form: a certificate
+    list of a large query is over a million characters in `repr`). -/
+def certsStr (cs : List Cert) : String :=
+  let step : CStep → String
+    | .hyp i => s!".hyp {i}"
+    | .comb i a j b => s!".comb {i} {a} {j} {b}"
+    | .tight i => s!".tight {i}"
+  "[" ++ ", ".intercalate (cs.map fun c => "[" ++ ", ".intercalate (c.map step) ++ "]") ++ "]"
+
+/-- One query under the point's certificate mode (`CertMode`): search, search and log, or
+    check a recorded certificate list (no search). -/
 def decideQ (m : CertMode) (q : Query) : Bool :=
   match m with
   | .search => q.decide
@@ -294,12 +302,15 @@ def decideQ (m : CertMode) (q : Query) : Bool :=
     match Search.prove q with
     | some cs =>
       if q.check cs then
-        dbgTrace s!"CERT {tag} {(repr q.goal).pretty 1000000} ::: {(repr cs).pretty 1000000}"
+        dbgTrace s!"CERT {tag} {(repr q.goal).pretty 1000000000} ::: {certsStr cs}"
           fun _ => true
       else false
     | none => false
   | .table t => t.any fun (g, cs) => g == q.goal && q.check cs
 
+/-- The hypotheses without case analysis first (no `∨`, `¬` only of `≤` and `∣`), then all:
+    a goal that follows from the plain facts is not drowned in the branches of unrelated
+    disjunctions (a bit table's facts multiply every branch). Dropping hypotheses is sound. -/
 def decide2 (m : CertMode) (hs : List Constr) (ψ : Constr) : Bool :=
   decideQ m (Query.mk (hs.filter Constr.isConj) ψ) || decideQ m (Query.mk hs ψ)
 

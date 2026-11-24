@@ -65,6 +65,8 @@ def parse_log(output, fns):
     for line in output.splitlines():
         if line.startswith("CERT "):
             tag, rest = line[5:].split(" ", 1)
+            if " ::: " not in rest or not rest.rstrip().endswith("]"):
+                continue  # a broken line: that query just gets no certificate
             g, cs = rest.split(" ::: ", 1)
             i, k = divmod(int(tag), 1000000)
             key = (fns[i], "entry" if k == ENTRY else str(k))
@@ -86,13 +88,17 @@ def table(entries):
 def out_module(base, fns, sizes, certs, split):
     out = [base]
     for f in fns:
-        pts = [k for (g, k) in certs if g == f and k != "entry"]
-        # every point gets a table (an empty one: no search in the kernel either)
-        rows = ",\n  ".join(f"({k}, {table(certs[(f, k)])})" for k in sorted(pts, key=int))
+        pts = sorted([k for (g, k) in certs if g == f and k != "entry"], key=int)
+        # one declaration per point (a single literal of all of them is too big to elaborate);
+        # a point without one gets an empty table (no search in the kernel either)
+        for k in pts:
+            out.append(f"""set_option maxHeartbeats 0 in
+def certs_{f}_{k} : CertMode := {table(certs[(f, k)])}
+""")
+        rows = ", ".join(f"({k}, certs_{f}_{k})" for k in pts)
         out.append(f"""
 /-- `{f}`'s certificates per point (untrusted hints, re-checked by `Query.check`). -/
-def certs_{f} : List (Nat × CertMode) := [
-  {rows}]
+def certs_{f} : List (Nat × CertMode) := [{rows}]
 
 def fnc_{f} : Fn :=
   {{ fn_{f} with
@@ -102,6 +108,8 @@ def fnc_{f} : Fn :=
         if not split:
             out.append(f"""set_option maxRecDepth 100000 in
 theorem chk_{f} : fnc_{f}.check code = true := by decide +kernel
+
+#print axioms chk_{f}
 """)
             continue
         n = sizes[f]
@@ -119,6 +127,8 @@ theorem chk_{f}_{k} : fnc_{f}.instr code {k} = true := by decide +kernel
         out.append(f"""set_option maxRecDepth 100000 in
 theorem chk_{f} : fnc_{f}.check code = true :=
   Fn.check_of_parts _ chk_{f}_s {term}
+
+#print axioms chk_{f}
 """)
     return "\n".join(out)
 
@@ -129,6 +139,7 @@ def main():
     ap.add_argument("out")
     ap.add_argument("--split", action="store_true")
     ap.add_argument("--only")
+    ap.add_argument("--reuse", help="a module certgen wrote: keep its tables, rewrite only the theorems")
     ap.add_argument("--timeout", type=int, default=int(os.environ.get("LEAN_TIMEOUT", "900")))
     a = ap.parse_args()
     text = open(a.inp, encoding="utf-8").read()
@@ -142,6 +153,16 @@ def main():
     for f in fns:
         m = re.search(rf"^def fn_{f} : Fn where.*?^  size := (\d+)", base, re.M | re.S)
         sizes[f] = int(m.group(1)) if m else 0
+    if a.reuse:
+        prev = open(a.reuse, encoding="utf-8").read()
+        cut = re.search(r"^set_option maxRecDepth 100000 in\ntheorem chk_", prev, re.M)
+        head = prev[: cut.start()] if cut else prev
+        thms = out_module("", fns, sizes, {}, a.split)
+        thms = "\n".join(t for t in re.split(r"(?=^set_option maxRecDepth)", thms, flags=re.M)
+                         if t.startswith("set_option"))
+        open(a.out, "w", encoding="utf-8").write(head + thms)
+        print(f"{a.out}: theorems rewritten ({'split' if a.split else 'whole'})")
+        return
     log_path = os.path.splitext(a.out)[0] + ".log.lean"
     open(log_path, "w", encoding="utf-8").write(log_module(base, fns))
     r = run_lean(log_path, a.timeout)
