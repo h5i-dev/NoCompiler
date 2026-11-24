@@ -1,5 +1,6 @@
 import Examples.Musl.MemcpyRecord
 import NoCompiler.Typed.Sound.Values
+import NoCompiler.Typed.Track
 
 /-!
 # musl `memcpy`: the functional specification (hand-written part, T)
@@ -11,11 +12,7 @@ bounds, alignment, permissions, `d`/`s` disjoint, the frame), the functional par
 `d[0, n)` and the stack unchanged) is `VerifiedImg.frame` of the signature's permission.
 -/
 namespace NoCompiler.Examples.Musl.Memcpy
-open NoCompiler NoCompiler.Typed
-
-/-- Memory `m` is the entry memory `m0` with the first `c` bytes of `src` copied to `d`. -/
-def Copied (m0 m : Word → Byte) (d src : Word) (c : Nat) : Prop :=
-  ∀ p, m p = if (p - d).toNat < c then m0 (src + (p - d)) else m0 p
+open NoCompiler NoCompiler.Typed NoCompiler.Typed.Track
 
 /-- The functional post, relative to the entry state `s0`: `a0` is `d`, and `d[0, n)` holds
     the entry bytes of `s[0, n)`. -/
@@ -25,7 +22,7 @@ def Post (s0 s' : State) : Prop :=
 
 /-- `Copied` with everything copied is the post's memory part (`d`, `s` disjoint is not
     needed here: `Copied` reads `m0`, the entry memory). -/
-theorem Copied.post {m0 m : Word → Byte} {d src : Word} {n : Nat} (h : Copied m0 m d src n)
+theorem copied_post {m0 m : Word → Byte} {d src : Word} {n : Nat} (h : Copied m0 m d src n)
     (hn : n < 2 ^ 64) :
     ∀ j < n, m (d + BitVec.ofNat 64 j) = m0 (src + BitVec.ofNat 64 j) := by
   intro j hj

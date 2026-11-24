@@ -53,3 +53,38 @@ entailments on the recorded types (`S.ent`), run by the kernel; its soundness is
 The tables are computed by a symbolic run over the record (a script, untrusted, like the
 certificates); the kernel checks them. The report counts hand-written lines (the spec, the
 tracker's soundness, memcpy's theorem) separately from generated ones.
+
+## musl memcpy: the result (T, 2026-11-24)
+
+Theorem `Examples.Musl.Memcpy.memcpy_correct`: on the linked image, under memcpy's signature
+(`a0, a1, a2 = d, s, n`, `d[0,n)` writable, `s[0,n)` readable, `0 ≤ n < 2^64`), memcpy returns
+to its caller with the signature's post and `Copied` (`d[0,n)` = entry `s[0,n)`, every other
+byte as on entry). `post_of` turns that into `Post` (`a0 = d` and the byte equations); the frame
+(stack and everything outside `d[0,n)`) is `VerifiedImg.frame` of the signature's write region.
+Hypotheses: `fn_memcpy.check code = true` (U kernel-proved it, 635 s / 4.7 GB, landing) and
+`tabOk fn_memcpy code args table = true` (`#eval`: true; kernel proof `MemcpyTabOk.tab_ok`,
+run alone under the 8 GB rule).
+
+What the type check discharged, so the tracker does not prove it again: every address in range
+and aligned (memory safety of each load/store), `d`/`s` disjoint (from `Separated` of the two
+borrows), `0 ≤ n < 2^64`, the cursor's exact distance from `d` (bounds the type entails at each
+point), `a0 = d` on exit (the signature's `outRegs`), the frame. The tracker proves only which
+byte lands where (shift/or byte algebra and the copied count).
+
+What the tracker needed beyond the first design, all general rules: cursor moves by `addi`/`add`
+whose value the type entails is cursor + hint; cursor switches to a register the type relates to
+the cursor (the compiler computes the next cursor before the store); finished points (the
+checker's inferred join at the final return forgets `a3`, so the copy is shown complete on the
+incoming `bne` edge from its branch fact).
+
+Lines (hand-written, vs the old next-branch proof `Examples/Libc/Musl/Memcpy*.lean`: 1591):
+
+| part | lines |
+|---|---|
+| memcpy-specific, hand-written (`Memcpy.lean`, `MemcpySpec.lean`, `MemcpyPost.lean`) | ~150 |
+| general, reusable for any copy loop (`Bytes`, `Track`, `Sound/TrackStep`, `Values` bridge) | ~1800 |
+| generated table (`MemcpyTable.lean`, checked by `tabOk`) | generated |
+| untrusted producer (`scripts/tablegen.lean`) | 182 |
+
+The bridge is larger than the old memcpy proof; it is written once: the next copy (memmove's
+forward path, wmemcpy, stpcpy-like loops) needs only its argument lemma and a generated table.

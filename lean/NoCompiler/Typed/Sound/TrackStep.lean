@@ -213,6 +213,23 @@ theorem AState.ok_advance {m0 d srcB n} {A : AState} {s : State} (h : A.ok m0 d 
     · intro j hj; simp [Cell.ok]
     · exact hr r
 
+/-- Switching the cursor to a register holding `cursor + j` (`j ≤ δ`) keeps the copied count. -/
+theorem AState.ok_switch {m0 d srcB n} {A : AState} {s : State} (h : A.ok m0 d srcB n s)
+    (hn : n < 2 ^ 64) {r : Reg} {j : Nat} (hj : j ≤ A.δ) (hr : s.reg r = s.reg A.cur + BitVec.ofNat 64 j) :
+    ({ A with cur := r, δ := A.δ - j } : AState).ok m0 d srcB n s := by
+  obtain ⟨hcn, hc, hrr⟩ := h
+  have hcnt : (s.reg r - d).toNat + (A.δ - j) = (s.reg A.cur - d).toNat + A.δ := by
+    have : (s.reg A.cur + BitVec.ofNat 64 j - d).toNat = (s.reg A.cur - d).toNat + j := by
+      have e : s.reg A.cur + BitVec.ofNat 64 j - d = (s.reg A.cur - d) + BitVec.ofNat 64 j := by bv_omega
+      rw [e, BitVec.toNat_add, BitVec.toNat_ofNat]
+      have := (s.reg A.cur - d).isLt
+      rw [Nat.mod_eq_of_lt (a := j) (by omega), Nat.mod_eq_of_lt (by omega)]
+    rw [hr]; omega
+  refine ⟨?_, ?_, ?_⟩
+  · simp only; rw [hcnt]; exact hcn
+  · simp only; rw [hcnt]; exact hc
+  · intro r'; simp only; rw [hcnt]; exact hrr r'
+
 /-- A load of the next source bytes into `rd` (not the cursor). -/
 theorem AState.ok_load {m0 d srcB n} {A : AState} {s : State} (h : A.ok m0 d srcB n s)
     (hd : Disj d srcB n) {op : LdOp} (hop : op ≠ .lh ∧ op ≠ .lhu) {rd : Reg} (hrd : rd ≠ A.cur)
@@ -339,6 +356,18 @@ end NoCompiler.Typed.Track
 
 namespace NoCompiler.Typed.Track
 open NoCompiler NoCompiler.Typed NoCompiler.Typed.Bytes
+
+/-- An optional cursor switch before a point's instruction: to `r`, which the point's type says
+    holds `cursor + j` with `j ≤ δ`. -/
+def tswitch (S : STy) (A : AState) : Option (Reg × Nat) → Option AState
+  | none => some A
+  | some (r, j) =>
+    match S.reg r, S.reg A.cur with
+    | some e, some ec =>
+      if j ≤ A.δ ∧ S.ent (Constr.eqMod e (ec.add (.lit j))) = true then
+        some { A with cur := r, δ := A.δ - j }
+      else none
+    | _, _ => none
 
 theorem LdOp.width_le (op : LdOp) : op.width ≤ 8 := by cases op <;> decide
 theorem StOp.width_le (op : StOp) : op.width ≤ 8 := by cases op <;> decide
@@ -485,6 +514,27 @@ theorem tstep_ok {m0 : Word → Byte} {d srcB : Word} {n : Nat} {S : STy} {P : P
         simp only [tstep]; split <;> simp_all
       rw [this] at ht; exact regStep_ok h ht hx
   all_goals (simp only [tstep] at ht; exact regStep_ok h ht hx)
+
+theorem tswitch_ok {m0 : Word → Byte} {d srcB : Word} {n : Nat} {S : STy} {A A' : AState}
+    {s : State} {ι : Val} {m : Option (Reg × Nat)} (hregs : ∀ p ∈ S.regs, HasInt ι (s.reg p.1) p.2)
+    (hent : ∀ ψ, S.ent ψ = true → ψ.holds ι) (hn64 : n < 2 ^ 64) (h : A.ok m0 d srcB n s)
+    (ht : tswitch S A m = some A') : A'.ok m0 d srcB n s := by
+  cases m with
+  | none => simp only [tswitch, Option.some.injEq] at ht; subst ht; exact h
+  | some p =>
+    obtain ⟨r, j⟩ := p
+    simp only [tswitch] at ht
+    split at ht
+    · rename_i e ec he hc
+      split at ht
+      · rename_i hcond
+        obtain ⟨hj, heq⟩ := hcond
+        cases ht
+        exact AState.ok_switch h hn64 hj
+          (word_eq_of_eqMod (STy.reg_hasInt hregs he)
+            (hasInt_add (STy.reg_hasInt hregs hc) (hasInt_ofNat ι j)) (hent _ heq))
+      · cases ht
+    · cases ht
 
 end NoCompiler.Typed.Track
 
@@ -659,10 +709,15 @@ structure CopyArgs where
 structure Table where
   frames : List (Nat × Frame)
   hints : List (Nat × Nat)
+  moves : List (Nat × (Reg × Nat)) := []
+  /-- Finished points: returns where the copy is complete (the invariant drops the cursor). -/
+  fins : List Nat := []
   deriving Repr
 
 def Table.frame (t : Table) (k : Nat) : Frame := (t.frames.lookup k).getD ⟨0, 0, []⟩
 def Table.hint (t : Table) (k : Nat) : Nat := (t.hints.lookup k).getD 0
+def Table.move (t : Table) (k : Nat) : Option (Reg × Nat) := t.moves.lookup k
+def Table.done (t : Table) (k : Nat) : Bool := t.fins.contains k
 
 end NoCompiler.Typed.Track
 
@@ -701,15 +756,56 @@ end NoCompiler.Typed.Track
 namespace NoCompiler.Typed.Track
 open NoCompiler NoCompiler.Typed
 
-/-- The check at point `k`: a return is `jalr x0, 0(ra)` with `ra` still the entry's and the copy
-    complete; any other instruction's abstract step is defined, its jumps have targets, and each
-    successor's frame follows from the computed state. -/
+/-- What a taken / not-taken `beq`/`bne` says (nothing for the other branches). -/
+def brTaken (op : BrOp) (e1 e2 : IExpr) : List Constr :=
+  match op with
+  | .beq => [Constr.eqMod e1 e2]
+  | .bne => [.not (Constr.eqMod e1 e2)]
+  | _ => []
+
+def brFall (op : BrOp) (e1 e2 : IExpr) : List Constr :=
+  match op with
+  | .beq => [.not (Constr.eqMod e1 e2)]
+  | .bne => [Constr.eqMod e1 e2]
+  | _ => []
+
+/-- The branch facts of the edge `k → k'` (none when both outcomes reach `k'`). -/
+def edgeFacts (S : STy) (k k' : Nat) : Instr → List Constr
+  | .branch op rs1 rs2 off =>
+    match S.reg rs1, S.reg rs2 with
+    | some e1, some e2 =>
+      if Fn.target k off.toInt = some k' ∧ k' ≠ k + 1 then brTaken op e1 e2
+      else if k' = k + 1 ∧ Fn.target k off.toInt ≠ some k' then brFall op e1 e2
+      else []
+    | _, _ => []
+  | _ => []
+
+/-- The copy is complete in the computed state: the point's type, with the facts `fs` of the
+    edge, entails `cursor − d + δ = n`. -/
+def finOk (S : STy) (C : CopyArgs) (A : AState) (fs : List Constr) : Bool :=
+  let S' : STy := { S with facts := fs ++ S.facts }
+  match S.reg A.cur with
+  | some ec =>
+    S'.ent (.le (.var C.P.dv) ec) &&
+      S'.ent (.le ((ec.sub (.var C.P.dv)).add (.lit A.δ)) (.var C.P.nv)) &&
+      S'.ent (.le (.var C.P.nv) ((ec.sub (.var C.P.dv)).add (.lit A.δ)))
+  | none => false
+
+/-- The check at point `k`: a finished point is `jalr x0, 0(ra)` with `ra` still the entry's; a
+    return is that and the copy complete; any other instruction's abstract step is defined, its
+    jumps have targets, and each successor's frame follows from the computed state (a finished
+    successor: a branch edge on which the copy is complete). -/
 def pointOk (f : Fn) (c : Code) (C : CopyArgs) (t : Table) (k : Nat) : Bool :=
   match f.tyAt k, c.instr (f.pcOf k) with
   | none, _ => true
   | some _, none => false
   | some S, some i =>
-    if i = .jalr 0 1 0 then
+    if t.done k then
+      decide (i = .jalr 0 1 0) &&
+        match f.regVar.lookup 1 with
+        | some x => S.reg 1 == some (.var x)
+        | none => false
+    else if i = .jalr 0 1 0 then
       match f.regVar.lookup 1, S.reg (t.frame k).cur with
       | some x, some ec =>
         S.reg 1 == some (.var x) && S.ent (.le (.var C.P.dv) ec) &&
@@ -722,14 +818,17 @@ def pointOk (f : Fn) (c : Code) (C : CopyArgs) (t : Table) (k : Nat) : Bool :=
        | .branch _ _ _ off => (Fn.target k off.toInt).isSome
        | .jal _ off => (Fn.target k off.toInt).isSome
        | _ => true) &&
-      match tstep S C.P (t.hint k) (t.frame k).toA i with
-      | some A' => (succs k i).all fun k' => decide (k' < f.size) && (t.frame k').leA A'
+      match (tswitch S (t.frame k).toA (t.move k)).bind (fun A => tstep S C.P (t.hint k) A i) with
+      | some A' => (succs k i).all fun k' => decide (k' < f.size) &&
+          if t.done k' then
+            (match i with | .branch _ _ _ _ => true | _ => false) && finOk S C A' (edgeFacts S k k' i)
+          else (t.frame k').leA A'
       | none => false
 
-/-- The table's check: the entry frame is the empty copy at the destination register, and every
-    point passes `pointOk`. Decidable; the kernel runs it. -/
+/-- The table's check: the entry is not finished, its frame is the empty copy at the destination
+    register, and every point passes `pointOk`. Decidable; the kernel runs it. -/
 def tabOk (f : Fn) (c : Code) (C : CopyArgs) (t : Table) : Bool :=
-  t.frame 0 == ⟨C.dr, 0, []⟩ && (List.range f.size).all (pointOk f c C t)
+  !t.done 0 && t.frame 0 == ⟨C.dr, 0, []⟩ && (List.range f.size).all (pointOk f c C t)
 
 end NoCompiler.Typed.Track
 
@@ -788,9 +887,118 @@ theorem tabOk_point {c : Code} {C : CopyArgs} {t : Table} (ht : tabOk f c C t = 
   exact ht.2 k hk
 
 theorem tabOk_entry {c : Code} {C : CopyArgs} {t : Table} (ht : tabOk f c C t = true) :
-    t.frame 0 = ⟨C.dr, 0, []⟩ := by
-  simp only [tabOk, Bool.and_eq_true, beq_iff_eq] at ht
-  exact ht.1
+    t.done 0 = false ∧ t.frame 0 = ⟨C.dr, 0, []⟩ := by
+  simp only [tabOk, Bool.and_eq_true, beq_iff_eq, Bool.not_eq_true'] at ht
+  exact ⟨ht.1.1, ht.1.2⟩
+
+theorem eqMod_of_eq {ι : Val} {w : Word} {e1 e2 : IExpr} (h1 : HasInt ι w e1) (h2 : HasInt ι w e2) :
+    (Constr.eqMod e1 e2).holds ι := by
+  unfold HasInt at h1 h2
+  simp only [Constr.holds, Constr.eqMod, Constr.eval, IExpr.eval_sub, decide_eq_true_eq]
+  omega
+
+theorem brTaken_holds {ι : Val} {op : BrOp} {a b : Word} {e1 e2 : IExpr} (h1 : HasInt ι a e1)
+    (h2 : HasInt ι b e2) (h : evalBr op a b = true) : ∀ p ∈ brTaken op e1 e2, p.holds ι := by
+  cases op <;> simp only [brTaken, List.mem_singleton, List.not_mem_nil, false_imp_iff,
+    forall_eq, imp_self, implies_true] <;> simp only [evalBr, beq_iff_eq, bne_iff_ne, ne_eq] at h
+  · subst h; exact eqMod_of_eq h1 h2
+  · simp only [Constr.holds, Constr.eval, Bool.not_eq_true']
+    cases hq : (Constr.eqMod e1 e2).eval ι
+    · rfl
+    · exact absurd (word_eq_of_eqMod h1 h2 hq) h
+
+theorem brFall_holds {ι : Val} {op : BrOp} {a b : Word} {e1 e2 : IExpr} (h1 : HasInt ι a e1)
+    (h2 : HasInt ι b e2) (h : evalBr op a b = false) : ∀ p ∈ brFall op e1 e2, p.holds ι := by
+  cases op <;> simp only [brFall, List.mem_singleton, List.not_mem_nil, false_imp_iff,
+    forall_eq, imp_self, implies_true] <;>
+    simp only [evalBr, beq_eq_false_iff_ne, bne_eq_false_iff_eq, ne_eq] at h
+  · simp only [Constr.holds, Constr.eval, Bool.not_eq_true']
+    cases hq : (Constr.eqMod e1 e2).eval ι
+    · rfl
+    · exact absurd (word_eq_of_eqMod h1 h2 hq) h
+  · subst h; exact eqMod_of_eq h1 h2
+
+/-- The branch facts of the edge a step took hold. -/
+theorem edgeFacts_holds {S : STy} {ι : Val} {k k' : Nat} {i : Instr} {s s' : State}
+    (hregs : ∀ p ∈ S.regs, HasInt ι (s.reg p.1) p.2) (hsz : 4 * f.size + 2 ^ 21 < 2 ^ 64)
+    (hk : k < f.size) (hk' : k' < f.size) (hpc : s.pc = f.pcOf k) (hx : exec i s = some s')
+    (hpc' : s'.pc = f.pcOf k') : ∀ p ∈ edgeFacts S k k' i, p.holds ι := by
+  cases i
+  case branch op rs1 rs2 off =>
+    unfold edgeFacts
+    cases he1 : S.reg rs1 with
+    | none => simp [he1]
+    | some e1 =>
+    cases he2 : S.reg rs2 with
+    | none => simp [he1, he2]
+    | some e2 =>
+    · simp only [he1, he2]
+      have h1 := STy.reg_hasInt hregs he1
+      have h2 := STy.reg_hasInt hregs he2
+      simp only [exec] at hx
+      split at hx
+      · rename_i hev
+        unfold jumpTo at hx
+        split at hx
+        · cases hx
+          simp only [State.setPc] at hpc'
+          have htg := Fn.target_of_pc (f := f) (off := off) (by decide) hsz hk hk' (by rw [← hpc', hpc])
+          by_cases hkk : k' = k + 1
+          · rw [if_neg (fun h => h.2 hkk), if_neg (fun h => h.2 htg)]; simp
+          · rw [if_pos ⟨htg, hkk⟩]; exact brTaken_holds h1 h2 hev
+        · cases hx
+      · rename_i hev
+        cases hx
+        simp only [State.setPc] at hpc'
+        have hk1 : k' = k + 1 :=
+          (Fn.pcOf_inj_le (f := f) (by omega) (by omega) (by omega)
+            (by rw [Fn.pcOf_succ, ← hpc, ← hpc'])).symm
+        subst hk1
+        rw [if_neg (by simp)]
+        by_cases htg : Fn.target k off.toInt = some (k + 1)
+        · rw [if_neg (by simp [htg])]; simp
+        · rw [if_pos ⟨rfl, htg⟩]
+          exact brFall_holds h1 h2 (by simpa using hev)
+  all_goals simp [edgeFacts]
+
+/-- A branch changes only the pc. -/
+theorem exec_branch {op : BrOp} {rs1 rs2 : Reg} {off : BitVec 13} {s s' : State}
+    (hx : exec (.branch op rs1 rs2 off) s = some s') : s'.reg = s.reg ∧ s'.mem = s.mem := by
+  simp only [exec, jumpTo] at hx
+  split at hx
+  · split at hx
+    · cases hx; exact ⟨rfl, rfl⟩
+    · cases hx
+  · cases hx; exact ⟨rfl, rfl⟩
+
+/-- On an edge where `finOk` holds, the computed state's count is `n`. -/
+theorem finOk_count {S : STy} {C : CopyArgs} {A : AState} {fs : List Constr} {ι : Val}
+    {s : State} {d : Word} {n : Nat} (hregs : ∀ p ∈ S.regs, HasInt ι (s.reg p.1) p.2)
+    (hh : ∀ p ∈ S.hyps, p.holds ι) (hfs : ∀ p ∈ fs, p.holds ι)
+    (hd : (d.toNat : Int) % 2 ^ 64 = ι C.P.dv % 2 ^ 64) (hn : (n : Int) = ι C.P.nv)
+    (hn64 : n < 2 ^ 64) (h : finOk S C A fs = true) :
+    (s.reg A.cur - d).toNat + A.δ = n := by
+  have hent : ∀ ψ, ({ S with facts := fs ++ S.facts } : STy).ent ψ = true → ψ.holds ι := by
+    intro ψ hψ
+    refine STy.ent_sound hψ ?_
+    intro p hp
+    simp only [STy.hyps, List.mem_append] at hp
+    rcases hp with (hp | hp) | hp
+    · exact hfs p hp
+    · exact hh p (by simp [STy.hyps, hp])
+    · exact hh p (by simp only [STy.hyps, List.mem_append]; exact .inr hp)
+  unfold finOk at h
+  split at h
+  · rename_i ec hec
+    simp only [Bool.and_eq_true] at h
+    obtain ⟨⟨hlo, hhi⟩, hge⟩ := h
+    obtain ⟨hex, hb⟩ := toNat_sub_exact (d := d) (STy.reg_hasInt hregs hec) hd hn hn64
+      (hent _ hlo) (hent _ hhi)
+    have hge' := hent _ hge
+    simp only [Constr.holds, Constr.eval, IExpr.eval_sub, IExpr.eval_add, IExpr.eval_var,
+      IExpr.eval_lit, decide_eq_true_eq] at hge'
+    omega
+  · cases h
 
 /-- **Functional correctness of a copy, from the type check and a checked table** (leaf
     functions): if `tabOk` holds, the function meets its signature with the copy added to the
@@ -815,12 +1023,16 @@ theorem Fn.check_sound_track (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = t
   simp only [Bool.and_eq_true, List.all_eq_true, List.mem_range] at hck
   have hst := Fn.structOk_spec hck.1.1
   refine f.check_sound_val c T h hnc hp hDf
-    (fun a s0 k s => (t.frame k).toA.ok s0.mem (s0.reg C.dr) (s0.reg C.sr) (s0.reg C.nr).toNat s)
+    (fun a s0 k s => if t.done k = true then
+        Copied s0.mem s.mem (s0.reg C.dr) (s0.reg C.sr) (s0.reg C.nr).toNat
+      else (t.frame k).toA.ok s0.mem (s0.reg C.dr) (s0.reg C.sr) (s0.reg C.nr).toNat s)
     (fun a s0 s' => Copied s0.mem s'.mem (s0.reg C.dr) (s0.reg C.sr) (s0.reg C.nr).toNat)
     ?_ ?_ ?_
   · -- the entry: nothing copied yet
     intro a s0 he hpre
-    rw [tabOk_entry ht]
+    obtain ⟨hd0, hf0⟩ := tabOk_entry ht
+    simp only [hd0, Bool.false_eq_true, if_false]
+    rw [hf0]
     unfold AState.ok
     simp only [Frame.toA, BitVec.sub_self, BitVec.toNat_zero, Nat.add_zero]
     refine ⟨Nat.zero_le _, Copied.zero _ _ _, fun r => ?_⟩
@@ -832,32 +1044,49 @@ theorem Fn.check_sound_track (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = t
     obtain ⟨S, ι0', F, hS, hk, hpc, hI, -⟩ := htk
     obtain ⟨S', ι1, F1, hS', hk', hpc', -, -⟩ := htk'
     have hpt := tabOk_point ht hk
-    obtain ⟨ι, hregs, hent, -, hparams⟩ := Fn.Typed.facts hst htk0 hS
+    obtain ⟨ι, hregs, hent, hhyps, hparams⟩ := Fn.Typed.facts hst htk0 hS
+    -- a return has no typed successor: it goes to the entry's `ra`, outside the region
+    have hret : ∀ {x : Var}, f.regVar.lookup 1 = some x → S.reg 1 = some (.var x) →
+        exec (.jalr 0 1 0) s = some s' → False := by
+      intro x hx1 hr1 hx
+      have hra := Fn.Typed.reg_entry hst htk0 hS hr1 (lookup_mem' hx1)
+      simp only [exec, jumpTo, State.setReg, if_true] at hx
+      split at hx
+      · cases hx
+        simp only [State.setPc] at hpc'
+        rw [hra, show BitVec.signExtend 64 (0 : BitVec 12) = 0 from by decide,
+          show s0.reg 1 + (0 : Word) = s0.reg 1 from by simp,
+          and_not_one_of_aligned he.retAligned] at hpc'
+        exact he.ret (hpc' ▸ hDf k' hk')
+      · cases hx
     cases hstep with
     | sys _ hi _ _ =>
       rw [hpc] at hi
       unfold pointOk at hpt; rw [hS, hi] at hpt
-      simp [tstep, regStep, writesReg] at hpt
+      simp [tstep, regStep, writesReg, Option.bind_eq_none_iff] at hpt
     | @exec i _ hi _ hx =>
       rw [hpc] at hi
       unfold pointOk at hpt; rw [hS, hi] at hpt; simp only at hpt
       split at hpt
-      · -- a return has no typed successor: it goes to the entry's `ra`, outside the region
-        rename_i hret; subst hret
+      · -- a finished point is a return
         exfalso
+        simp only [Bool.and_eq_true, decide_eq_true_eq] at hpt
+        obtain ⟨hi0, hra⟩ := hpt
+        subst hi0
+        split at hra
+        · rename_i x hx1
+          exact hret hx1 (by simpa using hra) hx
+        · cases hra
+      rename_i hndk
+      simp only [Bool.not_eq_true] at hndk
+      simp only [hndk, Bool.false_eq_true, if_false] at hJk
+      split at hpt
+      · exfalso
+        rename_i hi0; subst hi0
         split at hpt
         · rename_i x ec hx1 hec
           simp only [Bool.and_eq_true, beq_iff_eq] at hpt
-          have hra := Fn.Typed.reg_entry hst htk0 hS hpt.1.1.1 (lookup_mem' hx1)
-          simp only [exec, jumpTo, State.setReg, if_true] at hx
-          split at hx
-          · cases hx
-            simp only [State.setPc] at hpc'
-            rw [hra, show BitVec.signExtend 64 (0 : BitVec 12) = 0 from by decide,
-              show s0.reg 1 + (0 : Word) = s0.reg 1 from by simp,
-              and_not_one_of_aligned he.retAligned] at hpc'
-            exact he.ret (hpc' ▸ hDf k' hk')
-          · cases hx
+          exact hret hx1 hpt.1.1.1 hx
         · simp at hpt
       · rename_i hnret
         simp only [Bool.and_eq_true] at hpt
@@ -867,13 +1096,31 @@ theorem Fn.check_sound_track (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = t
           have hdi : ((s0.reg C.dr).toNat : Int) % 2 ^ 64 = ι C.P.dv % 2 ^ 64 := by rw [hparams _ hpd]; exact hdv
           have hsi : ((s0.reg C.sr).toNat : Int) % 2 ^ 64 = ι C.P.sv % 2 ^ 64 := by rw [hparams _ hps]; exact hsv
           have hni : (((s0.reg C.nr).toNat : Nat) : Int) = ι C.P.nv := by rw [hparams _ hpn]; exact hnv
-          have hok := tstep_ok hregs hent hdi hsi hni (s0.reg C.nr).isLt hdisj hJk hA' hx
+          obtain ⟨A0, h0, h1⟩ := Option.bind_eq_some_iff.1 hA'
+          have hJ0 := tswitch_ok hregs hent (s0.reg C.nr).isLt hJk h0
+          have hok := tstep_ok hregs hent hdi hsi hni (s0.reg C.nr).isLt hdisj hJ0 h1 hx
           have hnotj : ∀ a b c, i ≠ .jalr a b c := by
             intro a b c he'; subst he'; simp at hnj
           have hmem := succ_mem hsz hk hk' hpc hx hpc' hnotj
           have := List.all_eq_true.1 htst k' hmem
           simp only [Bool.and_eq_true, decide_eq_true_eq] at this
-          exact Frame.ok_of_leA this.2 hok
+          obtain ⟨-, hsucc⟩ := this
+          by_cases hdk' : t.done k' = true
+          · -- a finished successor: the edge's facts make the copy complete
+            simp only [hdk', if_true, Bool.and_eq_true] at hsucc ⊢
+            obtain ⟨hbr, hfin⟩ := hsucc
+            cases i
+            case branch op rs1 rs2 off =>
+              obtain ⟨hreg', hmem'⟩ := exec_branch hx
+              have hcnt := finOk_count hregs hhyps
+                (edgeFacts_holds hregs hsz hk hk' hpc hx hpc') hdi hni (s0.reg C.nr).isLt hfin
+              have hc := hok.2.1
+              rw [hreg', hcnt] at hc
+              exact hc
+            all_goals simp at hbr
+          · simp only [Bool.not_eq_true] at hdk'
+            simp only [hdk', Bool.false_eq_true, if_false] at hsucc ⊢
+            exact Frame.ok_of_leA hsucc hok
         · cases htst
   · -- the return: the copy is complete; nothing else leaves the region
     intro a s0 he hpre k s s' htk hJk hstep hfin hdone
@@ -888,10 +1135,24 @@ theorem Fn.check_sound_track (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = t
     | sys _ hi _ _ =>
       rw [hpc] at hi
       unfold pointOk at hpt; rw [hS, hi] at hpt
-      simp [tstep, regStep, writesReg] at hpt
+      simp [tstep, regStep, writesReg, Option.bind_eq_none_iff] at hpt
     | @exec i _ hi _ hx =>
       rw [hpc] at hi
       unfold pointOk at hpt; rw [hS, hi] at hpt; simp only at hpt
+      split at hpt
+      · -- a finished point: the invariant is the complete copy, and a return keeps memory
+        rename_i hdk
+        simp only [hdk, if_true] at hJk
+        simp only [Bool.and_eq_true, decide_eq_true_eq] at hpt
+        obtain ⟨hi0, -⟩ := hpt
+        subst hi0
+        simp only [exec, jumpTo, State.setReg, if_true] at hx
+        split at hx
+        · cases hx; exact hJk
+        · cases hx
+      rename_i hndk
+      simp only [Bool.not_eq_true] at hndk
+      simp only [hndk, Bool.false_eq_true, if_false] at hJk
       split at hpt
       · rename_i hret; subst hret
         split at hpt
