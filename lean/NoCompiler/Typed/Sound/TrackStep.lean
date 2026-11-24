@@ -423,6 +423,14 @@ def tstep (S : STy) (P : Params) (o : Nat) (A : AState) : Instr → Option AStat
         some { cur := rd, δ := A.δ - o, cells := (A.set rd []).cells }
       else regStep A (.rop .add rd a b)
     | _, _, _ => regStep A (.rop .add rd a b)
+  -- a byte broadcast (memset's fill word): `mulhu` by `0x0101010101010100`
+  | .rop .mulhu rd a b =>
+    match S.reg b, (A.cells a).broadcast with
+    | some eb, some cs =>
+      if rd ≠ 0 ∧ rd ≠ A.cur ∧ S.ent (Constr.eqMod eb (.lit 0x0101010101010100)) = true then
+        some (A.set rd cs)
+      else regStep A (.rop .mulhu rd a b)
+    | _, _ => regStep A (.rop .mulhu rd a b)
   | .branch _ _ _ _ => some A
   | .jal 0 _ => some A
   | .jalr 0 _ _ => some A
@@ -564,6 +572,23 @@ theorem tstep_ok {m0 : Word → Byte} {d srcB : Word} {n : Nat} {S : STy} {P : P
               (hasInt_add (STy.reg_hasInt hregs hc) (hasInt_ofNat ι o)) (hent _ heq)
           rw [hv]
           exact AState.ok_advance h hn64 hrd0 hle _
+        · exact regStep_ok h ht hx
+      · exact regStep_ok h ht hx
+    case mulhu =>
+      simp only [tstep] at ht
+      split at ht
+      · rename_i eb cs hb hbc
+        split at ht
+        · rename_i hcond
+          obtain ⟨hrd0, hrd, heq⟩ := hcond
+          cases ht
+          simp only [exec, Option.some.injEq] at hx
+          subst hx
+          have hv : s.reg b = BitVec.ofNat 64 0x0101010101010100 :=
+            word_eq_of_eqMod (STy.reg_hasInt hregs hb) (hasInt_ofNat ι _) (hent _ heq)
+          simp only [evalR]
+          rw [hv]
+          exact AState.ok_set h hrd hrd0 (Cells.broadcast_ok (h.2.2 a) hbc) _
         · exact regStep_ok h ht hx
       · exact regStep_ok h ht hx
     all_goals (simp only [tstep] at ht; exact regStep_ok h ht hx)

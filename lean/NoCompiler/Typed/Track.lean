@@ -1,4 +1,5 @@
 import NoCompiler.Typed.Bytes
+import NoCompiler.Typed.BytesMul
 
 /-
 The copy relation for value invariants (docs/typed/value-tracker.md): memory is the entry memory
@@ -343,5 +344,37 @@ theorem periodic_eq {G : Nat → Byte} {P : Nat} (hG : ∀ j, G (j + P) = G j) {
     conv => lhs; rw [← Nat.mod_add_div z P]
     exact hper _ _
   rw [ex x, ex y, h]
+
+/-- The cells of `mulhu x 0x0101010101010100` when `x`'s bytes `0 … 6` are zero: byte `7` of `x`
+    in bytes `0 … 6` (memset's fill word). -/
+def Cells.broadcast (cs : Cells) : Option Cells :=
+  if (List.range 7).all (fun i => cs.getD i .unk == .zero) = true then
+    some ((List.range 8).map fun i => if i < 7 then cs.getD 7 .unk else .unk)
+  else none
+
+theorem Cells.broadcast_ok {G : Nat → Byte} {c : Nat} {x : Word} {cs cs' : Cells}
+    (h : Cells.ok G c x cs) (hb : cs.broadcast = some cs') :
+    Cells.ok G c (mulhUU x 0x0101010101010100#64) cs' := by
+  unfold Cells.broadcast at hb
+  split at hb
+  · rename_i hz
+    cases hb
+    have hlow : ∀ i < 7, byte x i = 0#8 := by
+      intro i hi
+      have hz' := List.all_eq_true.1 hz i (List.mem_range.2 hi)
+      have := h i (by omega)
+      simp only [beq_iff_eq] at hz'
+      rw [hz'] at this
+      exact this
+    intro i hi
+    rw [getD_range_map _ hi]
+    split
+    · rename_i hi7
+      have h7 := h 7 (by decide)
+      revert h7
+      cases cs.getD 7 .unk <;> simp only [Cell.ok] <;> intro h7 <;>
+        first | trivial | (rw [byte_broadcast' hlow hi7]; exact h7)
+    · trivial
+  · cases hb
 
 end NoCompiler.Typed.Track
