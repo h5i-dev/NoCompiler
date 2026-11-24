@@ -50,6 +50,23 @@ theorem Fn.Typed.facts (hst : f.StructSpec) {a : Val × TokFp} {s0 : State} {k :
   rw [hI.prot x (List.mem_append_left _ hx)]
   exact f.entryVal_param hst a.1 s0 hx
 
+/-- At a typed point, a register whose type is an entry register's variable holds that
+    register's entry value (e.g. `ra` until the return). -/
+theorem Fn.Typed.reg_entry (hst : f.StructSpec) {a : Val × TokFp} {s0 : State} {k : Nat} {s : State}
+    {S : STy} (ht : f.Typed T a s0 k s) (hS : f.tyAt k = some S) {r r' : Reg} {x : Var}
+    (hr : S.reg r = some (.var x)) (hx : (r', x) ∈ f.regVar) : s.reg r = s0.reg r' := by
+  obtain ⟨S', ι, F, hS', -, -, hI, -⟩ := ht
+  rw [hS] at hS'; cases hS'
+  have h1 := STy.reg_hasInt hI.regs hr
+  have h2 := hI.prot x (List.mem_append_right _ (List.mem_map.2 ⟨(r', x), hx, rfl⟩))
+  rw [f.entryVal_reg hst a.1 s0 hx] at h2
+  unfold HasInt at h1
+  simp only [IExpr.eval_var] at h1
+  rw [h2] at h1
+  apply BitVec.eq_of_toNat_eq
+  have := (s.reg r).isLt; have := (s0.reg r').isLt
+  omega
+
 /-- One machine step of a leaf function from a typed state: to a typed state, or out of the
     region with `Done` (the return). -/
 theorem Fn.step_typed (hst : f.StructSpec) {c : Code} (hinstr : ∀ k < f.size, f.instr c k = true)
