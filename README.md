@@ -1,6 +1,6 @@
-# nocompiler
+# NoCompiler
 
-`nocompiler` is typed RISC-V assembly. A checker proves that safe functions are memory-safe. Unsafe functions state the same kind of signature as a contract.
+NoCompiler is typed RISC-V assembly. A checker proves that safe functions are memory-safe. Unsafe functions state the same kind of signature as a contract.
 
 **Motivation**
 
