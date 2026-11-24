@@ -96,7 +96,7 @@ def run : IO Unit := do
     changed := false
     passes := passes + 1
     for k in List.range f.size do
-      match frames[k]!, f.tyAt k, code.instr (f.pcOf k) with
+      match frames[k]!, ((f.tyAt k).map (·.withCerts .search)), code.instr (f.pcOf k) with
       | some fr, some S, some i =>
         if i = .jalr 0 1 0 then continue
         -- switch the cursor first when the instruction overwrites it or the step fails
@@ -106,7 +106,7 @@ def run : IO Unit := do
           match (succs k i).filterMap (fun k' => if k' < frames.size then (frames[k']!).map (·.cur) else none) with
           | c :: _ => some c
           | [] => match succs k i with
-            | k' :: _ => (f.tyAt k').bind desired
+            | k' :: _ => (((f.tyAt k').map (·.withCerts .search))).bind desired
             | [] => none
         let pref : Option (Reg × Nat) :=
           match tgt with
@@ -148,12 +148,12 @@ def run : IO Unit := do
   -- finished returns: the plain return check fails, every predecessor is a branch on whose edge
   -- the copy is complete
   let stepAt (j : Nat) : Option (STy × Instr × AState) :=
-    match frames[j]!, f.tyAt j, code.instr (f.pcOf j) with
+    match frames[j]!, ((f.tyAt j).map (·.withCerts .search)), code.instr (f.pcOf j) with
     | some fr, some S, some i =>
       ((tswitch S fr.toA moves[j]!).bind (fun A => tstep S PP hints[j]! A i)).map (S, i, ·)
     | _, _, _ => none
   let retOk (k : Nat) : Bool :=
-    match frames[k]!, f.tyAt k with
+    match frames[k]!, ((f.tyAt k).map (·.withCerts .search)) with
     | some fr, some S => match S.reg fr.cur with
       | some ec => S.ent (.le (.var PP.dv) ec) &&
           S.ent (.le ((ec.sub (.var PP.dv)).add (.lit fr.δ)) (.var PP.nv)) &&
@@ -162,7 +162,7 @@ def run : IO Unit := do
     | _, _ => false
   let mut fins : List Nat := []
   for k in List.range f.size do
-    if code.instr (f.pcOf k) = some (.jalr 0 1 0) ∧ (f.tyAt k).isSome ∧ !retOk k then
+    if code.instr (f.pcOf k) = some (.jalr 0 1 0) ∧ (((f.tyAt k).map (·.withCerts .search))).isSome ∧ !retOk k then
       let preds := (List.range f.size).filter fun j =>
         match code.instr (f.pcOf j) with
         | some i => i ≠ .jalr 0 1 0 && (succs j i).contains k

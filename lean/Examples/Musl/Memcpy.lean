@@ -1,4 +1,4 @@
-import Examples.Musl.MemcpyTable
+import Examples.Musl.MemcpyCerts
 import Examples.Musl.MemcpySpec
 
 /-!
@@ -22,13 +22,13 @@ theorem ofInt_of_hasInt {w : Word} {v : Int} (h : (w.toNat : Int) % 2 ^ 64 = v %
   omega
 
 /-- What memcpy's entry conditions say about its arguments. -/
-theorem args_ok {T : TokEnv} {D : Dom} :
-    ∀ a s0, Entry D fn_memcpy.entry s0 → (fn_memcpy.sig.spec T).pre a s0 →
+theorem args_ok {T : TokEnv} {D : Dom} {e : Word} :
+    ∀ a s0, Entry D e s0 → (sig_memcpy.spec T).pre a s0 →
       ((s0.reg args.dr).toNat : Int) % 2 ^ 64 = a.1 args.P.dv % 2 ^ 64 ∧
       ((s0.reg args.sr).toNat : Int) % 2 ^ 64 = a.1 args.P.sv % 2 ^ 64 ∧
       ((s0.reg args.nr).toNat : Int) = a.1 args.P.nv ∧
-      args.P.dv ∈ fn_memcpy.sig.params ∧ args.P.sv ∈ fn_memcpy.sig.params ∧
-      args.P.nv ∈ fn_memcpy.sig.params ∧
+      args.P.dv ∈ sig_memcpy.params ∧ args.P.sv ∈ sig_memcpy.params ∧
+      args.P.nv ∈ sig_memcpy.params ∧
       Disj (s0.reg args.dr) (s0.reg args.sr) (s0.reg args.nr).toNat := by
   intro a s0 _ hpre
   obtain ⟨ι, F⟩ := a
@@ -73,7 +73,7 @@ theorem args_ok {T : TokEnv} {D : Dom} :
     permission (`d[0, n)`) unchanged is `VerifiedImg.frame`. Hypotheses: the type check and the
     table check (both decidable; the kernel runs them). -/
 theorem memcpy_correct (T : TokEnv) (hchk : fn_memcpy.check code = true)
-    (htab : tabOk fn_memcpy code args table = true) :
+    (htab : tabOk fn_memcpy code args tablec = true) :
     VerifiedImg code [(fn_memcpy.entry, 4 * fn_memcpy.size)] fn_memcpy.entry
       { fn_memcpy.sig.spec T with
         post := (fun a s s' => (fn_memcpy.sig.spec T).post a s s' ∧
@@ -83,6 +83,6 @@ theorem memcpy_correct (T : TokEnv) (hchk : fn_memcpy.check code = true)
   simp only [Bool.and_eq_true, List.all_eq_true, List.mem_range] at hck
   have hst := Fn.structOk_spec hck.1.1
   exact Track.Fn.check_sound_track fn_memcpy code T hchk (by decide) (by decide)
-    (fun k hk => fn_memcpy.pcOf_mem hst hk) (by decide) args table htab args_ok
+    (fun k hk => fn_memcpy.pcOf_mem hst hk) (by decide) args tablec htab args_ok
 
 end NoCompiler.Examples.Musl.Memcpy

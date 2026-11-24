@@ -712,12 +712,15 @@ structure Table where
   moves : List (Nat × (Reg × Nat)) := []
   /-- Finished points: returns where the copy is complete (the invariant drops the cursor). -/
   fins : List Nat := []
+  /-- Certificates for the tracker's entailments per point (`.search` when absent). -/
+  certs : List (Nat × CertMode) := []
   deriving Repr
 
 def Table.frame (t : Table) (k : Nat) : Frame := (t.frames.lookup k).getD ⟨0, 0, []⟩
 def Table.hint (t : Table) (k : Nat) : Nat := (t.hints.lookup k).getD 0
 def Table.move (t : Table) (k : Nat) : Option (Reg × Nat) := t.moves.lookup k
 def Table.done (t : Table) (k : Nat) : Bool := t.fins.contains k
+def Table.cert (t : Table) (k : Nat) : CertMode := (t.certs.lookup k).getD .search
 
 end NoCompiler.Typed.Track
 
@@ -755,6 +758,9 @@ end NoCompiler.Typed.Track
 
 namespace NoCompiler.Typed.Track
 open NoCompiler NoCompiler.Typed
+
+/-- A type with other certificates for its entailments (same registers and hypotheses). -/
+def _root_.NoCompiler.Typed.STy.withCerts (S : STy) (m : CertMode) : STy := { S with certs := m }
 
 /-- What a taken / not-taken `beq`/`bne` says (nothing for the other branches). -/
 def brTaken (op : BrOp) (e1 e2 : IExpr) : List Constr :=
@@ -799,7 +805,10 @@ def pointOk (f : Fn) (c : Code) (C : CopyArgs) (t : Table) (k : Nat) : Bool :=
   match f.tyAt k, c.instr (f.pcOf k) with
   | none, _ => true
   | some _, none => false
-  | some S, some i =>
+  | some S0, some i =>
+    -- the tracker's own entailments: its own certificates (the record's cover only the
+    -- checker's goals)
+    let S : STy := S0.withCerts (t.cert k)
     if t.done k then
       decide (i = .jalr 0 1 0) &&
         match f.regVar.lookup 1 with
@@ -890,6 +899,12 @@ theorem tabOk_entry {c : Code} {C : CopyArgs} {t : Table} (ht : tabOk f c C t = 
     t.done 0 = false ∧ t.frame 0 = ⟨C.dr, 0, []⟩ := by
   simp only [tabOk, Bool.and_eq_true, beq_iff_eq, Bool.not_eq_true'] at ht
   exact ⟨ht.1.1, ht.1.2⟩
+
+/-- `tabOk` from its parts, for a check split into one kernel theorem per point. -/
+theorem tabOk_of_parts {f : Fn} {c : Code} {C : CopyArgs} {t : Table}
+    (h0 : (!t.done 0 && t.frame 0 == ⟨C.dr, 0, []⟩) = true)
+    (hall : (List.range f.size).all (pointOk f c C t) = true) : tabOk f c C t = true := by
+  unfold tabOk; rw [h0, hall]; rfl
 
 theorem eqMod_of_eq {ι : Val} {w : Word} {e1 e2 : IExpr} (h1 : HasInt ι w e1) (h2 : HasInt ι w e2) :
     (Constr.eqMod e1 e2).holds ι := by
@@ -1044,12 +1059,16 @@ theorem Fn.check_sound_track (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = t
     obtain ⟨S, ι0', F, hS, hk, hpc, hI, -⟩ := htk
     obtain ⟨S', ι1, F1, hS', hk', hpc', -, -⟩ := htk'
     have hpt := tabOk_point ht hk
-    obtain ⟨ι, hregs, hent, hhyps, hparams⟩ := Fn.Typed.facts hst htk0 hS
+    obtain ⟨ι, hregs, -, hhyps, hparams⟩ := Fn.Typed.facts hst htk0 hS
+    have hent : ∀ ψ, (S.withCerts (t.cert k)).ent ψ = true → ψ.holds ι := fun ψ h => STy.ent_sound h hhyps
+    replace hregs : ∀ p ∈ (S.withCerts (t.cert k)).regs, HasInt ι (s.reg p.1) p.2 := hregs
+    replace hhyps : ∀ p ∈ (S.withCerts (t.cert k)).hyps, p.holds ι := hhyps
     -- a return has no typed successor: it goes to the entry's `ra`, outside the region
-    have hret : ∀ {x : Var}, f.regVar.lookup 1 = some x → S.reg 1 = some (.var x) →
+    have hret : ∀ {x : Var}, f.regVar.lookup 1 = some x → (S.withCerts (t.cert k)).reg 1 = some (.var x) →
         exec (.jalr 0 1 0) s = some s' → False := by
       intro x hx1 hr1 hx
-      have hra := Fn.Typed.reg_entry hst htk0 hS hr1 (lookup_mem' hx1)
+      have hra := Fn.Typed.reg_entry hst htk0 hS (show S.reg 1 = some (.var x) from hr1)
+        (lookup_mem' hx1)
       simp only [exec, jumpTo, State.setReg, if_true] at hx
       split at hx
       · cases hx
@@ -1075,7 +1094,7 @@ theorem Fn.check_sound_track (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = t
         subst hi0
         split at hra
         · rename_i x hx1
-          exact hret hx1 (by simpa using hra) hx
+          exact hret hx1 (beq_iff_eq.1 hra) hx
         · cases hra
       rename_i hndk
       simp only [Bool.not_eq_true] at hndk
@@ -1128,7 +1147,10 @@ theorem Fn.check_sound_track (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = t
     have htk0 := htk
     obtain ⟨S, ι0', F, hS, hk, hpc, hI, -⟩ := htk
     have hpt := tabOk_point ht hk
-    obtain ⟨ι, hregs, hent, -, hparams⟩ := Fn.Typed.facts hst htk0 hS
+    obtain ⟨ι, hregs, -, hhyps, hparams⟩ := Fn.Typed.facts hst htk0 hS
+    have hent : ∀ ψ, (S.withCerts (t.cert k)).ent ψ = true → ψ.holds ι := fun ψ h => STy.ent_sound h hhyps
+    replace hregs : ∀ p ∈ (S.withCerts (t.cert k)).regs, HasInt ι (s.reg p.1) p.2 := hregs
+    replace hhyps : ∀ p ∈ (S.withCerts (t.cert k)).hyps, p.holds ι := hhyps
     have hdi : ((s0.reg C.dr).toNat : Int) % 2 ^ 64 = ι C.P.dv % 2 ^ 64 := by rw [hparams _ hpd]; exact hdv
     have hni : (((s0.reg C.nr).toNat : Nat) : Int) = ι C.P.nv := by rw [hparams _ hpn]; exact hnv
     cases hstep with

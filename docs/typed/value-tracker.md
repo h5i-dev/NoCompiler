@@ -88,3 +88,19 @@ Lines (hand-written, vs the old next-branch proof `Examples/Libc/Musl/Memcpy*.le
 
 The bridge is larger than the old memcpy proof; it is written once: the next copy (memmove's
 forward path, wmemcpy, stpcpy-like loops) needs only its argument lemma and a generated table.
+
+### Kernel check of the table (2026-11-24)
+
+`tabOk fn_memcpy code args table` as one `decide +kernel` ran out of memory at the 8 GB cap
+after 78 s (oom-kill in the journal), the same cause as the type check's first runs: one
+kernel evaluation holds every point's Presburger searches. General fix, as for the type check:
+`tabOk_of_parts` plus one `decide +kernel` per point, chained by `rangeAll_succ`
+(`lean/scripts/tabsplit.py` writes the module, `Examples/Musl/MemcpyTabOk.lean`). Split per
+point it still ran out of memory (129 s): some points' own entailments are too costly for the
+kernel's search. So the tracker's entailments carry their own certificates, as the checker's do:
+`Table.certs` gives each point a `CertMode` (`.search` when absent), `pointOk` runs on
+`S.withCerts (t.cert k)`, and the soundness proof is unchanged (`ent_sound` holds in every
+mode). `lean/scripts/tabcerts.py` evaluates `pointOk` with every point in `.log k` and writes
+the certificates (`Examples/Musl/MemcpyCerts.lean`, `tablec`); the record's own certificates
+answer only the checker's goals, so this also makes the table check independent of the
+record's certificate mode (`fn_` or `fnc_`).
