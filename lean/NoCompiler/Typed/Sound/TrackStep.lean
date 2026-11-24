@@ -516,3 +516,66 @@ theorem Fn.target_of_pc {k k' : Nat} {n : Nat} {off : BitVec n} (hn : n ≤ 21)
     congr 1; omega
 
 end NoCompiler.Typed.Track
+
+namespace NoCompiler.Typed.Track
+open NoCompiler NoCompiler.Typed
+
+/-- Where an instruction continues: the next one, unless it is a jump. -/
+theorem exec_pc {i : Instr} {s s' : State} (hx : exec i s = some s') :
+    match i with
+    | .branch _ _ _ off => s'.pc = s.pc + 4 ∨ s'.pc = s.pc + off.signExtend 64
+    | .jal _ off => s'.pc = s.pc + off.signExtend 64
+    | .jalr _ _ _ => True
+    | _ => s'.pc = s.pc + 4 := by
+  cases i <;> simp only [exec, jumpTo] at hx ⊢ <;>
+    (repeat split at hx) <;> (try cases hx) <;> simp_all [State.setPc, State.setReg, State.setMem] <;>
+    (try split <;> rfl)
+
+end NoCompiler.Typed.Track
+
+namespace NoCompiler.Typed.Track
+open NoCompiler NoCompiler.Typed
+
+variable {f : Fn}
+
+theorem Fn.pcOf_inj_le {k k' : Nat} (hsz : 4 * f.size < 2 ^ 64) (hk : k ≤ f.size) (hk' : k' ≤ f.size)
+    (h : f.pcOf k = f.pcOf k') : k = k' := by
+  unfold Fn.pcOf at h
+  have h2 : BitVec.ofNat 64 (4 * k) = BitVec.ofNat 64 (4 * k') := by
+    have := congrArg (fun x => x - f.entry) h
+    simpa using this
+  have := congrArg BitVec.toNat h2
+  simp only [BitVec.toNat_ofNat] at this
+  rw [Nat.mod_eq_of_lt (by omega), Nat.mod_eq_of_lt (by omega)] at this
+  omega
+
+theorem Fn.pcOf_succ (k : Nat) : f.pcOf (k + 1) = f.pcOf k + 4 := by
+  unfold Fn.pcOf
+  rw [show 4 * (k + 1) = 4 * k + 4 by omega, BitVec.ofNat_add]
+  bv_omega
+
+/-- A step from point `k` that lands on point `k'` (not by `jalr`) lands on a successor. -/
+theorem succ_mem (hsz : 4 * f.size + 2 ^ 21 < 2 ^ 64) {k k' : Nat} (hk : k < f.size)
+    (hk' : k' < f.size) {i : Instr} {s s' : State} (hpc : s.pc = f.pcOf k)
+    (hx : exec i s = some s') (hpc' : s'.pc = f.pcOf k') (hj : ∀ a b c, i ≠ .jalr a b c) :
+    k' ∈ succs k i := by
+  have hp := exec_pc hx
+  have next : s'.pc = s.pc + 4 → k' = k + 1 := fun h =>
+    (Fn.pcOf_inj_le (f := f) (by omega) (by omega) (by omega)
+      (by rw [Fn.pcOf_succ, ← hpc, ← h, hpc'])).symm
+  cases i
+  case branch op rs1 rs2 off =>
+    simp only [succs, List.mem_cons]
+    rcases hp with h | h
+    · exact .inl (next h)
+    · right
+      have := Fn.target_of_pc (f := f) (off := off) (by decide) hsz hk hk' (by rw [← hpc', h, hpc])
+      rw [this]; simp
+  case jal rd off =>
+    simp only [succs]
+    have := Fn.target_of_pc (f := f) (off := off) (by decide) hsz hk hk' (by rw [← hpc', hp, hpc])
+    rw [this]; simp
+  case jalr a b c => exact absurd rfl (hj a b c)
+  all_goals (simp only [succs, List.mem_singleton]; exact next hp)
+
+end NoCompiler.Typed.Track
