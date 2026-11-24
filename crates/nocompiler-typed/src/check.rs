@@ -583,7 +583,9 @@ impl<'a> FnCheck<'a> {
                 .instrs
                 .iter()
                 .filter_map(|pi| match pi.instr {
+                    // `andi` masks, and `li` constants a register `and` may use as its mask
                     Instr::IOp { op: IOp::Andi, imm, .. }
+                    | Instr::IOp { op: IOp::Addi, rs1: Reg(0), imm, .. }
                         if imm > 0 && (imm + 1).count_ones() == 1 && imm < (1 << 11) =>
                     {
                         Some((imm + 1).trailing_zeros())
