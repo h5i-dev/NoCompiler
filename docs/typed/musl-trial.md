@@ -681,9 +681,15 @@ certificates instead of searching). Raw results: `docs/typed/musl-kernel.jsonl`.
 |------|----------|------------------------------------------|----------|------------------|
 | memset.s | `memset` | proved | 89 | 1.2 |
 | memcpy.s | `memcpy` | proved | 635 | 4.7 |
-| l64a.s | `l64a` | proved (whole-function theorem, before items 3-5) | 41 | 5.2 |
+| l64a.s | `l64a` | proved | 22 | 1.8 |
+| memccpy-x.s | `memccpy` | proved | 219 | 7.8 |
+| memcpy-x.s | `memcpy` | proved | 501 | 3.8 |
+| memmove.s | `memmove` | proved | 176 | 2.3 |
+| stpncpy-x.s | `__stpncpy` | proved | 132 | 3.3 |
+| stpncpy.s | `__stpncpy` | proved | 270 | 7.8 |
+| strncmp.s | `strncmp` | proved | 28 | 1.6 |
 
-  The other six (memccpy-x, memcpy-x, memmove, stpncpy-x, stpncpy, strncmp) follow. Results per function: `nc-briefs/typed/musl-linked/kernel-cert.jsonl`.
+  With T's 17 (search in the kernel), all 26 functions Lean accepts on the linked image are kernel-checked, with standard axioms only. The two closest to the cap are memccpy-x and stpncpy, at 7.8 GB each. Results per function: `nc-briefs/typed/musl-linked/kernel-cert.jsonl`.
 
 ## Files
 
