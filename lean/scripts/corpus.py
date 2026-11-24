@@ -85,7 +85,8 @@ def link(src, obj, tmp, stem):
     """Link the object (entry `_start` if the file defines it) with a stub `ret` for every
     symbol it leaves undefined (functions declared here and checked elsewhere): each callee
     then has a real address, and the Lean checker checks the caller on the linked image with
-    the callees' signatures assumed there. None when linking fails."""
+    the callees' signatures assumed there. (elf, whether stubs were added); (None, False)
+    when linking fails."""
     elf = os.path.join(tmp, stem + ".elf")
     text = open(src, encoding="utf-8").read()
     entry = ["-e", "_start"] if re.search(r"^_start:", text, re.M) else ["--entry=0"]
@@ -103,7 +104,7 @@ def link(src, obj, tmp, stem):
             objs.append(stub_o)
     r = subprocess.run([LD, *entry, "--unresolved-symbols=ignore-all", "-o", elf, *objs],
                        capture_output=True, text=True)
-    return elf if r.returncode == 0 and os.path.exists(elf) else None
+    return (elf, bool(undef)) if r.returncode == 0 and os.path.exists(elf) else (None, False)
 
 
 def verdict(name, ident, code):
@@ -123,7 +124,7 @@ def run_file(src, checker, tmp, keep, why=None, linked=False):
     exp_lean = os.path.join(tmp, stem + ".export.lean")
     obj = os.path.join(tmp, stem + ".o")
     ok = subprocess.run([CLANG, *CFLAGS, src, "-o", obj], capture_output=True).returncode == 0
-    elf = link(src, obj, tmp, stem) if (linked and ok) else None
+    elf, stubbed = link(src, obj, tmp, stem) if (linked and ok) else (None, False)
     cmd = [checker, "check", src, "--export-lean", exp_lean] + (["--image", elf] if elf else [])
     r = subprocess.run(cmd, capture_output=True, text=True)
     rust_out = r.stdout + r.stderr
@@ -151,7 +152,12 @@ def run_file(src, checker, tmp, keep, why=None, linked=False):
                 ident = re.sub(r"[^A-Za-z0-9_]", "_", name)
                 lines.append(verdict(name, ident, "code"))
             if re.search(r"^def prog ", text, re.M):
-                lines.append(f'#eval IO.println s!"PROG {os.path.basename(src)} {{if Prog.check code [] prog then "accept" else "reject"}}"')
+                # theorem D needs every callee in `prog`; a file with stubbed callees (checked
+                # elsewhere) has none to offer, so only its functions' verdicts count
+                if stubbed:
+                    lines.append(f'#eval IO.println "PROG {os.path.basename(src)} external-callees"')
+                else:
+                    lines.append(f'#eval IO.println s!"PROG {os.path.basename(src)} {{if Prog.check code [] prog then "accept" else "reject"}}"')
         fns = []
     for name, sec, off in fns:
         ident = re.sub(r"[^A-Za-z0-9_]", "_", name)
