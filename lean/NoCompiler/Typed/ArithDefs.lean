@@ -95,8 +95,10 @@ def isBit (e : IExpr) : Constr := .and (.le (.lit 0) e) (.le e (.lit 1))
 
 /-- The table of a bitwise operation on 0/1 operands `a`, `b`, result `x` (I29). -/
 def bitTable (g : Nat → Nat → Nat) (x : Var) (a b : IExpr) : Constr :=
-  let row (p q : Nat) : Constr :=
-    .and (.eq a (.lit p)) (.and (.eq b (.lit q)) (.eq (.var x) (.lit (g p q))))
+  -- `e − v = 0`, the Rust checker's normal form, so its table is literally this fact after
+  -- the instantiation (no search; STy.ent checks facts first)
+  let is (e : IExpr) (v : Nat) : Constr := .eq (e.sub (.lit v)) (.lit 0)
+  let row (p q : Nat) : Constr := .and (is a p) (.and (is b q) (is (.var x) (g p q)))
   .or (row 0 0) (.or (row 0 1) (.or (row 1 0) (row 1 1)))
 
 /-- `and` of `e` with the constant `c` (mod 2^64, I23): a mask `2^k − 1` gives `x = e mod 2^k`; a

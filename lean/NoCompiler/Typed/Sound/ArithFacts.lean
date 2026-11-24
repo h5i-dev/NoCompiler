@@ -96,7 +96,7 @@ theorem bitTable_holds {ι : Val} {g : Nat → Nat → Nat} {x : Var} {a b : IEx
     (hx : ι x = g p q) : (Fn.bitTable g x a b).holds ι := by
   unfold Fn.bitTable
   rcases hp with rfl | rfl <;> rcases hq with rfl | rfl <;>
-    simp [Constr.holds, Constr.eval, ha, hb, hx]
+    simp [Constr.holds, Constr.eval, IExpr.eval_sub, IExpr.eval_lit, IExpr.eval_var, ha, hb, hx]
 
 theorem boundFacts_holds {ι : Val} {x : Var} {b : Int} {n : Nat} (hx : ι x = n) (hb : (n : Int) ≤ b) :
     ∀ p ∈ Fn.boundFacts x b, p.holds ι := by
