@@ -23,6 +23,8 @@ pub struct Proof {
     pub axioms: Vec<String>,
     /// The functions it covers, callee first, with the callees each one was proved with.
     pub functions: Vec<(String, Vec<String>)>,
+    /// The external callees whose contracts the theorem assumes (P9); empty for theorem D.
+    pub assumes: Vec<String>,
 }
 
 pub fn to_json(file: &str, prog: &Program, ck: &Checker, rep: &Report) -> Value {
@@ -44,7 +46,12 @@ pub fn to_json_proof(
             (Some(FnKind::Safe), None)
                 if proof.is_some_and(|p| p.functions.iter().any(|(n, _)| n == &f.name)) =>
             {
-                "proved"
+                // relative to the external callees' contracts (P9): weaker, and said so
+                if proof.is_some_and(|p| !p.assumes.is_empty()) {
+                    "proved_assuming"
+                } else {
+                    "proved"
+                }
             }
             (Some(FnKind::Safe), None) => "checked",
             (Some(FnKind::Safe), Some(_)) => "rejected",
@@ -58,7 +65,7 @@ pub fn to_json_proof(
             "error": f.error.as_ref().map(|e| json!({"rule": e.rule.as_str(), "line": e.line, "message": e.msg})),
             "evidence": proof.and_then(|p| {
                 let (_, callees) = p.functions.iter().find(|(n, _)| n == &f.name)?;
-                Some(json!({"lean_module": p.module, "theorem": p.theorem, "axioms": p.axioms, "callees": callees}))
+                Some(json!({"lean_module": p.module, "theorem": p.theorem, "axioms": p.axioms, "callees": callees, "assumes": p.assumes}))
             }),
             "micros": f.micros,
             "retries": f.retries,

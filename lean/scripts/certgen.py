@@ -182,6 +182,25 @@ def prog_theorems(base):
     names = [n.strip()[len("fn_"):] for n in m.group(1).split(",") if n.strip()]
     progc = ", ".join(f"fnc_{n}" for n in names)
     chks = ", ".join(f"chk_{n}" for n in names)
+    if re.search(r"^def ext : Env", base, re.M):
+        # callees declared by signature only (P9): theorem D relative to their contracts
+        return f"""
+/-- The program with each function's certificate tables (same signatures and code). -/
+def progc : List Fn := [{progc}]
+
+set_option maxRecDepth 100000 in
+/-- Theorem D's check, by the kernel, from the per-function kernel theorems. -/
+theorem prog_checked : Prog.check code ext progc = true := by
+  simp only [progc, Prog.check, {chks}, Bool.true_and]
+  decide +kernel
+
+/-- Every function of the program meets its signature, if the external callees meet theirs (P9). -/
+theorem prog_meets_rel (T : TokEnv) (hE : ∀ e ∈ ext, Meets code e.2.2 e.1 T e.2.1) :
+    ∀ e ∈ Prog.env ext progc, Meets code e.2.2 e.1 T e.2.1 :=
+  Prog.check_sound progc ext hE prog_checked
+
+#print axioms prog_meets_rel
+"""
     return f"""
 /-- The program with each function's certificate tables (same signatures and code). -/
 def progc : List Fn := [{progc}]

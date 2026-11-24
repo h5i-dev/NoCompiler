@@ -195,6 +195,10 @@ fn main() -> ExitCode {
     };
     // the linked .text, for the program's theorem (--prove)
     // the linked .text: for local data symbols' addresses, and the program's theorem (--prove)
+    // the linked image's symbol sizes: an external callee's code range (P9)
+    let sizes = image_bytes
+        .as_ref()
+        .and_then(|b| nocompiler_typed::object::symbol_sizes(b).ok());
     let text = match &image_bytes {
         Some(b) => match nocompiler_typed::object::text_words(b) {
             Ok(c) => Some(c),
@@ -229,6 +233,7 @@ fn main() -> ExitCode {
             image.as_ref(),
             code.as_ref(),
             text.as_ref(),
+            sizes.as_ref(),
         );
         if let Err(e) = std::fs::write(out, &text) {
             eprintln!("{out}: {e}");
@@ -245,9 +250,12 @@ fn main() -> ExitCode {
                         .unwrap_or("")
                 })
                 .collect();
-            if !nocompiler_typed::export::closed(&prog, &rep) {
+            let ext = image
+                .as_ref()
+                .and_then(|img| nocompiler_typed::export::externals(&prog, &ck, &rep, img));
+            if ext.is_none() {
                 println!(
-                    "prove: not attempted (a callee is not checked here: theorem D needs every callee)"
+                    "prove: not attempted (a callee is neither checked here nor declared with a signature and an address)"
                 );
             } else if !partial_fns.is_empty() {
                 println!(
@@ -263,13 +271,16 @@ fn main() -> ExitCode {
                     });
                 let lean_dir = std::path::Path::new(&dir);
                 // --certs: the kernel checks recorded certificates, one theorem per point
+                let assumes = ext.clone().unwrap_or_default();
+                // theorem D, or relative to the external callees' contracts (P9)
+                let thm = if assumes.is_empty() { "prog_meets" } else { "prog_meets_rel" };
                 let (proof_text, theorem) = if certs {
                     (
                         nocompiler_typed::prove::certify(lean_dir, &text, &module),
-                        "prog_meets".to_string(),
+                        thm.to_string(),
                     )
                 } else {
-                    (Ok(text.clone()), format!("{module}.prog_meets"))
+                    (Ok(text.clone()), format!("{module}.{thm}"))
                 };
                 let attempt = match &proof_text {
                     Ok(t) => nocompiler_typed::prove::run_lean(lean_dir, t, &theorem),
@@ -292,6 +303,7 @@ fn main() -> ExitCode {
                             },
                             theorem,
                             axioms: ax,
+                            assumes,
                             functions: order
                                 .iter()
                                 .map(|n| {

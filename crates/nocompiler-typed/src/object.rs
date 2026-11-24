@@ -154,6 +154,29 @@ pub fn symbol_addresses(bytes: &[u8]) -> Result<BTreeMap<String, u64>, String> {
         .collect())
 }
 
+/// The sizes (`st_size`) of the defined symbols of an ELF: a function's code range in a linked
+/// image is its address and this size.
+pub fn symbol_sizes(bytes: &[u8]) -> Result<BTreeMap<String, u64>, String> {
+    let elf = Elf::parse_kind(bytes, true)?;
+    let mut out = BTreeMap::new();
+    for s in elf.secs.iter().filter(|s| s.ty == 2) {
+        let str_off = elf.secs.get(s.link as usize).map(|t| t.off).unwrap_or(0);
+        for k in 0..s.size / 24 {
+            let e = s.off + k * 24;
+            let (Some(n), Some(sh), Some(sz)) =
+                (u32_at(bytes, e), u16_at(bytes, e + 6), u64_at(bytes, e + 16))
+            else {
+                continue;
+            };
+            let name = cstr(bytes, str_off + n as usize).unwrap_or_default();
+            if !name.is_empty() && sh != 0 {
+                out.insert(name, sz);
+            }
+        }
+    }
+    Ok(out)
+}
+
 /// The `.text` section of a linked RISC-V ELF: its address and its 32-bit words (the code
 /// image the Lean checker runs on).
 pub fn text_words(bytes: &[u8]) -> Result<(u64, Vec<u32>), String> {
