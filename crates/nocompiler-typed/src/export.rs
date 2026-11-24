@@ -907,9 +907,10 @@ pub fn to_lean_text(
             th.join(",\n  ")
         );
     }
-    if image.is_some() {
-        // theorem D (T's ask 8): the exported functions, each after the ones it calls (S5)
-        let order = callee_first(prog, rep);
+    // theorem D (T's ask 8): the exported functions, each after the ones it calls (S5); none
+    // when nothing was checked (an empty program is trivially well-typed and says nothing)
+    let order = callee_first(prog, rep);
+    if image.is_some() && !order.is_empty() {
         let names: Vec<String> = order
             .iter()
             .map(|n| format!("fn_{}", lean_ident(n).trim_matches(['«', '»'])))
