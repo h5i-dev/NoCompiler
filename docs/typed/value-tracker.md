@@ -81,9 +81,9 @@ Lines (hand-written, vs the old next-branch proof `Examples/Libc/Musl/Memcpy*.le
 
 | part | lines |
 |---|---|
-| memcpy-specific, hand-written (`Memcpy.lean`, `MemcpySpec.lean`, `MemcpyPost.lean`) | ~150 |
-| general, reusable for any copy loop (`Bytes`, `Track`, `Sound/TrackStep`, `Values` bridge) | ~1800 |
-| generated table (`MemcpyTable.lean`, checked by `tabOk`) | generated |
+| memcpy-specific, hand-written (`Memcpy.lean`, `MemcpySpec.lean`, `MemcpyPost.lean`) | 148 |
+| general, reusable for any copy loop (`Bytes`, `Track`, `Sound/TrackStep`, `Values` bridge) | 1815 |
+| generated table (`MemcpyTable.lean`, checked by `tabOk`) | 4867 (generated) |
 | untrusted producer (`scripts/tablegen.lean`) | 182 |
 
 The bridge is larger than the old memcpy proof; it is written once: the next copy (memmove's
