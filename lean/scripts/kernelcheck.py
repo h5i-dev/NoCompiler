@@ -16,7 +16,14 @@ runs native code; a proof counts only with the standard axioms.
 Prints one JSON line per function: file, function, result (proved | not-proved |
 out-of-memory | timeout | lean-error), seconds, peak KB, axioms, first error line.
 
-Usage: lean/scripts/kernelcheck.py [--checker PATH] [--out FILE.jsonl] FILE.s[:fn,fn] ...
+With --ledger OUT.json, also writes a compact ledger: per file, the Rust checker's ledger
+statuses (checked, rejected, assumed, external) with every kernel-proved function marked
+`proved` and its evidence (module kernelcheck, theorem chk_<f>, axioms, the callees assumed,
+which on a linked image with stubs are the file's undefined symbols). --ledger-from RESULTS.jsonl
+builds that ledger from earlier results without running Lean.
+
+Usage: lean/scripts/kernelcheck.py [--checker PATH] [--out FILE.jsonl] [--ledger OUT.json]
+           [--ledger-from RESULTS.jsonl] FILE.s[:fn,fn] ...
 """
 import argparse
 import json
@@ -121,13 +128,60 @@ def prove(head, name, tmp):
             "returncode": r.returncode, "error": err}
 
 
+def ledger_entry(src, checker, results):
+    """The compact ledger of one file: Rust's statuses, kernel-proved functions marked proved."""
+    with tempfile.TemporaryDirectory() as tmp:
+        led = os.path.join(tmp, "ledger.json")
+        subprocess.run([checker, "check", src, "--ledger", led], capture_output=True)
+        obj = os.path.join(tmp, "x.o")
+        undef = []
+        if subprocess.run([corpus.CLANG, *corpus.CFLAGS, src, "-o", obj], capture_output=True).returncode == 0:
+            undef = [u for u in subprocess.run([corpus.NM, "-u", obj], capture_output=True, text=True).stdout.split()
+                     if u not in ("U", "w", "v") and not u.startswith(".")]
+        funcs = json.load(open(led))["functions"] if os.path.exists(led) else []
+    out = []
+    for f in funcs:
+        e = {"name": f["name"], "status": f["status"]}
+        r = results.get((os.path.relpath(src, ROOT), f["name"]))
+        if r is not None:
+            e["kernel"] = {k: r.get(k) for k in ("result", "seconds", "peak_kb", "mode") if r.get(k) is not None}
+            if r["result"] == "proved" and f["status"] == "checked":
+                e["status"] = "proved"
+                ident = re.sub(r"[^A-Za-z0-9_]", "_", f["name"])
+                e["evidence"] = {"lean_module": "lean/scripts/kernelcheck.py (linked image)",
+                                 "theorem": f"chk_{ident} : fn_{ident}.check code = true",
+                                 "axioms": r.get("axioms"), "callees_assumed": undef}
+        out.append(e)
+    return {"file": os.path.relpath(src, ROOT), "functions": out}
+
+
+def write_ledger(path, files, checker, results):
+    led = {"checker": "lean/scripts/kernelcheck.py",
+           "meaning": "proved: Fn.check_sound with a kernel proof of fn.check on the linked image "
+                      "(standard axioms only); checked: the Rust checker alone (trusted)",
+           "files": [ledger_entry(f, checker, results) for f in files]}
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(led, fh, ensure_ascii=False, indent=1)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--checker", default=os.path.join(
         os.environ.get("CARGO_TARGET_DIR", os.path.join(ROOT, "target")), "release", "nocompiler-typed"))
     ap.add_argument("--out", help="append the JSON lines here")
+    ap.add_argument("--ledger", help="write the compact ledger here")
+    ap.add_argument("--ledger-from", help="build the ledger from these results; run no Lean")
     ap.add_argument("files", nargs="+", help="FILE.s or FILE.s:fn1,fn2")
     args = ap.parse_args()
+    if args.ledger_from:
+        results = {}
+        for line in open(args.ledger_from, encoding="utf-8"):
+            r = json.loads(line)
+            results[(r["file"], r["function"])] = r
+        srcs = sorted({spec.partition(":")[0] for spec in args.files})
+        write_ledger(args.ledger, srcs, args.checker, results)
+        return
+    collected = {}
     for spec in args.files:
         src, _, only = spec.partition(":")
         with tempfile.TemporaryDirectory() as tmp:
@@ -138,11 +192,14 @@ def main():
                 rows = [prove(head, n, tmp) for n in names if not only or n in only.split(",")]
         for row in rows:
             row = {"file": os.path.relpath(src, ROOT), **row}
+            collected[(row["file"], row["function"])] = row
             line = json.dumps(row, ensure_ascii=False)
             print(line, flush=True)
             if args.out:
                 with open(args.out, "a", encoding="utf-8") as fh:
                     fh.write(line + "\n")
+    if args.ledger:
+        write_ledger(args.ledger, sorted({spec.partition(":")[0] for spec in args.files}), args.checker, collected)
 
 
 if __name__ == "__main__":
