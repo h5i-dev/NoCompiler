@@ -28,13 +28,12 @@ theorem args_ok {T : TokEnv} {D : Dom} {e : Word} :
     ∀ a s0, Entry D e s0 → (sig_memcpy.spec T).pre a s0 →
       ((s0.reg args.dr).toNat : Int) % 2 ^ 64 = a.1 args.P.dv % 2 ^ 64 ∧
       ((s0.reg args.sr).toNat : Int) % 2 ^ 64 = a.1 args.P.sv % 2 ^ 64 ∧
-      ((s0.reg args.nr).toNat : Int) = a.1 args.P.nv ∧
+      ((s0.reg args.nr).toNat : Int) = a.1 args.P.nv ∧ args.P.w * (s0.reg args.nr).toNat < 2 ^ 64 ∧
       args.P.dv ∈ sig_memcpy.params ∧ args.P.sv ∈ sig_memcpy.params ∧
       args.P.nv ∈ sig_memcpy.params ∧
-      Disj (s0.reg args.dr) (s0.reg args.sr) (s0.reg args.nr).toNat :=
+      Disj (s0.reg args.dr) (s0.reg args.sr) (args.P.w * (s0.reg args.nr).toNat) :=
   copyArgs_of_sig (by decide) (by decide) (by decide)
-    (fun ι h => by
-      simp [sig_memcpy, args, Constr.holds, Constr.eval, IExpr.eval] at h ⊢; omega)
+    (by decide)
     (by decide) (by decide) (by decide) (i := 0) (j := 1) (by decide) (by decide) (by decide)
     rfl rfl ⟨rfl, rfl, rfl⟩ ⟨rfl, rfl⟩
 
@@ -53,7 +52,8 @@ theorem memcpy_correct (T : TokEnv) (hchk : fn_memcpy.check code = true)
   unfold Fn.check at hck
   simp only [Bool.and_eq_true, List.all_eq_true, List.mem_range] at hck
   have hst := Fn.structOk_spec hck.1.1
-  exact Track.Fn.check_sound_track fn_memcpy code T hchk (by decide) (by decide)
+  have := Track.Fn.check_sound_track fn_memcpy code T hchk (by decide) (by decide)
     (fun k hk => fn_memcpy.pcOf_mem hst hk) (by decide) args tablec htab args_ok
+  simpa [args] using this
 
 end NoCompiler.Examples.Musl.Memcpy

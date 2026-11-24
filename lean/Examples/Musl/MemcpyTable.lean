@@ -4862,6 +4862,6 @@ def moves : List (Nat × (Reg × Nat)) := [(11, 13, 1), (20, 13, 0), (149, 15, 4
 def fins : List Nat := [154]
 
 def table : Table := { frames, hints, moves, fins }
-def args : CopyArgs := ⟨10, 11, 12, ⟨0, 1, 2⟩⟩
+def args : CopyArgs := ⟨10, 11, 12, ⟨0, 1, 2, 1⟩⟩
 
 end NoCompiler.Examples.Musl.MemcpyTable

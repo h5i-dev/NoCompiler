@@ -24,10 +24,11 @@ theorem memcpy_correct_of (f : Fn) (c : Code) (T : TokEnv) (hsig : f.sig = sig_m
   unfold Fn.check at hck
   simp only [Bool.and_eq_true, List.all_eq_true, List.mem_range] at hck
   have hst := Fn.structOk_spec hck.1.1
-  refine Track.Fn.check_sound_track f c T hchk hnc (by rw [hsig]; decide)
-    (fun k hk => f.pcOf_mem hst hk) hsz args tablec htab ?_
-  intro a s0 he hpre
-  rw [hsig] at hpre ⊢
-  exact args_ok a s0 he hpre
+  have := Track.Fn.check_sound_track f c T hchk hnc (by rw [hsig]; decide)
+    (fun k hk => f.pcOf_mem hst hk) hsz args tablec htab (by
+      intro a s0 he hpre
+      rw [hsig] at hpre ⊢
+      exact args_ok a s0 he hpre)
+  simpa [args] using this
 
 end NoCompiler.Examples.Musl.Memcpy

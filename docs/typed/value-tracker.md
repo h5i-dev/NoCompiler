@@ -139,11 +139,17 @@ What a new copy loop needs (all else is the library):
 4. the theorem: `Fn.check_sound_track` with the three; `scripts/memcpyfull.py`'s pattern for
    the hypothesis-free form (`tabOk_certs` carries the table check to the `fnc_` record).
 
-### Next extension: element-size copies (design, not built)
+### Element-size copies: wmemcpy (2026-11-24)
 
-`wmemcpy(d, s, n)` copies `4n` bytes; the tracker counts bytes against `nv`. The change is
-local to the arguments: `CopyArgs` gets a width `w` (1 for memcpy), the copy's byte count is
-`w · ι nv`, and the side conditions that mention `nv` (`hi` bounds in loads/stores, the return
-and `finOk` equalities) use `(.var nv).smul w`; `hargs` asks `(s0.reg nr).toNat * w < 2^64`
-and `Copied … ((s0.reg nr).toNat * w)`. `Disj` and `copyArgs_of_sig` take the capability length
-`w · n`. The cells, the byte algebra and the step lemmas do not change.
+`Params.w` is the copy's element width (memcpy 1, wmemcpy 4); the side conditions compare
+against the byte count `Params.nb = w · n`, the theorem's count is `w · (s0.reg nr).toNat`, and
+`copyArgs_of_sig` now derives `0 ≤ n` and `w · n < 2^64` from the capabilities themselves
+(validity: `0 ≤ w·n`, `d + w·n ≤ 2^64`; `Separated` excludes `w·n = 2^64`), so a signature
+without a bound on `n` (wmemcpy's `where 4 | d, 4 | s`) needs none. The producer also learned
+one general rule: a return reached with different frames (wmemcpy's `n = 0` exit with cursor
+`a0`, the loop exit with `a3`) is a finished point.
+
+`Examples/Musl/Wmemcpy.lean` (44 lines: `args_ok` by `copyArgs_of_sig`, `wmemcpy_correct`) and
+`WmemcpyVerified.lean` (19 lines: both hypotheses by `decide +kernel`; the type check is small
+enough for search mode). Generated: `WmemcpyRecord`, `WmemcpyTable` (10 points, finished point
+9), `WmemcpyCerts`, `WmemcpyTabOk`.

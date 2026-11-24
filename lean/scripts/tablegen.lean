@@ -12,7 +12,7 @@ open NoCompiler NoCompiler.Typed NoCompiler.Typed.Track NoCompiler.Typed.Export.
 /-! ## Configuration (the only per-function part): the record, the copy's argument registers
     and variables, and the cursor registers to try first. -/
 def F : Fn := fn_memcpy
-def PP : Params := ⟨0, 1, 2⟩
+def PP : Params := ⟨0, 1, 2, 1⟩
 def CC : CopyArgs := ⟨10, 11, 12, PP⟩
 def cursorPref : List Reg := [13, 16, 10]
 
@@ -95,6 +95,7 @@ def run : IO Unit := do
   frames := frames.set! 0 (some ⟨CC.dr, 0, []⟩)
   let mut hints : Array Nat := Array.replicate f.size 0
   let mut moves : Array (Option (Reg × Nat)) := Array.replicate f.size none
+  let mut conflicts : List Nat := []
   let mut changed := true
   let mut passes := 0
   while changed && passes < 50 do
@@ -143,6 +144,10 @@ def run : IO Unit := do
               | some old =>
                 match meet old fa with
                 | none =>
+                  -- a return reached with different frames: a finished point (checked below)
+                  if code.instr (f.pcOf k') = some (.jalr 0 1 0) then
+                    conflicts := conflicts ++ [k']
+                    continue
                   IO.println s!"FAIL meet at {k'} from {k}: {reprStr old} vs {reprStr fa}"
                   for kk in List.range 21 do
                     if kk ≥ 6 then IO.println s!"  {kk}: {reprStr frames[kk]!} mv={reprStr moves[kk]!} i={reprStr (code.instr (f.pcOf kk))}"
@@ -167,7 +172,8 @@ def run : IO Unit := do
     | _, _ => false
   let mut fins : List Nat := []
   for k in List.range f.size do
-    if code.instr (f.pcOf k) = some (.jalr 0 1 0) ∧ (((f.tyAt k).map (·.withCerts .search))).isSome ∧ !retOk k then
+    if code.instr (f.pcOf k) = some (.jalr 0 1 0) ∧ (((f.tyAt k).map (·.withCerts .search))).isSome ∧
+        (conflicts.contains k || !retOk k) then
       let preds := (List.range f.size).filter fun j =>
         match code.instr (f.pcOf j) with
         | some i => i ≠ .jalr 0 1 0 && (succs j i).contains k
