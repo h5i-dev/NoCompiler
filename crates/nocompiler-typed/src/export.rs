@@ -193,6 +193,84 @@ fn sym_eqs(ck: &Checker, image: Option<&BTreeMap<String, u64>>) -> Vec<Formula> 
         .collect()
 }
 
+/// Canonical variable numbering (decisions.md P7, step 1): a signature's parameters 0.. in
+/// order, then its `out` variables, then every other variable below `fresh` in increasing
+/// order. A bijection of `[0, n)`, so the Lean checker's bounds (`< fresh`) are kept; the same
+/// signature text gets the same numbering in every file and function.
+fn canon(sig: &Sig, fresh: u32) -> BTreeMap<crate::lin::Var, crate::lin::Var> {
+    use crate::lin::Var;
+    let mut top = fresh;
+    for v in sig.params.iter().chain(&sig.out_vars).chain(sig.src_names.keys()) {
+        top = top.max(v.0 + 1);
+    }
+    let mut order: Vec<Var> = Vec::new();
+    for v in sig.params.iter().chain(&sig.out_vars) {
+        if !order.contains(v) {
+            order.push(*v);
+        }
+    }
+    for i in 0..top {
+        if !order.contains(&Var(i)) {
+            order.push(Var(i));
+        }
+    }
+    order
+        .into_iter()
+        .enumerate()
+        .map(|(new, old)| (old, Var(new as u32)))
+        .collect()
+}
+
+fn as_lins(m: &BTreeMap<crate::lin::Var, crate::lin::Var>) -> BTreeMap<crate::lin::Var, Lin> {
+    m.iter().map(|(a, b)| (*a, Lin::var(*b))).collect()
+}
+
+fn ren_lin(e: &Lin, m: &BTreeMap<crate::lin::Var, Lin>) -> Lin {
+    e.subst_all(m).unwrap_or_else(|| e.clone())
+}
+
+fn ren_formula(f: &Formula, m: &BTreeMap<crate::lin::Var, Lin>) -> Formula {
+    f.map_lin(&mut |e| e.subst_all(m)).unwrap_or_else(|| f.clone())
+}
+
+fn ren_cap(c: &SigCap, m: &BTreeMap<crate::lin::Var, Lin>) -> SigCap {
+    let kind = match &c.kind {
+        CapKind::Bytes { base, len, mode, heap, fields } => CapKind::Bytes {
+            base: ren_lin(base, m),
+            len: ren_lin(len, m),
+            mode: *mode,
+            heap: *heap,
+            fields: fields.iter().map(|(k, e)| (*k, ren_lin(e, m))).collect(),
+        },
+        k => k.clone(),
+    };
+    SigCap {
+        guard: ren_formula(&c.guard, m),
+        kind,
+        out_fields: c
+            .out_fields
+            .as_ref()
+            .map(|f| f.iter().map(|(k, e)| (*k, ren_lin(e, m))).collect()),
+    }
+}
+
+/// A signature in another numbering.
+fn rename_sig(s: &Sig, vm: &BTreeMap<crate::lin::Var, crate::lin::Var>) -> Sig {
+    let m = as_lins(vm);
+    let v = |x: &crate::lin::Var| *vm.get(x).unwrap_or(x);
+    let mut e = s.clone();
+    e.params = s.params.iter().map(v).collect();
+    e.out_vars = s.out_vars.iter().map(v).collect();
+    e.ins = s.ins.iter().map(|(r, l)| (*r, ren_lin(l, &m))).collect();
+    e.outs = s.outs.iter().map(|(r, l)| (*r, ren_lin(l, &m))).collect();
+    e.pre = s.pre.iter().map(|f| ren_formula(f, &m)).collect();
+    e.post = s.post.iter().map(|f| ren_formula(f, &m)).collect();
+    e.borrow = s.borrow.iter().map(|c| ren_cap(c, &m)).collect();
+    e.take = s.take.iter().map(|c| ren_cap(c, &m)).collect();
+    e.give = s.give.iter().map(|c| ren_cap(c, &m)).collect();
+    e
+}
+
 /// The linker's split of a pc-relative offset `d` into `%pcrel_hi` (sign-extended, rounded)
 /// and `%pcrel_lo` (12-bit signed): `d = (hi << 12) + lo`.
 fn hi_lo(d: i128) -> (i128, i128) {
@@ -430,7 +508,10 @@ pub fn to_lean_full(
             o,
             "def sig_{} : Sig :=\n  {}\n",
             lean_ident(name).trim_matches(['«', '»']),
-            lean_sig(&exported_sig_at(s, ck, image))
+            {
+                let es = exported_sig_at(s, ck, image);
+                lean_sig(&rename_sig(&es, &canon(&es, 0)))
+            }
         );
     }
     for f in &rep.funcs {
@@ -445,6 +526,15 @@ pub fn to_lean_full(
             .map(|p| wi[wi.len() - 1] + p.instr.words())
             .unwrap_or(0);
         let n = lean_ident(&f.name).trim_matches(['«', '»']).to_string();
+        // the record in the signature's canonical numbering (P7)
+        let vm = ck
+            .sigs
+            .get(&f.name)
+            .map(|g| canon(&exported_sig_at(g, ck, image), ex.fresh))
+            .unwrap_or_default();
+        let lm = as_lins(&vm);
+        let vv = |x: &crate::lin::Var| vm.get(x).unwrap_or(x).0;
+        let feqs: Vec<Formula> = eqs.iter().map(|f| ren_formula(f, &lm)).collect();
         let _ = writeln!(
             o,
             "/-- `{}`: section {} offset {:#x} (entry is the symbol's address in the image) -/",
@@ -458,7 +548,7 @@ pub fn to_lean_full(
         let rv: Vec<String> = ex
             .reg_var
             .iter()
-            .map(|(r, v)| format!("({}, {})", r.0, v.0))
+            .map(|(r, v)| format!("({}, {})", r.0, vv(v)))
             .collect();
         let _ = writeln!(o, "  regVar := [{}]", rv.join(", "));
         if let Some(fr) = ck.sigs.get(&f.name).and_then(|g| g.frame.as_ref()) {
@@ -516,10 +606,10 @@ pub fn to_lean_full(
                     wi[*h],
                     wi[*l],
                     vs.iter()
-                        .map(|v| v.0.to_string())
+                        .map(|v| vv(v).to_string())
                         .collect::<Vec<_>>()
                         .join(", "),
-                    lean_lin(&m.clone().unwrap_or_default())
+                    lean_lin(&ren_lin(&m.clone().unwrap_or_default(), &lm))
                 )
             })
             .collect();
@@ -557,10 +647,15 @@ pub fn to_lean_full(
                 }
             }
         }
+        // the pins first (on the old variables), the renumbering for the rest
+        let comp: BTreeMap<crate::lin::Var, Lin> = vm
+            .iter()
+            .map(|(old, new)| (*old, fpins.get(old).cloned().unwrap_or_else(|| Lin::var(*new))))
+            .collect();
         let mut types: Vec<String> = Vec::new();
         for (ix, st) in &ex.snapshots {
-            let pst = pin_state(st, &fpins);
-            types.push(format!("    ({}, {})", wi[*ix], lean_sty(&pst, &ex.borrow_ids, &eqs)));
+            let pst = pin_state(st, if vm.is_empty() { &fpins } else { &comp });
+            types.push(format!("    ({}, {})", wi[*ix], lean_sty(&pst, &ex.borrow_ids, &feqs)));
             // a call pair is two words: the second one's type is the first one's with the
             // temporary holding auipc's exact value (T's ask a, I21)
             if let Instr::CallPair {
@@ -583,13 +678,14 @@ pub fn to_lean_full(
                     types.push(format!(
                         "    ({}, {})",
                         wi[*ix] + 1,
-                        lean_sty(&st2, &ex.borrow_ids, &eqs)
+                        lean_sty(&st2, &ex.borrow_ids, &feqs)
                     ));
                 }
             }
         }
         let _ = writeln!(o, "  types := [\n{}]", types.join(",\n"));
-        let _ = writeln!(o, "  fresh := {}\n", ex.fresh);
+        // the renumbering is a bijection of [0, vm.len()), which may exceed ex.fresh
+        let _ = writeln!(o, "  fresh := {}\n", ex.fresh.max(vm.len() as u32));
         // θ per edge into an annotated point: (source word or none for the entry, target
         // word, [(variable, expression)]) — a hint, re-checked (export.md)
         let th: Vec<String> = ex
@@ -603,7 +699,7 @@ pub fn to_lean_full(
                 };
                 let b: Vec<String> = m
                     .iter()
-                    .map(|(v, e)| format!("({}, {})", v.0, lean_lin(e)))
+                    .map(|(v, e)| format!("({}, {})", vv(v), lean_lin(&ren_lin(e, &lm))))
                     .collect();
                 format!("({src}, {}, [{}])", wi[*t], b.join(", "))
             })

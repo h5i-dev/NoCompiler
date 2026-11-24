@@ -89,6 +89,14 @@ at. Callees in other files or sections have no address before linking and are le
 Lean checker then rejects the call (no matching `callees` entry), which is the safe direction.
 With `--image` (below) every callee with a signature gets its linked address, in any file.
 
+### Canonical numbering (2026-11-24, decisions.md P7 step 1)
+
+Every exported signature numbers its variables canonically: its parameters 0.. in order, then
+its `out` variables. Each function's record uses the same numbering for those, then its other
+variables in increasing order (a bijection of `[0, fresh)`; `fresh` is printed as at least the
+bijection's size). The same signature text therefore gives the same `Sig` in every file, which
+the ledger across files needs (P7 steps 2–3 are not done).
+
 ### Linked image (2026-11-23, static data in Lean)
 
 `nocompiler-typed check FILE.s --export-lean X.lean --image a.out` reads the symbol table of the
