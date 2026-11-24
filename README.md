@@ -16,7 +16,7 @@
 - **Unsafe** functions (allocators, syscall wrappers, code outside the model) carry the same kind of signature as a contract. The contract is assumed, or proved by hand in Lean.
 - Every signature has one meaning ⟦σ⟧, defined in Lean over the RISC-V machine semantics. A ledger records why each function meets it: checked, proved, or assumed.
 
-This is `examples/typed/sum.s`: clang's output for a C `sum`, unchanged, with the annotations as `#:` comments, so the same file goes to the assembler. The grammar is in [docs/typed/syntax.md](docs/typed/syntax.md).
+The grammar is in [docs/typed/syntax.md](docs/typed/syntax.md).
 
 ```asm
 #: fn sum [ρ, n]
