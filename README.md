@@ -2,8 +2,6 @@
 
 `nocompiler` is typed RISC-V assembly. A checker proves that safe functions are memory-safe. Unsafe functions state the same kind of signature as a contract.
 
-> **Status: restarted on 2026-11-23.** The design is new and the checkers are being written. Everything below the "Status" section describes the target, not what works today.
-
 **Motivation**
 
 - Compilers, code generators and LLMs write the code that runs. A proof about the source says nothing about the bytes they emit.
