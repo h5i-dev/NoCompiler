@@ -294,13 +294,15 @@ instance : Inhabited CStep := ⟨.hyp 0⟩
 def selectHyps (q : Query) (keep : List Nat) : Query :=
   { q with hyps := keep.filterMap (q.hyps[·]?) }
 
-/-- The indices of the hypotheses a query needs, found greedily: each disjunctive hypothesis is
-    dropped if the search still proves the query without it (each one dropped halves the
-    branches the certificate check has to go through). Untrusted. -/
+/-- The indices of the hypotheses a query needs, found greedily: each hypothesis is dropped if
+    the search still proves the query without it, the disjunctive ones first (each one dropped
+    halves the branches the certificate check goes through), then the others (each one is
+    linearized again in every branch). Untrusted. -/
 def minimizeHyps (q : Query) : List Nat :=
   let all := List.range q.hyps.length
-  let disj := all.filter fun i => !((q.hyps[i]?.map Constr.isConj).getD true)
-  disj.foldl (fun keep i =>
+  let isC (i : Nat) : Bool := (q.hyps[i]?.map Constr.isConj).getD true
+  let order := all.filter (fun i => !isC i) ++ all.filter isC
+  order.foldl (fun keep i =>
     let keep' := keep.erase i
     match Search.prove (selectHyps q keep') with
     | some cs => if (selectHyps q keep').check cs then keep' else keep
