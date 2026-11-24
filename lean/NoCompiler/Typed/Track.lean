@@ -49,3 +49,119 @@ theorem Copied.bytes {m0 m : Word → Byte} {d src : Word} {n : Nat} (h : Copied
   rw [e, if_pos (by simp [BitVec.toNat_ofNat]; omega)]
 
 end NoCompiler.Typed.Track
+
+namespace NoCompiler.Typed.Track
+open NoCompiler NoCompiler.Typed.Bytes
+
+/-- What a register's byte is known to hold: anything, zero, or source byte `c + o` (relative
+    to the copied prefix `c`). -/
+inductive Cell where
+  | unk
+  | zero
+  | src (o : Int)
+  deriving DecidableEq, Repr
+
+/-- A byte of word `w` satisfies its cell. -/
+def Cell.ok (m0 : Word → Byte) (srcB : Word) (c : Int) (w : Word) (i : Nat) : Cell → Prop
+  | .unk => True
+  | .zero => byte w i = 0#8
+  | .src o => byte w i = m0 (srcB + BitVec.ofInt 64 (c + o))
+
+/-- Eight cells, one per byte (missing ones are `unk`). -/
+abbrev Cells := List Cell
+
+def Cells.ok (m0 : Word → Byte) (srcB : Word) (c : Int) (w : Word) (cs : Cells) : Prop :=
+  ∀ i < 8, (cs.getD i .unk).ok m0 srcB c w i
+
+def Cells.shl (b : Nat) (cs : Cells) : Cells :=
+  (List.range 8).map fun i => if i < b then .zero else cs.getD (i - b) .unk
+
+def Cells.shr (b : Nat) (cs : Cells) : Cells :=
+  (List.range 8).map fun i => if i + b < 8 then cs.getD (i + b) .unk else .zero
+
+/-- `srliw` by `8b` with `1 ≤ b ≤ 3`. -/
+def Cells.srliw (b : Nat) (cs : Cells) : Cells :=
+  (List.range 8).map fun i => if i + b < 4 then cs.getD (i + b) .unk else .zero
+
+def Cell.or : Cell → Cell → Cell
+  | .zero, y => y
+  | x, .zero => x
+  | x, y => if x = y then x else .unk
+
+def Cells.or (xs ys : Cells) : Cells :=
+  (List.range 8).map fun i => (xs.getD i .unk).or (ys.getD i .unk)
+
+theorem getD_range_map (f : Nat → Cell) {i : Nat} (hi : i < 8) :
+    ((List.range 8).map f).getD i .unk = f i := by
+  simp [List.getD_eq_getElem?_getD, hi]
+
+theorem Cells.shl_ok {m0 srcB c w cs} (b : Nat) (h : Cells.ok m0 srcB c w cs) :
+    Cells.ok m0 srcB c (w <<< (8 * b)) (cs.shl b) := by
+  intro i hi
+  rw [Cells.shl, getD_range_map _ hi]
+  split
+  · show byte _ i = 0#8
+    rw [byte_shiftLeft w hi, if_pos (by assumption)]
+  · have := h (i - b) (by omega)
+    revert this
+    cases cs.getD (i - b) .unk <;> simp only [Cell.ok] <;> intro hc <;>
+      first | trivial | (rw [byte_shiftLeft w hi, if_neg (by assumption)]; exact hc)
+
+theorem Cells.shr_ok {m0 srcB c w cs} (b : Nat) (h : Cells.ok m0 srcB c w cs) :
+    Cells.ok m0 srcB c (w >>> (8 * b)) (cs.shr b) := by
+  intro i hi
+  rw [Cells.shr, getD_range_map _ hi]
+  split
+  · have := h (i + b) (by assumption)
+    revert this
+    cases cs.getD (i + b) .unk <;> simp only [Cell.ok] <;> intro hc <;>
+      first | trivial | (rw [byte_ushiftRight w hi, if_pos (by assumption)]; exact hc)
+  · show byte _ i = 0#8
+    rw [byte_ushiftRight w hi, if_neg (by assumption)]
+
+theorem Cells.srliw_ok {m0 srcB c w cs} {b : Nat} (hb : 1 ≤ b) (hb4 : b ≤ 3)
+    (h : Cells.ok m0 srcB c w cs) :
+    Cells.ok m0 srcB c (((w.setWidth 32) >>> (8 * b)).signExtend 64) (cs.srliw b) := by
+  intro i hi
+  rw [Cells.srliw, getD_range_map _ hi]
+  split
+  · have := h (i + b) (by omega)
+    revert this
+    cases cs.getD (i + b) .unk <;> simp only [Cell.ok] <;> intro hc <;>
+      first | trivial | (rw [byte_srliw w hi hb hb4, if_pos (by assumption)]; exact hc)
+  · show byte _ i = 0#8
+    rw [byte_srliw w hi hb hb4, if_neg (by assumption)]
+
+theorem Cell.or_ok {m0 srcB c x y i} {a b : Cell} (ha : a.ok m0 srcB c x i) (hb : b.ok m0 srcB c y i) :
+    (a.or b).ok m0 srcB c (x ||| y) i := by
+  cases a with
+  | unk => cases b <;> simp [Cell.or, Cell.ok]
+  | zero =>
+    simp only [Cell.ok] at ha
+    cases b with
+    | unk => simp [Cell.or, Cell.ok]
+    | zero => simp only [Cell.or, Cell.ok] at hb ⊢; rw [byte_or_zero_left ha]; exact hb
+    | src o => simp only [Cell.or, Cell.ok] at hb ⊢; rw [byte_or_zero_left ha]; exact hb
+  | src o =>
+    simp only [Cell.ok] at ha
+    cases b with
+    | unk => simp [Cell.or, Cell.ok]
+    | zero => simp only [Cell.or, Cell.ok] at hb ⊢; rw [byte_or_zero_right hb]; exact ha
+    | src o' =>
+      simp only [Cell.ok] at hb
+      simp only [Cell.or]
+      split
+      · rename_i he
+        cases he
+        simp only [Cell.ok]
+        rw [byte_or, ha, hb]
+        simp
+      · simp [Cell.ok]
+
+theorem Cells.or_ok {m0 srcB c x y xs ys} (hx : Cells.ok m0 srcB c x xs) (hy : Cells.ok m0 srcB c y ys) :
+    Cells.ok m0 srcB c (x ||| y) (xs.or ys) := by
+  intro i hi
+  rw [Cells.or, getD_range_map _ hi]
+  exact Cell.or_ok (hx i hi) (hy i hi)
+
+end NoCompiler.Typed.Track
