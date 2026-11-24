@@ -36,3 +36,4 @@ import NoCompiler.Typed.Sound.Prog
 import NoCompiler.Typed.Sound.Values
 import NoCompiler.Typed.Bytes
 import NoCompiler.Typed.Track
+import NoCompiler.Typed.Sound.TrackStep
