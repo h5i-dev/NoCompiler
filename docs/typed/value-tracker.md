@@ -86,6 +86,7 @@ Lines (hand-written, vs the old next-branch proof: `lean/Examples/Libc/Musl/Memc
 | general, reusable for any copy loop (`Bytes`, `Track`, `Sound/TrackStep`, `TrackCerts`, `TrackArgs`, `Values` bridge) | 1968 |
 | generated table (`MemcpyTable.lean`, checked by `tabOk`) | 4867 (generated) |
 | untrusted producer (`scripts/tablegen.lean`) | 182 |
+| wmemcpy-specific, hand-written (`Wmemcpy.lean`, `WmemcpyVerified.lean`; the second copy loop) | 63 |
 
 The bridge is larger than the old memcpy proof; it is written once: the next copy (memmove's
 forward path, wmemcpy, stpcpy-like loops) needs only its argument lemma and a generated table.
@@ -122,7 +123,8 @@ ending in
       fnc_memcpy.entry { (fnc_memcpy.sig.spec T) with post := post ∧ Copied … }
 
 from `memcpy_correct_of`, `chk_memcpy` and `tab_ok`, with no hypotheses. Result (2026-11-24T07:31Z): proved,
-778 s, 5.0 GB peak, standard axioms (plus `tab_ok`'s module, 145 s). Like U's kernel
+778 s, 5.0 GB peak, standard axioms (plus `tab_ok`'s module, 145 s). Re-proved after the
+element-width change (2026-11-24T08:15Z): 579 s, 4.0 GB (`tab_ok` 129 s, 5.1 GB). Like U's kernel
 modules it is generated and stays outside the repo (`nc-briefs/typed/musl-linked/kernel/`).
 
 ### The next copy
@@ -136,8 +138,10 @@ What a new copy loop needs (all else is the library):
 3. its arguments: `Track.copyArgs_of_sig` (`Sound/TrackArgs.lean`) from the signature's shape
    (registers hold `d, s, n`; the precondition bounds `n`; entry capabilities `d[0, n)` writable
    and `s[0, n)`), by `decide` on the record's signature;
-4. the theorem: `Fn.check_sound_track` with the three; `scripts/memcpyfull.py`'s pattern for
-   the hypothesis-free form (`tabOk_certs` carries the table check to the `fnc_` record).
+4. the theorem: `Fn.check_sound_track` with the three. Hypothesis-free: a small type check is
+   `decide +kernel` in search mode (wmemcpy); a large one comes from U's certificate module via
+   `scripts/memcpyfull.py U_MODULE OUT FN [Module]` (`tabOk_certs` carries the table check to the
+   `fnc_` record).
 
 ### Element-size copies: wmemcpy (2026-11-24)
 
@@ -153,3 +157,15 @@ one general rule: a return reached with different frames (wmemcpy's `n = 0` exit
 `WmemcpyVerified.lean` (19 lines: both hypotheses by `decide +kernel`; the type check is small
 enough for search mode). Generated: `WmemcpyRecord`, `WmemcpyTable` (10 points, finished point
 9), `WmemcpyCerts`, `WmemcpyTabOk`.
+
+### Next family: fills (design, not built)
+
+memset, bzero and wmemset write a constant instead of copying: post `d[0, n)` = `c` (the low byte
+of an argument, or 0), every other byte as on entry. The tracker carries over with one change in
+the cells: a cell `src o` (the source's byte `o`) becomes `fill` (the fill byte), so
+`Copied m0 m d src c` is replaced by `Filled m0 m d b c` (`m p = if (p - d).toNat < c then b
+else m0 p`). Loads disappear; the value algebra is the fill word built by shifts and ors
+(`b * 0x0101…`), which the existing shl/shr/or cell rules already track, with `fill` cells
+instead of `src` cells. `Disj` is not needed (no source). The step lemmas, finished points,
+cursor moves and switches, certificates, widths and the glue are unchanged; the cells become a
+parameter of the tracker (copy or fill) rather than a second copy of it.

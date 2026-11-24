@@ -700,7 +700,8 @@ On top of the type check, musl memcpy (memcpy.s, linked image) is proved to copy
 `lean/scripts/memcpyfull.py`): under memcpy's signature it returns with the signature's post and
 `d[0, n)` = entry `s[0, n)`, every other byte as on entry. No hypotheses: the type check is U's
 `chk_memcpy` (certificates), the copy's table check `tab_ok` (`Examples/Musl/MemcpyTabOk.lean`,
-145 s / 5.0 GB). Result (2026-11-24T07:31Z): proved, 778 s, 5.0 GB peak (8 GB cap), standard axioms. Details and line counts:
+145 s / 5.0 GB). Result (2026-11-24T07:31Z): proved, 778 s, 5.0 GB peak (8 GB cap), standard axioms; re-proved 2026-11-24T08:15Z after the
+element-width change, 579 s, 4.0 GB. Details and line counts:
 `docs/typed/value-tracker.md`.
 
 ### Functional correctness: wmemcpy (2026-11-24, agent T)

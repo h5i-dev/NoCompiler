@@ -310,14 +310,15 @@
       ],
       "result": {
        "result": "proved",
-       "seconds": 778,
-       "peak_kb": 5034540,
+       "seconds": 579,
+       "peak_kb": 3960336,
        "axioms": [
         "propext",
         "Classical.choice",
         "Quot.sound"
        ],
-       "date": "2026-11-24T07:31Z"
+       "date": "2026-11-24T08:15Z",
+       "tab_ok_seconds": 129
       }
      }
     }
