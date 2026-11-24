@@ -4,4 +4,19 @@ TWO-AGENTS.md: both checkers must agree on every corpus case (`tests/typed/corpu
 disagreement is a bug in one of them or in the spec. Each entry: the case, each checker's
 verdict, which one is wrong and why, and the fix (commit).
 
-(None recorded yet: the Lean checker does not run the corpus yet.)
+
+## musl trial, v0 (agent V, origin/typed c3f64fad)
+
+Run: `lean/scripts/corpus.py tests/typed/corpus/musl` (and `--why` on the Lean rejections). Every
+disagreement is **Rust accepts, Lean rejects or gives no verdict**; there is none the other way.
+So no soundness question arises, only Lean-side incompleteness (the Rust checker is trusted, I2).
+Details and the full table: `docs/typed/musl-trial.md`, "v0 summary".
+
+| case(s) | Rust | Lean | which side and why |
+|---------|------|------|--------------------|
+| musl/bcmp, bzero, strncpy, strnlen | accept | reject at the `call`/`tail` pair's `auipc` | Lean (or the harness: code at address 0, `R_RISCV_CALL` unresolved) |
+| musl/ffsl, l64a | accept | reject at the `%pcrel_lo` `addi` | Lean: the export lacks I30's implicit `ro` capabilities (T's open item) |
+| musl/memrchr, wmemcpy, wmemset | accept | reject at the back edge | Lean: `inv` re-establishment on these loops |
+| musl/strncmp, stpncpy | accept | reject at I29 boolean ops (stpncpy also `struct=false`) | Lean: I29 rules missing |
+| musl/memset | accept | reject at `andi −4` | Lean: `andi` with −2^k (I23) |
+| musl/memcpy, memcpy-x, memmove, memccpy, memccpy-ic, memccpy-x, stpncpy-x | accept | no verdict (heartbeats / 180 s) | resource limit in the harness |
