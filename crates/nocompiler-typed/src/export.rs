@@ -209,7 +209,12 @@ fn sym_eqs_used(
 fn canon(sig: &Sig, fresh: u32) -> BTreeMap<crate::lin::Var, crate::lin::Var> {
     use crate::lin::Var;
     let mut top = fresh;
-    for v in sig.params.iter().chain(&sig.out_vars).chain(sig.src_names.keys()) {
+    for v in sig
+        .params
+        .iter()
+        .chain(&sig.out_vars)
+        .chain(sig.src_names.keys())
+    {
         top = top.max(v.0 + 1);
     }
     let mut order: Vec<Var> = Vec::new();
@@ -239,12 +244,19 @@ fn ren_lin(e: &Lin, m: &BTreeMap<crate::lin::Var, Lin>) -> Lin {
 }
 
 fn ren_formula(f: &Formula, m: &BTreeMap<crate::lin::Var, Lin>) -> Formula {
-    f.map_lin(&mut |e| e.subst_all(m)).unwrap_or_else(|| f.clone())
+    f.map_lin(&mut |e| e.subst_all(m))
+        .unwrap_or_else(|| f.clone())
 }
 
 fn ren_cap(c: &SigCap, m: &BTreeMap<crate::lin::Var, Lin>) -> SigCap {
     let kind = match &c.kind {
-        CapKind::Bytes { base, len, mode, heap, fields } => CapKind::Bytes {
+        CapKind::Bytes {
+            base,
+            len,
+            mode,
+            heap,
+            fields,
+        } => CapKind::Bytes {
             base: ren_lin(base, m),
             len: ren_lin(len, m),
             mode: *mode,
@@ -288,8 +300,13 @@ fn hi_lo(d: i128) -> (i128, i128) {
 }
 
 /// The data symbols' variables mapped to their linked addresses.
-fn sym_addrs(ck: &Checker, image: Option<&BTreeMap<String, u64>>) -> BTreeMap<crate::lin::Var, Lin> {
-    let Some(img) = image else { return BTreeMap::new() };
+fn sym_addrs(
+    ck: &Checker,
+    image: Option<&BTreeMap<String, u64>>,
+) -> BTreeMap<crate::lin::Var, Lin> {
+    let Some(img) = image else {
+        return BTreeMap::new();
+    };
     ck.sym_vars
         .iter()
         .filter_map(|(name, v)| Some((*v, Lin::konst(*img.get(name)? as i128))))
@@ -305,7 +322,10 @@ fn pin_state(st: &State, m: &BTreeMap<crate::lin::Var, Lin>) -> State {
         return st.clone();
     }
     let l = |e: &Lin| e.subst_all(m).unwrap_or_else(|| e.clone());
-    let f = |p: &Formula| p.map_lin(&mut |e| e.subst_all(m)).unwrap_or_else(|| p.clone());
+    let f = |p: &Formula| {
+        p.map_lin(&mut |e| e.subst_all(m))
+            .unwrap_or_else(|| p.clone())
+    };
     let mut out = st.clone();
     out.regs = st.regs.iter().map(l).collect();
     out.facts = st.facts.iter().map(|(i, p)| (*i, f(p))).collect();
@@ -397,7 +417,10 @@ pub fn used_syms(
             lin_vars(l);
         }
         for c in s.borrow.iter().chain(&s.take).chain(&s.give) {
-            if let CapKind::Bytes { base, len, fields, .. } = &c.kind {
+            if let CapKind::Bytes {
+                base, len, fields, ..
+            } = &c.kind
+            {
                 lin_vars(base);
                 lin_vars(len);
                 fields.values().for_each(&mut lin_vars);
@@ -408,8 +431,10 @@ pub fn used_syms(
             f.vars(&mut fv);
         }
         vs.extend(fv);
-        let mut u: BTreeSet<String> =
-            vs.iter().filter_map(|v| by_var.get(v).map(|n| n.to_string())).collect();
+        let mut u: BTreeSet<String> = vs
+            .iter()
+            .filter_map(|v| by_var.get(v).map(|n| n.to_string()))
+            .collect();
         if let Some(fr) = rep.funcs.iter().find(|f| &f.name == name) {
             if let Some(ex) = &fr.export {
                 u.extend(ex.lo_vars.iter().map(|(_, _, sym)| sym.clone()));
@@ -528,7 +553,12 @@ pub fn callee_first(prog: &Program, rep: &Report) -> Vec<String> {
         match next {
             Some(n) => order.push(n),
             // a cycle (S5 rejects it): keep the rest in file order
-            None => order.extend(exported.iter().filter(|n| !order.contains(n)).collect::<Vec<_>>()),
+            None => order.extend(
+                exported
+                    .iter()
+                    .filter(|n| !order.contains(n))
+                    .collect::<Vec<_>>(),
+            ),
         }
     }
     order.into_iter().map(String::from).collect()
@@ -543,7 +573,10 @@ pub fn closed(prog: &Program, rep: &Report) -> bool {
         .filter(|f| f.export.is_some())
         .map(|f| f.name.as_str())
         .collect();
-    !ex.is_empty() && ex.iter().all(|n| callees_of(prog, n).iter().all(|c| ex.contains(&c.as_str())))
+    !ex.is_empty()
+        && ex
+            .iter()
+            .all(|n| callees_of(prog, n).iter().all(|c| ex.contains(&c.as_str())))
 }
 
 /// `to_lean_image`, and with the linked `.text` (`code`) for a closed program, the program's
@@ -577,8 +610,12 @@ fn recover_sym_addrs(
     };
     for f in &rep.funcs {
         let Some(ex) = &f.export else { continue };
-        let Some(func) = prog.funcs.iter().find(|g| g.name == f.name) else { continue };
-        let Some(entry) = image.get(&f.name).copied() else { continue };
+        let Some(func) = prog.funcs.iter().find(|g| g.name == f.name) else {
+            continue;
+        };
+        let Some(entry) = image.get(&f.name).copied() else {
+            continue;
+        };
         let wi = word_index(func);
         for (ix, _, sym) in &ex.lo_vars {
             if img.contains_key(sym) {
@@ -600,7 +637,10 @@ fn recover_sym_addrs(
             } else {
                 ((wl as i32) >> 20) as i64
             };
-            img.insert(sym.clone(), (pc as i64).wrapping_add(hi).wrapping_add(lo) as u64);
+            img.insert(
+                sym.clone(),
+                (pc as i64).wrapping_add(hi).wrapping_add(lo) as u64,
+            );
         }
     }
     img
@@ -712,8 +752,12 @@ pub fn to_lean_text(
             .filter(|(n, _)| unused(n))
             .map(|(_, v)| *v)
             .collect();
-        let bids: Vec<u32> =
-            ex.borrow_ids.iter().copied().filter(|i| !drop_ids.contains(i)).collect();
+        let bids: Vec<u32> = ex
+            .borrow_ids
+            .iter()
+            .copied()
+            .filter(|i| !drop_ids.contains(i))
+            .collect();
         let trim = |st: &State| -> State {
             let mut t = st.clone();
             t.caps.retain(|c| !drop_ids.contains(&c.id));
@@ -845,7 +889,12 @@ pub fn to_lean_text(
         // the pins first (on the old variables), the renumbering for the rest
         let comp: BTreeMap<crate::lin::Var, Lin> = vm
             .iter()
-            .map(|(old, new)| (*old, fpins.get(old).cloned().unwrap_or_else(|| Lin::var(*new))))
+            .map(|(old, new)| {
+                (
+                    *old,
+                    fpins.get(old).cloned().unwrap_or_else(|| Lin::var(*new)),
+                )
+            })
             .collect();
         // xor then mask (I23): `2^k ∣ x ⇔ 2^k ∣ a − b` at each point where x = a xor b and its
         // operands are live, for the widths the Lean checker's xor rule writes (`xorBits`)
@@ -859,16 +908,20 @@ pub fn to_lean_text(
                 f.vars(&mut live);
             }
             for (v, a, b) in &ex.xor_defs {
-                let ok = live.contains(v)
-                    && a.vars().chain(b.vars()).all(|y| live.contains(&y));
-                let Some(d) = a.sub(b).filter(|_| ok) else { continue };
+                let ok = live.contains(v) && a.vars().chain(b.vars()).all(|y| live.contains(&y));
+                let Some(d) = a.sub(b).filter(|_| ok) else {
+                    continue;
+                };
                 for k in &ex.xor_bits {
                     let m = 1i128 << k;
                     let x = Lin::var(*v);
                     t.facts.push((
                         u32::MAX,
                         Formula::or(vec![
-                            Formula::and(vec![Formula::Dvd(m, x.clone()), Formula::Dvd(m, d.clone())]),
+                            Formula::and(vec![
+                                Formula::Dvd(m, x.clone()),
+                                Formula::Dvd(m, d.clone()),
+                            ]),
                             Formula::and(vec![
                                 Formula::negate(Formula::Dvd(m, x)),
                                 Formula::negate(Formula::Dvd(m, d.clone())),
@@ -881,7 +934,10 @@ pub fn to_lean_text(
         };
         let mut types: Vec<(usize, String)> = Vec::new();
         for (ix, st) in &ex.snapshots {
-            let pst = pin_state(&with_xor(&trim(st)), if vm.is_empty() { &fpins } else { &comp });
+            let pst = pin_state(
+                &with_xor(&trim(st)),
+                if vm.is_empty() { &fpins } else { &comp },
+            );
             types.push((wi[*ix], lean_sty(&pst, &bids, &feqs)));
             // a call pair is two words: the second one's type is the first one's with the
             // temporary holding auipc's exact value (T's ask a, I21)
@@ -911,7 +967,10 @@ pub fn to_lean_text(
             let _ = writeln!(defs, "def ty_{n}_{w} : STy := {t}\n");
         }
         o.insert_str(fn_start, &defs);
-        let refs: Vec<String> = types.iter().map(|(w, _)| format!("({w}, ty_{n}_{w})")).collect();
+        let refs: Vec<String> = types
+            .iter()
+            .map(|(w, _)| format!("({w}, ty_{n}_{w})"))
+            .collect();
         let _ = writeln!(o, "  types := [{}]", refs.join(", "));
         // the renumbering is a bijection of [0, vm.len()), which may exceed ex.fresh
         let _ = writeln!(o, "  fresh := {}\n", ex.fresh.max(vm.len() as u32));
@@ -953,7 +1012,11 @@ pub fn to_lean_text(
             // the ledger's evidence (theorem D): the linked image and the program's theorem
             let ws: Vec<String> = words.iter().map(|w| format!("0x{w:08x}#32")).collect();
             let _ = writeln!(o, "/-- The linked `.text`. -/");
-            let _ = writeln!(o, "def code : Code := ⟨0x{base:x}#64, #[{}]⟩\n", ws.join(", "));
+            let _ = writeln!(
+                o,
+                "def code : Code := ⟨0x{base:x}#64, #[{}]⟩\n",
+                ws.join(", ")
+            );
             // one kernel check per function (each needs a few GB), then the program's
             for n in &names {
                 let _ = writeln!(
@@ -971,8 +1034,14 @@ pub fn to_lean_text(
                 "set_option maxRecDepth 100000 in\n/-- Theorem D's check, by the kernel. -/\ntheorem prog_checked : Prog.check code [] prog = true := by\n  simp only [prog, Prog.check, {}, Bool.true_and]\n  decide +kernel\n",
                 chks.join(", ")
             );
-            let _ = writeln!(o, "/-- Every function of the program meets its signature (⟦σ⟧, total), for every meaning of tokens. -/");
-            let _ = writeln!(o, "theorem prog_meets (T : TokEnv) :\n    ∀ e ∈ Prog.env [] prog, Meets code e.2.2 e.1 T e.2.1 :=\n  Prog.check_sound_closed prog_checked\n");
+            let _ = writeln!(
+                o,
+                "/-- Every function of the program meets its signature (⟦σ⟧, total), for every meaning of tokens. -/"
+            );
+            let _ = writeln!(
+                o,
+                "theorem prog_meets (T : TokEnv) :\n    ∀ e ∈ Prog.env [] prog, Meets code e.2.2 e.1 T e.2.1 :=\n  Prog.check_sound_closed prog_checked\n"
+            );
         }
     }
     let _ = writeln!(o, "end {module}");
