@@ -466,10 +466,10 @@ strnlen is accepted alone but falls out of both subsets, because it calls memchr
 rejected. strncpy falls out by default because `__stpncpy` is rejected there. No recursion
 across files (S5 over the whole call graph).
 
-## v0 summary (final, pinned to origin/typed c3f64fad)
+## v0 summary (final, pinned to origin/typed 998ae0df)
 
-Pin: origin/typed **c3f64fad** (the lead: v0 complete except T's heap meaning, I38 part 2; to be
-re-pinned when T writes `V0 COMPLETE <commit>`). Rust: `nocompiler-typed` release build at that
+Pin: origin/typed **998ae0df** (T's `V0 COMPLETE 998ae0df`, including the heap meaning, I38 part 2;
+a first run at c3f64fad gave the same Rust verdicts and the same 9 Lean accepts). Rust: `nocompiler-typed` release build at that
 commit, run by `scripts/musl-trial/check.sh` (with `--object` against the objects compiled from
 musl) and `scripts/musl-trial/link.sh`. Natural loops are the default (I36), and the interval
 reading (`--loops` off) gives the same verdicts here. Lean: my own `lake build NoCompiler` at the
@@ -494,54 +494,57 @@ files. qemu harness: all checks pass (3 builds). Corpus test (`cargo test --test
   The other 4 (__fwritex, bsearch, memchr-ic, memchr-x) are rejected for P2/P4. The 3 "not expressible" (strlen, strlen-ic,
   a64l) are rejected (P3). Of the 3 "unsafe contract", malloc and free are external contracts and
   fwrite is rejected (P5).
-- Lean: of the 28 musl functions (incl. variants) Rust accepts, Lean accepts **9**; Lean accepts 0 that Rust rejects. Rust-accepted, Lean-rejected (12): bcmp:bcmp, bzero:bzero, ffsl:ffsl, l64a:l64a, memrchr:__memrchr, memset:memset, stpncpy:__stpncpy, strncmp:strncmp, strncpy:strncpy, strnlen:strnlen, wmemcpy:wmemcpy, wmemset:wmemset; no Lean verdict, evaluation over the 180 s limit or the 200000-heartbeat limit while elaborating the record (7): memccpy-ic:memccpy, memccpy-x:memccpy, memccpy:memccpy, memcpy-x:memcpy, memcpy:memcpy, memmove:memmove, stpncpy-x:__stpncpy. Note trial: Rust accepts 6, Lean accepts 2 of them (0 Lean-only).
+- Lean (998ae0df): of the 28 musl entries (incl. variants) Rust accepts, Lean accepts **9**
+  (_Exit, __towrite, div, labs, memcmp, strncmp-x, swab, wmemchr, wmemcmp) and rejects 13; 6 have
+  no verdict (5 heartbeat errors while elaborating the record, 1 over 180 s). Lean accepts none that
+  Rust rejects. Note trial: Rust accepts 6, Lean accepts 2 (sum, write_all).
 
-| file | function | predicted (before compiling) | Rust (c3f64fad) | Lean (c3f64fad) |
+| file | function | predicted (before compiling) | Rust (998ae0df) | Lean (998ae0df) |
 |------|----------|------------------------------|-----------------|-----------------|
 | labs | `labs` | accept | accept (2 q, 0.1 ms) | accept |
-| memcmp | `memcmp` | accept | accept (11 q, 0.7 ms) | accept |
+| memcmp | `memcmp` | accept | accept (11 q, 0.5 ms) | accept |
 | bcmp | `bcmp` | accept | accept (5 q, 0.2 ms) | reject |
-| memrchr | `__memrchr` | accept | accept (8 q, 0.5 ms) | reject |
+| memrchr | `__memrchr` | accept | accept (8 q, 0.4 ms) | reject |
 | memchr | `memchr` | accept | reject `loop-inv` | no-record |
 | strnlen | `strnlen` | accept | accept (4 q, 0.2 ms) | reject |
-| strncmp | `strncmp` | accept | accept (27 q, 16.3 ms) | reject |
-| swab | `swab` | accept | accept (13 q, 0.6 ms) | accept |
-| bzero | `bzero` | accept | accept (2 q, 0.2 ms) | reject |
-| memset | `memset` | reject | accept (80 q, 16.8 ms) | reject |
-| memcpy | `memcpy` | reject | accept (368 q, 259.6 ms) | heartbeats |
-| memccpy | `memccpy` | reject | accept (79 q, 122.5 ms) | heartbeats |
-| memmove | `memmove` | reject | accept (115 q, 339.5 ms) | heartbeats |
+| strncmp | `strncmp` | accept | accept (27 q, 8.6 ms) | reject |
+| swab | `swab` | accept | accept (13 q, 0.4 ms) | accept |
+| bzero | `bzero` | accept | accept (2 q, 0.1 ms) | reject |
+| memset | `memset` | reject | accept (80 q, 4.5 ms) | reject |
+| memcpy | `memcpy` | reject | accept (368 q, 144.5 ms) | heartbeats |
+| memccpy | `memccpy` | reject | accept (79 q, 55.7 ms) | heartbeats |
+| memmove | `memmove` | reject | accept (115 q, 182.0 ms) | heartbeats |
 | strlen | `strlen` | not expressible | reject `loop-inv` | no-record |
 | fwrite | `fwrite` | unsafe contract | reject `call-cap` | no-record |
 | memchr-ic | `memchr` | reject | reject `loop-inv` | no-record |
-| memccpy-ic | `memccpy` | reject | accept (73 q, 109.8 ms) | heartbeats |
+| memccpy-ic | `memccpy` | reject | accept (73 q, 54.4 ms) | heartbeats |
 | strlen-ic | `strlen` | not expressible | reject `loop-inv` | no-record |
-| wmemcpy | `wmemcpy` | accept | accept (11 q, 3.1 ms) | reject |
-| wmemset | `wmemset` | accept | accept (9 q, 0.6 ms) | reject |
-| wmemcmp | `wmemcmp` | accept | accept (19 q, 1.0 ms) | accept |
-| wmemchr | `wmemchr` | accept | accept (11 q, 1.6 ms) | accept |
-| stpncpy | `__stpncpy` | reject | accept (97 q, 79.1 ms) | reject |
-| strncpy | `strncpy` | accept | accept (5 q, 0.3 ms) | reject |
-| strncmp-x | `strncmp` | accept | accept (25 q, 1.7 ms) | accept |
-| memcpy-x | `memcpy` | reject | accept (370 q, 192.6 ms) | heartbeats |
+| wmemcpy | `wmemcpy` | accept | accept (11 q, 0.6 ms) | reject |
+| wmemset | `wmemset` | accept | accept (9 q, 0.4 ms) | reject |
+| wmemcmp | `wmemcmp` | accept | accept (19 q, 0.7 ms) | accept |
+| wmemchr | `wmemchr` | accept | accept (11 q, 0.5 ms) | accept |
+| stpncpy | `__stpncpy` | reject | accept (97 q, 37.5 ms) | timeout |
+| strncpy | `strncpy` | accept | accept (5 q, 0.2 ms) | reject |
+| strncmp-x | `strncmp` | accept | accept (25 q, 0.9 ms) | accept |
+| memcpy-x | `memcpy` | reject | accept (370 q, 115.0 ms) | heartbeats |
 | memchr-x | `memchr` | reject | reject `loop-inv` | no-record |
-| memccpy-x | `memccpy` | reject | accept (73 q, 80.2 ms) | timeout |
-| stpncpy-x | `__stpncpy` | reject | accept (88 q, 51.7 ms) | timeout |
+| memccpy-x | `memccpy` | reject | accept (73 q, 51.5 ms) | reject |
+| stpncpy-x | `__stpncpy` | reject | accept (88 q, 34.2 ms) | reject |
 | _Exit | `_Exit` | accept | accept (0 q, 0.1 ms) | accept |
-| __towrite | `__towrite` | accept | accept (28 q, 1.1 ms) | accept |
+| __towrite | `__towrite` | accept | accept (28 q, 0.8 ms) | accept |
 | __fwritex | `__fwritex` | reject profile | reject `profile` | no-record |
 | bsearch | `bsearch` | reject profile | reject `profile` | no-record |
 | ffsl | `ffsl` | accept | accept (7 q, 0.3 ms) | reject |
-| div | `div` | accept | accept (1 q, 0.2 ms) | accept |
+| div | `div` | accept | accept (1 q, 0.1 ms) | accept |
 | a64l | `a64l` | not expressible | reject `call-sig` | no-record |
-| l64a | `l64a` | reject static-data | accept (13 q, 56.5 ms) | reject |
+| l64a | `l64a` | reject static-data | accept (13 q, 26.5 ms) | reject |
 | malloc-free | `malloc`, `free` | unsafe contract | external (contracts; bodies need the A extension) | — |
 
-**Numbers to cite (origin/typed c3f64fad):** musl 1.2.5, 29 functions compiled unedited
+**Numbers to cite (origin/typed 998ae0df):** musl 1.2.5, 29 functions compiled unedited
 (clang 15.0.7 `-O2 -march=rv64im_zba_zbb`). Rust checker: 23 accepted, 6 rejected, all 6 by
 features v0 leaves out (P2–P5); 0.1–340 ms per function. Whole program: 22 functions link as one
 safe program. Lean checker (compiled evaluation): of the 28 Rust-accepted musl entries (incl. 5
-flag variants), 9 accepted, 12 rejected, 7 without a verdict (time or heartbeat limit); no case
+flag variants), 9 accepted, 13 rejected, 6 without a verdict (time or heartbeat limit); no case
 Lean accepts and Rust rejects. Predictions: 18 of 19 predicted accepts accepted. memmove's
 `n < 2^63` precondition was found by the checker.
 
@@ -553,9 +556,9 @@ refuses; Lean's rejections are conservative, and no case goes the other way):
 | call/tail pairs | bcmp, bzero, strncpy, strnlen | the pair's `auipc` | the harness decodes the code at address 0 without resolving `R_RISCV_CALL`, or Lean's call rule does not take the pair |
 | read-only static data (I30) | ffsl, l64a | the `addi …, %pcrel_lo` after `auipc` | T's known item: the export does not carry I30's implicit `ro` capabilities as borrow clauses yet |
 | loop back edges | memrchr, wmemcpy, wmemset | the back-edge `bne` | Lean does not re-establish the `inv` on these one-loop functions (register copies, or `[m]` solved from an equation rather than a bare register) |
-| bitwise rules (I29/I35) | strncmp, stpncpy | `and`/`xor`/`sltiu`/`or` of booleans | not in the Lean rules yet. stpncpy also fails Lean's structure check (`struct=false`) |
+| bitwise rules (I29/I35) | strncmp, memccpy-x, stpncpy-x (stpncpy at c3f64fad) | `and`/`xor`/`sltiu`/`or` of booleans, `xor` then `andi 7` | not in the Lean rules yet. The memccpy/stpncpy builds also fail Lean's structure check (`struct=false`) |
 | `andi` with −2^k, `ori` | memset | `andi a2, a2, −4` and after | the masks Lean has do not include this case |
-| no verdict | memcpy, memcpy-x, memmove, memccpy (3 builds), stpncpy-x | elaboration (`heartbeats`) or evaluation (180 s) | the records are large (115–370 queries); a resource limit, not a verdict |
+| no verdict | memcpy, memcpy-x, memmove, memccpy, memccpy-ic (heartbeats); stpncpy (180 s) | elaboration (`heartbeats`) or evaluation (180 s) | the records are large (115–370 queries); a resource limit, not a verdict. The 180 s limit is load-dependent: between the 998ae0df and 998ae0df runs, memccpy-x, stpncpy and stpncpy-x swapped between "reject" and "timeout". The heartbeat errors (memcpy, memcpy-x, memmove, memccpy, memccpy-ic) are deterministic. |
 
 None of these is a design question. They are rules the Rust checker has and the Lean checker
 does not yet, plus two harness limits. Recorded in `docs/typed/disagreements.md` for T.
