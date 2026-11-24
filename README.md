@@ -10,7 +10,7 @@ NoCompiler is a typed RISC-V assembly language with a formally verified type che
 
 **Our answer**
 
-- **Typed RISC-V assembly**: Standard RV64 assembly augmented with function signatures, memory permissions, and loop invariants.
+- **Typed RISC-V assembly**: Standard RV64 assembly with function signatures, memory permissions, and loop invariants.
 - **Formally verified type checker**: Type-checking soundness proved in Lean 4 against a formal RISC-V machine semantics.
 - **Static memory safety**: Automatically verifies memory accesses using arithmetic constraints and memory capabilities.
 - **Composable verification**: Checked, manually proved, and trusted functions can coexist through a unified contract system.
