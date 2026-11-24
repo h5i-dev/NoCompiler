@@ -14,8 +14,9 @@ Details and the full table: `docs/typed/musl-trial.md`, "v0 summary".
 
 | case(s) | Rust | Lean | which side and why |
 |---------|------|------|--------------------|
-| musl/bcmp, bzero, strncpy, strnlen | accept | reject at the `call`/`tail` pair's `auipc` | Lean (or the harness: code at address 0, `R_RISCV_CALL` unresolved) |
-| musl/ffsl, l64a | accept | l64a: accept since 5a9707df, linked image (U's local data addresses 9e168d85; T's fold + case split on the invariant's table) | ffsl: see U |
+| musl/bcmp, bzero, strncpy, strnlen | accept | accept since 9e168d85 (was: reject at the `call`/`tail` pair's `auipc`) | resolved, the harness: `corpus.py --link` links each file with a `ret` stub for every callee it only declares, so the pair's `auipc` has the callee's real address and Lean checks the caller on the linked image |
+| musl/ffsl | accept | accept since 9e168d85 (was: reject at the `%pcrel_lo` `addi`) | resolved, the export: the I30 `ro` capabilities were there; the constant pool `.LCPI0_0` has no symbol-table entry, so its address is now recovered from the linked `auipc`/`%pcrel_lo` pair |
+| musl/l64a | accept | accept since 5a9707df, linked image (U's local data addresses 9e168d85; T's fold + case split on the invariant's table) | resolved |
 | musl/memrchr, wmemcpy, wmemset | accept | accept since f4c553c7 (was: reject at the back edge) | resolved: Lean's instantiation applied θ to the source expression (double-shifted loop variables); `andi` mask now names its quotient |
 | musl/strncmp, memccpy-x, stpncpy-x (stpncpy at c3f64fad) | accept | reject at I29 boolean ops / xor then andi (memccpy, stpncpy builds also `struct=false`) | Lean: I29 rules missing |
 | musl/memset | accept | accept since 5a9707df, linked image (was: reject at `andi −4`, then at word 54) | resolved: the search eliminates through unit equalities (Omega test's equality step) |
