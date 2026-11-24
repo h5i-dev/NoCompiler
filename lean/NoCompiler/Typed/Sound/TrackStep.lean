@@ -695,3 +695,204 @@ def tabOk (f : Fn) (c : Code) (C : CopyArgs) (t : Table) : Bool :=
   t.frame 0 == ⟨C.dr, 0, []⟩ && (List.range f.size).all (pointOk f c C t)
 
 end NoCompiler.Typed.Track
+
+namespace NoCompiler.Typed.Track
+open NoCompiler NoCompiler.Typed
+
+variable {f : Fn} {T : TokEnv}
+
+theorem and_not_one_of_aligned {x : Word} (h : aligned x 4) : x &&& ~~~(1 : Word) = x := by
+  unfold aligned at h
+  ext j hj
+  simp only [BitVec.getElem_and, BitVec.getElem_not]
+  by_cases h0 : j = 0
+  · subst h0
+    have : x[0] = false := by
+      rw [← BitVec.getLsbD_eq_getElem, ← BitVec.testBit_toNat]
+      simp [Nat.testBit, Nat.shiftRight_zero]; omega
+    simp [this]
+  · simp [BitVec.getElem_one, h0]
+
+/-- An instruction other than `jalr` whose jumps have targets lands on one of its successors. -/
+theorem exists_succ_pc {f : Fn} {k : Nat} {i : Instr} {s s' : State} (hpc : s.pc = f.pcOf k)
+    (hnj : (match i with
+       | .jalr _ _ _ => false
+       | .branch _ _ _ off => (Fn.target k off.toInt).isSome
+       | .jal _ off => (Fn.target k off.toInt).isSome
+       | _ => true) = true)
+    (hx : exec i s = some s') :
+    ∃ k' ∈ succs k i, s'.pc = f.pcOf k' := by
+  have hp := exec_pc hx
+  cases i
+  case branch op rs1 rs2 off =>
+    simp only at hnj hp
+    rcases hp with h1 | h1
+    · exact ⟨k + 1, by simp [succs], by rw [h1, hpc, Fn.pcOf_succ]⟩
+    · cases htg : Fn.target k off.toInt with
+      | none => rw [htg] at hnj; cases hnj
+      | some k'' =>
+        refine ⟨k'', by simp [succs, htg], ?_⟩
+        rw [h1, hpc]
+        exact (Fn.pc_of_target (f := f) (off := off) (by decide) (by decide) htg).symm
+  case jal rd off =>
+    simp only at hnj hp
+    cases htg : Fn.target k off.toInt with
+    | none => rw [htg] at hnj; cases hnj
+    | some k'' =>
+      refine ⟨k'', by simp [succs, htg], ?_⟩
+      rw [hp, hpc]
+      exact (Fn.pc_of_target (f := f) (off := off) (by decide) (by decide) htg).symm
+  case jalr => simp at hnj
+  all_goals exact ⟨k + 1, by simp [succs], by rw [hp, hpc, Fn.pcOf_succ]⟩
+
+theorem tabOk_point {c : Code} {C : CopyArgs} {t : Table} (ht : tabOk f c C t = true) {k : Nat}
+    (hk : k < f.size) : pointOk f c C t k = true := by
+  simp only [tabOk, Bool.and_eq_true, List.all_eq_true, List.mem_range] at ht
+  exact ht.2 k hk
+
+theorem tabOk_entry {c : Code} {C : CopyArgs} {t : Table} (ht : tabOk f c C t = true) :
+    t.frame 0 = ⟨C.dr, 0, []⟩ := by
+  simp only [tabOk, Bool.and_eq_true, beq_iff_eq] at ht
+  exact ht.1
+
+/-- **Functional correctness of a copy, from the type check and a checked table** (leaf
+    functions): if `tabOk` holds, the function meets its signature with the copy added to the
+    post: `d[0, n)` holds the entry bytes of `src[0, n)`, and the rest of memory is the entry's
+    (`Copied`), for `d`, `src`, `n` the entry values of the argument registers. -/
+theorem Fn.check_sound_track (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = true)
+    (hnc : f.callees = []) (hp : f.sig.isPartial = false) {D : Dom}
+    (hDf : ∀ k < f.size, D.mem (f.pcOf k)) (hsz : 4 * f.size + 2 ^ 21 < 2 ^ 64)
+    (C : CopyArgs) (t : Table) (ht : tabOk f c C t = true)
+    (hargs : ∀ a s0, Entry D f.entry s0 → (f.sig.spec T).pre a s0 →
+      ((s0.reg C.dr).toNat : Int) = a.1 C.P.dv ∧ ((s0.reg C.sr).toNat : Int) = a.1 C.P.sv ∧
+      ((s0.reg C.nr).toNat : Int) = a.1 C.P.nv ∧
+      C.P.dv ∈ f.sig.params ∧ C.P.sv ∈ f.sig.params ∧ C.P.nv ∈ f.sig.params ∧
+      Disj (s0.reg C.dr) (s0.reg C.sr) (s0.reg C.nr).toNat) :
+    VerifiedImg c D f.entry
+      { f.sig.spec T with
+        post := (fun a s s' => (f.sig.spec T).post a s s' ∧
+          Copied s.mem s'.mem (s.reg C.dr) (s.reg C.sr) (s.reg C.nr).toNat) } := by
+  have hck := h
+  unfold Fn.check at hck
+  simp only [Bool.and_eq_true, List.all_eq_true, List.mem_range] at hck
+  have hst := Fn.structOk_spec hck.1.1
+  refine f.check_sound_val c T h hnc hp hDf
+    (fun a s0 k s => (t.frame k).toA.ok s0.mem (s0.reg C.dr) (s0.reg C.sr) (s0.reg C.nr).toNat s)
+    (fun a s0 s' => Copied s0.mem s'.mem (s0.reg C.dr) (s0.reg C.sr) (s0.reg C.nr).toNat)
+    ?_ ?_ ?_
+  · -- the entry: nothing copied yet
+    intro a s0 he hpre
+    rw [tabOk_entry ht]
+    unfold AState.ok
+    simp only [Frame.toA, BitVec.sub_self, BitVec.toNat_zero, Nat.add_zero]
+    refine ⟨Nat.zero_le _, Copied.zero _ _ _, fun r => ?_⟩
+    intro i hi; simp [Frame.get, Cell.ok]
+  · -- a step between typed points
+    intro a s0 he hpre k s k' s' htk hJk hstep htk'
+    obtain ⟨hdv, hsv, hnv, hpd, hps, hpn, hdisj⟩ := hargs a s0 he hpre
+    have htk0 := htk
+    obtain ⟨S, ι0', F, hS, hk, hpc, hI, -⟩ := htk
+    obtain ⟨S', ι1, F1, hS', hk', hpc', -, -⟩ := htk'
+    have hpt := tabOk_point ht hk
+    obtain ⟨ι, hregs, hent, -, hparams⟩ := Fn.Typed.facts hst htk0 hS
+    cases hstep with
+    | sys _ hi _ _ =>
+      rw [hpc] at hi
+      unfold pointOk at hpt; rw [hS, hi] at hpt
+      simp [tstep, regStep, writesReg] at hpt
+    | @exec i _ hi _ hx =>
+      rw [hpc] at hi
+      unfold pointOk at hpt; rw [hS, hi] at hpt; simp only at hpt
+      split at hpt
+      · -- a return has no typed successor: it goes to the entry's `ra`, outside the region
+        rename_i hret; subst hret
+        exfalso
+        split at hpt
+        · rename_i x ec hx1 hec
+          simp only [Bool.and_eq_true, beq_iff_eq] at hpt
+          have hra := Fn.Typed.reg_entry hst htk0 hS hpt.1.1.1 (lookup_mem' hx1)
+          simp only [exec, jumpTo, State.setReg, if_true] at hx
+          split at hx
+          · cases hx
+            simp only [State.setPc] at hpc'
+            rw [hra, show BitVec.signExtend 64 (0 : BitVec 12) = 0 from by decide,
+              show s0.reg 1 + (0 : Word) = s0.reg 1 from by simp,
+              and_not_one_of_aligned he.retAligned] at hpc'
+            exact he.ret (hpc' ▸ hDf k' hk')
+          · cases hx
+        · simp at hpt
+      · rename_i hnret
+        simp only [Bool.and_eq_true] at hpt
+        obtain ⟨hnj, htst⟩ := hpt
+        split at htst
+        · rename_i A' hA'
+          have hdi : ((s0.reg C.dr).toNat : Int) = ι C.P.dv := by rw [hparams _ hpd]; exact hdv
+          have hsi : ((s0.reg C.sr).toNat : Int) = ι C.P.sv := by rw [hparams _ hps]; exact hsv
+          have hni : (((s0.reg C.nr).toNat : Nat) : Int) = ι C.P.nv := by rw [hparams _ hpn]; exact hnv
+          have hok := tstep_ok hregs hent hdi hsi hni (s0.reg C.nr).isLt hdisj hJk hA' hx
+          have hnotj : ∀ a b c, i ≠ .jalr a b c := by
+            intro a b c he'; subst he'; simp at hnj
+          have hmem := succ_mem hsz hk hk' hpc hx hpc' hnotj
+          have := List.all_eq_true.1 htst k' hmem
+          simp only [Bool.and_eq_true, decide_eq_true_eq] at this
+          exact Frame.ok_of_leA this.2 hok
+        · cases htst
+  · -- the return: the copy is complete; nothing else leaves the region
+    intro a s0 he hpre k s s' htk hJk hstep hfin hdone
+    obtain ⟨hdv, hsv, hnv, hpd, hps, hpn, hdisj⟩ := hargs a s0 he hpre
+    have htk0 := htk
+    obtain ⟨S, ι0', F, hS, hk, hpc, hI, -⟩ := htk
+    have hpt := tabOk_point ht hk
+    obtain ⟨ι, hregs, hent, -, hparams⟩ := Fn.Typed.facts hst htk0 hS
+    have hdi : ((s0.reg C.dr).toNat : Int) = ι C.P.dv := by rw [hparams _ hpd]; exact hdv
+    have hni : (((s0.reg C.nr).toNat : Nat) : Int) = ι C.P.nv := by rw [hparams _ hpn]; exact hnv
+    cases hstep with
+    | sys _ hi _ _ =>
+      rw [hpc] at hi
+      unfold pointOk at hpt; rw [hS, hi] at hpt
+      simp [tstep, regStep, writesReg] at hpt
+    | @exec i _ hi _ hx =>
+      rw [hpc] at hi
+      unfold pointOk at hpt; rw [hS, hi] at hpt; simp only at hpt
+      split at hpt
+      · rename_i hret; subst hret
+        split at hpt
+        · rename_i x ec hx1 hec
+          simp only [Bool.and_eq_true, beq_iff_eq] at hpt
+          obtain ⟨⟨⟨-, hlo⟩, hhi⟩, hge⟩ := hpt
+          have hwc := STy.reg_hasInt hregs hec
+          obtain ⟨hex, hb⟩ := toNat_sub_exact (d := s0.reg C.dr) hwc hdi hni (s0.reg C.nr).isLt
+            (hent _ hlo) (hent _ hhi)
+          have hge' := hent _ hge
+          simp only [Constr.holds, Constr.eval, IExpr.eval_sub, IExpr.eval_add, IExpr.eval_var,
+            IExpr.eval_lit, decide_eq_true_eq] at hge'
+          have hcount : (s.reg (t.frame k).cur - s0.reg C.dr).toNat + (t.frame k).δ = (s0.reg C.nr).toNat := by
+            omega
+          simp only [exec, jumpTo, State.setReg, if_true] at hx
+          split at hx
+          · cases hx
+            have hc := hJk.2.1
+            simp only [Frame.toA] at hc
+            rw [hcount] at hc
+            exact hc
+          · cases hx
+        · simp at hpt
+      · -- any other instruction lands on a point inside the region
+        exfalso
+        simp only [Bool.and_eq_true] at hpt
+        obtain ⟨hnj, htst⟩ := hpt
+        have hall : ∀ k' ∈ succs k i, k' < f.size := by
+          intro k' hk'
+          split at htst
+          · have := List.all_eq_true.1 htst k' hk'
+            simp only [Bool.and_eq_true, decide_eq_true_eq] at this
+            exact this.1
+          · cases htst
+        have hlive : s'.exit = none := (exec_exit hx).1.trans hI.live
+        obtain ⟨k', hk'm, hpc'⟩ := exists_succ_pc (f := f) hpc hnj hx
+        have hk' := hall k' hk'm
+        rcases hfin with h1 | h1
+        · exact h1 (hpc' ▸ hDf k' hk')
+        · exact h1 hlive
+
+end NoCompiler.Typed.Track
