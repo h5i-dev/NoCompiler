@@ -67,7 +67,7 @@ More: [docs/typed/rust-checker.md](docs/typed/rust-checker.md), [docs/typed/lean
 
 ## 2. Binary analysis toolkit
 
-The repository also holds the comprehensive binary analysis toolkit, including ELF, PE/COFF and Mach-O loaders, x86-64 and AArch64 decoders, a SLEIGH runtime (with RISC-V RV64), an IR with lifters, function and CFG recovery, a decompiler to C and a binary differ.
+This project originally started as a disassembler and decompiler, and it still includes a comprehensive binary analysis toolkit featuring ELF, PE/COFF, and Mach-O loaders, x86-64 and AArch64 decoders, a SLEIGH runtime with RISC-V RV64 support, an intermediate representation (IR) with lifters, function and control flow graph (CFG) recovery, a C decompiler, and a binary differ.
 
 ```sh
 cargo build --release -p nocompiler-cli     # target/release/nocompiler
