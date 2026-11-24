@@ -165,6 +165,8 @@ bit counts of the masks the xor-then-mask rule used (a hint for the Lean xor rul
 signature is exported with `isPartial := true` (I19); theorem D covers total programs only, so
 `--prove` is not attempted when an exported function is partial.
 
+With `--prove --certs` (2026-11-24) the kernel checks recorded certificates instead of running the search ("Certificates" above). The module, cut before its search-mode theorems, goes through `lean/scripts/certgen.py --split --prog`. That records the certificates by compiled evaluation, gives every function `fnc_<f>` with one kernel theorem per point, and states theorem D for `progc := [fnc_…]`: `prog_checked`, then `prog_meets` from `Prog.check_sound_closed`. The `fnc_` functions have the same signatures and code, so `prog_meets` has the same meaning. The ledger records the proof's module as `X.lean.certs.lean`, written next to the export, and reads the axioms of `prog_meets` itself (`run_lean` looks for the named theorem's line, since the module also prints each `chk_<f>`'s).
+
 ### θ per edge (2026-11-23, T's ask 4)
 
 For each exported function, `theta_<name> : List (Option Nat × Nat × List (Var × IExpr))`

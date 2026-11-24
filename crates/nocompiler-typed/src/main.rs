@@ -8,7 +8,7 @@ use std::process::ExitCode;
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let usage = "usage: nocompiler-typed link FILE.s... | check FILE.s [--ledger OUT.json] [--states] [--object FILE.o] [--export-lean OUT.lean] [--export-json OUT.json] [--image LINKED.elf [--prove [--lean-dir DIR]]] [--loops natural|interval]";
+    let usage = "usage: nocompiler-typed link FILE.s... | check FILE.s [--ledger OUT.json] [--states] [--object FILE.o] [--export-lean OUT.lean] [--export-json OUT.json] [--image LINKED.elf [--prove [--certs] [--lean-dir DIR]]] [--loops natural|interval]";
     if args.first().map(String::as_str) == Some("link") {
         // nocompiler-typed link A.s B.s ... [--loops natural]: the whole program (Theorem D)
         let natural = !args.iter().any(|a| a == "interval");
@@ -58,6 +58,7 @@ fn main() -> ExitCode {
     let mut object = None;
     let mut image_file: Option<String> = None;
     let mut prove = false;
+    let mut certs = false;
     let mut lean_dir: Option<String> = None;
     let mut states = false;
     let mut natural = true;
@@ -79,6 +80,7 @@ fn main() -> ExitCode {
                 i += 1;
             }
             "--prove" => prove = true,
+            "--certs" => certs = true,
             "--lean-dir" if i + 1 < args.len() => {
                 lean_dir = Some(args[i + 1].clone());
                 i += 1;
@@ -259,14 +261,35 @@ fn main() -> ExitCode {
                     .unwrap_or_else(|| {
                         concat!(env!("CARGO_MANIFEST_DIR"), "/../../lean").to_string()
                     });
-                let theorem = format!("{module}.prog_meets");
-                match nocompiler_typed::prove::run_lean(std::path::Path::new(&dir), &text, &theorem)
-                {
+                let lean_dir = std::path::Path::new(&dir);
+                // --certs: the kernel checks recorded certificates, one theorem per point
+                let (proof_text, theorem) = if certs {
+                    (
+                        nocompiler_typed::prove::certify(lean_dir, &text, &module),
+                        "prog_meets".to_string(),
+                    )
+                } else {
+                    (Ok(text.clone()), format!("{module}.prog_meets"))
+                };
+                let attempt = match &proof_text {
+                    Ok(t) => nocompiler_typed::prove::run_lean(lean_dir, t, &theorem),
+                    Err(e) => Err(e.clone()),
+                };
+                let proof_text = proof_text.unwrap_or_default();
+                if certs && !proof_text.is_empty() {
+                    // the module the proof is in, next to the export
+                    let _ = std::fs::write(format!("{out}.certs.lean"), &proof_text);
+                }
+                match attempt {
                     Ok(ax) if nocompiler_typed::prove::standard(&ax) => {
                         println!("prove: {theorem} (axioms: {})", ax.join(", "));
                         let order = nocompiler_typed::export::callee_first(&prog, &rep);
                         proof = Some(nocompiler_typed::ledger::Proof {
-                            module: out.clone(),
+                            module: if certs {
+                                format!("{out}.certs.lean")
+                            } else {
+                                out.clone()
+                            },
                             theorem,
                             axioms: ax,
                             functions: order

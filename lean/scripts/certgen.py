@@ -164,6 +164,35 @@ theorem chk_{f} : fnc_{f}.check code = true :=
     return "\n".join(out)
 
 
+def prog_theorems(base):
+    """Theorem D for the module's `prog` (callee-first, as the export lists it), with each
+    function's certificate-carrying version `fnc_<f>` (same signature and code, so the same
+    meaning) and its kernel theorem `chk_<f>`."""
+    m = re.search(r"^def prog : List Fn := \[(.*)\]", base, re.M)
+    if not m:
+        return ""
+    names = [n.strip()[len("fn_"):] for n in m.group(1).split(",") if n.strip()]
+    progc = ", ".join(f"fnc_{n}" for n in names)
+    chks = ", ".join(f"chk_{n}" for n in names)
+    return f"""
+/-- The program with each function's certificate tables (same signatures and code). -/
+def progc : List Fn := [{progc}]
+
+set_option maxRecDepth 100000 in
+/-- Theorem D's check, by the kernel, from the per-function kernel theorems. -/
+theorem prog_checked : Prog.check code [] progc = true := by
+  simp only [progc, Prog.check, {chks}, Bool.true_and]
+  decide +kernel
+
+/-- Every function of the program meets its signature (⟦σ⟧, total), for every meaning of tokens. -/
+theorem prog_meets (T : TokEnv) :
+    ∀ e ∈ Prog.env [] progc, Meets code e.2.2 e.1 T e.2.1 :=
+  Prog.check_sound_closed prog_checked
+
+#print axioms prog_meets
+"""
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("inp")
@@ -171,6 +200,8 @@ def main():
     ap.add_argument("--split", action="store_true")
     ap.add_argument("--only")
     ap.add_argument("--reuse", help="a module certgen wrote: keep its tables, rewrite only the theorems")
+    ap.add_argument("--prog", action="store_true",
+                    help="also theorem D for the module's `prog` (progc, prog_checked, prog_meets)")
     ap.add_argument("--timeout", type=int, default=int(os.environ.get("LEAN_TIMEOUT", "900")))
     a = ap.parse_args()
     text = open(a.inp, encoding="utf-8").read()
@@ -207,7 +238,10 @@ def main():
     if r.returncode != 0 or bad:
         print(f"log run: rc={r.returncode}, not accepted: {bad}", file=sys.stderr)
         print((r.stdout + r.stderr)[-2000:], file=sys.stderr)
-    open(a.out, "w", encoding="utf-8").write(out_module(base, fns, sizes, certs, a.split))
+    text = out_module(base, fns, sizes, certs, a.split)
+    if a.prog:
+        text += prog_theorems(base)
+    open(a.out, "w", encoding="utf-8").write(text)
     n = sum(len(v) for v in certs.values())
     print(f"{a.out}: {len(fns)} functions, {len(certs)} points, {n} certificate lists")
 
