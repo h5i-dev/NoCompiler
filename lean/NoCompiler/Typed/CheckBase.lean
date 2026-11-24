@@ -299,7 +299,7 @@ def entCaseN : Nat → STy → Constr → Bool
       !ps.isEmpty && (S'.entIn d' ψ' || entCaseN n S' ψ')
     | _ => false
 
-def entCase (S : STy) (ψ : Constr) : Bool := entCaseN 2 S ψ
+def entCase (S : STy) (ψ : Constr) : Bool := entCaseN 1 S ψ
 
 /-- `Ψ ⊢ ψ` by the decision procedure, after folding the goal's constant atoms (a goal like
     an invariant `k = 0 ∨ (k = 1 ∧ …) ∨ …` at `k := 0` is `tt`; unfolded, its negation's
