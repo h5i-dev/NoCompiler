@@ -29,7 +29,7 @@ def sig : Sig where
 
 def entryTy : STy := { regs := kept ++ [(10, ρ), (11, n)], facts := [.dvd 8 ρ], caps := [cap] }
 def headTy : STy :=
-  ⟨kept ++ [(10, (ρ.add (n.smul 8)).sub (m.smul 8)), (11, m)], [.dvd 8 ρ, .le (.lit 1) m, .le m n], [cap], [], 0⟩
+  ⟨kept ++ [(10, (ρ.add (n.smul 8)).sub (m.smul 8)), (11, m)], [.dvd 8 ρ, .le (.lit 1) m, .le m n], [cap], [], 0, .search⟩
 
 def fn : Fn where
   sig := sig

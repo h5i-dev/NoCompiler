@@ -163,10 +163,21 @@
    "functions": [
     {
      "name": "l64a",
-     "status": "checked",
+     "status": "proved",
      "kernel": {
-      "result": "out-of-memory",
-      "seconds": 64.5
+      "result": "proved",
+      "seconds": 22,
+      "peak_kb": 1887436,
+      "mode": "certificates",
+      "first_run": "out-of-memory (search, 8 GB)"
+     },
+     "evidence": {
+      "lean_module": "nc-briefs/typed/musl-linked/kernel/ (U, certificate-carrying check)",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ]
      }
     }
    ]
@@ -200,10 +211,21 @@
    "functions": [
     {
      "name": "memccpy",
-     "status": "checked",
+     "status": "proved",
      "kernel": {
-      "result": "out-of-memory",
-      "seconds": 76.9
+      "result": "proved",
+      "seconds": 219,
+      "peak_kb": 8178892,
+      "mode": "certificates",
+      "first_run": "out-of-memory (search, 8 GB)"
+     },
+     "evidence": {
+      "lean_module": "nc-briefs/typed/musl-linked/kernel/ (U, certificate-carrying check)",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ]
      }
     }
    ]
@@ -237,10 +259,43 @@
    "functions": [
     {
      "name": "memcpy",
-     "status": "checked",
+     "status": "proved",
      "kernel": {
-      "result": "out-of-memory",
-      "seconds": 100.4
+      "result": "proved",
+      "seconds": 501,
+      "peak_kb": 3984588,
+      "mode": "certificates",
+      "first_run": "out-of-memory (search, 8 GB)"
+     },
+     "evidence": {
+      "lean_module": "nc-briefs/typed/musl-linked/kernel/ (U, certificate-carrying check)",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ]
+     },
+     "functional": {
+      "spec": "returns with the signature post and Copied: d[0,n) = entry s[0,n), every other byte as on entry",
+      "theorem": "memcpy_verified (generated: lean/scripts/memcpyfull.py ... memcpy MemcpyX memcpy_x; nc-briefs/typed/musl-linked/kernel/memcpyx_verified.lean)",
+      "uses": [
+       "chk_memcpy (U, certificates)",
+       "MemcpyXTabOk.tab_ok",
+       "MemcpyX.memcpy_correct_of",
+       "tabOk_certs"
+      ],
+      "result": {
+       "result": "proved",
+       "seconds": 432,
+       "peak_kb": 3142588,
+       "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+       ],
+       "date": "2026-11-24T10:24Z",
+       "tab_ok_seconds": 48
+      }
      }
     }
    ]
@@ -250,10 +305,43 @@
    "functions": [
     {
      "name": "memcpy",
-     "status": "checked",
+     "status": "proved",
      "kernel": {
-      "result": "out-of-memory",
-      "seconds": 113.1
+      "result": "proved",
+      "seconds": 635,
+      "peak_kb": 4928307,
+      "mode": "certificates",
+      "first_run": "out-of-memory (search, 8 GB)"
+     },
+     "evidence": {
+      "lean_module": "nc-briefs/typed/musl-linked/kernel/ (U, certificate-carrying check)",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ]
+     },
+     "functional": {
+      "spec": "returns with the signature post and Copied: d[0,n) = entry s[0,n), every other byte as on entry; a0 = d (post_of)",
+      "theorem": "memcpy_verified (generated: lean/scripts/memcpyfull.py; nc-briefs/typed/musl-linked/kernel/memcpy_verified.lean)",
+      "uses": [
+       "chk_memcpy (U, certificates)",
+       "MemcpyTabOk.tab_ok",
+       "memcpy_correct_of",
+       "tabOk_certs"
+      ],
+      "result": {
+       "result": "proved",
+       "seconds": 541,
+       "peak_kb": 3283220,
+       "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+       ],
+       "date": "2026-11-24T10:24Z",
+       "tab_ok_seconds": 123
+      }
      }
     }
    ]
@@ -263,10 +351,21 @@
    "functions": [
     {
      "name": "memmove",
-     "status": "checked",
+     "status": "proved",
      "kernel": {
-      "result": "out-of-memory",
-      "seconds": 83.7
+      "result": "proved",
+      "seconds": 176,
+      "peak_kb": 2411724,
+      "mode": "certificates",
+      "first_run": "out-of-memory (search, 8 GB)"
+     },
+     "evidence": {
+      "lean_module": "nc-briefs/typed/musl-linked/kernel/ (U, certificate-carrying check)",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ]
      }
     },
     {
@@ -304,10 +403,21 @@
    "functions": [
     {
      "name": "memset",
-     "status": "checked",
+     "status": "proved",
      "kernel": {
-      "result": "out-of-memory",
-      "seconds": 73.1
+      "result": "proved",
+      "seconds": 89,
+      "peak_kb": 1258291,
+      "mode": "certificates",
+      "first_run": "out-of-memory (search, 8 GB)"
+     },
+     "evidence": {
+      "lean_module": "nc-briefs/typed/musl-linked/kernel/ (U, certificate-carrying check)",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ]
      }
     }
    ]
@@ -317,10 +427,21 @@
    "functions": [
     {
      "name": "__stpncpy",
-     "status": "checked",
+     "status": "proved",
      "kernel": {
-      "result": "out-of-memory",
-      "seconds": 91.3
+      "result": "proved",
+      "seconds": 132,
+      "peak_kb": 3460300,
+      "mode": "certificates",
+      "first_run": "out-of-memory (search, 8 GB)"
+     },
+     "evidence": {
+      "lean_module": "nc-briefs/typed/musl-linked/kernel/ (U, certificate-carrying check)",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ]
      }
     },
     {
@@ -334,10 +455,21 @@
    "functions": [
     {
      "name": "__stpncpy",
-     "status": "checked",
+     "status": "proved",
      "kernel": {
-      "result": "out-of-memory",
-      "seconds": 92.6
+      "result": "proved",
+      "seconds": 270,
+      "peak_kb": 8178892,
+      "mode": "certificates",
+      "first_run": "out-of-memory (search, 8 GB)"
+     },
+     "evidence": {
+      "lean_module": "nc-briefs/typed/musl-linked/kernel/ (U, certificate-carrying check)",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ]
      }
     },
     {
@@ -375,10 +507,21 @@
    "functions": [
     {
      "name": "strncmp",
-     "status": "checked",
+     "status": "proved",
      "kernel": {
-      "result": "out-of-memory",
-      "seconds": 76.2
+      "result": "proved",
+      "seconds": 28,
+      "peak_kb": 1677721,
+      "mode": "certificates",
+      "first_run": "out-of-memory (search, 8 GB)"
+     },
+     "evidence": {
+      "lean_module": "nc-briefs/typed/musl-linked/kernel/ (U, certificate-carrying check)",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ]
      }
     }
    ]
@@ -535,6 +678,26 @@
        "Quot.sound"
       ],
       "callees_assumed": []
+     },
+     "functional": {
+      "spec": "returns with the signature post and Copied: d[0,4n) = entry s[0,4n), every other byte as on entry",
+      "theorem": "Examples.Musl.Wmemcpy.wmemcpy_verified (lean/Examples/Musl/WmemcpyVerified.lean)",
+      "uses": [
+       "chk_wmemcpy (decide +kernel, search mode)",
+       "WmemcpyTabOk.tab_ok",
+       "wmemcpy_correct"
+      ],
+      "result": {
+       "result": "proved",
+       "seconds": 10,
+       "peak_kb": 1347136,
+       "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+       ],
+       "date": "2026-11-24T10:24Z"
+      }
      }
     }
    ]
@@ -559,6 +722,21 @@
        "Quot.sound"
       ],
       "callees_assumed": []
+     },
+     "functional": {
+      "spec": "returns with the signature post and, for 4n < 2^64, Filled: byte j of d[0,4n) = byte (j mod 4) of c, every other byte as on entry",
+      "theorem": "Examples.Musl.Wmemset.wmemset_verified (lean/Examples/Musl/WmemsetVerified.lean)",
+      "result": {
+       "result": "proved",
+       "seconds": 5,
+       "peak_kb": 1005948,
+       "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+       ],
+       "date": "2026-11-24T10:24Z"
+      }
      }
     }
    ]

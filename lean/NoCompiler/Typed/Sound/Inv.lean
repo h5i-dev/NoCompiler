@@ -217,12 +217,31 @@ theorem hyps_holds {T : TokEnv} {ι : Val} {F : TokFp} {m : Word → Byte} {S : 
       · exact .inl (by simpa using hg)
     · cases e
 
-theorem decide2_sound {ι : Val} {hs : List Constr} {ψ : Constr} (h : decide2 hs ψ = true)
-    (hh : ∀ p ∈ hs, p.holds ι) : ψ.holds ι := by
+/-- Every certificate mode is sound: a found or a recorded certificate list passes
+    `Query.check` (the table's recorded goal only selects which lists to try). -/
+theorem decideQ_sound {ι : Val} {m : CertMode} {q : Query} (h : decideQ m q = true)
+    (hh : ∀ p ∈ q.hyps, p.holds ι) : q.goal.holds ι := by
+  unfold decideQ at h
+  split at h
+  · exact Query.decide_sound h ι hh
+  · split at h
+    · split at h
+      · rename_i cs _ hc; exact Query.check_sound hc ι hh
+      · cases h
+    · cases h
+  · obtain ⟨⟨g, n, keep, cs⟩, -, hgc⟩ := List.any_eq_true.1 h
+    simp only [Bool.and_eq_true] at hgc
+    exact Query.check_sound hgc.2 ι fun p hp => by
+      simp only [selectHyps] at hp
+      obtain ⟨i, -, hi⟩ := List.mem_filterMap.1 hp
+      exact hh p (List.mem_of_getElem? hi)
+
+theorem decide2_sound {ι : Val} {m : CertMode} {hs : List Constr} {ψ : Constr}
+    (h : decide2 m hs ψ = true) (hh : ∀ p ∈ hs, p.holds ι) : ψ.holds ι := by
   unfold decide2 at h
   rcases Bool.or_eq_true _ _ ▸ h with h | h
-  · exact Query.decide_sound h ι fun p hp => hh p (List.mem_filter.1 hp).1
-  · exact Query.decide_sound h ι hh
+  · exact decideQ_sound h fun p hp => hh p (List.mem_filter.1 hp).1
+  · exact decideQ_sound h hh
 
 theorem entQ'_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entQ' ψ = true)
     (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
@@ -291,6 +310,80 @@ theorem entCaseN_sound : ∀ (n : Nat) {ι : Val} {S : STy} {ψ : Constr}, entCa
 theorem entCase_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entCase ψ = true)
     (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := entCaseN_sound 2 h hh'
 
+theorem splitCands_mem {S : STy} {ψ h : Constr} (hm : h ∈ S.splitCands ψ) : h ∈ S.facts := by
+  unfold splitCands at hm
+  split at hm
+  · exact hm
+  · exact (List.mem_filter.1 hm).1
+
+/-- The case split on one fact of the type, each case by `entIn`. -/
+theorem splitOn0_sound {ι : Val} {S : STy} {ψ h0 : Constr} (hm : h0 ∈ S.facts)
+    (hc : S.splitOn0 ψ h0 = true) (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
+  have h0h : h0.eval ι = true := hh' h0 (List.mem_append_left _ hm)
+  unfold splitOn0 at hc
+  split at hc
+  · obtain ⟨d, hd, hdh⟩ := Constr.disjuncts_holds h0h
+    have hcd := List.all_eq_true.1 hc d hd
+    have hθ := IExpr.upd_pins _ (Constr.pins_sound hdh)
+    have hh2 := pinFacts_hyps hθ hdh hh'
+    have hd' : ((d.subst (d.pins.map fun (x, v) => (x, IExpr.lit v))).fold).eval ι = true := by
+      simp only [Constr.eval_fold, Constr.eval_subst, hθ, hdh]
+    have hψ : ((ψ.subst (d.pins.map fun (x, v) => (x, IExpr.lit v))).fold).holds ι :=
+      entIn_sound hcd hd' hh2
+    simpa only [Constr.holds, Constr.eval_fold, Constr.eval_subst, hθ] using hψ
+  · cases hc
+
+/-- The case split along a recorded path. -/
+theorem splitPath_sound {ι : Val} {S : STy} {ψ h0 : Constr} {hs : List (Option Nat)}
+    (hm : h0 ∈ S.facts) (hc : S.splitPath ψ h0 hs = true) (hh' : ∀ p ∈ S.hyps, p.holds ι) :
+    ψ.holds ι := by
+  have h0h : h0.eval ι = true := hh' h0 (List.mem_append_left _ hm)
+  unfold splitPath at hc
+  split at hc
+  · simp only [Bool.and_eq_true, beq_iff_eq] at hc
+    obtain ⟨hlen, hall⟩ := hc
+    obtain ⟨d, hd, hdh⟩ := Constr.disjuncts_holds h0h
+    obtain ⟨k, hk, hdk⟩ := List.getElem_of_mem hd
+    have hk2 : k < hs.length := hlen ▸ hk
+    have hck := List.all_eq_true.1 hall k (List.mem_range.2 hk)
+    rw [List.getElem?_eq_getElem hk, List.getElem?_eq_getElem hk2, hdk] at hck
+    simp only [Bool.or_eq_true] at hck
+    have hθ := IExpr.upd_pins _ (Constr.pins_sound hdh)
+    have hh2 := pinFacts_hyps hθ hdh hh'
+    have hd' : ((d.subst (d.pins.map fun (x, v) => (x, IExpr.lit v))).fold).eval ι = true := by
+      simp only [Constr.eval_fold, Constr.eval_subst, hθ, hdh]
+    have hψ : ((ψ.subst (d.pins.map fun (x, v) => (x, IExpr.lit v))).fold).holds ι := by
+      rcases hck with hc2 | hc2
+      · exact entIn_sound hc2 hd' hh2
+      · split at hc2
+        · split at hc2
+          · rename_i h2 hj
+            exact splitOn0_sound (splitCands_mem (List.mem_of_getElem? hj)) hc2 hh2
+          · cases hc2
+        · cases hc2
+    simpa only [Constr.holds, Constr.eval_fold, Constr.eval_subst, hθ] using hψ
+  · cases hc
+
+/-- The first level of the case split on one fact of the type. -/
+theorem splitOn_sound {ι : Val} {S : STy} {ψ h0 : Constr} (hm : h0 ∈ S.facts)
+    (hc : S.splitOn ψ h0 = true) (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
+  have h0h : h0.eval ι = true := hh' h0 (List.mem_append_left _ hm)
+  unfold splitOn at hc
+  split at hc
+  · obtain ⟨d, hd, hdh⟩ := Constr.disjuncts_holds h0h
+    have hcd := List.all_eq_true.1 hc d hd
+    simp only [Bool.or_eq_true] at hcd
+    have hθ := IExpr.upd_pins _ (Constr.pins_sound hdh)
+    have hh2 := pinFacts_hyps hθ hdh hh'
+    have hd' : ((d.subst (d.pins.map fun (x, v) => (x, IExpr.lit v))).fold).eval ι = true := by
+      simp only [Constr.eval_fold, Constr.eval_subst, hθ, hdh]
+    have hψ : ((ψ.subst (d.pins.map fun (x, v) => (x, IExpr.lit v))).fold).holds ι := by
+      rcases hcd with hc2 | hc2
+      · exact entIn_sound hc2 hd' hh2
+      · exact entCaseN_sound 1 hc2 hh2
+    simpa only [Constr.holds, Constr.eval_fold, Constr.eval_subst, hθ] using hψ
+  · cases hc
+
 theorem entQ_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entQ ψ = true)
     (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
   unfold entQ at h
@@ -298,7 +391,20 @@ theorem entQ_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entQ ψ = true)
   · have := Constr.conjuncts_holds (ι := ι) (p := ψ.fold) fun c hc =>
       entQ'_sound (List.all_eq_true.1 h c hc) hh'
     simpa only [Constr.holds, Constr.eval_fold] using this
-  · exact entCase_sound h hh'
+  · unfold splitQ at h
+    split at h
+    · exact entCase_sound h hh'
+    · split at h
+      · rename_i h0 hf
+        exact splitOn_sound (splitCands_mem (List.mem_of_find?_eq_some hf))
+          (List.find?_some hf) hh'
+      · cases h
+    · split at h
+      · split at h
+        · rename_i h0 hi
+          exact splitPath_sound (splitCands_mem (List.mem_of_getElem? hi)) h hh'
+        · cases h
+      · cases h
 
 theorem constLin_eval {l : Lin} {ok : Int → Bool} (h : constLin l ok = true) (ι : Val) :
     l.eval ι = l.c ∧ ok l.c = true := by
@@ -386,9 +492,9 @@ theorem ent0_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.ent0 ψ = true)
       exact coversS_sound _ hc (Constr.eval_of_conjunct hcm (hh' p (List.mem_append_left _ hp)))
   · exact entQ_sound h hh'
 
-theorem ent_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.ent ψ = true)
+theorem entFull_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entFull ψ = true)
     (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
-  unfold ent at h
+  unfold entFull at h
   rcases Bool.or_eq_true _ _ ▸ h with h | h
   · exact ent0_sound h hh'
   · split at h
@@ -396,6 +502,16 @@ theorem ent_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.ent ψ = true)
       exact Constr.eval_of_disjunct hd (ent0_sound hh hh')
     · exact Constr.conjuncts_holds fun c hc => ent0_sound (List.all_eq_true.1 h c hc) hh'
     · simp at h
+
+theorem ent_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.ent ψ = true)
+    (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
+  unfold ent at h
+  split at h
+  · exact entFull_sound h hh'
+  · split at h
+    · exact entFull_sound (by assumption) hh'
+    · cases h
+  · exact entFull_sound (Bool.and_eq_true _ _ ▸ h).2 hh'
 theorem entEqMod_sound {ι : Val} {S : STy} {a b : IExpr} (h : S.entEqMod a b = true)
     (hh : ∀ p ∈ S.hyps, p.holds ι) : (a.eval ι - b.eval ι) % 2 ^ 64 = 0 := by
   unfold entEqMod at h

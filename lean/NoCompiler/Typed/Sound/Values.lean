@@ -37,17 +37,35 @@ def Fn.Typed (f : Fn) (T : TokEnv) (a : Val × TokFp) (s0 : State) (k : Nat) (s 
     Inv f T ((f.sig.spec T).perm a s0) s0 (f.entryVal a.1 s0) S s ι F ∧ f.UnitFrame T a s0 F
 
 /-- What a typed state gives at a point with a known type `S`: a valuation under which every
-    register holds its expression, every fact the checker entails holds, and the parameters
-    have the argument's values. -/
+    register holds its expression, every fact the checker entails holds, every hypothesis holds
+    (so any entailment over the same hypotheses holds, whatever the certificate mode), and the
+    parameters have the argument's values. -/
 theorem Fn.Typed.facts (hst : f.StructSpec) {a : Val × TokFp} {s0 : State} {k : Nat} {s : State}
     {S : STy} (ht : f.Typed T a s0 k s) (hS : f.tyAt k = some S) :
     ∃ ι : Val, (∀ p ∈ S.regs, HasInt ι (s.reg p.1) p.2) ∧ (∀ ψ, S.ent ψ = true → ψ.holds ι) ∧
-      (∀ x ∈ f.sig.params, ι x = a.1 x) := by
+      (∀ p ∈ S.hyps, p.holds ι) ∧ (∀ x ∈ f.sig.params, ι x = a.1 x) := by
   obtain ⟨S', ι, F, hS', -, -, hI, -⟩ := ht
   rw [hS] at hS'; cases hS'
-  refine ⟨ι, hI.regs, fun ψ h => hI.ent h, fun x hx => ?_⟩
+  refine ⟨ι, hI.regs, fun ψ h => hI.ent h, hI.hyps, fun x hx => ?_⟩
   rw [hI.prot x (List.mem_append_left _ hx)]
   exact f.entryVal_param hst a.1 s0 hx
+
+/-- At a typed point, a register whose type is an entry register's variable holds that
+    register's entry value (e.g. `ra` until the return). -/
+theorem Fn.Typed.reg_entry (hst : f.StructSpec) {a : Val × TokFp} {s0 : State} {k : Nat} {s : State}
+    {S : STy} (ht : f.Typed T a s0 k s) (hS : f.tyAt k = some S) {r r' : Reg} {x : Var}
+    (hr : S.reg r = some (.var x)) (hx : (r', x) ∈ f.regVar) : s.reg r = s0.reg r' := by
+  obtain ⟨S', ι, F, hS', -, -, hI, -⟩ := ht
+  rw [hS] at hS'; cases hS'
+  have h1 := STy.reg_hasInt hI.regs hr
+  have h2 := hI.prot x (List.mem_append_right _ (List.mem_map.2 ⟨(r', x), hx, rfl⟩))
+  rw [f.entryVal_reg hst a.1 s0 hx] at h2
+  unfold HasInt at h1
+  simp only [IExpr.eval_var] at h1
+  rw [h2] at h1
+  apply BitVec.eq_of_toNat_eq
+  have := (s.reg r).isLt; have := (s0.reg r').isLt
+  omega
 
 /-- One machine step of a leaf function from a typed state: to a typed state, or out of the
     region with `Done` (the return). -/

@@ -132,6 +132,21 @@ structure HCap where
   origin : Option Nat := none
   deriving DecidableEq, Repr
 
+/-- Where the entailments of a point get their certificates (export.md "Certificates"):
+    `search` runs the (untrusted) search; `log tag` also prints each certificate it finds
+    (`CERT tag goal ::: certs`, by `dbgTrace`, for compiled evaluation to record them; the tag
+    names the point, and the types derived from the point's type keep it); `table`
+    runs no search: an entailment holds only if a recorded certificate list for an equal goal
+    passes `Query.check` (so the kernel only checks); the case split runs only for the goals in
+    `splits`, and an entailment `Ψ ⊢ ψ` is attempted at all only for a goal in `oks` (log mode
+    prints `SPLIT tag goal` and `ENT tag goal` for each goal proved). Every mode is sound:
+    `Query.check` is, and false always is. -/
+inductive CertMode where
+  | search
+  | log (tag : Nat)
+  | table (t : List (Constr × Nat × List Nat × List Cert)) (splits : List (Constr × Nat × List (Option Nat)) := []) (oks : List Constr := [])
+  deriving DecidableEq, Repr
+
 /-- The type of a program point: Γ (a register not listed is `int`), Ψ, C. (Φ, the
     frame depth and tokens come with frames and calls.) -/
 structure STy where
@@ -142,6 +157,8 @@ structure STy where
   slots : List (Nat × IExpr) := []
   /-- How far `sp` is below its entry value: 0 or the frame size (S3). -/
   depth : Nat := 0
+  /-- Certificates for this point's entailments (a hint; the types derived from it keep it). -/
+  certs : CertMode := .search
   deriving DecidableEq, Repr
 
 namespace Constr
@@ -270,20 +287,114 @@ def relevant (hs : List Constr) (ψ : Constr) : List Constr :=
   let vs := grow (grow (grow (grow ψ.vars)))
   hs.filter fun p => p.vars.any vs.contains || p.vars.isEmpty
 
+instance : Inhabited CStep := ⟨.hyp 0⟩
+
+/-- The query on the hypotheses at the indices `keep` (a sub-list of its hypotheses: dropping
+    hypotheses is sound). -/
+def selectHyps (q : Query) (keep : List Nat) : Query :=
+  { q with hyps := keep.filterMap (q.hyps[·]?) }
+
+/-- The indices of the hypotheses a query needs, found greedily: each hypothesis is dropped if
+    the search still proves the query without it, the disjunctive ones first (each one dropped
+    halves the branches the certificate check goes through), then the others (each one is
+    linearized again in every branch). Untrusted. -/
+def minimizeHyps (q : Query) : List Nat :=
+  let all := List.range q.hyps.length
+  let isC (i : Nat) : Bool := (q.hyps[i]?.map Constr.isConj).getD true
+  let order := all.filter (fun i => !isC i) ++ all.filter isC
+  order.foldl (fun keep i =>
+    let keep' := keep.erase i
+    match Search.prove (selectHyps q keep') with
+    | some cs => if (selectHyps q keep').check cs then keep' else keep
+    | none => keep) all
+
+/-- The steps a step uses. -/
+def stepDeps : CStep → List Nat
+  | .hyp _ => []
+  | .comb i _ j _ => [i, j]
+  | .tight i => [i]
+
+/-- A certificate cut down to the steps its first contradiction depends on, renumbered (the
+    search derives many lines it does not use; in the kernel, replaying a step costs time
+    linear in the number of steps before it). Untrusted, like every certificate: the log keeps
+    the pruned list only if `Query.check` accepts it. -/
+def pruneCert (hs : List Lin) (c : Cert) : Cert :=
+  match Cert.run hs [] c with
+  | none => c
+  | some ds =>
+    match ds.findIdx? Cert.contra with
+    | none => c
+    | some t =>
+      let arr := c.toArray
+      let need := (List.range (t + 1)).reverse.foldl
+        (fun (nd : Array Bool) k =>
+          if nd[k]! then (stepDeps arr[k]!).foldl (fun nd d => nd.set! d true) nd else nd)
+        ((Array.replicate (t + 1) false).set! t true)
+      let idx := ((List.range (t + 1)).foldl
+        (fun (p : Nat × Array Nat) k =>
+          if need[k]! then (p.1 + 1, p.2.push p.1) else (p.1, p.2.push 0)) (0, #[])).2
+      (List.range (t + 1)).filterMap fun k =>
+        if need[k]! then
+          some (match arr[k]! with
+            | .hyp i => .hyp i
+            | .comb i a j b => .comb idx[i]! a idx[j]! b
+            | .tight i => .tight idx[i]!)
+        else none
+
+/-- Each certificate of a query pruned against its branch (kept as is if pruning breaks it). -/
+def pruneCerts (q : Query) (cs : List Cert) : List Cert :=
+  let pruned := (q.branches.zip cs).map fun (hs, c) => pruneCert hs c
+  if pruned.length == cs.length && q.check pruned then pruned else cs
+
+/-- Certificates as Lean syntax for a `CertMode.table` (the log's compact form: a certificate
+    list of a large query is over a million characters in `repr`). -/
+def certsStr (cs : List Cert) : String :=
+  let step : CStep → String
+    | .hyp i => s!".hyp {i}"
+    | .comb i a j b => s!".comb {i} {a} {j} {b}"
+    | .tight i => s!".tight {i}"
+  "[" ++ ", ".intercalate (cs.map fun c => "[" ++ ", ".intercalate (c.map step) ++ "]") ++ "]"
+
+/-- One query under the point's certificate mode (`CertMode`): search, search and log, or
+    check a recorded certificate list (no search). -/
+def decideQ (m : CertMode) (q : Query) : Bool :=
+  match m with
+  | .search => q.decide
+  | .log tag =>
+    match Search.prove q with
+    | some cs =>
+      if q.check cs then
+        let keep := minimizeHyps q
+        let q' := selectHyps q keep
+        let cs' := match Search.prove q' with
+          | some c => if q'.check c then c else cs
+          | none => cs
+        let (keep, q', cs') := if q'.check cs' then (keep, q', cs')
+          else (List.range q.hyps.length, selectHyps q (List.range q.hyps.length), cs)
+        dbgTrace s!"CERT {tag} {q.hyps.length} {(repr q.goal).pretty 1000000000} ::: {keep} ::: {certsStr (pruneCerts q' cs')}"
+          fun _ => true
+      else false
+    | none => false
+  -- an entry is replayed only on the query it was found for (same goal, same number of
+  -- hypotheses): replaying it against another query's hypotheses can be very costly
+  -- and on the hypotheses it records (`keep`, found by `minimizeHyps`)
+  | .table t _ _ =>
+    t.any fun (g, n, keep, cs) => n == q.hyps.length && g == q.goal && (selectHyps q keep).check cs
+
 /-- The hypotheses without case analysis first (no `∨`, `¬` only of `≤` and `∣`), then all:
     a goal that follows from the plain facts is not drowned in the branches of unrelated
     disjunctions (a bit table's facts multiply every branch). Dropping hypotheses is sound. -/
-def decide2 (hs : List Constr) (ψ : Constr) : Bool :=
-  (Query.mk (hs.filter Constr.isConj) ψ).decide || (Query.mk hs ψ).decide
+def decide2 (m : CertMode) (hs : List Constr) (ψ : Constr) : Bool :=
+  decideQ m (Query.mk (hs.filter Constr.isConj) ψ) || decideQ m (Query.mk hs ψ)
 
 /-- `Ψ ⊢ ψ` by the decision procedure. -/
 def entQ' (S : STy) (ψ : Constr) : Bool :=
   let hs := relevant S.hyps ψ
   match ψ with
   | .tt => true
-  | .eq a b => a.same b || decide2 hs ψ
-  | .dvd _ e => e.same (.lit 0) || decide2 hs ψ
-  | _ => decide2 hs ψ
+  | .eq a b => a.same b || decide2 S.certs hs ψ
+  | .dvd _ e => e.same (.lit 0) || decide2 S.certs hs ψ
+  | _ => decide2 S.certs hs ψ
 
 /-- One case: each conjunct of the goal as `c ∨ ¬d` (the disjunct's variables stay in the
     goal, so the hypotheses that refute an impossible case, goal `ff`, are not pruned). -/
@@ -316,14 +427,92 @@ def entCaseN : Nat → STy → Constr → Bool
       S'.entIn d' ψ' || entCaseN n S' ψ'
     | _ => false
 
+/-- The facts `entCaseN` splits on, in its order. -/
+def splitCands (S : STy) (ψ : Constr) : List Constr :=
+  if ψ.vars.isEmpty then S.facts else relevant S.facts ψ
+
+/-- `entCaseN 1` on one fact `h`: by cases on its disjuncts, each case by `entIn` (no further
+    split). -/
+def splitOn0 (S : STy) (ψ h : Constr) : Bool :=
+  match h with
+  | .or _ _ => h.disjuncts.all fun d =>
+    let θ : Subst := d.pins.map fun (x, v) => (x, .lit v)
+    (S.pinFacts θ d).entIn ((d.subst θ).fold) ((ψ.subst θ).fold)
+  | _ => false
+
+/-- `entCaseN 2` along a recorded path: the first level on `h`, and for its k-th disjunct
+    either `entIn` (`hs[k] = none`) or the second level on the candidate fact `hs[k] = some j`. -/
+def splitPath (S : STy) (ψ h : Constr) (hs : List (Option Nat)) : Bool :=
+  match h with
+  | .or _ _ =>
+    let ds := h.disjuncts
+    ds.length == hs.length && (List.range ds.length).all fun k =>
+      match ds[k]?, hs[k]? with
+      | some d, some o =>
+        let θ : Subst := d.pins.map fun (x, v) => (x, .lit v)
+        let S' := S.pinFacts θ d
+        let ψ' := (ψ.subst θ).fold
+        S'.entIn ((d.subst θ).fold) ψ' ||
+          (match o with
+           | some j => match (S'.splitCands ψ')[j]? with
+             | some h2 => S'.splitOn0 ψ' h2
+             | none => false
+           | none => false)
+      | _, _ => false
+  | _ => false
+
+/-- The path `splitPath` needs for `h`: per disjunct, `none` when `entIn` proves the case, else
+    the first second-level candidate that does (untrusted; table mode re-checks it). -/
+def splitHint (S : STy) (ψ h : Constr) : List (Option Nat) :=
+  h.disjuncts.map fun d =>
+    let θ : Subst := d.pins.map fun (x, v) => (x, .lit v)
+    let S' := S.pinFacts θ d
+    let ψ' := (ψ.subst θ).fold
+    if S'.entIn ((d.subst θ).fold) ψ' then none
+    else (S'.splitCands ψ').findIdx? (S'.splitOn0 ψ')
+
+/-- `entCaseN 2`'s first level on one fact `h` (its second level searches as before). -/
+def splitOn (S : STy) (ψ h : Constr) : Bool :=
+  match h with
+  | .or _ _ => h.disjuncts.all fun d =>
+    let θ : Subst := d.pins.map fun (x, v) => (x, .lit v)
+    let S' := S.pinFacts θ d
+    let d' := (d.subst θ).fold
+    let ψ' := (ψ.subst θ).fold
+    S'.entIn d' ψ' || entCaseN 1 S' ψ'
+  | _ => false
+
 def entCase (S : STy) (ψ : Constr) : Bool := entCaseN 2 S ψ
+
+/-- The case split under the point's certificate mode: in `table` mode only for a goal it
+    proved when the certificates were recorded (most tries fail, and each one rebuilds the
+    facts: cheap compiled, the bulk of a kernel check). -/
+def splitQ (S : STy) (ψ : Constr) : Bool :=
+  match S.certs with
+  | .search => S.entCase ψ
+  | .log tag =>
+    -- the first-level fact that works, by its index among the candidates (`entCase` is `any`
+    -- over them, so the same goals succeed)
+    match (S.splitCands ψ).find? (S.splitOn ψ) with
+    | some h =>
+      dbgTrace s!"SPLIT {tag} {(S.splitCands ψ).idxOf h} {S.splitHint ψ h} {(repr ψ).pretty 1000000000}"
+        fun _ => true
+    | none => false
+  -- only the recorded goal, and only on the recorded fact
+  | .table _ sp _ =>
+    match sp.find? (·.1 == ψ) with
+    | some (_, i, hs) =>
+      match (S.splitCands ψ)[i]? with
+      | some h => S.splitPath ψ h hs
+      | none => false
+    | none => false
 
 /-- `Ψ ⊢ ψ` by the decision procedure, after folding the goal's constant atoms (a goal like
     an invariant `k = 0 ∨ (k = 1 ∧ …) ∨ …` at `k := 0` is `tt`; unfolded, its negation's
     normal form has thousands of branches). -/
 def entQ (S : STy) (ψ : Constr) : Bool :=
   -- a conjunction one conjunct at a time: its negation would double every branch
-  (ψ.fold.conjuncts.all fun c => S.entQ' c) || S.entCase ψ
+  (ψ.fold.conjuncts.all fun c => S.entQ' c) || S.splitQ ψ
 
 /-- A linear form that is a constant (no variables) satisfying `ok`. -/
 def constLin (l : Lin) (ok : Int → Bool) : Bool := l.t.isEmpty && ok l.c
@@ -362,13 +551,25 @@ def ent0 (S : STy) (ψ : Constr) : Bool :=
 
 /-- `Ψ ⊢ ψ`; a disjunctive goal also one disjunct at a time (a case table whose live row is
     entailed conjunct by conjunct, while the whole table's negation is too large to refute). -/
-def ent (S : STy) (ψ : Constr) : Bool :=
+def entFull (S : STy) (ψ : Constr) : Bool :=
   S.ent0 ψ || (match ψ with
     | .or _ _ => ψ.disjuncts.any S.ent0
     -- and a conjunction conjunct by conjunct, each through the fast path first (a bound
     -- `0 ≤ x ∧ x ≤ 2^64 − 1` against the facts `0 ≤ x`, `x < 2^64`)
     | .and _ _ => ψ.conjuncts.all S.ent0
     | _ => false)
+
+/-- `Ψ ⊢ ψ` under the point's certificate mode: in `table` mode only for a goal proved when
+    the certificates were recorded (`oks`). The checker asks many entailments that fail (its
+    heuristics try them), and each one scans and normalizes every fact: cheap compiled, the
+    bulk of a kernel check. -/
+def ent (S : STy) (ψ : Constr) : Bool :=
+  match S.certs with
+  | .search => S.entFull ψ
+  | .log tag =>
+    if S.entFull ψ then dbgTrace s!"ENT {tag} {(repr ψ).pretty 1000000000}" fun _ => true
+    else false
+  | .table _ _ oks => oks.contains ψ && S.entFull ψ
 
 /-- `a ≡ b (mod 2^64)` under Ψ. -/
 def entEqMod (S : STy) (a b : IExpr) : Bool := a.same b || S.ent (Constr.eqMod a b)
@@ -548,6 +749,8 @@ structure Fn where
   /-- Bit counts `k` for which an `xor` result also gets `2^k ∣ x ⇔ 2^k ∣ a − b` (the
       xor-then-mask idiom, I23). A hint from the record; sound for any list (U). -/
   xorBits : List Nat := []
+  /-- Certificates for the entry edge's entailments (`initTy`'s `CertMode`). -/
+  entryCerts : CertMode := .search
   /-- The functions it calls: entry address and signature (each must meet it; `check_sound`'s
       hypotheses). -/
   callees : List (Word × Sig) := []
@@ -598,6 +801,7 @@ def initTy : STy where
   -- borrowed and taken capabilities; the origin is the index in `Sig.entryCaps`
   caps := (f.sig.entryCaps.zipIdx.map fun (c, i) =>
     ({ id := f.entryId i, cap := c, origin := some i } : HCap))
+  certs := f.entryCerts
 
 /-! ### Edges -/
 

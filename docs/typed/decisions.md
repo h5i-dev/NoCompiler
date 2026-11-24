@@ -361,6 +361,19 @@ function.
   `borrow b ↦ bytes[size ⋆ nmemb] ro`. Cost: Ψ stays linear (the atom is a variable); the
   matching rule must keep atoms identical across the call.
 - **P6 Writable static data in signatures beyond `_start`** is in (I32); no proposal.
+- **P9 Theorem D relative to callee contracts in the ledger** (U, 2026-11-24; the default taken
+  until the user decides). `Prog.check_sound` already proves theorem D for an environment of
+  external functions assumed to meet their signatures. The ledger's `--prove` today only tries
+  closed programs, so a file whose functions call one it only declares (musl bzero → memset,
+  bcmp → memcmp, strncpy → __stpncpy, strnlen → memchr) gets no proof. Proposal: with `--image`,
+  each declared-only callee goes into the module's environment as `(address, sig_g, domain)`. The
+  domain is its code range in the image (the symbol's size, or one word for a stub), and the
+  module proves `prog_meets_rel : (∀ e ∈ ext, Meets code …) → ∀ e ∈ Prog.env ext progc, Meets code …`
+  (no new Lean proof). The ledger records such functions as `proved_assuming` with the assumed
+  callees listed: weaker than `proved`, and it says so. A later `link --prove` (P7 step 3)
+  discharges the assumption with the callee's own proof. The default taken: implement it, with
+  the new status kept distinct from `proved`.
+  Update: `link --prove` (P7 step 3, also taken as the default; export.md "Linked programs") does that: musl bzero.s with memset.s is proved outright.
 - **P8 Splitting and joining a held capability** (T, 2026-11-24; the design note's "足す順" lists it
   as the cheapest v1 addition; needs the user's choice). Annotations without instructions:
   `split κ at k` turns a held `b ↦ bytes[n] m` into `b ↦ bytes[k] m` and `b+k ↦ bytes[n−k] m`

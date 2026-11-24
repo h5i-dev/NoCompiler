@@ -113,6 +113,7 @@ def refute (hs : List Lin) (fuel : Nat := 40) (limit : Nat := 400) : Option Cert
     branch it does not refute (e.g. many variables with large divisibility moduli), so easy
     queries cost no more. -/
 def prove (q : Query) : Option (List Cert) :=
+  if ((Constr.all q.hyps).and (.not q.goal)).dnfSize true > 256 then none else
   let bs := q.branches
   if bs.length > 256 then none else bs.mapM fun b =>
     match refute b with

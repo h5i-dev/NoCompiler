@@ -566,6 +566,36 @@ pub fn callee_first(prog: &Program, rep: &Report) -> Vec<String> {
 
 /// Every callee of every exported function is exported too: theorem D needs no external
 /// functions (`Prog.check code [] prog`).
+/// The callees of the exported functions that are not exported themselves (declared by
+/// signature only, P9), when each has a signature and an address in the image; `None` when one
+/// does not (theorem D is then not stated). Empty for a closed program.
+pub fn externals(
+    prog: &Program,
+    ck: &Checker,
+    rep: &Report,
+    image: &BTreeMap<String, u64>,
+) -> Option<Vec<String>> {
+    let ex: Vec<&str> = rep
+        .funcs
+        .iter()
+        .filter(|f| f.export.is_some())
+        .map(|f| f.name.as_str())
+        .collect();
+    let mut out: Vec<String> = Vec::new();
+    for n in &ex {
+        for c in callees_of(prog, n) {
+            if ex.contains(&c.as_str()) || out.contains(&c) {
+                continue;
+            }
+            if !ck.sigs.contains_key(&c) || !image.contains_key(&c) {
+                return None;
+            }
+            out.push(c);
+        }
+    }
+    Some(out)
+}
+
 pub fn closed(prog: &Program, rep: &Report) -> bool {
     let ex: Vec<&str> = rep
         .funcs
@@ -590,7 +620,7 @@ pub fn to_lean_full(
     image: Option<&BTreeMap<String, u64>>,
     code: Option<&(u64, Vec<u32>)>,
 ) -> String {
-    to_lean_text(prog, ck, rep, module, image, code, code)
+    to_lean_text(prog, ck, rep, module, image, code, code, None)
 }
 
 /// The addresses of the data symbols the linked image's symbol table does not name
@@ -648,6 +678,7 @@ fn recover_sym_addrs(
 
 /// `to_lean_full` with the linked `.text` given separately (`text`, for the addresses of
 /// local data symbols) from whether the program's theorem is emitted (`code`).
+#[allow(clippy::too_many_arguments)]
 pub fn to_lean_text(
     prog: &Program,
     ck: &Checker,
@@ -656,6 +687,7 @@ pub fn to_lean_text(
     image: Option<&BTreeMap<String, u64>>,
     code: Option<&(u64, Vec<u32>)>,
     text: Option<&(u64, Vec<u32>)>,
+    sizes: Option<&BTreeMap<String, u64>>,
 ) -> String {
     let recovered = match (image, text) {
         (Some(img), Some(t)) => Some(recover_sym_addrs(prog, rep, img, t)),
@@ -680,7 +712,9 @@ pub fn to_lean_text(
         o,
         "-- re-checks everything against the decoded image. Do not edit."
     );
-    let with_thm = image.is_some() && code.is_some() && closed(prog, rep);
+    // theorem D (or its relative form, P9) needs Sound.Prog
+    let with_thm =
+        code.is_some() && image.is_some_and(|img| externals(prog, ck, rep, img).is_some());
     let _ = writeln!(
         o,
         "import {}\n",
@@ -1001,14 +1035,15 @@ pub fn to_lean_text(
     // theorem D (T's ask 8): the exported functions, each after the ones it calls (S5); none
     // when nothing was checked (an empty program is trivially well-typed and says nothing)
     let order = callee_first(prog, rep);
-    if image.is_some() && !order.is_empty() {
+    if let (Some(img), false) = (image, order.is_empty()) {
         let names: Vec<String> = order
             .iter()
             .map(|n| format!("fn_{}", lean_ident(n).trim_matches(['«', '»'])))
             .collect();
         let _ = writeln!(o, "/-- Callee-first (S5): `Prog.check code [] prog`. -/");
         let _ = writeln!(o, "def prog : List Fn := [{}]\n", names.join(", "));
-        if let (Some((base, words)), true) = (code, closed(prog, rep)) {
+        let ext = externals(prog, ck, rep, img);
+        if let (Some((base, words)), Some(ext)) = (code, ext) {
             // the ledger's evidence (theorem D): the linked image and the program's theorem
             let ws: Vec<String> = words.iter().map(|w| format!("0x{w:08x}#32")).collect();
             let _ = writeln!(o, "/-- The linked `.text`. -/");
@@ -1017,6 +1052,31 @@ pub fn to_lean_text(
                 "def code : Code := ⟨0x{base:x}#64, #[{}]⟩\n",
                 ws.join(", ")
             );
+            // the external callees (P9): each at its address, with its signature and its code
+            // range in the image (its symbol's size, at least one word)
+            let entries: Vec<String> = ext
+                .iter()
+                .map(|g| {
+                    let a = img[g];
+                    let size = sizes.and_then(|z| z.get(g)).copied().unwrap_or(0).max(4);
+                    format!(
+                        "(0x{a:x}#64, sig_{}, [(0x{a:x}#64, {size})])",
+                        lean_ident(g).trim_matches(['«', '»'])
+                    )
+                })
+                .collect();
+            let env = if ext.is_empty() {
+                "[]".to_string()
+            } else {
+                "ext".to_string()
+            };
+            if !ext.is_empty() {
+                let _ = writeln!(
+                    o,
+                    "/-- The callees declared here by signature only (P9), assumed to meet them. -/\ndef ext : Env := [{}]\n",
+                    entries.join(", ")
+                );
+            }
             // one kernel check per function (each needs a few GB), then the program's
             for n in &names {
                 let _ = writeln!(
@@ -1031,9 +1091,17 @@ pub fn to_lean_text(
                 .collect();
             let _ = writeln!(
                 o,
-                "set_option maxRecDepth 100000 in\n/-- Theorem D's check, by the kernel. -/\ntheorem prog_checked : Prog.check code [] prog = true := by\n  simp only [prog, Prog.check, {}, Bool.true_and]\n  decide +kernel\n",
+                "set_option maxRecDepth 100000 in\n/-- Theorem D's check, by the kernel. -/\ntheorem prog_checked : Prog.check code {env} prog = true := by\n  simp only [prog, Prog.check, {}, Bool.true_and]\n  decide +kernel\n",
                 chks.join(", ")
             );
+            if !ext.is_empty() {
+                let _ = writeln!(
+                    o,
+                    "/-- Every function of the program meets its signature, if the external callees meet theirs (P9). -/\ntheorem prog_meets_rel (T : TokEnv) (hE : ∀ e ∈ ext, Meets code e.2.2 e.1 T e.2.1) :\n    ∀ e ∈ Prog.env ext prog, Meets code e.2.2 e.1 T e.2.1 :=\n  Prog.check_sound prog ext hE prog_checked\n"
+                );
+                let _ = writeln!(o, "end {module}");
+                return o;
+            }
             let _ = writeln!(
                 o,
                 "/-- Every function of the program meets its signature (⟦σ⟧, total), for every meaning of tokens. -/"
@@ -1046,6 +1114,113 @@ pub fn to_lean_text(
     }
     let _ = writeln!(o, "end {module}");
     o
+}
+
+/// `link --prove` (decisions.md P7 step 3, the default taken): one Lean module over several
+/// files, for theorem D of the whole linked program. Each file's record goes in its own
+/// namespace (without `code`, `ext` or its own `prog`); then the namespaces are opened, the
+/// linked `.text` is `code`, and `prog` lists every exported function callee-first across files.
+/// A callee declared in one file and defined in another is the same entry in `Prog.check`'s
+/// environment: its signatures must be equal, which the canonical form (P7 steps 1, 2) gives.
+/// `Err` when a file is rejected or a callee is defined nowhere.
+#[allow(clippy::type_complexity)]
+pub fn to_lean_linked(
+    files: &[(String, Program, Checker, Report)],
+    image: &BTreeMap<String, u64>,
+    text: &(u64, Vec<u32>),
+    sizes: Option<&BTreeMap<String, u64>>,
+) -> Result<String, String> {
+    let mut bodies = Vec::new();
+    let mut modules = Vec::new();
+    // (name, callees) of every exported function, each file's callee-first order
+    let mut fns: Vec<(String, Vec<String>)> = Vec::new();
+    for (path, prog, ck, rep) in files {
+        if !rep.ok() {
+            return Err(format!("{path}: rejected by the checker"));
+        }
+        let stem = std::path::Path::new(path)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("f");
+        let id: String = stem
+            .chars()
+            .map(|c| if c.is_alphanumeric() { c } else { '_' })
+            .collect();
+        let module = format!("NoCompiler.Typed.Export.{id}");
+        let t = to_lean_text(prog, ck, rep, &module, Some(image), None, Some(text), sizes);
+        // drop the import (one for the whole module) and the file's own `prog`
+        let mut keep = Vec::new();
+        let mut skip_prog = false;
+        for line in t.lines() {
+            if line.starts_with("import ") {
+                continue;
+            }
+            if line.starts_with("/-- Callee-first (S5)") {
+                skip_prog = true;
+                continue;
+            }
+            if skip_prog && line.starts_with("def prog : List Fn") {
+                skip_prog = false;
+                continue;
+            }
+            keep.push(line);
+        }
+        bodies.push(keep.join("\n"));
+        modules.push(module);
+        for n in callee_first(prog, rep) {
+            fns.push((n.clone(), callees_in(prog, &n)));
+        }
+    }
+    // callee-first across files
+    let defined: Vec<String> = fns.iter().map(|(n, _)| n.clone()).collect();
+    let mut order: Vec<String> = Vec::new();
+    while order.len() < fns.len() {
+        let before = order.len();
+        for (n, cs) in &fns {
+            if order.contains(n) {
+                continue;
+            }
+            if let Some(c) = cs.iter().find(|c| !defined.contains(c)) {
+                return Err(format!("{n} calls {c}, which no file defines"));
+            }
+            if cs.iter().all(|c| order.contains(c) || c == n) {
+                order.push(n.clone());
+            }
+        }
+        if order.len() == before {
+            return Err("the calls between the files form a cycle (S5)".to_string());
+        }
+    }
+    let mut o = String::new();
+    let _ = writeln!(
+        o,
+        "-- Generated by nocompiler-typed link --prove (docs/typed/export.md \"Linked programs\").\nimport NoCompiler.Typed.Sound.Prog\n"
+    );
+    for b in &bodies {
+        let _ = writeln!(o, "{b}\n");
+    }
+    let _ = writeln!(
+        o,
+        "open {}\nopen NoCompiler NoCompiler.Typed\n",
+        modules.join(" ")
+    );
+    let (base, words) = text;
+    let ws: Vec<String> = words.iter().map(|w| format!("0x{w:08x}#32")).collect();
+    let _ = writeln!(
+        o,
+        "/-- The linked `.text`. -/\ndef code : Code := ⟨0x{base:x}#64, #[{}]⟩\n",
+        ws.join(", ")
+    );
+    let names: Vec<String> = order
+        .iter()
+        .map(|n| format!("fn_{}", lean_ident(n).trim_matches(['«', '»'])))
+        .collect();
+    let _ = writeln!(
+        o,
+        "/-- Every function of the linked files, callee-first (S5). -/\ndef prog : List Fn := [{}]\n",
+        names.join(", ")
+    );
+    Ok(o)
 }
 
 // ---------------------------------------------------------------- JSON

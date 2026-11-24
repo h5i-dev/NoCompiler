@@ -33,13 +33,13 @@ def fn : Fn where
   fresh := 30
   frame := some { size := 32, slots := [24], addr := [(0, 16)] }
   types := [
-    (0, ⟨kept, facts, [], [], 0⟩),
-    (1, ⟨low, facts, [buf], [], 32⟩),
-    (2, ⟨low, facts, [buf], [(24, .var 10)], 32⟩),
-    (3, ⟨low, facts, [buf], [(24, .var 10)], 32⟩),
-    (4, ⟨(10, .var 40) :: low, facts, [buf], [(24, .var 10)], 32⟩),
-    (5, ⟨(10, .var 40) :: low, facts, [buf], [(24, .var 10)], 32⟩),
-    (6, ⟨(10, .var 40) :: kept, facts, [], [], 0⟩)]
+    (0, ⟨kept, facts, [], [], 0, .search⟩),
+    (1, ⟨low, facts, [buf], [], 32, .search⟩),
+    (2, ⟨low, facts, [buf], [(24, .var 10)], 32, .search⟩),
+    (3, ⟨low, facts, [buf], [(24, .var 10)], 32, .search⟩),
+    (4, ⟨(10, .var 40) :: low, facts, [buf], [(24, .var 10)], 32, .search⟩),
+    (5, ⟨(10, .var 40) :: low, facts, [buf], [(24, .var 10)], 32, .search⟩),
+    (6, ⟨(10, .var 40) :: kept, facts, [], [], 0, .search⟩)]
 
 /-- Accepted, so it meets its signature. -/
 theorem fn_checked : fn.check code = true := by decide

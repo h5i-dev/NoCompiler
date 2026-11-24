@@ -610,6 +610,8 @@ Run: `lean/scripts/corpus.py --link --why tests/typed/corpus/musl`. Each file is
 | 998ae0df (v0, unlinked) | 28 | 9 | 13 | 6 |
 | 2a00c908 (linked, 2026-11-24T03:05Z, 4 min) | 26 (memccpy, memccpy-ic: a Rust regression from 3ee59fd6's xor facts, fixed below) | 24 | 2 (memccpy-x, stpncpy) | 0 |
 | b5ff791c (linked, 2026-11-24T03:37Z, 9 min, Lean ≤ 4 GB per file) | 28 | 26 | 0 | 2 (memccpy, memccpy-ic: out of memory in the case split, T) |
+| c46c2c2a (linked; memccpy and memccpy-ic re-run, Lean ≤ 4 GB per file) | 28 | **28** | 0 | 0 |
+| 6fa83af5 (linked, full run with the note trial, 2026-11-24T09:56Z, 7 min) | 28 (+6 note trial) | 28 (+6) | 0 | 0 |
 
 What closed the gap, by cause:
 * call/tail pairs at unlinked addresses: the harness links (callee stubs);
@@ -636,19 +638,19 @@ Each function Lean accepts on the linked image, as a theorem: `theorem chk_f : f
 | bzero.s | `bzero` | proved | 1.9 | 0.6 |
 | div.s | `div` | proved | 3.3 | 0.8 |
 | ffsl.s | `ffsl` | proved | 11.1 | 1.7 |
-| l64a.s | `l64a` | out of memory (8 GB cap; oom-kill in the journal) | 64.5 | - |
+| l64a.s | `l64a` | proved (certificates, U, 2026-11-24T06:39Z; first run: out of memory) | 22 | 1.8 |
 | labs.s | `labs` | proved | 3.6 | 0.7 |
-| memccpy-x.s | `memccpy` | out of memory (8 GB cap; oom-kill in the journal) | 76.9 | - |
+| memccpy-x.s | `memccpy` | proved (certificates, U, 2026-11-24T06:39Z; first run: out of memory) | 219 | 7.8 |
 | memcmp.s | `memcmp` | proved | 7.6 | 1.2 |
-| memcpy-x.s | `memcpy` | out of memory (8 GB cap; oom-kill in the journal) | 100.4 | - |
-| memcpy.s | `memcpy` | out of memory (8 GB cap; oom-kill in the journal) | 113.1 | - |
-| memmove.s | `memmove` | out of memory (8 GB cap; oom-kill in the journal) | 83.7 | - |
+| memcpy-x.s | `memcpy` | proved (certificates, U, 2026-11-24T06:39Z; first run: out of memory) | 501 | 3.8 |
+| memcpy.s | `memcpy` | proved (certificates, U, 2026-11-24T06:39Z; first run: out of memory) | 635 | 4.7 |
+| memmove.s | `memmove` | proved (certificates, U, 2026-11-24T06:39Z; first run: out of memory) | 176 | 2.3 |
 | memrchr.s | `__memrchr` | proved | 5.9 | 0.9 |
-| memset.s | `memset` | out of memory (8 GB cap; oom-kill in the journal) | 73.1 | - |
-| stpncpy-x.s | `__stpncpy` | out of memory (8 GB cap; oom-kill in the journal) | 91.3 | - |
-| stpncpy.s | `__stpncpy` | out of memory (8 GB cap; oom-kill in the journal) | 92.6 | - |
+| memset.s | `memset` | proved (certificates, U, 2026-11-24T06:39Z; first run: out of memory) | 89 | 1.2 |
+| stpncpy-x.s | `__stpncpy` | proved (certificates, U, 2026-11-24T06:39Z; first run: out of memory) | 132 | 3.3 |
+| stpncpy.s | `__stpncpy` | proved (certificates, U, 2026-11-24T06:39Z; first run: out of memory) | 270 | 7.8 |
 | strncmp-x.s | `strncmp` | proved | 15.6 | 2.1 |
-| strncmp.s | `strncmp` | out of memory (8 GB cap; oom-kill in the journal) | 76.2 | - |
+| strncmp.s | `strncmp` | proved (certificates, U, 2026-11-24T06:39Z; first run: out of memory) | 28 | 1.6 |
 | strncpy.s | `strncpy` | proved | 5.2 | 0.8 |
 | strnlen.s | `strnlen` | proved | 6.3 | 1.0 |
 | swab.s | `swab` | proved | 7.4 | 1.2 |
@@ -657,13 +659,75 @@ Each function Lean accepts on the linked image, as a theorem: `theorem chk_f : f
 | wmemcpy.s | `wmemcpy` | proved | 7.6 | 1.3 |
 | wmemset.s | `wmemset` | proved | 4.7 | 0.9 |
 
-17 of 26 proved.
+26 of 26 proved (17 by the search check, 9 by U's certificate-carrying check).
 
-The nine out-of-memory runs are not timeouts or heartbeat limits: each Lean process was killed
-by its scope's 8 GB limit after 64–113 s (one `oom-kill` per run in the user journal). They are
-the functions with the largest records, where the kernel evaluates the Presburger search
-itself. They will be re-run with U's certificate-carrying check (the kernel checks recorded
-certificates instead of searching). Raw results: `docs/typed/musl-kernel.jsonl`.
+The nine first runs that failed were out of memory, not timeouts or heartbeat limits: each Lean process
+was killed by its scope's 8 GB limit after 64–113 s (one `oom-kill` per run in the user journal),
+on the functions with the largest records, where the kernel ran the Presburger search itself.
+U's certificate-carrying check (the kernel checks recorded certificates, per point) proves all
+nine under the same 8 GB cap; memccpy-x and stpncpy peak at 7.8 GB, close to it. Raw results:
+`docs/typed/musl-kernel.jsonl` (search) and `nc-briefs/typed/musl-linked/kernel-cert.jsonl`
+(certificates).
+
+### Kernel checks with certificates (2026-11-24, agent U)
+
+`theorem chk_<f> : fn.check code = true := by decide +kernel` on the linked image, one Lean process at a time under an 8 GB cap.
+* Search in the kernel (T, f2cb56f1): 17 of the 26 Lean accepts are proved (≤ 16 s, ≤ 2.2 GB, standard axioms). l64a, memccpy-x, memcpy-x, memcpy, memmove, memset, stpncpy-x, stpncpy and strncmp hit the 8 GB cap after 64-115 s.
+* Certificates (U, export.md "Certificates"), whole-function theorem: l64a is **proved** in 40.8 s / 5.2 GB with standard axioms. memset, memccpy-x and memcpy-x still hit the cap: without the search, the rest of the checker on the whole function is still too big for one declaration.
+* Certificates and one theorem per point (`certgen.py --split`): memset is **proved** in 89 s at 1.2 GB peak, with standard axioms (41d6baf6). Bisecting memset's point by point found five causes of the kernel’s memory use. All are fixed in general (export.md "Certificates"):
+  1. the search itself;
+  2. entailments and case splits that fail by design (table mode attempts only the recorded ones);
+  3. certificates of over a thousand steps, which `Cert.run` replays quadratically (pruned to the steps the contradiction uses);
+  4. a certificate replayed against the other query of `decide2` (entries carry the query's hypothesis count).
+  5. unneeded disjunctive hypotheses that multiply the branches (`minimizeHyps`; memcpy had a 128-branch query).
+
+| file | function | kernel-checked (certificates, per point) | time (s) | peak memory (GB) |
+|------|----------|------------------------------------------|----------|------------------|
+| memset.s | `memset` | proved | 89 | 1.2 |
+| memcpy.s | `memcpy` | proved | 635 | 4.7 |
+| l64a.s | `l64a` | proved | 22 | 1.8 |
+| memccpy-x.s | `memccpy` | proved | 157 (219 before the conjunctive minimization) | 4.0 (was 7.8) |
+| memcpy-x.s | `memcpy` | proved | 501 | 3.8 |
+| memmove.s | `memmove` | proved | 176 | 2.3 |
+| stpncpy-x.s | `__stpncpy` | proved | 132 | 3.3 |
+| stpncpy.s | `__stpncpy` | proved | 224 (270 before the conjunctive minimization) | 5.7 (was 7.8) |
+| strncmp.s | `strncmp` | proved | 28 | 1.6 |
+| memccpy.s | `memccpy` | proved (with split paths) | 231 | 6.0 |
+| memccpy-ic.s | `memccpy` | proved (with split paths) | 180 | 5.5 |
+
+  With T's 17 (search in the kernel), all 28 functions Lean accepts on the linked image (all 28 the Rust checker accepts) are kernel-checked, with standard axioms only. memccpy and memccpy-ic needed one more fix: a recorded case split carries its whole path, so the kernel searches no split (memccpy's back edge alone ran out of 8 GB before). The ledger's `check FILE.s --image … --prove --certs` takes the same path for theorem D. On memcpy.s it proved `prog_meets` with standard axioms in 653 s at 4.1 GB, and the ledger records memcpy as `proved`. The note trial is proved the same way: sum.s (27 s), cobs.s (59 s, 1.4 GB) and hello.s (13 s, 0.7 GB), all with standard axioms. With the conjunctive minimization the largest peak is 5.7 GB (stpncpy); memccpy-x and stpncpy were at 7.8 GB before it. Results per function: `nc-briefs/typed/musl-linked/kernel-cert.jsonl`.
+
+### Functional correctness: memcpy (2026-11-24, agent T)
+
+On top of the type check, musl memcpy (memcpy.s, linked image) is proved to copy:
+`memcpy_verified` (generated module `nc-briefs/typed/musl-linked/kernel/memcpy_verified.lean`,
+`lean/scripts/memcpyfull.py`): under memcpy's signature it returns with the signature's post and
+`d[0, n)` = entry `s[0, n)`, every other byte as on entry. No hypotheses: the type check is U's
+`chk_memcpy` (certificates), the copy's table check `tab_ok` (`Examples/Musl/MemcpyTabOk.lean`,
+145 s / 5.0 GB). Result (2026-11-24T07:31Z): proved, 778 s, 5.0 GB peak (8 GB cap), standard axioms; re-proved 2026-11-24T08:15Z after the
+element-width change, 579 s, 4.0 GB. Details and line counts:
+`docs/typed/value-tracker.md`.
+
+### Functional correctness: wmemcpy (2026-11-24, agent T)
+
+`Examples.Musl.Wmemcpy.wmemcpy_verified` (in the repo: `lean/Examples/Musl/WmemcpyVerified.lean`):
+under its signature, wmemcpy returns with the signature's post and `d[0, 4n)` = entry `s[0, 4n)`,
+every other byte as on entry. No hypotheses: the type check (`decide +kernel`, search mode) and
+the table check in one module, 11 s, 1.3 GB peak, standard axioms. Hand-written: 63 lines.
+
+### Functional correctness: wmemset (2026-11-24, agent T)
+
+`Examples.Musl.Wmemset.wmemset_verified` (`lean/Examples/Musl/WmemsetVerified.lean`): under its
+signature, wmemset returns with the signature's post and, for fills below `2^64` bytes, byte `j`
+of `d[0, 4n)` = byte `j mod 4` of `c`, every other byte as on entry. No hypotheses; 5 s,
+1.0 GB peak, standard axioms. Hand-written: 59 lines.
+
+### Functional correctness: memcpy-x (2026-11-24, agent T)
+
+The other compiled memcpy (memcpy-x.s): the same spec as memcpy, `memcpy_verified` in the
+generated module `nc-briefs/typed/musl-linked/kernel/memcpyx_verified.lean`; no hypotheses (U's
+`chk_memcpy` and the table check `MemcpyXTabOk.tab_ok`, 48 s). 432 s, 3.0 GB peak, standard
+axioms. Generated by `scripts/trackgen.py` in one command; hand-written: 49 lines.
 
 ## Files
 

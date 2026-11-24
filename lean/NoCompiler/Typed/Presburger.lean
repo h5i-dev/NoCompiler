@@ -102,6 +102,25 @@ def dnf : Bool → Constr → List (List Lit)
   | false, or p q => (dnf false p).flatMap fun b => (dnf false q).map (b ++ ·)
   | pos, not p => dnf (!pos) p
 
+/-- The number of branches `dnf` builds, saturating at 1000, without building them (the
+    search gives up past 256 branches; building 2^17 of them first ran out of memory). -/
+def dnfSize : Bool → Constr → Nat
+  | true, tt => 1
+  | false, tt => 0
+  | true, ff => 0
+  | false, ff => 1
+  | true, le _ _ => 1
+  | false, le _ _ => 1
+  | true, eq _ _ => 1
+  | false, eq _ _ => 2
+  | true, dvd _ _ => 1
+  | false, dvd c _ => if c = 0 then 2 else 1
+  | true, and p q => min 1000 (dnfSize true p * dnfSize true q)
+  | false, and p q => min 1000 (dnfSize false p + dnfSize false q)
+  | true, or p q => min 1000 (dnfSize true p + dnfSize true q)
+  | false, or p q => min 1000 (dnfSize false p * dnfSize false q)
+  | pos, not p => dnfSize (!pos) p
+
 theorem dnf_complete (ι : Val) : ∀ (pos : Bool) (p : Constr),
     p.eval ι = pos → ∃ b ∈ dnf pos p, ∀ l ∈ b, l.holds ι
   | true, tt, _ => ⟨[], by simp [dnf]⟩
