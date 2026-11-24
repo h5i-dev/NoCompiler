@@ -670,12 +670,20 @@ certificates instead of searching). Raw results: `docs/typed/musl-kernel.jsonl`.
 `theorem chk_<f> : fn.check code = true := by decide +kernel` on the linked image, one Lean process at a time under an 8 GB cap.
 * Search in the kernel (T, f2cb56f1): 17 of the 26 Lean accepts are proved (≤ 16 s, ≤ 2.2 GB, standard axioms). l64a, memccpy-x, memcpy-x, memcpy, memmove, memset, stpncpy-x, stpncpy and strncmp hit the 8 GB cap after 64-115 s.
 * Certificates (U, export.md "Certificates"), whole-function theorem: l64a is **proved** in 40.8 s / 5.2 GB with standard axioms. memset, memccpy-x and memcpy-x still hit the cap: without the search, the rest of the checker on the whole function is still too big for one declaration.
-* Certificates and one theorem per point (`certgen.py --split`): memset is **proved** in 89 s at 1.2 GB peak, with standard axioms (41d6baf6). Bisecting memset's point by point found four causes of the kernel's memory use. All are fixed in general (export.md "Certificates"):
+* Certificates and one theorem per point (`certgen.py --split`): memset is **proved** in 89 s at 1.2 GB peak, with standard axioms (41d6baf6). Bisecting memset's point by point found five causes of the kernel’s memory use. All are fixed in general (export.md "Certificates"):
   1. the search itself;
   2. entailments and case splits that fail by design (table mode attempts only the recorded ones);
   3. certificates of over a thousand steps, which `Cert.run` replays quadratically (pruned to the steps the contradiction uses);
   4. a certificate replayed against the other query of `decide2` (entries carry the query's hypothesis count).
-  Results per function: `nc-briefs/typed/musl-linked/kernel-cert.jsonl`.
+  5. unneeded disjunctive hypotheses that multiply the branches (`minimizeHyps`; memcpy had a 128-branch query).
+
+| file | function | kernel-checked (certificates, per point) | time (s) | peak memory (GB) |
+|------|----------|------------------------------------------|----------|------------------|
+| memset.s | `memset` | proved | 89 | 1.2 |
+| memcpy.s | `memcpy` | proved | 635 | 4.7 |
+| l64a.s | `l64a` | proved (whole-function theorem, before items 3-5) | 41 | 5.2 |
+
+  The other six (memccpy-x, memcpy-x, memmove, stpncpy-x, stpncpy, strncmp) follow. Results per function: `nc-briefs/typed/musl-linked/kernel-cert.jsonl`.
 
 ## Files
 
