@@ -58,10 +58,10 @@ tracker's soundness, memcpy's theorem) separately from generated ones.
 
 | function | spec | hand-written lines | theorem |
 |---|---|---|---|
-| memcpy | `d[0,n)` = entry `s[0,n)`, rest unchanged, `a0 = d` | 152 | `memcpy_verified` (generated module, U's certificates) |
+| memcpy | `d[0,n)` = entry `s[0,n)`, rest unchanged, `a0 = d` | 152 | `memcpy_verified` (generated module, U's certificates; 541 s) |
 | wmemcpy | `d[0,4n)` = entry `s[0,4n)`, rest unchanged | 63 | `Wmemcpy.wmemcpy_verified` |
 | wmemset | byte `j` of `d[0,4n)` = byte `j mod 4` of `c` (for `4n < 2^64`), rest unchanged | 59 | `Wmemset.wmemset_verified` (5 s, 1.0 GB) |
-| memcpy (memcpy-x.s) | as memcpy | 49 (table: `trackgen.py`, one command) | pending: its table check runs out of 8 GB in the kernel (finding being bisected) |
+| memcpy (memcpy-x.s) | as memcpy | 49 (table: `trackgen.py`, one command) | `memcpy_verified` in `memcpyx_verified.lean` (432 s, 3.1 GB; table check 48 s) |
 
 ## musl memcpy: the result (T, 2026-11-24)
 
@@ -143,7 +143,9 @@ What a new copy loop needs (all else is the library):
 1. its record (`corpus.py --link --keep`), and U's certificate module (`certgen.py --split`);
 2. the table: `scripts/trackgen.py RECORD FN MOD --regs DR,SR,NR --vars DV,SV,NV --width W
    [--fill] [--cursor …]` writes `<MOD>Record`, `<MOD>Table` (the producer, `tablegen.lean`, with
-   its Configuration set), `<MOD>Certs` (`tabcerts.py`) and `<MOD>TabOk` (`tabsplit.py`);
+   its Configuration set), `<MOD>Certs` (`tabcerts.py`) and `<MOD>TabOk` (`tabsplit.py`). If
+   the kernel check runs out of memory, bisect with `tabsplit.py --chunks N` (one Lean process per
+   chunk module); a heavy single point is usually one left in `.search`;
 3. its arguments: `Track.copyArgs_of_sig` (`Sound/TrackArgs.lean`) from the signature's shape
    (registers hold `d, s, n`; the precondition bounds `n`; entry capabilities `d[0, n)` writable
    and `s[0, n)`), by `decide` on the record's signature;

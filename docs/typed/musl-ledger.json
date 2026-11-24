@@ -274,6 +274,28 @@
        "Classical.choice",
        "Quot.sound"
       ]
+     },
+     "functional": {
+      "spec": "returns with the signature post and Copied: d[0,n) = entry s[0,n), every other byte as on entry",
+      "theorem": "memcpy_verified (generated: lean/scripts/memcpyfull.py ... memcpy MemcpyX memcpy_x; nc-briefs/typed/musl-linked/kernel/memcpyx_verified.lean)",
+      "uses": [
+       "chk_memcpy (U, certificates)",
+       "MemcpyXTabOk.tab_ok",
+       "MemcpyX.memcpy_correct_of",
+       "tabOk_certs"
+      ],
+      "result": {
+       "result": "proved",
+       "seconds": 432,
+       "peak_kb": 3142588,
+       "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+       ],
+       "date": "2026-11-24T10:24Z",
+       "tab_ok_seconds": 48
+      }
      }
     }
    ]
@@ -317,7 +339,7 @@
         "Classical.choice",
         "Quot.sound"
        ],
-       "date": "2026-11-24T10:03Z",
+       "date": "2026-11-24T10:24Z",
        "tab_ok_seconds": 123
       }
      }
@@ -674,7 +696,7 @@
         "Classical.choice",
         "Quot.sound"
        ],
-       "date": "2026-11-24T10:03Z"
+       "date": "2026-11-24T10:24Z"
       }
      }
     }
@@ -713,7 +735,7 @@
         "Classical.choice",
         "Quot.sound"
        ],
-       "date": "2026-11-24T10:03Z"
+       "date": "2026-11-24T10:24Z"
       }
      }
     }
