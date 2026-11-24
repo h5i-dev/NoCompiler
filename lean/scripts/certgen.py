@@ -74,8 +74,12 @@ def parse_log(output, fns):
             tag, n, rest = line[5:].split(" ", 2)
             if " ::: " not in rest or not rest.rstrip().endswith("]"):
                 continue  # a broken line: that query just gets no certificate
-            g, cs = rest.split(" ::: ", 1)
-            g = f"{g}, {n}"  # the entry's goal and its query's number of hypotheses
+            parts = rest.split(" ::: ")
+            if len(parts) != 3:
+                continue
+            g, keep, cs = parts
+            # the entry: goal, its query's number of hypotheses, the hypotheses kept, certificates
+            g = f"{g}, {n}, {keep}"
             i, k = divmod(int(tag), 1000000)
             key = (fns[i], "entry" if k == ENTRY else str(k))
             lst = certs.setdefault(key, [])
@@ -98,11 +102,16 @@ SPLITS = {}  # (fn, point) -> goals the case split proved (parse_log fills it)
 OKS = {}  # (fn, point) -> goals `STy.ent` proved
 
 
+def short(g):
+    """A goal's repr with the namespace the module opens dropped (half the text to elaborate)."""
+    return g.replace("NoCompiler.Typed.", "")
+
+
 def table(entries, key=None):
     sp = SPLITS.get(key, []) if key else []
     ok = OKS.get(key, []) if key else []
-    ts = "[" + ", ".join(f"({g}, {cs})" for g, cs in entries) + "]"
-    return f".table {ts} [{', '.join(sp)}] [{', '.join(ok)}]"
+    ts = "[" + ", ".join(f"({short(g)}, {cs})" for g, cs in entries) + "]"
+    return f".table {ts} [{', '.join(map(short, sp))}] [{', '.join(map(short, ok))}]"
 
 
 def out_module(base, fns, sizes, certs, split):

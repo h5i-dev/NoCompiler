@@ -229,9 +229,12 @@ theorem decideQ_sound {ι : Val} {m : CertMode} {q : Query} (h : decideQ m q = t
       · rename_i cs _ hc; exact Query.check_sound hc ι hh
       · cases h
     · cases h
-  · obtain ⟨⟨g, n, cs⟩, -, hgc⟩ := List.any_eq_true.1 h
+  · obtain ⟨⟨g, n, keep, cs⟩, -, hgc⟩ := List.any_eq_true.1 h
     simp only [Bool.and_eq_true] at hgc
-    exact Query.check_sound hgc.2 ι hh
+    exact Query.check_sound hgc.2 ι fun p hp => by
+      simp only [selectHyps] at hp
+      obtain ⟨i, -, hi⟩ := List.mem_filterMap.1 hp
+      exact hh p (List.mem_of_getElem? hi)
 
 theorem decide2_sound {ι : Val} {m : CertMode} {hs : List Constr} {ψ : Constr}
     (h : decide2 m hs ψ = true) (hh : ∀ p ∈ hs, p.holds ι) : ψ.holds ι := by

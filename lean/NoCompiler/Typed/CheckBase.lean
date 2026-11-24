@@ -144,7 +144,7 @@ structure HCap where
 inductive CertMode where
   | search
   | log (tag : Nat)
-  | table (t : List (Constr × Nat × List Cert)) (splits : List Constr := []) (oks : List Constr := [])
+  | table (t : List (Constr × Nat × List Nat × List Cert)) (splits : List Constr := []) (oks : List Constr := [])
   deriving DecidableEq, Repr
 
 /-- The type of a program point: Γ (a register not listed is `int`), Ψ, C. (Φ, the
@@ -289,6 +289,23 @@ def relevant (hs : List Constr) (ψ : Constr) : List Constr :=
 
 instance : Inhabited CStep := ⟨.hyp 0⟩
 
+/-- The query on the hypotheses at the indices `keep` (a sub-list of its hypotheses: dropping
+    hypotheses is sound). -/
+def selectHyps (q : Query) (keep : List Nat) : Query :=
+  { q with hyps := keep.filterMap (q.hyps[·]?) }
+
+/-- The indices of the hypotheses a query needs, found greedily: each disjunctive hypothesis is
+    dropped if the search still proves the query without it (each one dropped halves the
+    branches the certificate check has to go through). Untrusted. -/
+def minimizeHyps (q : Query) : List Nat :=
+  let all := List.range q.hyps.length
+  let disj := all.filter fun i => !((q.hyps[i]?.map Constr.isConj).getD true)
+  disj.foldl (fun keep i =>
+    let keep' := keep.erase i
+    match Search.prove (selectHyps q keep') with
+    | some cs => if (selectHyps q keep').check cs then keep' else keep
+    | none => keep) all
+
 /-- The steps a step uses. -/
 def stepDeps : CStep → List Nat
   | .hyp _ => []
@@ -345,13 +362,22 @@ def decideQ (m : CertMode) (q : Query) : Bool :=
     match Search.prove q with
     | some cs =>
       if q.check cs then
-        dbgTrace s!"CERT {tag} {q.hyps.length} {(repr q.goal).pretty 1000000000} ::: {certsStr (pruneCerts q cs)}"
+        let keep := minimizeHyps q
+        let q' := selectHyps q keep
+        let cs' := match Search.prove q' with
+          | some c => if q'.check c then c else cs
+          | none => cs
+        let (keep, q', cs') := if q'.check cs' then (keep, q', cs')
+          else (List.range q.hyps.length, selectHyps q (List.range q.hyps.length), cs)
+        dbgTrace s!"CERT {tag} {q.hyps.length} {(repr q.goal).pretty 1000000000} ::: {keep} ::: {certsStr (pruneCerts q' cs')}"
           fun _ => true
       else false
     | none => false
   -- an entry is replayed only on the query it was found for (same goal, same number of
   -- hypotheses): replaying it against another query's hypotheses can be very costly
-  | .table t _ _ => t.any fun (g, n, cs) => n == q.hyps.length && g == q.goal && q.check cs
+  -- and on the hypotheses it records (`keep`, found by `minimizeHyps`)
+  | .table t _ _ =>
+    t.any fun (g, n, keep, cs) => n == q.hyps.length && g == q.goal && (selectHyps q keep).check cs
 
 /-- The hypotheses without case analysis first (no `∨`, `¬` only of `≤` and `∣`), then all:
     a goal that follows from the plain facts is not drowned in the branches of unrelated
