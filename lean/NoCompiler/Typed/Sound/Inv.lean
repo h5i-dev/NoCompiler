@@ -32,6 +32,93 @@ theorem upd_of_not_mem {ι : Val} {θ : Subst} {x : Var} (h : ∀ p ∈ θ, p.1 
     IExpr.upd ι θ x = ι x := by
   simp [IExpr.upd, lookup_none h]
 
+namespace Constr
+@[simp] theorem eval_mkAnd (ι : Val) (p q : Constr) : (mkAnd p q).eval ι = (p.eval ι && q.eval ι) := by
+  unfold mkAnd; split <;> simp_all [eval]
+
+@[simp] theorem eval_mkOr (ι : Val) (p q : Constr) : (mkOr p q).eval ι = (p.eval ι || q.eval ι) := by
+  unfold mkOr; split <;> simp_all [eval]
+
+@[simp] theorem eval_mkNot (ι : Val) (p : Constr) : (mkNot p).eval ι = !p.eval ι := by
+  unfold mkNot; split <;> simp_all [eval]
+
+theorem eval_fold (ι : Val) (p : Constr) : p.fold.eval ι = p.eval ι := by
+  induction p with
+  | le a b =>
+    simp only [fold]
+    split
+    · rename_i ht
+      have he := IExpr.eval_toLin ι (b.sub a)
+      simp only [Lin.eval, List.isEmpty_iff.1 ht, Lin.evalT, IExpr.eval_sub] at he
+      split <;> simp [eval] <;> omega
+    · rfl
+  | eq a b =>
+    simp only [fold]
+    split
+    · rename_i ht
+      have he := IExpr.eval_toLin ι (a.sub b)
+      simp only [Lin.eval, List.isEmpty_iff.1 ht, Lin.evalT, IExpr.eval_sub] at he
+      split <;> simp [eval] <;> omega
+    · rfl
+  | dvd c e =>
+    simp only [fold]
+    split
+    · rename_i ht
+      have he := IExpr.eval_toLin ι e
+      simp only [Lin.eval, List.isEmpty_iff.1 ht, Lin.evalT] at he
+      have he' : e.eval ι = e.toLin.c := by omega
+      split <;> simp_all [eval]
+    · rfl
+  | and p q ihp ihq => simp only [fold, eval_mkAnd, ihp, ihq, eval]
+  | or p q ihp ihq => simp only [fold, eval_mkOr, ihp, ihq, eval]
+  | not p ih => simp only [fold, eval_mkNot, ih, eval]
+  | tt => rfl
+  | ff => rfl
+
+theorem disjuncts_holds {ι : Val} {p : Constr} (h : p.eval ι = true) :
+    ∃ d ∈ p.disjuncts, d.eval ι = true := by
+  induction p with
+  | or p q ihp ihq =>
+    simp only [eval, Bool.or_eq_true] at h
+    rcases h with h | h
+    · obtain ⟨d, hd, hh⟩ := ihp h; exact ⟨d, by simp [disjuncts, hd], hh⟩
+    · obtain ⟨d, hd, hh⟩ := ihq h; exact ⟨d, by simp [disjuncts, hd], hh⟩
+  | _ => exact ⟨_, by simp [disjuncts], h⟩
+
+theorem pinOf_sound {ι : Val} {p : Constr} {x : Var} {v : Int} (hp : p.pinOf = some (x, v))
+    (h : p.eval ι = true) : ι x = v := by
+  induction p with
+  | eq a b =>
+    simp only [pinOf] at hp
+    simp only [eval, decide_eq_true_eq] at h
+    have he := IExpr.eval_toLin ι (a.sub b)
+    simp only [IExpr.eval_sub] at he
+    split at hp
+    · rename_i y ht
+      simp only [Option.some.injEq, Prod.mk.injEq] at hp; obtain ⟨rfl, rfl⟩ := hp
+      simp only [Lin.eval, ht, Lin.evalT] at he; omega
+    · rename_i y ht
+      simp only [Option.some.injEq, Prod.mk.injEq] at hp; obtain ⟨rfl, rfl⟩ := hp
+      simp only [Lin.eval, ht, Lin.evalT] at he; omega
+    · cases hp
+  | and p q ihp ihq =>
+    simp only [eval, Bool.and_eq_true] at h
+    simp only [pinOf] at hp
+    split at hp
+    · rename_i r hr
+      simp only [Option.some.injEq] at hp; subst hp; exact ihp hr h.1
+    · exact ihq hp h.2
+  | _ => simp [pinOf] at hp
+end Constr
+
+theorem IExpr.upd_pin {ι : Val} {x : Var} {v : Int} (hx : ι x = v) :
+    IExpr.upd ι [(x, .lit v)] = ι := by
+  funext y
+  by_cases h : y = x
+  · subst h; simp [IExpr.upd, List.lookup, hx]
+  · have hb : (y == x) = false := by simpa using h
+    simp [IExpr.upd, List.lookup, hb]
+
 namespace STy
 
 theorem hyps_holds {T : TokEnv} {ι : Val} {F : TokFp} {m : Word → Byte} {S : STy}
@@ -55,10 +142,10 @@ theorem hyps_holds {T : TokEnv} {ι : Val} {F : TokFp} {m : Word → Byte} {S : 
       · exact .inl (by simpa using hg)
     · cases e
 
-theorem entQ_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entQ ψ = true)
+theorem entQ'_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entQ' ψ = true)
     (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
   have hh : ∀ p ∈ relevant S.hyps ψ, p.holds ι := fun p hp => hh' p (List.mem_filter.1 hp).1
-  unfold entQ at h
+  unfold entQ' at h
   split at h
   · rfl
   · rename_i a b
@@ -71,6 +158,32 @@ theorem entQ_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entQ ψ = true)
     · exact Query.decide_sound h ι hh
   · exact Query.decide_sound h ι hh
 
+
+theorem entCase_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entCase ψ = true)
+    (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
+  unfold entCase at h
+  obtain ⟨h0, hm, hc⟩ := List.any_eq_true.1 h
+  have h0h : h0.eval ι = true := hh' h0 (List.mem_append_left _ hm)
+  split at hc
+  · obtain ⟨d, hd, hdh⟩ := Constr.disjuncts_holds h0h
+    have hcd := List.all_eq_true.1 hc d hd
+    split at hcd
+    · rename_i x v hpin
+      have hx := Constr.pinOf_sound hpin hdh
+      have := entQ'_sound hcd hh'
+      simp only [Constr.holds, Constr.eval_mkOr, Constr.eval_mkNot, hdh, Bool.not_true,
+        Bool.or_false, Constr.eval_fold, Constr.eval_subst] at this
+      rwa [IExpr.upd_pin hx] at this
+    · cases hcd
+  · cases hc
+
+theorem entQ_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entQ ψ = true)
+    (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
+  unfold entQ at h
+  rcases Bool.or_eq_true _ _ ▸ h with h | h
+  · have := entQ'_sound h hh'
+    simpa only [Constr.holds, Constr.eval_fold] using this
+  · exact entCase_sound h hh'
 
 theorem constLin_eval {l : Lin} {ok : Int → Bool} (h : constLin l ok = true) (ι : Val) :
     l.eval ι = l.c ∧ ok l.c = true := by

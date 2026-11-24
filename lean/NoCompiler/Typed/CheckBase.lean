@@ -144,6 +144,64 @@ structure STy where
   depth : Nat := 0
   deriving DecidableEq, Repr
 
+namespace Constr
+def mkAnd : Constr → Constr → Constr
+  | .tt, q => q
+  | .ff, _ => .ff
+  | p, .tt => p
+  | _, .ff => .ff
+  | p, q => .and p q
+
+def mkOr : Constr → Constr → Constr
+  | .tt, _ => .tt
+  | .ff, q => q
+  | _, .tt => .tt
+  | p, .ff => p
+  | p, q => .or p q
+
+def mkNot : Constr → Constr
+  | .tt => .ff
+  | .ff => .tt
+  | p => .not p
+
+/-- Fold atoms whose linear form is constant to `tt`/`ff`, and `∧`/`∨`/`¬` with them. -/
+def fold : Constr → Constr
+  | .le a b => let l := (b.sub a).toLin
+    if l.t.isEmpty then (if 0 ≤ l.c then .tt else .ff) else .le a b
+  | .eq a b => let l := (a.sub b).toLin
+    if l.t.isEmpty then (if l.c = 0 then .tt else .ff) else .eq a b
+  | .dvd c e => let l := e.toLin
+    if l.t.isEmpty then (if l.c % (c : Int) = 0 then .tt else .ff) else .dvd c e
+  | .and p q => mkAnd p.fold q.fold
+  | .or p q => mkOr p.fold q.fold
+  | .not p => mkNot p.fold
+  | p => p
+
+/-- The disjuncts of a disjunction. -/
+def disjuncts : Constr → List Constr
+  | .or p q => p.disjuncts ++ q.disjuncts
+  | .tt => [.tt]
+  | .ff => [.ff]
+  | .le a b => [.le a b]
+  | .eq a b => [.eq a b]
+  | .dvd c e => [.dvd c e]
+  | .and p q => [.and p q]
+  | .not p => [.not p]
+
+/-- A variable the constraint pins to a constant (a conjunct `x = c`). -/
+def pinOf : Constr → Option (Var × Int)
+  | .eq a b =>
+    let l := (a.sub b).toLin
+    match l.t with
+    | [(x, 1)] => some (x, -l.c)
+    | [(x, -1)] => some (x, l.c)
+    | _ => none
+  | .and p q => match p.pinOf with
+    | some r => some r
+    | none => q.pinOf
+  | _ => none
+end Constr
+
 namespace STy
 def reg (S : STy) (r : Reg) : Option IExpr := if r = 0 then some (.lit 0) else S.regs.lookup r
 
@@ -186,13 +244,31 @@ def relevant (hs : List Constr) (ψ : Constr) : List Constr :=
   hs.filter fun p => p.vars.any vs.contains || p.vars.isEmpty
 
 /-- `Ψ ⊢ ψ` by the decision procedure. -/
-def entQ (S : STy) (ψ : Constr) : Bool :=
+def entQ' (S : STy) (ψ : Constr) : Bool :=
   let q := Query.mk (relevant S.hyps ψ) ψ
   match ψ with
   | .tt => true
   | .eq a b => a.same b || q.decide
   | .dvd _ e => e.same (.lit 0) || q.decide
   | _ => q.decide
+
+/-- By cases on a fact that is a disjunction whose every disjunct pins a variable to a
+    constant (`x = c ∧ …`, an invariant's case table): in each case the constant is put into
+    the goal, which then folds to (usually) one case, and the disjunct is a hypothesis.
+    Without it the normal form of such a fact against such a goal has thousands of branches. -/
+def entCase (S : STy) (ψ : Constr) : Bool :=
+  S.facts.any fun h => match h with
+    | .or _ _ => h.disjuncts.all fun d => match d.pinOf with
+      -- `ψ[x := v] ∨ ¬d`: the disjunct's variables stay in the goal, so the hypotheses that
+      -- refute an impossible case (goal `ff`) are not pruned as irrelevant
+      | some (x, v) => S.entQ' (Constr.mkOr (ψ.subst [(x, .lit v)]).fold (Constr.mkNot d))
+      | none => false
+    | _ => false
+
+/-- `Ψ ⊢ ψ` by the decision procedure, after folding the goal's constant atoms (a goal like
+    an invariant `k = 0 ∨ (k = 1 ∧ …) ∨ …` at `k := 0` is `tt`; unfolded, its negation's
+    normal form has thousands of branches). -/
+def entQ (S : STy) (ψ : Constr) : Bool := S.entQ' ψ.fold || S.entCase ψ
 
 /-- A linear form that is a constant (no variables) satisfying `ok`. -/
 def constLin (l : Lin) (ok : Int → Bool) : Bool := l.t.isEmpty && ok l.c
