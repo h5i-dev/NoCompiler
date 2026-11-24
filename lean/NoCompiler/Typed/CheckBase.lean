@@ -339,7 +339,9 @@ def coversS : Nat → Constr → Constr → Bool
 
 /-- `Ψ ⊢ ψ`: a fact of `Ψ` as it is or up to linear normal form (most facts of an edge's
     target type are), or by the decision procedure. -/
-def ent0 (S : STy) (ψ : Constr) : Bool := S.facts.contains ψ || S.facts.any (coversS 8 · ψ) || S.entQ ψ
+-- also a conjunct of a fact up to normal form (an invariant's `1 ≤ m ∧ m ≤ n` gives `0 ≤ m`)
+def ent0 (S : STy) (ψ : Constr) : Bool :=
+  S.facts.contains ψ || S.facts.any (fun p => p.conjuncts.any (coversS 8 · ψ)) || S.entQ ψ
 
 /-- `Ψ ⊢ ψ`; a disjunctive goal also one disjunct at a time (a case table whose live row is
     entailed conjunct by conjunct, while the whole table's negation is too large to refute). -/

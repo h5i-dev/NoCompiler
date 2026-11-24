@@ -96,6 +96,17 @@ theorem eval_of_disjunct {ι : Val} {p d : Constr} (hd : d ∈ p.disjuncts) (h :
     · exact .inr (ihq hd)
   | _ => simp only [disjuncts, List.mem_singleton] at hd; subst hd; exact h
 
+theorem eval_of_conjunct {ι : Val} {p c : Constr} (hc : c ∈ p.conjuncts) (h : p.eval ι = true) :
+    c.eval ι = true := by
+  induction p with
+  | and p q ihp ihq =>
+    simp only [conjuncts, List.mem_append] at hc
+    simp only [eval, Bool.and_eq_true] at h
+    rcases hc with hc | hc
+    · exact ihp hc h.1
+    · exact ihq hc h.2
+  | _ => simp only [conjuncts, List.mem_singleton] at hc; subst hc; exact h
+
 theorem conjuncts_holds {ι : Val} {p : Constr} (h : ∀ c ∈ p.conjuncts, c.eval ι = true) :
     p.eval ι = true := by
   induction p with
@@ -360,7 +371,8 @@ theorem ent0_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.ent0 ψ = true)
   · rcases Bool.or_eq_true _ _ ▸ h with h | h
     · exact hh' ψ (List.mem_append_left _ (List.contains_iff_mem.1 h))
     · obtain ⟨p, hp, hc⟩ := List.any_eq_true.1 h
-      exact coversS_sound _ hc (hh' p (List.mem_append_left _ hp))
+      obtain ⟨c, hcm, hc⟩ := List.any_eq_true.1 hc
+      exact coversS_sound _ hc (Constr.eval_of_conjunct hcm (hh' p (List.mem_append_left _ hp)))
   · exact entQ_sound h hh'
 
 theorem ent_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.ent ψ = true)
