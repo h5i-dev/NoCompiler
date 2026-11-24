@@ -302,7 +302,8 @@ def pinFacts (S : STy) (θ : Subst) (d : Constr) : STy :=
 def entCaseN : Nat → STy → Constr → Bool
   | 0, _, _ => false
   -- only the disjunctions relevant to the goal (it runs on every failed entailment)
-  | n + 1, S, ψ => (relevant S.facts ψ).any fun h => match h with
+  -- (a goal without variables, e.g. `ff` for an infeasible edge, has no relevant facts: all)
+  | n + 1, S, ψ => (if ψ.vars.isEmpty then S.facts else relevant S.facts ψ).any fun h => match h with
     | .or _ _ => h.disjuncts.all fun d =>
       -- every variable the disjunct pins (a bit table's row pins several), in the goal and
       -- the facts; then one more split if needed (several tables)
