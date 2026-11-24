@@ -37,3 +37,4 @@ import NoCompiler.Typed.Sound.Values
 import NoCompiler.Typed.Bytes
 import NoCompiler.Typed.Track
 import NoCompiler.Typed.Sound.TrackStep
+import NoCompiler.Typed.Sound.TrackCerts

@@ -104,3 +104,21 @@ mode). `lean/scripts/tabcerts.py` evaluates `pointOk` with every point in `.log 
 the certificates (`Examples/Musl/MemcpyCerts.lean`, `tablec`); the record's own certificates
 answer only the checker's goals, so this also makes the table check independent of the
 record's certificate mode (`fn_` or `fnc_`).
+
+Result (2026-11-24): `tab_ok : tabOk fn_memcpy code args tablec = true` kernel-proved, per
+point with the tracker's certificates, 145 s, 5.0 GB peak (8 GB cap), standard axioms.
+
+### Both hypotheses discharged (memcpy_verified)
+
+The table check is about `fn_memcpy`, U's kernel-proved type check about `fnc_memcpy` (the same
+record, its types carrying certificate tables). `Sound/TrackCerts.lean`: `pointOk` replaces each
+type's certificates by the table's, so records that differ only in their types' certificates pass
+the same table checks (`tabOk_certs`). `lean/scripts/memcpyfull.py` takes U's certificate module
+(checking that its record part equals `Examples/Musl/MemcpyRecord.lean`) and writes a module
+ending in
+
+    theorem memcpy_verified (T) : VerifiedImg code [(fnc_memcpy.entry, 4 * fnc_memcpy.size)]
+      fnc_memcpy.entry { (fnc_memcpy.sig.spec T) with post := post ∧ Copied … }
+
+from `memcpy_correct_of`, `chk_memcpy` and `tab_ok`, with no hypotheses. Like U's kernel
+modules it is generated and stays outside the repo (`nc-briefs/typed/musl-linked/kernel/`).
