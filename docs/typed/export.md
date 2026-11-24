@@ -89,6 +89,13 @@ at. Callees in other files or sections have no address before linking and are le
 Lean checker then rejects the call (no matching `callees` entry), which is the safe direction.
 With `--image` (below) every callee with a signature gets its linked address, in any file.
 
+### Point types as defs (2026-11-24, T's measurement on memcpy)
+
+Each point's type is its own `def ty_<fn>_<w> : STy := …` before `fn_<fn>`, and the record is
+`types := [(w, ty_<fn>_w), …]`: one long literal list (261 entries on musl's memcpy) took 52 s
+to elaborate and then overflowed the recursion depth; per-point defs elaborate at once.
+Loops are listed in the order of their heads' positions in τ (`Fn.pos`), as `structOk` needs.
+
 ### Canonical numbering (2026-11-24, decisions.md P7 step 1)
 
 Every exported signature numbers its variables canonically: its parameters 0.. in order, then
@@ -119,7 +126,12 @@ linked ELF (ET_EXEC/ET_DYN) and then:
   L = S − P − hi·2^12, so `rd` is the literal P + hi·2^12 the Lean checker computes;
 * a `call`/`tail` pair (two words, I21) gets a type at its second word too: the type before the
   pair with the temporary (`ra`, `t1`) holding the auipc's literal for the callee's address;
-* `def prog : List Fn` lists the exported functions callee-first (S5), for `Prog.check`.
+* `def prog : List Fn` lists the exported functions callee-first (S5), for `Prog.check`;
+* a data symbol the symbol table does not name (an assembler-local `.L` label, e.g. clang's
+  constant pool `.LCPI0_0`) gets the address the linked code itself computes: the `auipc`
+  word's upper immediate plus the paired `%pcrel_lo` instruction's 12-bit immediate (I-type, or
+  S-type for stores), added to the `auipc`'s address. The Lean checker re-derives the same
+  literal from the same two words, so a wrong value only makes it reject.
 Without `--image` the export is as before (section offsets, same-section callees, ℓ_sym free).
 
 ### The ledger's `proved` (2026-11-23)

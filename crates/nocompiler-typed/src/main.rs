@@ -192,16 +192,18 @@ fn main() -> ExitCode {
         },
     };
     // the linked .text, for the program's theorem (--prove)
-    let code = match (&image_bytes, prove) {
-        (Some(b), true) => match nocompiler_typed::object::text_words(b) {
+    // the linked .text: for local data symbols' addresses, and the program's theorem (--prove)
+    let text = match &image_bytes {
+        Some(b) => match nocompiler_typed::object::text_words(b) {
             Ok(c) => Some(c),
             Err(e) => {
                 eprintln!("{}: {e}", image_file.as_deref().unwrap_or(""));
                 return ExitCode::from(2);
             }
         },
-        _ => None,
+        None => None,
     };
+    let code = if prove { text.clone() } else { None };
     if prove && (image.is_none() || export_lean.is_none()) {
         eprintln!("--prove needs --image and --export-lean");
         return ExitCode::from(2);
@@ -217,13 +219,14 @@ fn main() -> ExitCode {
     let module = format!("NoCompiler.Typed.Export.{module_id}");
     let mut proof = None;
     if let Some(out) = &export_lean {
-        let text = nocompiler_typed::export::to_lean_full(
+        let text = nocompiler_typed::export::to_lean_text(
             &prog,
             &ck,
             &rep,
             &module,
             image.as_ref(),
             code.as_ref(),
+            text.as_ref(),
         );
         if let Err(e) = std::fs::write(out, &text) {
             eprintln!("{out}: {e}");

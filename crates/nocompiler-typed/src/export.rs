@@ -557,6 +557,71 @@ pub fn to_lean_full(
     image: Option<&BTreeMap<String, u64>>,
     code: Option<&(u64, Vec<u32>)>,
 ) -> String {
+    to_lean_text(prog, ck, rep, module, image, code, code)
+}
+
+/// The addresses of the data symbols the linked image's symbol table does not name
+/// (assembler-local `.L` labels such as clang's constant pools), from the code itself: the
+/// linked `auipc` and its `%pcrel_lo` instruction compute exactly the symbol's address.
+fn recover_sym_addrs(
+    prog: &Program,
+    rep: &Report,
+    image: &BTreeMap<String, u64>,
+    text: &(u64, Vec<u32>),
+) -> BTreeMap<String, u64> {
+    let mut img = image.clone();
+    let (base, words) = text;
+    let word_at = |a: u64| -> Option<u32> {
+        let off = a.checked_sub(*base)?;
+        words.get((off / 4) as usize).copied()
+    };
+    for f in &rep.funcs {
+        let Some(ex) = &f.export else { continue };
+        let Some(func) = prog.funcs.iter().find(|g| g.name == f.name) else { continue };
+        let Some(entry) = image.get(&f.name).copied() else { continue };
+        let wi = word_index(func);
+        for (ix, _, sym) in &ex.lo_vars {
+            if img.contains_key(sym) {
+                continue;
+            }
+            let Some(j) = func.instrs.iter().position(|pi| {
+                matches!(&pi.reloc, Some(crate::asm::Reloc::PcrelLo(l)) if func.labels.get(l) == Some(ix))
+            }) else {
+                continue;
+            };
+            let pc = entry + 4 * wi[*ix] as u64;
+            let (Some(wa), Some(wl)) = (word_at(pc), word_at(entry + 4 * wi[j] as u64)) else {
+                continue;
+            };
+            let hi = (wa & 0xffff_f000) as i32 as i64;
+            let lo = if wl & 0x7f == 0x23 {
+                // S-type (stores)
+                ((((wl as i32) >> 25) << 5) | ((wl >> 7) & 0x1f) as i32) as i64
+            } else {
+                ((wl as i32) >> 20) as i64
+            };
+            img.insert(sym.clone(), (pc as i64).wrapping_add(hi).wrapping_add(lo) as u64);
+        }
+    }
+    img
+}
+
+/// `to_lean_full` with the linked `.text` given separately (`text`, for the addresses of
+/// local data symbols) from whether the program's theorem is emitted (`code`).
+pub fn to_lean_text(
+    prog: &Program,
+    ck: &Checker,
+    rep: &Report,
+    module: &str,
+    image: Option<&BTreeMap<String, u64>>,
+    code: Option<&(u64, Vec<u32>)>,
+    text: Option<&(u64, Vec<u32>)>,
+) -> String {
+    let recovered = match (image, text) {
+        (Some(img), Some(t)) => Some(recover_sym_addrs(prog, rep, img, t)),
+        _ => None,
+    };
+    let image = recovered.as_ref().or(image);
     let pins = sym_addrs(ck, image);
     // P7 step 2: each signature lists only the data symbols its function uses
     let usedm = used_syms(prog, ck, rep);
@@ -652,6 +717,9 @@ pub fn to_lean_full(
             });
             t
         };
+        // the point types go in their own defs, inserted here once they are known (T: one
+        // long `types := [...]` literal elaborates slowly and overflows the recursion depth)
+        let fn_start = o.len();
         let _ = writeln!(
             o,
             "/-- `{}`: section {} offset {:#x} (entry is the symbol's address in the image) -/",
@@ -714,23 +782,6 @@ pub fn to_lean_full(
         if !callees.is_empty() {
             let _ = writeln!(o, "  callees := [{}]", callees.join(", "));
         }
-        let loops: Vec<String> = ex
-            .loops
-            .iter()
-            .map(|(h, l, vs, m)| {
-                format!(
-                    "{{ head := {}, last := {}, vars := [{}], meas := {} }}",
-                    wi[*h],
-                    wi[*l],
-                    vs.iter()
-                        .map(|v| vv(v).to_string())
-                        .collect::<Vec<_>>()
-                        .join(", "),
-                    lean_lin(&ren_lin(&m.clone().unwrap_or_default(), &lm))
-                )
-            })
-            .collect();
-        let _ = writeln!(o, "  loops := [{}]", loops.join(", "));
         // a permutation of all word indices: the checking order, then the rest (unreached
         // points, second words of call pairs) in address order
         // a call pair's second word comes right after its first (one step in the order)
@@ -748,6 +799,26 @@ pub fn to_lean_full(
         }
         let tau: Vec<String> = tw.iter().map(|w| w.to_string()).collect();
         let _ = writeln!(o, "  tau := [{}]", tau.join(", "));
+        // sorted by the head's position in τ (Lean's `Fn.pos`): structOk wants them in that order
+        let pos = |w: usize| tw.iter().position(|&x| x == w).unwrap_or(w);
+        let mut lps: Vec<_> = ex.loops.iter().collect();
+        lps.sort_by_key(|(h, _, _, _)| pos(wi[*h]));
+        let loops: Vec<String> = lps
+            .into_iter()
+            .map(|(h, l, vs, m)| {
+                format!(
+                    "{{ head := {}, last := {}, vars := [{}], meas := {} }}",
+                    wi[*h],
+                    wi[*l],
+                    vs.iter()
+                        .map(|v| vv(v).to_string())
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    lean_lin(&ren_lin(&m.clone().unwrap_or_default(), &lm))
+                )
+            })
+            .collect();
+        let _ = writeln!(o, "  loops := [{}]", loops.join(", "));
         if !ex.xor_bits.is_empty() {
             let kb: Vec<String> = ex.xor_bits.iter().map(|k| k.to_string()).collect();
             let _ = writeln!(o, "  xorBits := [{}]", kb.join(", "));
@@ -769,10 +840,10 @@ pub fn to_lean_full(
             .iter()
             .map(|(old, new)| (*old, fpins.get(old).cloned().unwrap_or_else(|| Lin::var(*new))))
             .collect();
-        let mut types: Vec<String> = Vec::new();
+        let mut types: Vec<(usize, String)> = Vec::new();
         for (ix, st) in &ex.snapshots {
             let pst = pin_state(&trim(st), if vm.is_empty() { &fpins } else { &comp });
-            types.push(format!("    ({}, {})", wi[*ix], lean_sty(&pst, &bids, &feqs)));
+            types.push((wi[*ix], lean_sty(&pst, &bids, &feqs)));
             // a call pair is two words: the second one's type is the first one's with the
             // temporary holding auipc's exact value (T's ask a, I21)
             if let Instr::CallPair {
@@ -792,15 +863,17 @@ pub fn to_lean_full(
                     let lit = (pc + (hi << 12)).rem_euclid(1i128 << 64);
                     let mut st2 = pst.clone();
                     st2.regs[tmp.0 as usize] = Lin::konst(lit);
-                    types.push(format!(
-                        "    ({}, {})",
-                        wi[*ix] + 1,
-                        lean_sty(&st2, &bids, &feqs)
-                    ));
+                    types.push((wi[*ix] + 1, lean_sty(&st2, &bids, &feqs)));
                 }
             }
         }
-        let _ = writeln!(o, "  types := [\n{}]", types.join(",\n"));
+        let mut defs = String::new();
+        for (w, t) in &types {
+            let _ = writeln!(defs, "def ty_{n}_{w} : STy := {t}\n");
+        }
+        o.insert_str(fn_start, &defs);
+        let refs: Vec<String> = types.iter().map(|(w, _)| format!("({w}, ty_{n}_{w})")).collect();
+        let _ = writeln!(o, "  types := [{}]", refs.join(", "));
         // the renumbering is a bijection of [0, vm.len()), which may exceed ex.fresh
         let _ = writeln!(o, "  fresh := {}\n", ex.fresh.max(vm.len() as u32));
         // θ per edge into an annotated point: (source word or none for the entry, target
