@@ -636,19 +636,19 @@ Each function Lean accepts on the linked image, as a theorem: `theorem chk_f : f
 | bzero.s | `bzero` | proved | 1.9 | 0.6 |
 | div.s | `div` | proved | 3.3 | 0.8 |
 | ffsl.s | `ffsl` | proved | 11.1 | 1.7 |
-| l64a.s | `l64a` | out of memory (8 GB cap; oom-kill in the journal) | 64.5 | - |
+| l64a.s | `l64a` | proved (certificates, U, 2026-11-24T06:39Z; first run: out of memory) | 22 | 1.8 |
 | labs.s | `labs` | proved | 3.6 | 0.7 |
-| memccpy-x.s | `memccpy` | out of memory (8 GB cap; oom-kill in the journal) | 76.9 | - |
+| memccpy-x.s | `memccpy` | proved (certificates, U, 2026-11-24T06:39Z; first run: out of memory) | 219 | 7.8 |
 | memcmp.s | `memcmp` | proved | 7.6 | 1.2 |
-| memcpy-x.s | `memcpy` | out of memory (8 GB cap; oom-kill in the journal) | 100.4 | - |
-| memcpy.s | `memcpy` | out of memory (8 GB cap; oom-kill in the journal) | 113.1 | - |
-| memmove.s | `memmove` | out of memory (8 GB cap; oom-kill in the journal) | 83.7 | - |
+| memcpy-x.s | `memcpy` | proved (certificates, U, 2026-11-24T06:39Z; first run: out of memory) | 501 | 3.8 |
+| memcpy.s | `memcpy` | proved (certificates, U, 2026-11-24T06:39Z; first run: out of memory) | 635 | 4.7 |
+| memmove.s | `memmove` | proved (certificates, U, 2026-11-24T06:39Z; first run: out of memory) | 176 | 2.3 |
 | memrchr.s | `__memrchr` | proved | 5.9 | 0.9 |
-| memset.s | `memset` | out of memory (8 GB cap; oom-kill in the journal) | 73.1 | - |
-| stpncpy-x.s | `__stpncpy` | out of memory (8 GB cap; oom-kill in the journal) | 91.3 | - |
-| stpncpy.s | `__stpncpy` | out of memory (8 GB cap; oom-kill in the journal) | 92.6 | - |
+| memset.s | `memset` | proved (certificates, U, 2026-11-24T06:39Z; first run: out of memory) | 89 | 1.2 |
+| stpncpy-x.s | `__stpncpy` | proved (certificates, U, 2026-11-24T06:39Z; first run: out of memory) | 132 | 3.3 |
+| stpncpy.s | `__stpncpy` | proved (certificates, U, 2026-11-24T06:39Z; first run: out of memory) | 270 | 7.8 |
 | strncmp-x.s | `strncmp` | proved | 15.6 | 2.1 |
-| strncmp.s | `strncmp` | out of memory (8 GB cap; oom-kill in the journal) | 76.2 | - |
+| strncmp.s | `strncmp` | proved (certificates, U, 2026-11-24T06:39Z; first run: out of memory) | 28 | 1.6 |
 | strncpy.s | `strncpy` | proved | 5.2 | 0.8 |
 | strnlen.s | `strnlen` | proved | 6.3 | 1.0 |
 | swab.s | `swab` | proved | 7.4 | 1.2 |
@@ -657,13 +657,15 @@ Each function Lean accepts on the linked image, as a theorem: `theorem chk_f : f
 | wmemcpy.s | `wmemcpy` | proved | 7.6 | 1.3 |
 | wmemset.s | `wmemset` | proved | 4.7 | 0.9 |
 
-17 of 26 proved.
+26 of 26 proved (17 by the search check, 9 by U's certificate-carrying check).
 
-The nine out-of-memory runs are not timeouts or heartbeat limits: each Lean process was killed
-by its scope's 8 GB limit after 64–113 s (one `oom-kill` per run in the user journal). They are
-the functions with the largest records, where the kernel evaluates the Presburger search
-itself. They will be re-run with U's certificate-carrying check (the kernel checks recorded
-certificates instead of searching). Raw results: `docs/typed/musl-kernel.jsonl`.
+The nine first runs that failed were out of memory, not timeouts or heartbeat limits: each Lean process
+was killed by its scope's 8 GB limit after 64–113 s (one `oom-kill` per run in the user journal),
+on the functions with the largest records, where the kernel ran the Presburger search itself.
+U's certificate-carrying check (the kernel checks recorded certificates, per point) proves all
+nine under the same 8 GB cap; memccpy-x and stpncpy peak at 7.8 GB, close to it. Raw results:
+`docs/typed/musl-kernel.jsonl` (search) and `nc-briefs/typed/musl-linked/kernel-cert.jsonl`
+(certificates).
 
 ### Kernel checks with certificates (2026-11-24, agent U)
 

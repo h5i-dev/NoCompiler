@@ -163,10 +163,21 @@
    "functions": [
     {
      "name": "l64a",
-     "status": "checked",
+     "status": "proved",
      "kernel": {
-      "result": "out-of-memory",
-      "seconds": 64.5
+      "result": "proved",
+      "seconds": 22,
+      "peak_kb": 1887436,
+      "mode": "certificates",
+      "first_run": "out-of-memory (search, 8 GB)"
+     },
+     "evidence": {
+      "lean_module": "nc-briefs/typed/musl-linked/kernel/ (U, certificate-carrying check)",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ]
      }
     }
    ]
@@ -200,10 +211,21 @@
    "functions": [
     {
      "name": "memccpy",
-     "status": "checked",
+     "status": "proved",
      "kernel": {
-      "result": "out-of-memory",
-      "seconds": 76.9
+      "result": "proved",
+      "seconds": 219,
+      "peak_kb": 8178892,
+      "mode": "certificates",
+      "first_run": "out-of-memory (search, 8 GB)"
+     },
+     "evidence": {
+      "lean_module": "nc-briefs/typed/musl-linked/kernel/ (U, certificate-carrying check)",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ]
      }
     }
    ]
@@ -237,10 +259,21 @@
    "functions": [
     {
      "name": "memcpy",
-     "status": "checked",
+     "status": "proved",
      "kernel": {
-      "result": "out-of-memory",
-      "seconds": 100.4
+      "result": "proved",
+      "seconds": 501,
+      "peak_kb": 3984588,
+      "mode": "certificates",
+      "first_run": "out-of-memory (search, 8 GB)"
+     },
+     "evidence": {
+      "lean_module": "nc-briefs/typed/musl-linked/kernel/ (U, certificate-carrying check)",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ]
      }
     }
    ]
@@ -250,10 +283,21 @@
    "functions": [
     {
      "name": "memcpy",
-     "status": "checked",
+     "status": "proved",
      "kernel": {
-      "result": "out-of-memory",
-      "seconds": 113.1
+      "result": "proved",
+      "seconds": 635,
+      "peak_kb": 4928307,
+      "mode": "certificates",
+      "first_run": "out-of-memory (search, 8 GB)"
+     },
+     "evidence": {
+      "lean_module": "nc-briefs/typed/musl-linked/kernel/ (U, certificate-carrying check)",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ]
      }
     }
    ]
@@ -263,10 +307,21 @@
    "functions": [
     {
      "name": "memmove",
-     "status": "checked",
+     "status": "proved",
      "kernel": {
-      "result": "out-of-memory",
-      "seconds": 83.7
+      "result": "proved",
+      "seconds": 176,
+      "peak_kb": 2411724,
+      "mode": "certificates",
+      "first_run": "out-of-memory (search, 8 GB)"
+     },
+     "evidence": {
+      "lean_module": "nc-briefs/typed/musl-linked/kernel/ (U, certificate-carrying check)",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ]
      }
     },
     {
@@ -304,10 +359,21 @@
    "functions": [
     {
      "name": "memset",
-     "status": "checked",
+     "status": "proved",
      "kernel": {
-      "result": "out-of-memory",
-      "seconds": 73.1
+      "result": "proved",
+      "seconds": 89,
+      "peak_kb": 1258291,
+      "mode": "certificates",
+      "first_run": "out-of-memory (search, 8 GB)"
+     },
+     "evidence": {
+      "lean_module": "nc-briefs/typed/musl-linked/kernel/ (U, certificate-carrying check)",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ]
      }
     }
    ]
@@ -317,10 +383,21 @@
    "functions": [
     {
      "name": "__stpncpy",
-     "status": "checked",
+     "status": "proved",
      "kernel": {
-      "result": "out-of-memory",
-      "seconds": 91.3
+      "result": "proved",
+      "seconds": 132,
+      "peak_kb": 3460300,
+      "mode": "certificates",
+      "first_run": "out-of-memory (search, 8 GB)"
+     },
+     "evidence": {
+      "lean_module": "nc-briefs/typed/musl-linked/kernel/ (U, certificate-carrying check)",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ]
      }
     },
     {
@@ -334,10 +411,21 @@
    "functions": [
     {
      "name": "__stpncpy",
-     "status": "checked",
+     "status": "proved",
      "kernel": {
-      "result": "out-of-memory",
-      "seconds": 92.6
+      "result": "proved",
+      "seconds": 270,
+      "peak_kb": 8178892,
+      "mode": "certificates",
+      "first_run": "out-of-memory (search, 8 GB)"
+     },
+     "evidence": {
+      "lean_module": "nc-briefs/typed/musl-linked/kernel/ (U, certificate-carrying check)",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ]
      }
     },
     {
@@ -375,10 +463,21 @@
    "functions": [
     {
      "name": "strncmp",
-     "status": "checked",
+     "status": "proved",
      "kernel": {
-      "result": "out-of-memory",
-      "seconds": 76.2
+      "result": "proved",
+      "seconds": 28,
+      "peak_kb": 1677721,
+      "mode": "certificates",
+      "first_run": "out-of-memory (search, 8 GB)"
+     },
+     "evidence": {
+      "lean_module": "nc-briefs/typed/musl-linked/kernel/ (U, certificate-carrying check)",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ]
      }
     }
    ]
