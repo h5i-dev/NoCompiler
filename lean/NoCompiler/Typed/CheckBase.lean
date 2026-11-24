@@ -188,6 +188,15 @@ def disjuncts : Constr → List Constr
   | .and p q => [.and p q]
   | .not p => [.not p]
 
+/-- No case analysis in the normal form: no `∨`, and `¬` only of `≤` or `∣`. -/
+def isConj : Constr → Bool
+  | .or _ _ => false
+  | .and p q => p.isConj && q.isConj
+  | .not (.le _ _) => true
+  | .not (.dvd _ _) => true
+  | .not _ => false
+  | _ => true
+
 /-- The conjuncts of a conjunction. -/
 def conjuncts : Constr → List Constr
   | .and p q => p.conjuncts ++ q.conjuncts
@@ -261,14 +270,20 @@ def relevant (hs : List Constr) (ψ : Constr) : List Constr :=
   let vs := grow (grow (grow (grow ψ.vars)))
   hs.filter fun p => p.vars.any vs.contains || p.vars.isEmpty
 
+/-- The hypotheses without case analysis first (no `∨`, `¬` only of `≤` and `∣`), then all:
+    a goal that follows from the plain facts is not drowned in the branches of unrelated
+    disjunctions (a bit table's facts multiply every branch). Dropping hypotheses is sound. -/
+def decide2 (hs : List Constr) (ψ : Constr) : Bool :=
+  (Query.mk (hs.filter Constr.isConj) ψ).decide || (Query.mk hs ψ).decide
+
 /-- `Ψ ⊢ ψ` by the decision procedure. -/
 def entQ' (S : STy) (ψ : Constr) : Bool :=
-  let q := Query.mk (relevant S.hyps ψ) ψ
+  let hs := relevant S.hyps ψ
   match ψ with
   | .tt => true
-  | .eq a b => a.same b || q.decide
-  | .dvd _ e => e.same (.lit 0) || q.decide
-  | _ => q.decide
+  | .eq a b => a.same b || decide2 hs ψ
+  | .dvd _ e => e.same (.lit 0) || decide2 hs ψ
+  | _ => decide2 hs ψ
 
 /-- One case: each conjunct of the goal as `c ∨ ¬d` (the disjunct's variables stay in the
     goal, so the hypotheses that refute an impossible case, goal `ff`, are not pruned). -/

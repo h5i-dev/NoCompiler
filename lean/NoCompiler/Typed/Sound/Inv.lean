@@ -217,6 +217,13 @@ theorem hyps_holds {T : TokEnv} {ι : Val} {F : TokFp} {m : Word → Byte} {S : 
       · exact .inl (by simpa using hg)
     · cases e
 
+theorem decide2_sound {ι : Val} {hs : List Constr} {ψ : Constr} (h : decide2 hs ψ = true)
+    (hh : ∀ p ∈ hs, p.holds ι) : ψ.holds ι := by
+  unfold decide2 at h
+  rcases Bool.or_eq_true _ _ ▸ h with h | h
+  · exact Query.decide_sound h ι fun p hp => hh p (List.mem_filter.1 hp).1
+  · exact Query.decide_sound h ι hh
+
 theorem entQ'_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entQ' ψ = true)
     (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
   have hh : ∀ p ∈ relevant S.hyps ψ, p.holds ι := fun p hp => hh' p (List.mem_filter.1 hp).1
@@ -226,12 +233,12 @@ theorem entQ'_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entQ' ψ = true)
   · rename_i a b
     rcases Bool.or_eq_true _ _ ▸ h with h | h
     · simp [Constr.holds, Constr.eval, IExpr.eval_of_same h ι]
-    · exact Query.decide_sound h ι hh
+    · exact decide2_sound h hh
   · rename_i c e
     rcases Bool.or_eq_true _ _ ▸ h with h | h
     · simp [Constr.holds, Constr.eval, IExpr.eval_of_same h ι]
-    · exact Query.decide_sound h ι hh
-  · exact Query.decide_sound h ι hh
+    · exact decide2_sound h hh
+  · exact decide2_sound h hh
 
 
 theorem entIn_sound {ι : Val} {S : STy} {d ψ : Constr} (h : S.entIn d ψ = true)
