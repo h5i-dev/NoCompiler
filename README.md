@@ -85,3 +85,16 @@ nocompiler diff /bin/true /bin/false
 ## 4. License
 
 NoCompiler is licensed under the Apache License 2.0. See [LICENSE](./LICENSE).
+
+## 5. Citation
+
+If you find NoCompiler useful in your research, please cite:
+
+```bibtex
+@misc{takahashi2026nocompiler,
+  title  = {NoCompiler: Formally Verified Typed Assembly for RISC-V},
+  author = {Takahashi, Hideaki},
+  year   = {2026},
+  url    = {https://github.com/h5i-dev/NoCompiler}
+}
+```
