@@ -239,7 +239,7 @@ theorem entCaseN_sound : ∀ (n : Nat) {ι : Val} {S : STy} {ψ : Constr}, entCa
   | n + 1, ι, S, ψ, h, hh' => by
     simp only [entCaseN] at h
     obtain ⟨h0, hm, hc⟩ := List.any_eq_true.1 h
-    have h0h : h0.eval ι = true := hh' h0 (List.mem_append_left _ hm)
+    have h0h : h0.eval ι = true := hh' h0 (List.mem_append_left _ (List.mem_filter.1 hm).1)
     split at hc
     · obtain ⟨d, hd, hdh⟩ := Constr.disjuncts_holds h0h
       have hcd := List.all_eq_true.1 hc d hd

@@ -286,7 +286,8 @@ def pinFacts (S : STy) (θ : Subst) (d : Constr) : STy :=
     Without it the normal form of such a fact against such a goal has thousands of branches. -/
 def entCaseN : Nat → STy → Constr → Bool
   | 0, _, _ => false
-  | n + 1, S, ψ => S.facts.any fun h => match h with
+  -- only the disjunctions relevant to the goal (it runs on every failed entailment)
+  | n + 1, S, ψ => (relevant S.facts ψ).any fun h => match h with
     | .or _ _ => h.disjuncts.all fun d =>
       -- every variable the disjunct pins (a bit table's row pins several), in the goal and
       -- the facts; then one more split if needed (several tables)
