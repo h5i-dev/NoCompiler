@@ -136,4 +136,30 @@ theorem Written2.store_back_ov {m0 m : Word → Byte} {d : Word} {G : Nat → By
     · rw [if_pos h2, if_pos (by omega)]
     · rw [if_neg h2, if_neg (by omega)]
 
+/-- The base memory of a two-ended write: the entry memory with the suffix written so far. -/
+def base2 (m0 : Word → Byte) (d : Word) (G : Nat → Byte) (c2 n : Nat) : Word → Byte :=
+  fun p => if n - c2 ≤ (p - d).toNat ∧ (p - d).toNat < n then G (p - d).toNat else m0 p
+
+/-- A two-ended write is a prefix write over the base memory that holds the suffix. -/
+theorem written2_iff {m0 m : Word → Byte} {d : Word} {G : Nat → Byte} {c c2 n : Nat} :
+    Written2 m0 m d G c c2 n ↔ Written (base2 m0 d G c2 n) m d G c := by
+  unfold Written2 Written base2
+  constructor
+  · intro h p
+    rw [h p]
+    by_cases h1 : (p - d).toNat < c
+    · rw [if_pos (Or.inl h1), if_pos h1]
+    · rw [if_neg h1]
+      by_cases h2 : n - c2 ≤ (p - d).toNat ∧ (p - d).toNat < n
+      · rw [if_pos (Or.inr h2), if_pos h2]
+      · rw [if_neg (by omega), if_neg h2]
+  · intro h p
+    rw [h p]
+    by_cases h1 : (p - d).toNat < c
+    · rw [if_pos h1, if_pos (Or.inl h1)]
+    · rw [if_neg h1]
+      by_cases h2 : n - c2 ≤ (p - d).toNat ∧ (p - d).toNat < n
+      · rw [if_pos h2, if_pos (Or.inr h2)]
+      · rw [if_neg h2, if_neg (by omega)]
+
 end NoCompiler.Typed.Track

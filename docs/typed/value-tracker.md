@@ -233,3 +233,15 @@ the kernel ran searches whose answers `pointOk` does not need (a failed cursor-m
 falls back to the register step, which the table accepts anyway). Fix in `tabcerts.py`: a point
 without recorded certificates gets `.table []`, which is exact: in log mode every successful
 query records a certificate, so the remaining queries fail in both modes. Point 97: 1 s, 0.5 GB.
+
+#### The second cursor, without touching the step lemmas (design, 2026-11-24)
+
+`Written2 m0 m d G c c2 n` is `Written (base m0 d G c2 n) m d G c` with
+`base m0 d G c2 n p := if n − c2 ≤ (p − d) < n then G (p − d) else m0 p`: the suffix written so far
+is part of the base memory. `AState.ok` already takes its base memory as a parameter and every
+front-store, cursor and cell lemma is generic in it, so the back cursor needs only: an optional
+`back : Option (Reg × Nat)` in the frame (the suffix starts at `(back reg − d) − δ2`), the point's
+invariant stated with `base s0.mem d G c2 n` where `c2` is read off the back register, a back-store
+rule (the only step that changes the base: `store_back_ov` through the equivalence), and
+`regStep` refusing writes to the back register as it does for the cursor. The return check becomes
+`c + c2 ≥ n` (`Written2.full`).
