@@ -20,4 +20,5 @@ Details and the full table: `docs/typed/musl-trial.md`, "v0 summary".
 | musl/memrchr, wmemcpy, wmemset | accept | accept since f4c553c7 (was: reject at the back edge) | resolved: Lean's instantiation applied θ to the source expression (double-shifted loop variables); `andi` mask now names its quotient |
 | musl/strncmp, memccpy-x, stpncpy-x (stpncpy at c3f64fad) | accept | reject at I29 boolean ops / xor then andi (memccpy, stpncpy builds also `struct=false`) | Lean: I29 rules missing |
 | musl/memset | accept | accept since 5a9707df, linked image (was: reject at `andi −4`, then at word 54) | resolved: the search eliminates through unit equalities (Omega test's equality step) |
-| musl/memcpy, memcpy-x, memmove, memccpy, memccpy-ic; stpncpy | accept | no verdict (heartbeats; 180 s, load-dependent) | resource limit in the harness |
+| musl/memcpy | accept | accept since a41b63a3, linked image, but in ~214 s (over the harness's 180 s: 157 s is the interpreter running Fn.check) | was: heartbeats (record as one literal, fixed by per-point defs 9e168d85), then the back edge and loop exit (conjunct-by-conjunct goals, case split with pinned facts) |
+| musl/memcpy-x, memmove, memccpy, memccpy-ic; stpncpy | accept | verdicts within the limit since 9e168d85 (per-point defs); rejects in the arith rules, see U's rows | |
