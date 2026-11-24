@@ -607,8 +607,8 @@ Run: `lean/scripts/corpus.py --link --why tests/typed/corpus/musl`. Each file is
 
 | pin | Rust accepts | Lean accepts of those | Lean rejects | no verdict |
 |-----|--------------|-----------------------|--------------|------------|
-| 998ae0df (v0, unlinked) | 26 | 9 | 13 | 4 |
-| 2a00c908 (linked, 2026-11-24T03:05Z, 4 min) | 26 | 24 | 2 (memccpy-x, stpncpy) | 0 |
+| 998ae0df (v0, unlinked) | 28 | 9 | 13 | 6 |
+| 2a00c908 (linked, 2026-11-24T03:05Z, 4 min) | 26 (memccpy, memccpy-ic: a Rust regression from 3ee59fd6's xor facts, fixed below) | 24 | 2 (memccpy-x, stpncpy) | 0 |
 
 What closed the gap, by cause:
 * call/tail pairs at unlinked addresses: the harness links (callee stubs);

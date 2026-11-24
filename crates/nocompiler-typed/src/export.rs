@@ -847,9 +847,41 @@ pub fn to_lean_text(
             .iter()
             .map(|(old, new)| (*old, fpins.get(old).cloned().unwrap_or_else(|| Lin::var(*new))))
             .collect();
+        // xor then mask (I23): `2^k ∣ x ⇔ 2^k ∣ a − b` at each point where x = a xor b and its
+        // operands are live, for the widths the Lean checker's xor rule writes (`xorBits`)
+        let with_xor = |st: &State| -> State {
+            let mut t = st.clone();
+            let mut live = std::collections::BTreeSet::new();
+            for r in &t.regs {
+                live.extend(r.vars());
+            }
+            for (_, f) in &t.facts {
+                f.vars(&mut live);
+            }
+            for (v, a, b) in &ex.xor_defs {
+                let ok = live.contains(v)
+                    && a.vars().chain(b.vars()).all(|y| live.contains(&y));
+                let Some(d) = a.sub(b).filter(|_| ok) else { continue };
+                for k in &ex.xor_bits {
+                    let m = 1i128 << k;
+                    let x = Lin::var(*v);
+                    t.facts.push((
+                        u32::MAX,
+                        Formula::or(vec![
+                            Formula::and(vec![Formula::Dvd(m, x.clone()), Formula::Dvd(m, d.clone())]),
+                            Formula::and(vec![
+                                Formula::negate(Formula::Dvd(m, x)),
+                                Formula::negate(Formula::Dvd(m, d.clone())),
+                            ]),
+                        ]),
+                    ));
+                }
+            }
+            t
+        };
         let mut types: Vec<(usize, String)> = Vec::new();
         for (ix, st) in &ex.snapshots {
-            let pst = pin_state(&trim(st), if vm.is_empty() { &fpins } else { &comp });
+            let pst = pin_state(&with_xor(&trim(st)), if vm.is_empty() { &fpins } else { &comp });
             types.push((wi[*ix], lean_sty(&pst, &bids, &feqs)));
             // a call pair is two words: the second one's type is the first one's with the
             // temporary holding auipc's exact value (T's ask a, I21)

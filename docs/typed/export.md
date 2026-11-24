@@ -89,6 +89,10 @@ at. Callees in other files or sections have no address before linking and are le
 Lean checker then rejects the call (no matching `callees` entry), which is the safe direction.
 With `--image` (below) every callee with a signature gets its linked address, in any file.
 
+### Xor facts (2026-11-24)
+
+`FnExport.xor_defs` lists `x = a xor b` for each xor result, which is true in every state. `xorBits` lists the widths `k` of the function's masks `2^k − 1` (`andi` immediates, `li` constants). Each exported point where x, a and b are live gets `2^k ∣ x ⇔ 2^k ∣ a − b` for each k. The Lean checker's xor rule adds the same facts, and its mask rules turn them into the zero test `x = 0 ⇔ 2^k ∣ a − b`.
+
 ### Point types as defs (2026-11-24, T's measurement on memcpy)
 
 Each point's type is its own `def ty_<fn>_<w> : STy := …` before `fn_<fn>`, and the record is

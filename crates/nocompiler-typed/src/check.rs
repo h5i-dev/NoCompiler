@@ -179,6 +179,9 @@ pub struct FnExport {
     /// xor rule wrote (I23; the widths of the function's `andi` masks): the Lean checker adds
     /// the same facts at each xor.
     pub xor_bits: Vec<u32>,
+    /// `x = a xor b` for the xor results (true in every state): the export adds the facts
+    /// `2^k ∣ x ⇔ 2^k ∣ a − b` (k in `xor_bits`) to each point where x, a and b are live.
+    pub xor_defs: Vec<(Var, Lin, Lin)>,
 }
 
 /// What the checker did for one function (the ledger's "判断の記録").
@@ -645,6 +648,7 @@ impl<'a> FnCheck<'a> {
             .collect();
         FnExport {
             xor_bits: self.xor_bits.iter().copied().collect(),
+            xor_defs: self.xor_defs.iter().map(|(v, (a, b))| (*v, a.clone(), b.clone())).collect(),
             lo_vars,
             reg_var,
             loops,
@@ -2642,20 +2646,10 @@ impl<'a> FnCheck<'a> {
                 ]),
             ]);
             self.add_fact(st, f);
-            // 2^k ∣ x ⇔ 2^k ∣ a − b for the masks the function uses (Lean's `xorBitFact`)
-            for k in self.mask_ks.clone() {
-                // the Lean checker's xor rule writes the same facts for the hint's widths
-                self.xor_bits.insert(k);
-                let m = 1i128 << k;
-                let f = Formula::or(vec![
-                    Formula::and(vec![Formula::Dvd(m, x.clone()), Formula::Dvd(m, d.clone())]),
-                    Formula::and(vec![
-                        Formula::negate(Formula::Dvd(m, x.clone())),
-                        Formula::negate(Formula::Dvd(m, d.clone())),
-                    ]),
-                ]);
-                self.add_fact(st, f);
-            }
+            // 2^k ∣ x ⇔ 2^k ∣ a − b for the masks the function uses: written into the exported
+            // record only (export.rs), not into this checker's queries, which they slow down
+            // (musl memccpy); the Lean checker's xor rule writes the same facts for these widths
+            self.xor_bits.extend(self.mask_ks.iter().copied());
         }
         Ok(x)
     }
