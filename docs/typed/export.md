@@ -169,6 +169,15 @@ With `--prove --certs` (2026-11-24) the kernel checks recorded certificates inst
 
 Relative theorem D (P9, 2026-11-24; the default until the user decides). A program whose functions call one it only declares (a signature, no body) gets `def ext : Env` with each such callee's address, signature and code range in the image (its symbol's size, at least one word). `prog_checked : Prog.check code ext prog`, and `prog_meets_rel (T) (hE : ∀ e ∈ ext, Meets code e.2.2 e.1 T e.2.1) : ∀ e ∈ Prog.env ext prog, Meets …` comes from `Prog.check_sound`, with no new Lean proof. The ledger records such functions as `proved_assuming`, with the assumed callees in their evidence (`"assumes"`): weaker than `proved`, and saying so. On musl's linked images: bzero (assumes memset), bcmp (memcmp), strncpy (__stpncpy) and strnlen (memchr), each a few seconds, standard axioms.
 
+### Linked programs (2026-11-24, decisions.md P7 step 3, the default taken)
+
+`nocompiler-typed link A.s B.s … --image L.elf --prove [--export-lean X.lean] [--lean-dir D]` builds one module for the program linked into `L.elf` (`export::to_lean_linked`):
+* each file's record in its own namespace (no `code`, `ext` or per-file `prog`), with one import for the whole module;
+* the namespaces opened, `def code` from the linked `.text`, and `def prog` listing every exported function callee-first across the files;
+* then `certgen.py --split --prog` (certificates, one kernel theorem per point, `prog_checked`, `prog_meets`).
+
+A callee declared in one file and defined in another is the same entry of `Prog.check`'s environment, and `Prog.callsOk` compares the caller's copy of its signature with the callee's own by `=`. The canonical form (P7 steps 1 and 2: numbering, and only the data symbols a signature uses) makes the two copies equal. It refuses when a file is rejected, a callee is defined in no file, or the calls form a cycle. On musl, bzero.s and memset.s linked together: `prog_meets` with standard axioms, 60 s, 1.2 GB. bzero's call to memset is checked against memset's own record, so bzero no longer needs P9's assumption.
+
 ### θ per edge (2026-11-23, T's ask 4)
 
 For each exported function, `theta_<name> : List (Option Nat × Nat × List (Var × IExpr))`

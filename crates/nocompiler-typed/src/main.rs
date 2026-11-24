@@ -13,9 +13,33 @@ fn main() -> ExitCode {
         // nocompiler-typed link A.s B.s ... [--loops natural]: the whole program (Theorem D)
         let natural = !args.iter().any(|a| a == "interval");
         let mut files = Vec::new();
-        for a in &args[1..] {
-            if a == "--loops" || a == "natural" || a == "interval" {
-                continue;
+        // link --image L.elf --prove [--export-lean X.lean] [--lean-dir D]: theorem D for the
+        // whole linked program (decisions.md P7 step 3, the default taken)
+        let mut l_image: Option<String> = None;
+        let mut l_out: Option<String> = None;
+        let mut l_dir: Option<String> = None;
+        let mut l_prove = false;
+        let mut k = 1;
+        while k < args.len() {
+            let a = &args[k];
+            k += 1;
+            match a.as_str() {
+                "--loops" | "natural" | "interval" => continue,
+                "--prove" => {
+                    l_prove = true;
+                    continue;
+                }
+                "--image" | "--export-lean" | "--lean-dir" => {
+                    let v = args.get(k).cloned();
+                    k += 1;
+                    match a.as_str() {
+                        "--image" => l_image = v,
+                        "--export-lean" => l_out = v,
+                        _ => l_dir = v,
+                    }
+                    continue;
+                }
+                _ => {}
             }
             match std::fs::read_to_string(a) {
                 Ok(s) => files.push((a.clone(), s)),
@@ -34,6 +58,65 @@ fn main() -> ExitCode {
         );
         for e in &r.functions {
             println!("{}: {} ({})", e.name, e.status, e.file);
+        }
+        if l_prove {
+            let Some(img_file) = &l_image else {
+                eprintln!("link --prove needs --image");
+                return ExitCode::from(2);
+            };
+            let bytes = match std::fs::read(img_file) {
+                Ok(b) => b,
+                Err(e) => {
+                    eprintln!("{img_file}: {e}");
+                    return ExitCode::from(2);
+                }
+            };
+            let (Ok(image), Ok(text)) = (
+                nocompiler_typed::object::symbol_addresses(&bytes),
+                nocompiler_typed::object::text_words(&bytes),
+            ) else {
+                eprintln!("{img_file}: not a linked ELF with .text");
+                return ExitCode::from(2);
+            };
+            let sizes = nocompiler_typed::object::symbol_sizes(&bytes).ok();
+            let mut checked = Vec::new();
+            for (path, src) in &files {
+                let prog = match asm::parse(src) {
+                    Ok(p) => p,
+                    Err(e) => {
+                        eprintln!("{path}:{}: [syntax] {}", e.line, e.msg);
+                        return ExitCode::from(2);
+                    }
+                };
+                let (ck, rep) = check::check_program_opts(
+                    &prog,
+                    check::Options {
+                        record: true,
+                        natural_loops: natural,
+                    },
+                );
+                checked.push((path.clone(), prog, ck, rep));
+            }
+            let dir = l_dir
+                .clone()
+                .or_else(|| std::env::var("NOCOMPILER_LEAN_DIR").ok())
+                .unwrap_or_else(|| concat!(env!("CARGO_MANIFEST_DIR"), "/../../lean").to_string());
+            let lean_dir = std::path::Path::new(&dir);
+            let result = nocompiler_typed::export::to_lean_linked(&checked, &image, &text, sizes.as_ref())
+                .and_then(|m| nocompiler_typed::prove::certgen_text(lean_dir, &m))
+                .and_then(|m| {
+                    if let Some(out) = &l_out {
+                        let _ = std::fs::write(out, &m);
+                    }
+                    nocompiler_typed::prove::run_lean(lean_dir, &m, "prog_meets")
+                });
+            match result {
+                Ok(ax) if nocompiler_typed::prove::standard(&ax) => {
+                    println!("prove: prog_meets (axioms: {})", ax.join(", "))
+                }
+                Ok(ax) => println!("prove: not proved: nonstandard axioms {}", ax.join(", ")),
+                Err(e) => println!("prove: not proved: {e}"),
+            }
         }
         for (f, e) in &r.errors {
             println!(

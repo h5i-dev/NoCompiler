@@ -54,6 +54,12 @@ pub fn certify(lean_dir: &Path, module_text: &str, module: &str) -> Result<Strin
         "{}end {module}\n\nopen {module}\nopen NoCompiler NoCompiler.Typed\n",
         &module_text[..cut]
     );
+    certgen_text(lean_dir, &input)
+}
+
+/// `certgen.py --split --prog` on a module that has the records, `def code` and `def prog` (no
+/// theorems): the module with the certificate tables, the kernel theorems and theorem D.
+pub fn certgen_text(lean_dir: &Path, input: &str) -> Result<String, String> {
     let tmp = std::env::temp_dir();
     let id = std::process::id();
     let inp = tmp.join(format!("nocompiler-certin-{id}.lean"));

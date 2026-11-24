@@ -373,6 +373,7 @@ function.
   callees listed: weaker than `proved`, and it says so. A later `link --prove` (P7 step 3)
   discharges the assumption with the callee's own proof. The default taken: implement it, with
   the new status kept distinct from `proved`.
+  Update: `link --prove` (P7 step 3, also taken as the default; export.md "Linked programs") does that: musl bzero.s with memset.s is proved outright.
 - **P8 Splitting and joining a held capability** (T, 2026-11-24; the design note's "足す順" lists it
   as the cheapest v1 addition; needs the user's choice). Annotations without instructions:
   `split κ at k` turns a held `b ↦ bytes[n] m` into `b ↦ bytes[k] m` and `b+k ↦ bytes[n−k] m`
