@@ -693,6 +693,16 @@ nine under the same 8 GB cap; memccpy-x and stpncpy peak at 7.8 GB, close to it.
 
   With T's 17 (search in the kernel), all 26 functions Lean accepts on the linked image are kernel-checked, with standard axioms only. With the conjunctive minimization the largest peak is 5.7 GB (stpncpy); memccpy-x and stpncpy were at 7.8 GB before it. Results per function: `nc-briefs/typed/musl-linked/kernel-cert.jsonl`.
 
+### Functional correctness: memcpy (2026-11-24, agent T)
+
+On top of the type check, musl memcpy (memcpy.s, linked image) is proved to copy:
+`memcpy_verified` (generated module `nc-briefs/typed/musl-linked/kernel/memcpy_verified.lean`,
+`lean/scripts/memcpyfull.py`): under memcpy's signature it returns with the signature's post and
+`d[0, n)` = entry `s[0, n)`, every other byte as on entry. No hypotheses: the type check is U's
+`chk_memcpy` (certificates), the copy's table check `tab_ok` (`Examples/Musl/MemcpyTabOk.lean`,
+145 s / 5.0 GB). Result (2026-11-24T07:31Z): proved, 778 s, 5.0 GB peak (8 GB cap), standard axioms. Details and line counts:
+`docs/typed/value-tracker.md`.
+
 ## Files
 
 - `scripts/musl-trial/build.sh` — pinned build (musl tree digest, clang 15.0.7, flags);

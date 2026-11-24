@@ -298,6 +298,27 @@
        "Classical.choice",
        "Quot.sound"
       ]
+     },
+     "functional": {
+      "spec": "returns with the signature post and Copied: d[0,n) = entry s[0,n), every other byte as on entry; a0 = d (post_of)",
+      "theorem": "memcpy_verified (generated: lean/scripts/memcpyfull.py; nc-briefs/typed/musl-linked/kernel/memcpy_verified.lean)",
+      "uses": [
+       "chk_memcpy (U, certificates)",
+       "MemcpyTabOk.tab_ok",
+       "memcpy_correct_of",
+       "tabOk_certs"
+      ],
+      "result": {
+       "result": "proved",
+       "seconds": 778,
+       "peak_kb": 5034540,
+       "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+       ],
+       "date": "2026-11-24T07:31Z"
+      }
      }
     }
    ]

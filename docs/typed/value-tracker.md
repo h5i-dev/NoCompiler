@@ -77,12 +77,13 @@ the cursor (the compiler computes the next cursor before the store); finished po
 checker's inferred join at the final return forgets `a3`, so the copy is shown complete on the
 incoming `bne` edge from its branch fact).
 
-Lines (hand-written, vs the old next-branch proof `Examples/Libc/Musl/Memcpy*.lean`: 1591):
+Lines (hand-written, vs the old next-branch proof: `lean/Examples/Libc/Musl/Memcpy{1,2,3,4,At,Img}.lean`
+456 + 334 + 369 + 333 + 37 + 32 = 1561, plus `lean/Examples/Libc/Memcpy.lean` 30 = 1591):
 
 | part | lines |
 |---|---|
-| memcpy-specific, hand-written (`Memcpy.lean`, `MemcpySpec.lean`, `MemcpyPost.lean`) | 148 |
-| general, reusable for any copy loop (`Bytes`, `Track`, `Sound/TrackStep`, `Values` bridge) | 1815 |
+| memcpy-specific, hand-written (`Memcpy.lean`, `MemcpySpec.lean`, `MemcpyPost.lean`, `MemcpyAny.lean`) | 152 |
+| general, reusable for any copy loop (`Bytes`, `Track`, `Sound/TrackStep`, `TrackCerts`, `TrackArgs`, `Values` bridge) | 1968 |
 | generated table (`MemcpyTable.lean`, checked by `tabOk`) | 4867 (generated) |
 | untrusted producer (`scripts/tablegen.lean`) | 182 |
 
@@ -120,5 +121,29 @@ ending in
     theorem memcpy_verified (T) : VerifiedImg code [(fnc_memcpy.entry, 4 * fnc_memcpy.size)]
       fnc_memcpy.entry { (fnc_memcpy.sig.spec T) with post := post ∧ Copied … }
 
-from `memcpy_correct_of`, `chk_memcpy` and `tab_ok`, with no hypotheses. Like U's kernel
+from `memcpy_correct_of`, `chk_memcpy` and `tab_ok`, with no hypotheses. Result (2026-11-24T07:31Z): proved,
+778 s, 5.0 GB peak, standard axioms (plus `tab_ok`'s module, 145 s). Like U's kernel
 modules it is generated and stays outside the repo (`nc-briefs/typed/musl-linked/kernel/`).
+
+### The next copy
+
+What a new copy loop needs (all else is the library):
+
+1. its record (`corpus.py --link --keep`), and U's certificate module (`certgen.py --split`);
+2. the table: `scripts/tablegen.lean` with its Configuration block set (record, argument
+   registers and variables, cursor registers to try first), then `scripts/tabcerts.py` for the
+   tracker's certificates and `scripts/tabsplit.py` for the per-point kernel module;
+3. its arguments: `Track.copyArgs_of_sig` (`Sound/TrackArgs.lean`) from the signature's shape
+   (registers hold `d, s, n`; the precondition bounds `n`; entry capabilities `d[0, n)` writable
+   and `s[0, n)`), by `decide` on the record's signature;
+4. the theorem: `Fn.check_sound_track` with the three; `scripts/memcpyfull.py`'s pattern for
+   the hypothesis-free form (`tabOk_certs` carries the table check to the `fnc_` record).
+
+### Next extension: element-size copies (design, not built)
+
+`wmemcpy(d, s, n)` copies `4n` bytes; the tracker counts bytes against `nv`. The change is
+local to the arguments: `CopyArgs` gets a width `w` (1 for memcpy), the copy's byte count is
+`w · ι nv`, and the side conditions that mention `nv` (`hi` bounds in loads/stores, the return
+and `finOk` equalities) use `(.var nv).smul w`; `hargs` asks `(s0.reg nr).toNat * w < 2^64`
+and `Copied … ((s0.reg nr).toNat * w)`. `Disj` and `copyArgs_of_sig` take the capability length
+`w · n`. The cells, the byte algebra and the step lemmas do not change.

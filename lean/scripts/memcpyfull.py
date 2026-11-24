@@ -48,6 +48,7 @@ open NoCompiler NoCompiler.Typed
 
 """
 tail = """
+set_option maxRecDepth 100000 in
 open NoCompiler.Typed.Track NoCompiler.Examples.Musl.MemcpyTable in
 /-- **musl memcpy, kernel-checked.** On the linked image, under memcpy's signature, the
     compiled memcpy meets the signature and copies: `d[0, n)` holds the entry bytes of
@@ -60,7 +61,8 @@ theorem memcpy_verified (T : TokEnv) :
           Copied s.mem s'.mem (s.reg 10) (s.reg 11) (s.reg 12).toNat) } :=
   NoCompiler.Examples.Musl.Memcpy.memcpy_correct_of fnc_memcpy code T rfl rfl (by decide)
     chk_memcpy
-    ((tabOk_certs (fun k => (certs_memcpy.lookup k).getD (.table [])) rfl rfl rfl rfl).trans
+    ((tabOk_certs (f := fn_memcpy) (f' := fnc_memcpy) (c := code) (C := args) (t := tablec)
+        (fun k => (certs_memcpy.lookup k).getD (.table [])) rfl rfl rfl rfl).trans
       tab_ok)
 
 #print axioms memcpy_verified

@@ -4,12 +4,17 @@ import NoCompiler.Typed.Sound.TrackStep
 /-
 The table producer for a copy's value invariant (untrusted; `tabOk` checks its output in the
 kernel). Run: `lake lean scripts/tablegen.lean` from lean/; prints the frames and hints of musl
-memcpy's table as Lean source.
+the table of `F` (Configuration below) as Lean source; for another copy, change the
+import, the `open` and the Configuration.
 -/
 open NoCompiler NoCompiler.Typed NoCompiler.Typed.Track NoCompiler.Typed.Export.memcpy
 
+/-! ## Configuration (the only per-function part): the record, the copy's argument registers
+    and variables, and the cursor registers to try first. -/
+def F : Fn := fn_memcpy
 def PP : Params := ⟨0, 1, 2⟩
 def CC : CopyArgs := ⟨10, 11, 12, PP⟩
+def cursorPref : List Reg := [13, 16, 10]
 
 /-- The constant of a linear form without variables. -/
 def constOf (e : IExpr) : Option Int := let l := e.toLin; if l.t.isEmpty then some l.c else none
@@ -82,10 +87,10 @@ def desired (S : STy) : Option Reg :=
   let ok (r : Reg) : Bool := match S.reg r with
     | some e => (e.toLin.t.lookup PP.dv) == some 1
     | none => false
-  ([13, 16, 10] ++ (List.finRange 32)).find? fun r => r ≠ 0 && ok r
+  (cursorPref ++ (List.finRange 32)).find? fun r => r ≠ 0 && ok r
 
 def run : IO Unit := do
-  let f := fn_memcpy
+  let f := F
   let mut frames : Array (Option Track.Frame) := Array.replicate f.size none
   frames := frames.set! 0 (some ⟨CC.dr, 0, []⟩)
   let mut hints : Array Nat := Array.replicate f.size 0
