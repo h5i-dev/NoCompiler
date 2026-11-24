@@ -579,3 +579,119 @@ theorem succ_mem (hsz : 4 * f.size + 2 ^ 21 < 2 ^ 64) {k k' : Nat} (hk : k < f.s
   all_goals (simp only [succs, List.mem_singleton]; exact next hp)
 
 end NoCompiler.Typed.Track
+
+namespace NoCompiler.Typed.Track
+open NoCompiler NoCompiler.Typed
+
+theorem lookup_mem' {α β : Type} [BEq α] [LawfulBEq α] :
+    ∀ {l : List (α × β)} {a : α} {b : β}, l.lookup a = some b → (a, b) ∈ l
+  | [], _, _, h => by simp [List.lookup] at h
+  | (x, y) :: r, a, b, h => by
+    by_cases hx : a = x
+    · subst hx; simp [List.lookup] at h; subst h; simp
+    · have hb : (a == x) = false := by simpa using hx
+      simp [List.lookup, hb] at h
+      exact List.mem_cons_of_mem _ (lookup_mem' h)
+
+/-- `fr'` at the next point, implied by the computed state: the same cursor and δ, cells no
+    stronger. -/
+theorem Frame.ok_of_leA {m0 d srcB n} {fr' : Frame} {A : AState} {s : State} (h : fr'.leA A = true)
+    (hA : A.ok m0 d srcB n s) : fr'.toA.ok m0 d srcB n s := by
+  simp only [Frame.leA, Bool.and_eq_true, beq_iff_eq, List.all_eq_true] at h
+  obtain ⟨⟨hc, hd⟩, hcs⟩ := h
+  obtain ⟨hn, hcp, hr⟩ := hA
+  simp only [Frame.toA]
+  rw [hc, hd]
+  refine ⟨hn, hcp, fun r => ?_⟩
+  show Cells.ok m0 srcB _ (s.reg r) ((fr'.cells.lookup r).getD [])
+  cases hl : fr'.cells.lookup r with
+  | none => intro i hi; simp [Cell.ok]
+  | some cs =>
+    have := Cells.ok_of_le (hcs (r, cs) (lookup_mem' hl)) (hr r)
+    simpa using this
+
+/-- The registers and variables of a copy's arguments. -/
+structure CopyArgs where
+  dr : Reg
+  sr : Reg
+  nr : Reg
+  P : Params
+  deriving DecidableEq, Repr
+
+/-- The table of a value invariant: a frame and a load-offset hint per point. -/
+structure Table where
+  frames : List (Nat × Frame)
+  hints : List (Nat × Nat)
+  deriving Repr
+
+def Table.frame (t : Table) (k : Nat) : Frame := (t.frames.lookup k).getD ⟨0, 0, []⟩
+def Table.hint (t : Table) (k : Nat) : Nat := (t.hints.lookup k).getD 0
+
+end NoCompiler.Typed.Track
+
+namespace NoCompiler.Typed.Track
+open NoCompiler NoCompiler.Typed
+
+variable {f : Fn}
+
+/-- The converse of `target_of_pc`: the checker's target is where the jump lands. -/
+theorem Fn.pc_of_target {k k' : Nat} {n : Nat} {off : BitVec n} (hn : 1 ≤ n) (hn' : n ≤ 21)
+    (h : Fn.target k off.toInt = some k') : f.pcOf k' = f.pcOf k + off.signExtend 64 := by
+  unfold Fn.target at h
+  split at h
+  · rename_i hc
+    simp only [Bool.and_eq_true, decide_eq_true_eq] at hc
+    simp only [Option.some.injEq] at h
+    subst h
+    unfold Fn.pcOf
+    rw [BitVec.add_assoc]; congr 1
+    apply BitVec.eq_of_toNat_eq
+    have hc2 := BitVec.toInt_eq_toNat_cond (off.signExtend 64)
+    rw [BitVec.toInt_signExtend_of_le (by omega)] at hc2
+    have hlo := BitVec.le_toInt (x := off)
+    have hhi := BitVec.toInt_lt (x := off)
+    have hpow : (2 : Int) ^ (n - 1) ≤ 2 ^ 20 := by
+      have : n - 1 ≤ 20 := by omega
+      exact_mod_cast Nat.pow_le_pow_right (by decide) this
+    have hlt := (off.signExtend 64).isLt
+    rw [BitVec.toNat_add, BitVec.toNat_ofNat, BitVec.toNat_ofNat]
+    have hmod : off.toInt % 4 = 0 := by simpa using hc.1
+    split at hc2 <;> omega
+  · cases h
+
+end NoCompiler.Typed.Track
+
+namespace NoCompiler.Typed.Track
+open NoCompiler NoCompiler.Typed
+
+/-- The check at point `k`: a return is `jalr x0, 0(ra)` with `ra` still the entry's and the copy
+    complete; any other instruction's abstract step is defined, its jumps have targets, and each
+    successor's frame follows from the computed state. -/
+def pointOk (f : Fn) (c : Code) (C : CopyArgs) (t : Table) (k : Nat) : Bool :=
+  match f.tyAt k, c.instr (f.pcOf k) with
+  | none, _ => true
+  | some _, none => false
+  | some S, some i =>
+    if i = .jalr 0 1 0 then
+      match f.regVar.lookup 1, S.reg (t.frame k).cur with
+      | some x, some ec =>
+        S.reg 1 == some (.var x) && S.ent (.le (.var C.P.dv) ec) &&
+          S.ent (.le ((ec.sub (.var C.P.dv)).add (.lit (t.frame k).δ)) (.var C.P.nv)) &&
+          S.ent (.le (.var C.P.nv) ((ec.sub (.var C.P.dv)).add (.lit (t.frame k).δ)))
+      | _, _ => false
+    else
+      (match i with
+       | .jalr _ _ _ => false
+       | .branch _ _ _ off => (Fn.target k off.toInt).isSome
+       | .jal _ off => (Fn.target k off.toInt).isSome
+       | _ => true) &&
+      match tstep S C.P (t.hint k) (t.frame k).toA i with
+      | some A' => (succs k i).all fun k' => decide (k' < f.size) && (t.frame k').leA A'
+      | none => false
+
+/-- The table's check: the entry frame is the empty copy at the destination register, and every
+    point passes `pointOk`. Decidable; the kernel runs it. -/
+def tabOk (f : Fn) (c : Code) (C : CopyArgs) (t : Table) : Bool :=
+  t.frame 0 == ⟨C.dr, 0, []⟩ && (List.range f.size).all (pointOk f c C t)
+
+end NoCompiler.Typed.Track
