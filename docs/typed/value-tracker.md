@@ -186,7 +186,12 @@ with the register `0` is allowed; a byte fill needs a bound on `n` from its prec
 `Examples/Musl/Wmemset.lean` (40 lines) and `WmemsetVerified.lean` (19): table 8 points,
 finished point 7, all points pass.
 
-### What memset needs (not built)
+### What memset needs
+
+Built (2026-11-24): the fill word (`Cells.broadcast`: `mulhu` by `0x0101010101010100` of a word
+whose low bytes are zero gives its byte 7 in bytes 0 … 6; `BytesMul.byte_broadcast'`) and stores of
+such a word in a byte fill (`storeCellsOk`: a fill's store of a multiple of `w` bytes takes cells
+`src j` with `j ≡ i (mod w)`, `periodic_eq`). Still open:
 
 musl memset is a byte fill (`w = 1`) with two further obstacles: (1) its precondition is `.tt`,
 so `n < 2^64` exactly is not derivable (the `w = 1` case of `fillArgs_of_sig`): its theorem
