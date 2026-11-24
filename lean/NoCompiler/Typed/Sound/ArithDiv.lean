@@ -188,8 +188,8 @@ theorem Fn.arith2Div_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S
           simp only [List.mem_singleton] at hp; subst hp
           have ev1 := Fn.eval_setFrom_old (f := f) (STy.reg_maxVar' h1) ι vs
           have ev2 := Fn.eval_setFrom_old (f := f) (STy.reg_maxVar' h2) ι vs
-          rcases bit_of_isBit k1 (hI.ent hbits.1) with ⟨ea, va⟩ | ⟨ea, va⟩ <;>
-          rcases bit_of_isBit k2 (hI.ent hbits.2) with ⟨eb, vb⟩ | ⟨eb, vb⟩ <;>
+          rcases bit_of_isBit k1 (isBitE_holds hI.facts (fun h => hI.ent h) hbits.1) with ⟨ea, va⟩ | ⟨ea, va⟩ <;>
+          rcases bit_of_isBit k2 (isBitE_holds hI.facts (fun h => hI.ent h) hbits.2) with ⟨eb, vb⟩ | ⟨eb, vb⟩ <;>
           · first
             | exact bitTable_holds (p := 0) (q := 0) (by decide) (by decide) (by rw [ev1, va]; rfl) (by rw [ev2, vb]; rfl)
                 (by simp [vs, setFrom_x, evalR, ea, eb])
@@ -221,8 +221,8 @@ theorem Fn.arith2Div_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S
           simp only [List.mem_singleton] at hp; subst hp
           have ev1 := Fn.eval_setFrom_old (f := f) (STy.reg_maxVar' h1) ι vs
           have ev2 := Fn.eval_setFrom_old (f := f) (STy.reg_maxVar' h2) ι vs
-          rcases bit_of_isBit k1 (hI.ent hbits.1) with ⟨ea, va⟩ | ⟨ea, va⟩ <;>
-          rcases bit_of_isBit k2 (hI.ent hbits.2) with ⟨eb, vb⟩ | ⟨eb, vb⟩ <;>
+          rcases bit_of_isBit k1 (isBitE_holds hI.facts (fun h => hI.ent h) hbits.1) with ⟨ea, va⟩ | ⟨ea, va⟩ <;>
+          rcases bit_of_isBit k2 (isBitE_holds hI.facts (fun h => hI.ent h) hbits.2) with ⟨eb, vb⟩ | ⟨eb, vb⟩ <;>
           · first
             | exact bitTable_holds (p := 0) (q := 0) (by decide) (by decide) (by rw [ev1, va]; rfl) (by rw [ev2, vb]; rfl)
                 (by simp [vs, setFrom_x, evalR, ea, eb])

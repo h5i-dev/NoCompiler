@@ -120,7 +120,7 @@ def arith2Div (S : STy) (i : Instr) : Option STy :=
     let g : Nat → Nat → Nat := match i with | .rop .and .. => (· &&& ·) | _ => (· ||| ·)
     match S.reg a, S.reg b with
     | some e1, some e2 =>
-      if S.ent (isBit e1) && S.ent (isBit e2) then
+      if isBitE S e1 && isBitE S e2 then
         some ((S.setReg rd (some (.var x))).addFacts [bitTable g x e1 e2])
       else none
     | _, _ => none

@@ -90,6 +90,53 @@ theorem xorZeroFact_holds {ι : Val} {x y : Var} {d : IExpr} {n : Nat} (hn : n �
   · exact Or.inl ⟨h1, h2⟩
   · exact Or.inr ⟨h1, h2⟩
 
+theorem eqPinsBit_sound {ι : Val} {x : Var} {a b : IExpr} (h : Fn.eqPinsBit x a b = true)
+    (hp : a.eval ι = b.eval ι) : ι x = 0 ∨ ι x = 1 := by
+  unfold Fn.eqPinsBit at h
+  have he := IExpr.eval_toLin ι (a.sub b)
+  simp only [IExpr.eval_sub] at he
+  generalize (a.sub b).toLin = l at h he
+  obtain ⟨c, t⟩ := l
+  simp only [Bool.or_eq_true, Bool.and_eq_true, beq_iff_eq] at h
+  simp only [Lin.eval] at he
+  rcases h with ⟨rfl, hc | hc⟩ | ⟨rfl, hc | hc⟩ <;> subst hc <;>
+    simp only [Lin.evalT] at he <;> omega
+
+theorem pinsBit_sound {ι : Val} {x : Var} : ∀ {p : Constr}, Fn.pinsBit x p = true →
+    p.holds ι → ι x = 0 ∨ ι x = 1
+  | .eq _ _, h, hp => eqPinsBit_sound h (by simpa [Constr.holds, Constr.eval] using hp)
+  | .and _ _, h, hp => by
+    simp only [Fn.pinsBit, Bool.or_eq_true] at h
+    simp only [Constr.holds, Constr.eval, Bool.and_eq_true] at hp
+    rcases h with h | h
+    · exact pinsBit_sound h hp.1
+    · exact pinsBit_sound h hp.2
+  | .or _ _, h, hp => by
+    simp only [Fn.pinsBit, Bool.and_eq_true] at h
+    simp only [Constr.holds, Constr.eval, Bool.or_eq_true] at hp
+    rcases hp with hp | hp
+    · exact pinsBit_sound h.1 hp
+    · exact pinsBit_sound h.2 hp
+  | .tt, h, _ | .ff, h, _ | .le _ _, h, _ | .dvd _ _, h, _ | .not _, h, _ => by
+    simp [Fn.pinsBit] at h
+
+theorem isBitE_holds {ι : Val} {S : STy} {e : IExpr} (hf : ∀ p ∈ S.facts, p.holds ι)
+    (hent : S.ent (Fn.isBit e) = true → (Fn.isBit e).holds ι) (h : Fn.isBitE S e = true) :
+    (Fn.isBit e).holds ι := by
+  unfold Fn.isBitE at h
+  rcases Bool.or_eq_true _ _ ▸ h with h | h
+  · split at h
+    · rename_i x hx
+      obtain ⟨p, hp, hpb⟩ := List.any_eq_true.1 h
+      have := pinsBit_sound hpb (hf p hp)
+      rw [IExpr.asVar_eq hx]
+      unfold Fn.isBit
+      simp only [Constr.holds, Constr.eval, Bool.and_eq_true, decide_eq_true_eq, IExpr.eval_var,
+        IExpr.eval_lit]
+      omega
+    · simp at h
+  · exact hent h
+
 theorem quotFacts_holds {ι : Val} {x : Var} {u : IExpr} {c : Int} (hc : 0 < c)
     (hx : ι x = u.eval ι / c) : ∀ p ∈ Fn.quotFacts x u c, p.holds ι := by
   intro p hp

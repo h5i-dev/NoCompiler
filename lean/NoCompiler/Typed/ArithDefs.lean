@@ -111,6 +111,25 @@ def boundFacts (x : Var) (b : Int) : List Constr := [.le (.lit 0) (.var x), .le 
 /-- `0 ≤ e ≤ 1`. -/
 def isBit (e : IExpr) : Constr := .and (.le (.lit 0) e) (.le e (.lit 1))
 
+/-- `a = b` says `x = c` for a constant `c ∈ {0, 1}`: `a − b` is `±(x − c)` in normal form. -/
+def eqPinsBit (x : Var) (a b : IExpr) : Bool :=
+  let l := (a.sub b).toLin
+  (l.t == [(x, 1)] && (l.c == 0 || l.c == -1)) || (l.t == [(x, -1)] && (l.c == 0 || l.c == 1))
+
+/-- `p` forces `x ∈ {0, 1}`: every disjunct has a conjunct pinning `x` to 0 or 1 (a bit table,
+    a comparison's `lessFact`, and the Rust record's forms of them). -/
+def pinsBit (x : Var) : Constr → Bool
+  | .eq a b => eqPinsBit x a b
+  | .and p q => pinsBit x p || pinsBit x q
+  | .or p q => pinsBit x p && pinsBit x q
+  | _ => false
+
+/-- `e ∈ {0, 1}` under the type: a fact pins it (no search), or the decision procedure. -/
+def isBitE (S : STy) (e : IExpr) : Bool :=
+  (match e.asVar with
+   | some x => S.facts.any (pinsBit x)
+   | none => false) || S.ent (isBit e)
+
 /-- The table of a bitwise operation on 0/1 operands `a`, `b`, result `x` (I29). -/
 def bitTable (g : Nat → Nat → Nat) (x : Var) (a b : IExpr) : Constr :=
   -- `e − v = 0`, the Rust checker's normal form, so its table is literally this fact after
