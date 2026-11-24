@@ -87,6 +87,10 @@ def parse_log(output, fns):
                 lst.append((g, cs))
         elif line.startswith("SPLIT ") or line.startswith("ENT "):
             kind, tag, g = line.split(" ", 2)
+            if kind == "SPLIT":
+                # `SPLIT tag i goal`: the index of the fact the first level splits on
+                i, g = g.split(" ", 1)
+                g = f"{g}, {i}"
             i, k = divmod(int(tag), 1000000)
             key = (fns[i], "entry" if k == ENTRY else str(k))
             sp = (splits if kind == "SPLIT" else OKS).setdefault(key, [])
@@ -111,7 +115,8 @@ def table(entries, key=None):
     sp = SPLITS.get(key, []) if key else []
     ok = OKS.get(key, []) if key else []
     ts = "[" + ", ".join(f"({short(g)}, {cs})" for g, cs in entries) + "]"
-    return f".table {ts} [{', '.join(map(short, sp))}] [{', '.join(map(short, ok))}]"
+    sps = ", ".join(f"({short(x)})" for x in sp)
+    return f".table {ts} [{sps}] [{', '.join(map(short, ok))}]"
 
 
 def out_module(base, fns, sizes, certs, split):

@@ -144,7 +144,7 @@ structure HCap where
 inductive CertMode where
   | search
   | log (tag : Nat)
-  | table (t : List (Constr × Nat × List Nat × List Cert)) (splits : List Constr := []) (oks : List Constr := [])
+  | table (t : List (Constr × Nat × List Nat × List Cert)) (splits : List (Constr × Nat) := []) (oks : List Constr := [])
   deriving DecidableEq, Repr
 
 /-- The type of a program point: Γ (a register not listed is `int`), Ψ, C. (Φ, the
@@ -427,6 +427,21 @@ def entCaseN : Nat → STy → Constr → Bool
       S'.entIn d' ψ' || entCaseN n S' ψ'
     | _ => false
 
+/-- The facts `entCaseN` splits on, in its order. -/
+def splitCands (S : STy) (ψ : Constr) : List Constr :=
+  if ψ.vars.isEmpty then S.facts else relevant S.facts ψ
+
+/-- `entCaseN 2`'s first level on one fact `h` (its second level searches as before). -/
+def splitOn (S : STy) (ψ h : Constr) : Bool :=
+  match h with
+  | .or _ _ => h.disjuncts.all fun d =>
+    let θ : Subst := d.pins.map fun (x, v) => (x, .lit v)
+    let S' := S.pinFacts θ d
+    let d' := (d.subst θ).fold
+    let ψ' := (ψ.subst θ).fold
+    S'.entIn d' ψ' || entCaseN 1 S' ψ'
+  | _ => false
+
 def entCase (S : STy) (ψ : Constr) : Bool := entCaseN 2 S ψ
 
 /-- The case split under the point's certificate mode: in `table` mode only for a goal it
@@ -436,9 +451,20 @@ def splitQ (S : STy) (ψ : Constr) : Bool :=
   match S.certs with
   | .search => S.entCase ψ
   | .log tag =>
-    if S.entCase ψ then dbgTrace s!"SPLIT {tag} {(repr ψ).pretty 1000000000}" fun _ => true
-    else false
-  | .table _ sp _ => sp.contains ψ && S.entCase ψ
+    -- the first-level fact that works, by its index among the candidates (`entCase` is `any`
+    -- over them, so the same goals succeed)
+    match (S.splitCands ψ).find? (S.splitOn ψ) with
+    | some h =>
+      dbgTrace s!"SPLIT {tag} {(S.splitCands ψ).idxOf h} {(repr ψ).pretty 1000000000}" fun _ => true
+    | none => false
+  -- only the recorded goal, and only on the recorded fact
+  | .table _ sp _ =>
+    match sp.find? (·.1 == ψ) with
+    | some (_, i) =>
+      match (S.splitCands ψ)[i]? with
+      | some h => S.splitOn ψ h
+      | none => false
+    | none => false
 
 /-- `Ψ ⊢ ψ` by the decision procedure, after folding the goal's constant atoms (a goal like
     an invariant `k = 0 ∨ (k = 1 ∧ …) ∨ …` at `k := 0` is `tt`; unfolded, its negation's

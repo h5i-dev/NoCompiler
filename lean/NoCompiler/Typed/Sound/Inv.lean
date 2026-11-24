@@ -310,6 +310,32 @@ theorem entCaseN_sound : ∀ (n : Nat) {ι : Val} {S : STy} {ψ : Constr}, entCa
 theorem entCase_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entCase ψ = true)
     (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := entCaseN_sound 2 h hh'
 
+theorem splitCands_mem {S : STy} {ψ h : Constr} (hm : h ∈ S.splitCands ψ) : h ∈ S.facts := by
+  unfold splitCands at hm
+  split at hm
+  · exact hm
+  · exact (List.mem_filter.1 hm).1
+
+/-- The first level of the case split on one fact of the type. -/
+theorem splitOn_sound {ι : Val} {S : STy} {ψ h0 : Constr} (hm : h0 ∈ S.facts)
+    (hc : S.splitOn ψ h0 = true) (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
+  have h0h : h0.eval ι = true := hh' h0 (List.mem_append_left _ hm)
+  unfold splitOn at hc
+  split at hc
+  · obtain ⟨d, hd, hdh⟩ := Constr.disjuncts_holds h0h
+    have hcd := List.all_eq_true.1 hc d hd
+    simp only [Bool.or_eq_true] at hcd
+    have hθ := IExpr.upd_pins _ (Constr.pins_sound hdh)
+    have hh2 := pinFacts_hyps hθ hdh hh'
+    have hd' : ((d.subst (d.pins.map fun (x, v) => (x, IExpr.lit v))).fold).eval ι = true := by
+      simp only [Constr.eval_fold, Constr.eval_subst, hθ, hdh]
+    have hψ : ((ψ.subst (d.pins.map fun (x, v) => (x, IExpr.lit v))).fold).holds ι := by
+      rcases hcd with hc2 | hc2
+      · exact entIn_sound hc2 hd' hh2
+      · exact entCaseN_sound 1 hc2 hh2
+    simpa only [Constr.holds, Constr.eval_fold, Constr.eval_subst, hθ] using hψ
+  · cases hc
+
 theorem entQ_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entQ ψ = true)
     (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
   unfold entQ at h
@@ -321,9 +347,16 @@ theorem entQ_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entQ ψ = true)
     split at h
     · exact entCase_sound h hh'
     · split at h
-      · exact entCase_sound (by assumption) hh'
+      · rename_i h0 hf
+        exact splitOn_sound (splitCands_mem (List.mem_of_find?_eq_some hf))
+          (List.find?_some hf) hh'
       · cases h
-    · exact entCase_sound (Bool.and_eq_true _ _ ▸ h).2 hh'
+    · split at h
+      · split at h
+        · rename_i h0 hi
+          exact splitOn_sound (splitCands_mem (List.mem_of_getElem? hi)) h hh'
+        · cases h
+      · cases h
 
 theorem constLin_eval {l : Lin} {ok : Int → Bool} (h : constLin l ok = true) (ι : Val) :
     l.eval ι = l.c ∧ ok l.c = true := by
