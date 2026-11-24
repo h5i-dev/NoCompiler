@@ -18,6 +18,8 @@ checked on the linked `.text` at its address, and `Prog.check` runs on `prog`
 (callee-first): `PROG <file> accept|reject`.
 
 Usage: lean/scripts/corpus.py [--checker PATH] [--keep DIR] [--link] [FILES or DIRS ...]
+Environment: LEAN_TIMEOUT (seconds per file), CORPUS_MEM (e.g. 4G: each file's Lean process
+in its own memory scope, so running out of memory is that file's verdict, `out-of-memory`).
 """
 import argparse
 import os
