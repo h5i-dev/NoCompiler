@@ -10,11 +10,11 @@ NoCompiler is a typed RISC-V assembly language with a formally verified type che
 
 **Our answer**
 
-- Ordinary RV64 assembly with signatures and loop annotations. It assembles with the usual tools and follows the LP64 calling convention.
-- Types track only two facts. A register holds a linear expression over integer variables, mod 2^64. A function may use a given byte range.
-- **Safe** functions are checked: every load and store lands inside a range the function holds. The checker decides this with quantifier-free Presburger arithmetic.
-- **Unsafe** functions (allocators, syscall wrappers, code outside the model) carry the same kind of signature as a contract. The contract is assumed, or proved by hand in Lean.
-- Every signature has one meaning ⟦σ⟧, defined in Lean over the RISC-V machine semantics. A ledger records why each function meets it: checked, proved, or assumed.
+- **Typed RISC-V assembly**: Standard RV64 assembly augmented with function signatures, memory permissions, and loop invariants.
+- **Formally verified type checker**: Type-checking soundness proved in Lean 4 against a formal RISC-V machine semantics.
+- **Static memory safety**: Automatically verifies memory accesses using arithmetic constraints and memory capabilities.
+- **Composable verification**: Checked, manually proved, and trusted functions can coexist through a unified contract system.
+- **Standard toolchain compatibility**: Compatible with conventional RISC-V assemblers and the LP64 calling convention.
 
 The grammar is in [docs/typed/syntax.md](docs/typed/syntax.md).
 
