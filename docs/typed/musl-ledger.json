@@ -310,15 +310,15 @@
       ],
       "result": {
        "result": "proved",
-       "seconds": 597,
-       "peak_kb": 3975140,
+       "seconds": 541,
+       "peak_kb": 3283220,
        "axioms": [
         "propext",
         "Classical.choice",
         "Quot.sound"
        ],
-       "date": "2026-11-24T08:48Z",
-       "tab_ok_seconds": 200
+       "date": "2026-11-24T10:03Z",
+       "tab_ok_seconds": 123
       }
      }
     }
@@ -667,14 +667,14 @@
       ],
       "result": {
        "result": "proved",
-       "seconds": 12,
-       "peak_kb": 1344316,
+       "seconds": 10,
+       "peak_kb": 1347136,
        "axioms": [
         "propext",
         "Classical.choice",
         "Quot.sound"
        ],
-       "date": "2026-11-24T08:48Z"
+       "date": "2026-11-24T10:03Z"
       }
      }
     }
@@ -707,13 +707,13 @@
       "result": {
        "result": "proved",
        "seconds": 5,
-       "peak_kb": 1004872,
+       "peak_kb": 1005948,
        "axioms": [
         "propext",
         "Classical.choice",
         "Quot.sound"
        ],
-       "date": "2026-11-24T08:48Z"
+       "date": "2026-11-24T10:03Z"
       }
      }
     }

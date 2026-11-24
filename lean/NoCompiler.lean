@@ -38,6 +38,7 @@ import NoCompiler.Typed.Bytes
 import NoCompiler.Typed.BytesMul
 import NoCompiler.Typed.Track
 import NoCompiler.Typed.TrackFill
+import NoCompiler.Typed.TrackTwo
 import NoCompiler.Typed.Sound.TrackStep
 import NoCompiler.Typed.Sound.TrackCerts
 import NoCompiler.Typed.Sound.TrackArgs

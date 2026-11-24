@@ -61,6 +61,7 @@ tracker's soundness, memcpy's theorem) separately from generated ones.
 | memcpy | `d[0,n)` = entry `s[0,n)`, rest unchanged, `a0 = d` | 152 | `memcpy_verified` (generated module, U's certificates) |
 | wmemcpy | `d[0,4n)` = entry `s[0,4n)`, rest unchanged | 63 | `Wmemcpy.wmemcpy_verified` |
 | wmemset | byte `j` of `d[0,4n)` = byte `j mod 4` of `c` (for `4n < 2^64`), rest unchanged | 59 | `Wmemset.wmemset_verified` (5 s, 1.0 GB) |
+| memcpy (memcpy-x.s) | as memcpy | 49 (table: `trackgen.py`, one command) | pending: its table check runs out of 8 GB in the kernel (finding being bisected) |
 
 ## musl memcpy: the result (T, 2026-11-24)
 
@@ -206,3 +207,18 @@ The broadcast is proved (`Typed/BytesMul.lean`: `byte_broadcast`, byte `i < 7` o
 ran out of 2 GB; the route that works states `mulhu` in `Nat` first (`mulhUU_toNat`) and takes each
 byte from a digit decomposition of `0x01010101010101` (`omega` does not prove these
 large-coefficient divisions).
+
+#### The two-ended invariant (design)
+
+State: two cursors, `cur` (prefix: `count = (cur − d) + δ` bytes written from `d`) and `cur2`
+(suffix: `count2 = (d + n − cur2) + δ2` bytes written below `d + n`), and the predicate
+
+    Written2 m0 m d G c c2 n := ∀ p, m p = if (p − d) < c ∨ n − c2 ≤ (p − d) < n then G (p − d) else m0 p
+
+with `c ≤ n`, `c2 ≤ n` (the two ranges may overlap; on the overlap both say `G`). Rules: a store
+at `cur + δ` extends `c` as now; a store of `k` bytes at `cur2 − δ2 − k` extends `c2` (the mirror
+of `Written.store`, with the pattern's bytes `n − c2 − k … n − c2 − 1`, so for a fill the cells
+must agree with `G` at those offsets mod `w`); the cursor rules hold for both. At a return,
+`c + c2 ≥ n` gives `Written m0 m d G n` (every byte of `d[0, n)` is in one of the ranges). memset's
+early exits (`n ≤ 2, 6, 8`) are returns where the stores so far from both ends cover `n`: the
+branch facts (`bltu a2, a4`) give the bound, as `finOk` uses them now.
