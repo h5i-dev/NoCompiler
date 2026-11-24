@@ -361,3 +361,16 @@ function.
   `borrow b ↦ bytes[size ⋆ nmemb] ro`. Cost: Ψ stays linear (the atom is a variable); the
   matching rule must keep atoms identical across the call.
 - **P6 Writable static data in signatures beyond `_start`** is in (I32); no proposal.
+- **P7 The ledger across files: canonical signatures** (U, 2026-11-24; needs the user's choice).
+  `--prove` proves theorem D for one file's functions on the linked image. For a program whose
+  functions are in several files (`link`), the caller's copy of a callee's signature must be
+  `=` to the callee's own (`Prog.callsOk`), and today it is not: each file's export numbers
+  variables in its own name table, and adds every data symbol of its own file to every
+  signature (I30's implicit `borrow ℓ_sym` clauses). Proposal: (1) export each signature in a
+  canonical form, its parameters numbered 0.. in order, then its `out` variables, then the
+  rest of the function's variables (the record renumbered consistently); (2) a signature lists
+  only the data symbols it uses (its own clauses' and, transitively, its callees'), named by
+  symbol, not by file-local variable; (3) `link --prove` writes one Lean module for the linked
+  image with every file's functions and proves `Prog.check code [] prog` over all of them.
+  Cost: export-side only (untrusted); the Lean checker re-checks everything as now. Without it
+  the ledger says `proved` only within a file whose callees are all in the same file.
