@@ -22,8 +22,13 @@ memcpy as compiled has 261 instructions and five loops, three of which merge two
 per store (`srliw`/`slli`/`or`). Proving each point by hand would be thousands of lines, so
 `J` is given by tables and checked:
 
-* `c k s = n − a2(s) + δ[k]`: the bytes copied so far; `δ[k]` counts the stores already done in
-  the current iteration before `a2` is decremented.
+* `c k s = (s.reg cur[k] − d).toNat + δ[k]`: the bytes copied so far, read off the
+  destination cursor register `cur[k]` (a6 in the head loop, a3 elsewhere; the tails copy
+  8/4/2/1 bytes conditionally without touching `a2`, so `a2` does not determine `c` at their
+  joins, the cursor does); `δ[k]` counts the bytes stored before the cursor is advanced.
+* Address and bound facts are entailments on the point's recorded type (`S.ent`): a store
+  `sw rs2, off(rs1)` needs `rs1 + off = cur + δ`; a load from the source needs
+  `rs1 + off − cur = s − d + δ + o` and `cur − d + δ + o + width ≤ n`.
 * `J k s := Copied m0 s.mem d src (c k s) ∧ ∀ r, Holds (tab[k] r) (c k s) (s.reg r)`, with
   `tab[k] r : Vector Cell 8`, one cell per byte position of the register:
   `unknown | zero | src o` (byte `o` past the copied prefix, i.e. source byte `c + o`).

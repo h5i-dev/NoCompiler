@@ -259,3 +259,19 @@ theorem Cells.load_ok {m0 m : Word → Byte} {d srcB : Word} {c n : Nat} (hC : C
   · trivial
 
 end NoCompiler.Typed.Track
+
+namespace NoCompiler.Typed.Track
+open NoCompiler NoCompiler.Typed.Bytes
+
+/-- A store of `k` bytes of a register whose first `k` cells are the next source bytes, at
+    `d + c`, extends the copied prefix to `c + k`. -/
+theorem Cells.store_ok {m0 m : Word → Byte} {d srcB : Word} {c : Nat} (hC : Copied m0 m d srcB c)
+    {w : Word} {cs : Cells} (hcs : Cells.ok m0 srcB c w cs) {k : Nat} (hk : k ≤ 8)
+    (hck : c + k < 2 ^ 64) (hpre : ∀ i < k, cs.getD i .unk = .src i) :
+    Copied m0 (writeLE m (d + BitVec.ofNat 64 c) w.toNat k) d srcB (c + k) :=
+  hC.store w hk hck fun i hi => by
+    have := hcs i (by omega)
+    rw [hpre i hi] at this
+    exact this
+
+end NoCompiler.Typed.Track
