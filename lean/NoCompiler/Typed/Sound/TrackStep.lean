@@ -96,3 +96,89 @@ theorem AState.ok_set {m0 d srcB n} {A : AState} {s : State} (h : A.ok m0 d srcB
     · exact hr r
 
 end NoCompiler.Typed.Track
+
+namespace NoCompiler.Typed.Track
+open NoCompiler NoCompiler.Typed NoCompiler.Typed.Bytes
+
+/-- The cells of a register-only instruction's result (shifts by whole bytes, `or`, moves;
+    anything else unknown). -/
+def regCells (A : AState) : Instr → Cells
+  | .shift .slli _ rs sh => if sh.toNat % 8 = 0 then (A.cells rs).shl (sh.toNat / 8) else []
+  | .shift .srli _ rs sh => if sh.toNat % 8 = 0 then (A.cells rs).shr (sh.toNat / 8) else []
+  | .shiftw .srliw _ rs sh =>
+    if sh.toNat % 8 = 0 ∧ 1 ≤ sh.toNat / 8 ∧ sh.toNat / 8 ≤ 3 then (A.cells rs).srliw (sh.toNat / 8) else []
+  | .rop .or _ a b => (A.cells a).or (A.cells b)
+  | .iop .addi _ rs imm => if imm = 0 then A.cells rs else []
+  | _ => []
+
+/-- A register-only instruction (it writes `rd`, not the cursor, and no memory): its abstract
+    step. -/
+def regStep (A : AState) (i : Instr) : Option AState :=
+  match writesReg i with
+  | some rd => if rd = 0 then some A else if rd = A.cur then none else some (A.set rd (regCells A i))
+  | none => none
+
+theorem regCells_ok {m0 d srcB n} {A : AState} {s : State} (h : A.ok m0 d srcB n s) (i : Instr)
+    {rd : Reg} (hw : writesReg i = some rd) {s' : State} (hx : exec i s = some s') :
+    ∃ v, s' = (s.setReg rd v).setPc (s.pc + 4) ∧
+      Cells.ok m0 srcB ((s.reg A.cur - d).toNat + A.δ) v (regCells A i) := by
+  have hr := h.2.2
+  have unk : ∀ v : Word, Cells.ok m0 srcB ((s.reg A.cur - d).toNat + A.δ) v [] := by
+    intro v j hj; simp [Cell.ok]
+  cases i <;> simp only [writesReg, Option.some.injEq, reduceCtorEq] at hw <;> subst hw <;>
+    simp only [exec, Option.some.injEq] at hx <;> subst hx
+  all_goals refine ⟨_, rfl, ?_⟩
+  case iop op rd rs imm =>
+    cases op <;> simp only [regCells] <;> try exact unk _
+    split
+    · rename_i h0; subst h0; simp only [evalI]
+      rw [show BitVec.signExtend 64 (0 : BitVec 12) = 0 from by decide,
+        show s.reg rs + (0 : Word) = s.reg rs from by simp]; exact hr rs
+    · exact unk _
+  case shift op rd rs sh =>
+    cases op <;> simp only [regCells] <;> try exact unk _
+    · split
+      · rename_i h8; simp only [evalSh]
+        have e : sh.toNat = 8 * (sh.toNat / 8) := by omega
+        rw [e]; rw [show 8 * (sh.toNat / 8) / 8 = sh.toNat / 8 by omega]; exact Cells.shl_ok _ (hr rs)
+      · exact unk _
+    · split
+      · rename_i h8; simp only [evalSh]
+        have e : sh.toNat = 8 * (sh.toNat / 8) := by omega
+        rw [e]; rw [show 8 * (sh.toNat / 8) / 8 = sh.toNat / 8 by omega]; exact Cells.shr_ok _ (hr rs)
+      · exact unk _
+  case shiftw op rd rs sh =>
+    cases op <;> simp only [regCells] <;> try exact unk _
+    split
+    · rename_i h8; simp only [evalShW]
+      have e : sh.toNat = 8 * (sh.toNat / 8) := by omega
+      rw [e]; rw [show 8 * (sh.toNat / 8) / 8 = sh.toNat / 8 by omega]
+      exact Cells.srliw_ok (by omega) (by omega) (hr rs)
+    · exact unk _
+  case rop op rd a b =>
+    cases op <;> simp only [regCells] <;> try exact unk _
+    simp only [evalR]; exact Cells.or_ok (hr a) (hr b)
+  all_goals simp only [regCells]; exact unk _
+
+theorem AState.ok_setPc {m0 d srcB n} {A : AState} {s : State} (h : A.ok m0 d srcB n s) (p : Word) :
+    A.ok m0 d srcB n (s.setPc p) := h
+
+/-- Soundness of the register-only step. -/
+theorem regStep_ok {m0 d srcB n} {A A' : AState} {s s' : State} (h : A.ok m0 d srcB n s)
+    {i : Instr} (hs : regStep A i = some A') (hx : exec i s = some s') : A'.ok m0 d srcB n s' := by
+  unfold regStep at hs
+  split at hs
+  · rename_i rd hw
+    obtain ⟨v, rfl, hv⟩ := regCells_ok h i hw hx
+    split at hs
+    · rename_i h0
+      cases hs; subst h0
+      simp only [State.setReg, if_true]
+      exact AState.ok_setPc h _
+    · split at hs
+      · cases hs
+      · cases hs
+        exact AState.ok_set h (by assumption) (by assumption) hv _
+  · cases hs
+
+end NoCompiler.Typed.Track
