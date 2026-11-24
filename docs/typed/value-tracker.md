@@ -222,3 +222,12 @@ must agree with `G` at those offsets mod `w`); the cursor rules hold for both. A
 `c + c2 ≥ n` gives `Written m0 m d G n` (every byte of `d[0, n)` is in one of the ranges). memset's
 early exits (`n ≤ 2, 6, 8`) are returns where the stores so far from both ends cover `n`: the
 branch facts (`bltu a2, a4`) give the bound, as `finOk` uses them now.
+
+### Kernel finding: a search nobody needs (memcpy-x, 2026-11-24)
+
+memcpy-x's table check was killed at 8 GB. Bisection (chunks, then single points) found one
+point, 97, alone over 8 GB; it had no tracker certificates, so it ran in `CertMode.search`, and
+the kernel ran searches whose answers `pointOk` does not need (a failed cursor-move entailment
+falls back to the register step, which the table accepts anyway). Fix in `tabcerts.py`: a point
+without recorded certificates gets `.table []`, which is exact: in log mode every successful
+query records a certificate, so the remaining queries fail in both modes. Point 97: 1 s, 0.5 GB.
