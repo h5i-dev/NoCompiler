@@ -132,6 +132,18 @@ structure HCap where
   origin : Option Nat := none
   deriving DecidableEq, Repr
 
+/-- Where the entailments of a point get their certificates (export.md "Certificates"):
+    `search` runs the (untrusted) search; `log tag` also prints each certificate it finds
+    (`CERT tag goal ::: certs`, by `dbgTrace`, for compiled evaluation to record them; the tag
+    names the point, and the types derived from the point's type keep it); `table`
+    runs no search: an entailment holds only if a recorded certificate list for an equal goal
+    passes `Query.check` (so the kernel only checks). Every mode is sound: `Query.check` is. -/
+inductive CertMode where
+  | search
+  | log (tag : Nat)
+  | table (t : List (Constr × List Cert))
+  deriving DecidableEq, Repr
+
 /-- The type of a program point: Γ (a register not listed is `int`), Ψ, C. (Φ, the
     frame depth and tokens come with frames and calls.) -/
 structure STy where
@@ -142,6 +154,8 @@ structure STy where
   slots : List (Nat × IExpr) := []
   /-- How far `sp` is below its entry value: 0 or the frame size (S3). -/
   depth : Nat := 0
+  /-- Certificates for this point's entailments (a hint; the types derived from it keep it). -/
+  certs : CertMode := .search
   deriving DecidableEq, Repr
 
 namespace Constr
@@ -273,17 +287,30 @@ def relevant (hs : List Constr) (ψ : Constr) : List Constr :=
 /-- The hypotheses without case analysis first (no `∨`, `¬` only of `≤` and `∣`), then all:
     a goal that follows from the plain facts is not drowned in the branches of unrelated
     disjunctions (a bit table's facts multiply every branch). Dropping hypotheses is sound. -/
-def decide2 (hs : List Constr) (ψ : Constr) : Bool :=
-  (Query.mk (hs.filter Constr.isConj) ψ).decide || (Query.mk hs ψ).decide
+def decideQ (m : CertMode) (q : Query) : Bool :=
+  match m with
+  | .search => q.decide
+  | .log tag =>
+    match Search.prove q with
+    | some cs =>
+      if q.check cs then
+        dbgTrace s!"CERT {tag} {(repr q.goal).pretty 1000000} ::: {(repr cs).pretty 1000000}"
+          fun _ => true
+      else false
+    | none => false
+  | .table t => t.any fun (g, cs) => g == q.goal && q.check cs
+
+def decide2 (m : CertMode) (hs : List Constr) (ψ : Constr) : Bool :=
+  decideQ m (Query.mk (hs.filter Constr.isConj) ψ) || decideQ m (Query.mk hs ψ)
 
 /-- `Ψ ⊢ ψ` by the decision procedure. -/
 def entQ' (S : STy) (ψ : Constr) : Bool :=
   let hs := relevant S.hyps ψ
   match ψ with
   | .tt => true
-  | .eq a b => a.same b || decide2 hs ψ
-  | .dvd _ e => e.same (.lit 0) || decide2 hs ψ
-  | _ => decide2 hs ψ
+  | .eq a b => a.same b || decide2 S.certs hs ψ
+  | .dvd _ e => e.same (.lit 0) || decide2 S.certs hs ψ
+  | _ => decide2 S.certs hs ψ
 
 /-- One case: each conjunct of the goal as `c ∨ ¬d` (the disjunct's variables stay in the
     goal, so the hypotheses that refute an impossible case, goal `ff`, are not pruned). -/
@@ -548,6 +575,8 @@ structure Fn where
   /-- Bit counts `k` for which an `xor` result also gets `2^k ∣ x ⇔ 2^k ∣ a − b` (the
       xor-then-mask idiom, I23). A hint from the record; sound for any list (U). -/
   xorBits : List Nat := []
+  /-- Certificates for the entry edge's entailments (`initTy`'s `CertMode`). -/
+  entryCerts : CertMode := .search
   /-- The functions it calls: entry address and signature (each must meet it; `check_sound`'s
       hypotheses). -/
   callees : List (Word × Sig) := []
@@ -598,6 +627,7 @@ def initTy : STy where
   -- borrowed and taken capabilities; the origin is the index in `Sig.entryCaps`
   caps := (f.sig.entryCaps.zipIdx.map fun (c, i) =>
     ({ id := f.entryId i, cap := c, origin := some i } : HCap))
+  certs := f.entryCerts
 
 /-! ### Edges -/
 

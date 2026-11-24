@@ -89,6 +89,14 @@ at. Callees in other files or sections have no address before linking and are le
 Lean checker then rejects the call (no matching `callees` entry), which is the safe direction.
 With `--image` (below) every callee with a signature gets its linked address, in any file.
 
+### Certificates (2026-11-24, U; T: amend here)
+
+The kernel check `decide +kernel` of `fn_<f>.check code` used to run the whole checker in the kernel, including the untrusted Presburger search (`Typed/Search.lean`). That cost up to 8 GB for musl's memcpy-x, l64a and memccpy-x. The record can now carry the search's results, so the kernel only checks them.
+* `STy.certs : CertMode` (default `.search`) and `Fn.entryCerts : CertMode` (for `initTy`). A derived type (`addFacts`, `setReg`, …) keeps its point's mode, so every entailment made while checking word k (its rule and its edges) uses point k's certificates.
+* `CertMode.search`: the search (as before). `CertMode.log`: the search, and each certificate list that passes `Query.check` is printed to stderr as `CERT <goal> ::: <certs>` (`dbgTrace`; compiled evaluation only). `CertMode.table t`, with `t : List (Constr × List Cert)`: no search. An entailment holds when some entry whose goal equals the query's passes `Query.check`; otherwise it is false.
+* Soundness: `decideQ_sound`. Every mode ends in `Query.check_sound`, and false is always sound, so `Fn.check_sound` covers a record with tables unchanged. A table only decides how much the kernel has to do.
+* Producer: `lean/scripts/certgen.py` takes a generated module (record, `def code`). It evaluates each function's check point by point in `log` mode (compiled, `lake lean`), and writes a module whose `fnc_<f>` is `fn_<f>` with each point's table, plus the kernel theorems.
+
 ### Xor facts (2026-11-24)
 
 `FnExport.xor_defs` lists `x = a xor b` for each xor result, which is true in every state. `xorBits` lists the widths `k` of the function's masks `2^k − 1` (`andi` immediates, `li` constants). Each exported point where x, a and b are live gets `2^k ∣ x ⇔ 2^k ∣ a − b` for each k. The Lean checker's xor rule adds the same facts, and its mask rules turn them into the zero test `x = 0 ⇔ 2^k ∣ a − b`.

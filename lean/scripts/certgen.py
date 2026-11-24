@@ -1,0 +1,159 @@
+#!/usr/bin/env python3
+"""Certificates for the kernel check (docs/typed/export.md "Certificates").
+
+Input: a generated module with the record and `def code` (the linked .text), as
+`corpus.py --link --keep DIR` writes it. Each function is evaluated point by point with every
+type in `CertMode.log` (compiled evaluation, `lake lean`): the search's certificates are printed
+as `CERT <goal> ::: <certs>`. The output module is the input's declarations plus, per function,
+`fnc_<f>`: `fn_<f>` with each point's certificates as a `CertMode.table` (no search in the
+kernel), and the theorem `chk_<f> : fnc_<f>.check code = true` by `decide +kernel`. With
+--split the theorem is assembled from one kernel computation per point (`Fn.check_of_parts`,
+`rangeAll_succ`), for functions too big for one declaration.
+
+The certificates are untrusted hints: the kernel re-checks each one (`Query.check`), and a
+missing or wrong one only makes the check fail.
+
+Usage: lean/scripts/certgen.py IN.lean OUT.lean [--split] [--only FN]
+"""
+import argparse
+import os
+import re
+import subprocess
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def base_of(text):
+    """The declarations of a generated module: everything before its first #eval."""
+    i = text.find("\n#eval")
+    return text if i < 0 else text[: i + 1]
+
+
+def run_lean(path, timeout):
+    pre = []
+    mem = os.environ.get("CERTGEN_MEM")
+    if mem:
+        pre = ["systemd-run", "--user", "--scope", "--quiet", "-p", f"MemoryMax={mem}",
+               "-p", "MemorySwapMax=0"]
+    return subprocess.run([*pre, "lake", "lean", path], cwd=os.path.join(ROOT, "lean"),
+                          capture_output=True, text=True, timeout=timeout)
+
+
+ENTRY = 999999
+
+
+def log_module(base, fns):
+    """Every type of function i in `CertMode.log (i·10^6 + k)` for its point k (the entry edge:
+    `i·10^6 + 999999`), so each printed certificate names its point; one #eval forces them all."""
+    out = [base]
+    for i, f in enumerate(fns):
+        t = i * 1000000
+        out.append(f"""
+def fnlog_{f} : Fn :=
+  {{ fn_{f} with types := fn_{f}.types.map (fun p => (p.1, {{ p.2 with certs := .log ({t} + p.1) }})),
+               entryCerts := .log {t + ENTRY} }}
+
+#eval IO.println s!"DONE {f} {{fnlog_{f}.structOk && fnlog_{f}.edge none fnlog_{f}.initTy 0}} {{(List.range fnlog_{f}.size).map (fnlog_{f}.instr code)}}"
+""")
+    return "\n".join(out)
+
+
+def parse_log(output, fns):
+    """{(fn, point): [(goal, certs)]} and {fn: DONE line} from the log run's output."""
+    certs, done = {}, {}
+    for line in output.splitlines():
+        if line.startswith("CERT "):
+            tag, rest = line[5:].split(" ", 1)
+            g, cs = rest.split(" ::: ", 1)
+            i, k = divmod(int(tag), 1000000)
+            key = (fns[i], "entry" if k == ENTRY else str(k))
+            lst = certs.setdefault(key, [])
+            if (g, cs) not in lst:
+                lst.append((g, cs))
+        elif line.startswith("DONE "):
+            _, f, rest = line.split(" ", 2)
+            done[f] = rest
+    return certs, done
+
+
+def table(entries):
+    if not entries:
+        return ".table []"
+    return ".table [" + ", ".join(f"({g}, {cs})" for g, cs in entries) + "]"
+
+
+def out_module(base, fns, sizes, certs, split):
+    out = [base]
+    for f in fns:
+        pts = [k for (g, k) in certs if g == f and k != "entry"]
+        # every point gets a table (an empty one: no search in the kernel either)
+        rows = ",\n  ".join(f"({k}, {table(certs[(f, k)])})" for k in sorted(pts, key=int))
+        out.append(f"""
+/-- `{f}`'s certificates per point (untrusted hints, re-checked by `Query.check`). -/
+def certs_{f} : List (Nat × CertMode) := [
+  {rows}]
+
+def fnc_{f} : Fn :=
+  {{ fn_{f} with
+    types := fn_{f}.types.map (fun p => (p.1, {{ p.2 with certs := (certs_{f}.lookup p.1).getD (.table []) }})),
+    entryCerts := {table(certs.get((f, "entry"), []))} }}
+""")
+        if not split:
+            out.append(f"""set_option maxRecDepth 100000 in
+theorem chk_{f} : fnc_{f}.check code = true := by decide +kernel
+""")
+            continue
+        n = sizes[f]
+        out.append(f"""set_option maxRecDepth 100000 in
+theorem chk_{f}_s : (fnc_{f}.structOk && fnc_{f}.edge none fnc_{f}.initTy 0) = true := by
+  decide +kernel
+""")
+        for k in range(n):
+            out.append(f"""set_option maxRecDepth 100000 in
+theorem chk_{f}_{k} : fnc_{f}.instr code {k} = true := by decide +kernel
+""")
+        term = f"rangeAll_zero (fnc_{f}.instr code)"
+        for k in range(n):
+            term = f"(rangeAll_succ {term} chk_{f}_{k})"
+        out.append(f"""set_option maxRecDepth 100000 in
+theorem chk_{f} : fnc_{f}.check code = true :=
+  Fn.check_of_parts _ chk_{f}_s {term}
+""")
+    return "\n".join(out)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("inp")
+    ap.add_argument("out")
+    ap.add_argument("--split", action="store_true")
+    ap.add_argument("--only")
+    ap.add_argument("--timeout", type=int, default=int(os.environ.get("LEAN_TIMEOUT", "900")))
+    a = ap.parse_args()
+    text = open(a.inp, encoding="utf-8").read()
+    base = base_of(text)
+    if not re.search(r"^def code : Code", base, re.M):
+        sys.exit(f"{a.inp}: no `def code` (generate it with corpus.py --link --keep)")
+    fns = re.findall(r"^def fn_(\w+) : Fn where", base, re.M)
+    if a.only:
+        fns = [f for f in fns if f == a.only]
+    sizes = {}
+    for f in fns:
+        m = re.search(rf"^def fn_{f} : Fn where.*?^  size := (\d+)", base, re.M | re.S)
+        sizes[f] = int(m.group(1)) if m else 0
+    log_path = os.path.splitext(a.out)[0] + ".log.lean"
+    open(log_path, "w", encoding="utf-8").write(log_module(base, fns))
+    r = run_lean(log_path, a.timeout)
+    certs, done = parse_log(r.stdout + "\n" + r.stderr, fns)
+    bad = [f for f in fns if f not in done or "false" in done[f]]
+    if r.returncode != 0 or bad:
+        print(f"log run: rc={r.returncode}, not accepted: {bad}", file=sys.stderr)
+        print((r.stdout + r.stderr)[-2000:], file=sys.stderr)
+    open(a.out, "w", encoding="utf-8").write(out_module(base, fns, sizes, certs, a.split))
+    n = sum(len(v) for v in certs.values())
+    print(f"{a.out}: {len(fns)} functions, {len(certs)} points, {n} certificate lists")
+
+
+if __name__ == "__main__":
+    main()

@@ -626,6 +626,18 @@ def structOk : Bool :=
 def check (c : Code) : Bool :=
   f.structOk && f.edge none f.initTy 0 && (List.range f.size).all (f.instr c)
 
+/-- `check` from its parts, each its own (smaller) kernel computation (export.md
+    "Certificates"): the structure and the entry edge, and every point. -/
+theorem check_of_parts {c : Code} (hs : (f.structOk && f.edge none f.initTy 0) = true)
+    (hi : (List.range f.size).all (f.instr c) = true) : f.check c = true := by
+  unfold check; simp only [Bool.and_eq_true] at hs ⊢; exact ⟨hs, hi⟩
+
 end Fn
+
+theorem rangeAll_zero (p : Nat → Bool) : (List.range 0).all p = true := rfl
+
+theorem rangeAll_succ {p : Nat → Bool} {n : Nat} (h : (List.range n).all p = true)
+    (hn : p n = true) : (List.range (n + 1)).all p = true := by
+  rw [List.range_succ, List.all_append]; simp [h, hn]
 
 end NoCompiler.Typed

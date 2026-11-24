@@ -217,12 +217,28 @@ theorem hyps_holds {T : TokEnv} {ι : Val} {F : TokFp} {m : Word → Byte} {S : 
       · exact .inl (by simpa using hg)
     · cases e
 
-theorem decide2_sound {ι : Val} {hs : List Constr} {ψ : Constr} (h : decide2 hs ψ = true)
-    (hh : ∀ p ∈ hs, p.holds ι) : ψ.holds ι := by
+/-- Every certificate mode is sound: a found or a recorded certificate list passes
+    `Query.check` (the table's recorded goal only selects which lists to try). -/
+theorem decideQ_sound {ι : Val} {m : CertMode} {q : Query} (h : decideQ m q = true)
+    (hh : ∀ p ∈ q.hyps, p.holds ι) : q.goal.holds ι := by
+  unfold decideQ at h
+  split at h
+  · exact Query.decide_sound h ι hh
+  · split at h
+    · split at h
+      · rename_i cs _ hc; exact Query.check_sound hc ι hh
+      · cases h
+    · cases h
+  · obtain ⟨⟨g, cs⟩, -, hgc⟩ := List.any_eq_true.1 h
+    simp only [Bool.and_eq_true] at hgc
+    exact Query.check_sound hgc.2 ι hh
+
+theorem decide2_sound {ι : Val} {m : CertMode} {hs : List Constr} {ψ : Constr}
+    (h : decide2 m hs ψ = true) (hh : ∀ p ∈ hs, p.holds ι) : ψ.holds ι := by
   unfold decide2 at h
   rcases Bool.or_eq_true _ _ ▸ h with h | h
-  · exact Query.decide_sound h ι fun p hp => hh p (List.mem_filter.1 hp).1
-  · exact Query.decide_sound h ι hh
+  · exact decideQ_sound h fun p hp => hh p (List.mem_filter.1 hp).1
+  · exact decideQ_sound h hh
 
 theorem entQ'_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entQ' ψ = true)
     (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
