@@ -8,7 +8,7 @@ certificates (`certgen.parse_log`), and writes a module with the table plus, per
 `CertMode.table` (`Table.certs`), so the kernel only checks certificates. Untrusted hints: a
 missing or wrong certificate only makes `tabOk` fail.
 
-Usage: lean/scripts/tabcerts.py TABLE_MODULE NS FN SIZE OUT.lean
+Usage: lean/scripts/tabcerts.py TABLE_MODULE NS FN SIZE OUT.lean [RECORD_NS]
   (TABLE_MODULE defines `table`, `args`; e.g. Examples.Musl.MemcpyTable)
 """
 import os
@@ -20,8 +20,9 @@ import certgen  # noqa: E402
 
 mod, ns, fn, size, out = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4]), sys.argv[5]
 key = fn.removeprefix("fn_")
+recns = sys.argv[6] if len(sys.argv) > 6 else key
 opens = "open NoCompiler NoCompiler.Typed NoCompiler.Typed.Track"
-rec_ns = f"NoCompiler.Typed.Export.{key}"
+rec_ns = f"NoCompiler.Typed.Export.{recns}"
 
 log = f"""import {mod}
 {opens} {rec_ns} {ns}

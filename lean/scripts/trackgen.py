@@ -47,8 +47,10 @@ def main():
     ap.add_argument("--width", type=int, default=1)
     ap.add_argument("--fill", action="store_true")
     ap.add_argument("--cursor", default="13,16,10")
+    ap.add_argument("--ns", help="the record's namespace suffix (default: FN), e.g. memcpy_x")
     a = ap.parse_args()
     fn, Mod = a.fn, a.mod
+    rns = a.ns or fn
     dr, sr, nr = a.regs.split(",")
     dv, sv, nv = a.vars.split(",")
     fill = "true" if a.fill else "false"
@@ -64,7 +66,7 @@ def main():
     # 2. the producer with this function's Configuration
     t = open(os.path.join(HERE, "tablegen.lean"), encoding="utf-8").read()
     t = t.replace("import Examples.Musl.MemcpyRecord", f"import Examples.Musl.{Mod}Record")
-    t = t.replace("NoCompiler.Typed.Export.memcpy", f"NoCompiler.Typed.Export.{fn}")
+    t = t.replace("NoCompiler.Typed.Export.memcpy", f"NoCompiler.Typed.Export.{rns}")
     t = re.sub(r"^def F : Fn := .*$", f"def F : Fn := fn_{fn}", t, flags=re.M)
     t = re.sub(r"^def PP : Params := .*$", f"def PP : Params := ⟨{dv}, {sv}, {nv}, {a.width}, {fill}⟩", t, flags=re.M)
     t = re.sub(r"^def CC : CopyArgs := .*$", f"def CC : CopyArgs := ⟨{dr}, {sr}, {nr}, PP⟩", t, flags=re.M)
@@ -101,7 +103,7 @@ end NoCompiler.Examples.Musl.{Mod}Table
     # 3. certificates
     ns = f"NoCompiler.Examples.Musl.{Mod}Table"
     r = subprocess.run([sys.executable, os.path.join(HERE, "tabcerts.py"), f"Examples.Musl.{Mod}Table",
-                        ns, f"fn_{fn}", str(size), os.path.join(ex, f"{Mod}Certs.lean")],
+                        ns, f"fn_{fn}", str(size), os.path.join(ex, f"{Mod}Certs.lean"), rns],
                        cwd=LEAN, capture_output=True, text=True)
     if r.returncode:
         sys.exit("tabcerts failed:\n" + (r.stdout + r.stderr)[-2000:])
@@ -109,7 +111,7 @@ end NoCompiler.Examples.Musl.{Mod}Table
     # 4. the per-point kernel module
     r = subprocess.run([sys.executable, os.path.join(HERE, "tabsplit.py"), ns, f"fn_{fn}", str(size),
                         f"Examples.Musl.{Mod}Certs,NoCompiler.Typed.Sound.TrackStep",
-                        f"NoCompiler.Typed.Export.{fn}", "tablec"], cwd=LEAN, capture_output=True, text=True)
+                        f"NoCompiler.Typed.Export.{rns}", "tablec"], cwd=LEAN, capture_output=True, text=True)
     open(os.path.join(ex, f"{Mod}TabOk.lean"), "w").write(r.stdout)
     print(f"wrote Examples/Musl/{Mod}{{Record,Table,Certs,TabOk}}.lean ({size} points)")
 
