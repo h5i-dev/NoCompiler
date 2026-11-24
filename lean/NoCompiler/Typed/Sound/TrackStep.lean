@@ -265,7 +265,7 @@ theorem word_eq_of_eqMod {ι : Val} {w1 w2 : Word} {e1 e2 : IExpr} (h1 : HasInt 
 /-- The exact distance of the cursor from `d`, from the bounds `d ≤ cur` and
     `cur − d + k ≤ n` on its expression (`n < 2^64`). -/
 theorem toNat_sub_exact {ι : Val} {cur d : Word} {ec : IExpr} {dv nv : Var} {n k : Nat}
-    (hc : HasInt ι cur ec) (hd : (d.toNat : Int) = ι dv) (hn : (n : Int) = ι nv) (hn64 : n < 2 ^ 64)
+    (hc : HasInt ι cur ec) (hd : (d.toNat : Int) % 2 ^ 64 = ι dv % 2 ^ 64) (hn : (n : Int) = ι nv) (hn64 : n < 2 ^ 64)
     (hlo : (Constr.le (.var dv) ec).holds ι)
     (hhi : (Constr.le ((ec.sub (.var dv)).add (.lit k)) (.var nv)).holds ι) :
     ((cur - d).toNat : Int) = ec.eval ι - ι dv ∧ (cur - d).toNat + k ≤ n := by
@@ -315,10 +315,21 @@ def tstep (S : STy) (P : Params) (o : Nat) (A : AState) : Instr → Option AStat
       then some (A.set rd (Cells.load o op.width))
       else none
     | _, _ => none
+  -- a pointer move that is the cursor plus `o ≤ δ` (the hint), by the point's type: the new cursor
   | .iop .addi rd rs imm =>
-    if rs = A.cur ∧ rd ≠ 0 ∧ imm.toNat < 2 ^ 11 ∧ imm.toNat ≤ A.δ then
-      some { cur := rd, δ := A.δ - imm.toNat, cells := (A.set rd []).cells }
-    else regStep A (.iop .addi rd rs imm)
+    match S.reg rs, S.reg A.cur with
+    | some e, some ec =>
+      if rd ≠ 0 ∧ o ≤ A.δ ∧ S.ent (Constr.eqMod (e.add (.lit imm.toInt)) (ec.add (.lit o))) = true then
+        some { cur := rd, δ := A.δ - o, cells := (A.set rd []).cells }
+      else regStep A (.iop .addi rd rs imm)
+    | _, _ => regStep A (.iop .addi rd rs imm)
+  | .rop .add rd a b =>
+    match S.reg a, S.reg b, S.reg A.cur with
+    | some ea, some eb, some ec =>
+      if rd ≠ 0 ∧ o ≤ A.δ ∧ S.ent (Constr.eqMod (ea.add eb) (ec.add (.lit o))) = true then
+        some { cur := rd, δ := A.δ - o, cells := (A.set rd []).cells }
+      else regStep A (.rop .add rd a b)
+    | _, _, _ => regStep A (.rop .add rd a b)
   | .branch _ _ _ _ => some A
   | .jal 0 _ => some A
   | .jalr 0 _ _ => some A
@@ -342,8 +353,8 @@ theorem signExtend_of_small {imm : BitVec 12} (h : imm.toNat < 2 ^ 11) :
 /-- **Soundness of the abstract step.** -/
 theorem tstep_ok {m0 : Word → Byte} {d srcB : Word} {n : Nat} {S : STy} {P : Params} {o : Nat} {A A' : AState} {s s' : State}
     {ι : Val} {i : Instr} (hregs : ∀ p ∈ S.regs, HasInt ι (s.reg p.1) p.2)
-    (hent : ∀ ψ, S.ent ψ = true → ψ.holds ι) (hd : (d.toNat : Int) = ι P.dv)
-    (hs : (srcB.toNat : Int) = ι P.sv) (hn : (n : Int) = ι P.nv) (hn64 : n < 2 ^ 64)
+    (hent : ∀ ψ, S.ent ψ = true → ψ.holds ι) (hd : (d.toNat : Int) % 2 ^ 64 = ι P.dv % 2 ^ 64)
+    (hs : (srcB.toNat : Int) % 2 ^ 64 = ι P.sv % 2 ^ 64) (hn : (n : Int) = ι P.nv) (hn64 : n < 2 ^ 64)
     (hdisj : Disj d srcB n) (h : A.ok m0 d srcB n s) (ht : tstep S P o A i = some A')
     (hx : exec i s = some s') : A'.ok m0 d srcB n s' := by
   cases i
@@ -403,15 +414,41 @@ theorem tstep_ok {m0 : Word → Byte} {d srcB : Word} {n : Nat} {S : STy} {P : P
     case addi =>
       simp only [tstep] at ht
       split at ht
-      · rename_i hcond
-        obtain ⟨hrs, hrd0, hnn, hle⟩ := hcond
-        cases ht
-        subst hrs
-        simp only [exec, Option.some.injEq] at hx
-        subst hx
-        simp only [evalI]
-        rw [signExtend_of_small hnn]
-        exact AState.ok_advance h hn64 hrd0 hle _
+      · rename_i e ec he hc
+        split at ht
+        · rename_i hcond
+          obtain ⟨hrd0, hle, heq⟩ := hcond
+          cases ht
+          simp only [exec, Option.some.injEq] at hx
+          subst hx
+          simp only [evalI]
+          have hv : s.reg rs + imm.signExtend 64 = s.reg A.cur + BitVec.ofNat 64 o :=
+            word_eq_of_eqMod (hasInt_add (STy.reg_hasInt hregs he) (hasInt_signExtend (by decide) ι imm))
+              (hasInt_add (STy.reg_hasInt hregs hc) (hasInt_ofNat ι o)) (hent _ heq)
+          rw [hv]
+          exact AState.ok_advance h hn64 hrd0 hle _
+        · exact regStep_ok h ht hx
+      · exact regStep_ok h ht hx
+    all_goals (simp only [tstep] at ht; exact regStep_ok h ht hx)
+  case rop op rd a b =>
+    cases op
+    case add =>
+      simp only [tstep] at ht
+      split at ht
+      · rename_i ea eb ec ha hb hc
+        split at ht
+        · rename_i hcond
+          obtain ⟨hrd0, hle, heq⟩ := hcond
+          cases ht
+          simp only [exec, Option.some.injEq] at hx
+          subst hx
+          simp only [evalR]
+          have hv : s.reg a + s.reg b = s.reg A.cur + BitVec.ofNat 64 o :=
+            word_eq_of_eqMod (hasInt_add (STy.reg_hasInt hregs ha) (STy.reg_hasInt hregs hb))
+              (hasInt_add (STy.reg_hasInt hregs hc) (hasInt_ofNat ι o)) (hent _ heq)
+          rw [hv]
+          exact AState.ok_advance h hn64 hrd0 hle _
+        · exact regStep_ok h ht hx
       · exact regStep_ok h ht hx
     all_goals (simp only [tstep] at ht; exact regStep_ok h ht hx)
   case branch op rs1 rs2 off =>
@@ -764,7 +801,8 @@ theorem Fn.check_sound_track (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = t
     (hDf : ∀ k < f.size, D.mem (f.pcOf k)) (hsz : 4 * f.size + 2 ^ 21 < 2 ^ 64)
     (C : CopyArgs) (t : Table) (ht : tabOk f c C t = true)
     (hargs : ∀ a s0, Entry D f.entry s0 → (f.sig.spec T).pre a s0 →
-      ((s0.reg C.dr).toNat : Int) = a.1 C.P.dv ∧ ((s0.reg C.sr).toNat : Int) = a.1 C.P.sv ∧
+      ((s0.reg C.dr).toNat : Int) % 2 ^ 64 = a.1 C.P.dv % 2 ^ 64 ∧
+      ((s0.reg C.sr).toNat : Int) % 2 ^ 64 = a.1 C.P.sv % 2 ^ 64 ∧
       ((s0.reg C.nr).toNat : Int) = a.1 C.P.nv ∧
       C.P.dv ∈ f.sig.params ∧ C.P.sv ∈ f.sig.params ∧ C.P.nv ∈ f.sig.params ∧
       Disj (s0.reg C.dr) (s0.reg C.sr) (s0.reg C.nr).toNat) :
@@ -826,8 +864,8 @@ theorem Fn.check_sound_track (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = t
         obtain ⟨hnj, htst⟩ := hpt
         split at htst
         · rename_i A' hA'
-          have hdi : ((s0.reg C.dr).toNat : Int) = ι C.P.dv := by rw [hparams _ hpd]; exact hdv
-          have hsi : ((s0.reg C.sr).toNat : Int) = ι C.P.sv := by rw [hparams _ hps]; exact hsv
+          have hdi : ((s0.reg C.dr).toNat : Int) % 2 ^ 64 = ι C.P.dv % 2 ^ 64 := by rw [hparams _ hpd]; exact hdv
+          have hsi : ((s0.reg C.sr).toNat : Int) % 2 ^ 64 = ι C.P.sv % 2 ^ 64 := by rw [hparams _ hps]; exact hsv
           have hni : (((s0.reg C.nr).toNat : Nat) : Int) = ι C.P.nv := by rw [hparams _ hpn]; exact hnv
           have hok := tstep_ok hregs hent hdi hsi hni (s0.reg C.nr).isLt hdisj hJk hA' hx
           have hnotj : ∀ a b c, i ≠ .jalr a b c := by
@@ -844,7 +882,7 @@ theorem Fn.check_sound_track (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = t
     obtain ⟨S, ι0', F, hS, hk, hpc, hI, -⟩ := htk
     have hpt := tabOk_point ht hk
     obtain ⟨ι, hregs, hent, -, hparams⟩ := Fn.Typed.facts hst htk0 hS
-    have hdi : ((s0.reg C.dr).toNat : Int) = ι C.P.dv := by rw [hparams _ hpd]; exact hdv
+    have hdi : ((s0.reg C.dr).toNat : Int) % 2 ^ 64 = ι C.P.dv % 2 ^ 64 := by rw [hparams _ hpd]; exact hdv
     have hni : (((s0.reg C.nr).toNat : Nat) : Int) = ι C.P.nv := by rw [hparams _ hpn]; exact hnv
     cases hstep with
     | sys _ hi _ _ =>
