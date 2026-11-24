@@ -707,15 +707,14 @@ One signature records an assumption of the code. \code{memmove} decides that two
 
 %======================================================================
 \section{Conclusion}
-\sys\ gives machine code a type system whose judgments mean one proposition, $\sem{\sigma}$, defined over an instruction-set semantics. The checker that decides the judgments is itself defined in Lean and proved to establish $\sem{\sigma}$, so for a function it accepts, memory safety relative to its capabilities, the calling convention, ownership transfer, and termination are kernel-checked theorems about the decoded image, conditional only on the signatures of its callees. Unmodified compiler output of a C library is largely within reach of the language: what remains outside is NUL-terminated strings, function pointers, non-linear lengths, and path-dependent facts at joins, and the next extensions of the type language address them in that order of frequency.
+\sys\ gives machine code a type system whose judgments mean one proposition, $\sem{\sigma}$, defined over an instruction-set semantics. The checker that decides the judgments is itself defined in Lean and proved to establish $\sem{\sigma}$, so for a function it accepts, memory safety relative to its capabilities, the calling convention, ownership transfer, and termination are kernel-checked theorems about the decoded image, conditional only on the signatures of its callees. Unmodified compiler output of a C library is largely within reach of the language: what remains outside is NUL-terminated strings, function pointers, non-linear lengths, and path-dependent facts at joins, which are the next extensions of the type language.
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{nocompiler-references}
 
 \appendix
 \section{Summary of definitions}
-\begin{table}[h]
-\centering\small
+\begin{center}\small
 \begin{tabular}{@{}p{30mm}p{19mm}p{24mm}@{}}
 \toprule
 Object & Definition & Lean\\
@@ -743,6 +742,6 @@ invariant & \ref{def:inv} & \lean{Inv}\\
 program check & \ref{def:prog} & \lean{Prog.check}\\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{center}
 The three relations the development rests on are the meaning of a state type ($\Inv$, Definition~\ref{def:inv}), local soundness (Lemmas~\ref{lem:weak}--\ref{lem:ret}: every accepted rule and edge preserves $\Inv$ and decreases the rank), and global soundness (Theorems~\ref{thm:check} and~\ref{thm:prog}: acceptance implies $\sem{\sigma}$).
 \end{document}
