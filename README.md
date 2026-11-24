@@ -41,29 +41,6 @@ done:
     jalr zero, 0(ra)
 ```
 
-The syntax is provisional.
-
-**What is claimed, and what is not**
-
-- Claimed: a checked safe function, given that the contracts of the functions it calls hold, satisfies ⟦σ⟧. It reads and writes only what its signature grants. It returns to `ra` with `sp` and the callee-saved registers intact, gives back what it borrowed, and terminates unless it is marked `partial`.
-- Not claimed: functional correctness (still a hand proof, now with fewer side conditions), the contents of memory, absence of leaks or of integer overflow, and the truth of unsafe contracts.
-- Until the Lean-verified checker exists, "safe" means "accepted by the Rust checker". The soundness argument is so far a proof in natural language.
-
-## Status
-
-| Part | State |
-| --- | --- |
-| Design note v0 and soundness proof in natural language | written ([設計ノート](docs/Tab%201.md), [健全性の証明](docs/健全性の証明.md)) |
-| Lean: machine model, byte-wise permissions (decision 10) | done ([Step.lean](lean/NoCompiler/Step.lean)) |
-| Lean: type language and ⟦σ⟧, total version | done ([Typed/Lang.lean](lean/NoCompiler/Typed/Lang.lean), [Typed/Sem.lean](lean/NoCompiler/Typed/Sem.lean)) |
-| Rust checker: parser, typing rules, Presburger decision, ledger | running ([crates/nocompiler-typed](crates/nocompiler-typed)): loops are natural loops of a reducible CFG checked in a loop-contiguous order τ (user decision 2026-11-23; the address-interval rule stays as `--loops interval`); shared corpus of 140 verdicts as expected; static data; whole-program `link`; export for the Lean checker (with τ); every accepted function also run 300× on a permission-enforcing interpreter (no fault); an independent review's findings fixed (I33). The ledger says `proved` where the Lean checker established theorem D on the linked image (`--prove`), `checked` where only this checker accepted. The note's own trial ([note-trial.md](docs/typed/note-trial.md)): `sum`, `sum2`, `_start`, `write_all`, `hello`, `cobs_decode` accepted as compiled. Trusted, not yet cross-checked by Lean |
-| Lean checker, proved sound against ⟦σ⟧ (theorems A–D) | v0 complete (998ae0df): `Fn.check_sound` (check on the decoded image ⇒ ⟦σ⟧ total, standard axioms only) with frames, calls (`jal ra`, clang `call`/`tail` pairs), syscalls, `take`/`give`, tokens, static data, the heap mark's meaning (I38), every arithmetic rule of the Rust checker, `partial` functions (`Fn.check_soundP` ⇒ the partial meaning), and theorem D for whole programs (`Prog.check_sound`, callees first, external functions assumed). The note's `sum`, `sum2`, `_start`, linked, are proved by theorem D through the ledger (`--prove`) ([docs/typed/lean-checker.md](docs/typed/lean-checker.md)) |
-| Trial set: musl 1.2.5 functions as compiled, annotated, with verdicts predicted in advance | 29 functions (+8 flag variants) compiled, annotated, byte-verified, qemu-sanity-checked; Rust checker (default, natural loops): 23 of 29 accepted as compiled (19 with the old interval rule); rejected: 2 function pointers, `strlen` (NUL precondition not expressible), `memchr`, `fwrite`, `a64l` (missing `strchr` contract) ([musl-trial.md](docs/typed/musl-trial.md)) |
-| `partial` functions (I19) | done: partial meaning `Typed.MeetsP`, `Fn.check_soundP` (standard axioms) |
-| Pointer structures of unbounded size (lists, trees) | not started; unsafe for now (v1) |
-
-Decisions taken where the design is silent are in [docs/typed/decisions.md](docs/typed/decisions.md).
-
 ## Trust
 
 - Trusted: the Lean kernel, the RISC-V semantics in [lean/NoCompiler](lean/NoCompiler), the definition of ⟦σ⟧, the unsafe contracts you assume, and for now the Rust checker.
@@ -83,13 +60,6 @@ nocompiler diff /bin/true /bin/false
 
 See [docs/toolkit](docs/toolkit/README.md).
 
-## Layout
-
-| Path | What |
-| --- | --- |
-| `lean/NoCompiler/` | machine semantics, `Spec`/`VerifiedImg`, adequacy to the hardware step, `Typed/` (type language, ⟦σ⟧, the Lean checker) |
-| `crates/nocompiler-*` | the binary analysis toolkit and decompiler; the typed checker crate is being added |
-| `docs/` | the design note, the soundness proof, `typed/` decisions, toolkit docs |
-| `fixtures/` | the toolkit's test corpus |
+## License
 
 [Contributing](CONTRIBUTING.md) · Apache-2.0
