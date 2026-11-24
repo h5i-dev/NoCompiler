@@ -19,7 +19,6 @@
 #: fn _start [] borrow @data ↦ bytes[40] rw frame 32 slots 8, 16, 24 stack 32
 	.text
 	.attribute	4, 16
-	.attribute	5, "rv64i2p0_m2p0_zba1p0_zbb1p0"
 	.file	"sum.c"
 	.section	.text.sum,"ax",@progbits
 	.globl	sum                             # -- Begin function sum

@@ -12,7 +12,6 @@
 #:   stack  0
 	.text
 	.attribute	4, 16
-	.attribute	5, "rv64i2p0_m2p0_zba1p0_zbb1p0"
 	.file	"cobs.c"
 	.section	.text.cobs_decode,"ax",@progbits
 	.globl	cobs_decode                     # -- Begin function cobs_decode
