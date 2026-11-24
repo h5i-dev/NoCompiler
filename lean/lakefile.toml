@@ -14,3 +14,8 @@ precompileModules = true
 [[lean_lib]]
 name = "TypedTests"
 globs = ["TypedTests.+"]
+
+# Functional proofs on top of the type check (not part of the core library).
+[[lean_lib]]
+name = "Examples"
+globs = ["Examples.+"]
