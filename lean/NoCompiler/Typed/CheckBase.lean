@@ -270,19 +270,35 @@ def entQ' (S : STy) (ψ : Constr) : Bool :=
   | .dvd _ e => e.same (.lit 0) || q.decide
   | _ => q.decide
 
+/-- One case: each conjunct of the goal as `c ∨ ¬d` (the disjunct's variables stay in the
+    goal, so the hypotheses that refute an impossible case, goal `ff`, are not pruned). -/
+def entIn (S : STy) (d ψ : Constr) : Bool :=
+  ψ.conjuncts.all fun c => S.entQ' (Constr.mkOr c (Constr.mkNot d))
+
+/-- The facts with the pinned constants put in and folded (a table over pinned variables
+    collapses to its row). -/
+def pinFacts (S : STy) (θ : Subst) (d : Constr) : STy :=
+  { S with facts := (d :: S.facts).map fun p => (p.subst θ).fold }
+
 /-- By cases on a fact that is a disjunction whose every disjunct pins a variable to a
-    constant (`x = c ∧ …`, an invariant's case table): in each case the constant is put into
-    the goal, which then folds to (usually) one case, and the disjunct is a hypothesis.
+    constant (`x = c ∧ …`, an invariant's or a bit table's rows): in each case the constants
+    go into the goal and the facts, which fold to (usually) one case; up to `n` nested splits.
     Without it the normal form of such a fact against such a goal has thousands of branches. -/
-def entCase (S : STy) (ψ : Constr) : Bool :=
-  S.facts.any fun h => match h with
+def entCaseN : Nat → STy → Constr → Bool
+  | 0, _, _ => false
+  | n + 1, S, ψ => S.facts.any fun h => match h with
     | .or _ _ => h.disjuncts.all fun d =>
-      -- `ψ[x := v, …] ∨ ¬d` with every variable the disjunct pins (a bit table's row pins
-      -- several): the disjunct's variables stay in the goal, so the hypotheses that refute an
-      -- impossible case (goal `ff`) are not pruned as irrelevant
+      -- every variable the disjunct pins (a bit table's row pins several), in the goal and
+      -- the facts; then one more split if needed (several tables)
       let ps := d.pins
-      !ps.isEmpty && S.entQ' (Constr.mkOr (ψ.subst (ps.map fun (x, v) => (x, .lit v))).fold (Constr.mkNot d))
+      let θ : Subst := ps.map fun (x, v) => (x, .lit v)
+      let S' := S.pinFacts θ d
+      let d' := (d.subst θ).fold
+      let ψ' := (ψ.subst θ).fold
+      !ps.isEmpty && (S'.entIn d' ψ' || entCaseN n S' ψ')
     | _ => false
+
+def entCase (S : STy) (ψ : Constr) : Bool := entCaseN 2 S ψ
 
 /-- `Ψ ⊢ ψ` by the decision procedure, after folding the goal's constant atoms (a goal like
     an invariant `k = 0 ∨ (k = 1 ∧ …) ∨ …` at `k := 0` is `tt`; unfolded, its negation's

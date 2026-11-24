@@ -212,20 +212,51 @@ theorem entQ'_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entQ' ψ = true)
   · exact Query.decide_sound h ι hh
 
 
+theorem entIn_sound {ι : Val} {S : STy} {d ψ : Constr} (h : S.entIn d ψ = true)
+    (hd : d.eval ι = true) (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
+  unfold entIn at h
+  apply Constr.conjuncts_holds
+  intro c hc
+  have := entQ'_sound (List.all_eq_true.1 h c hc) hh'
+  simpa only [Constr.holds, Constr.eval_mkOr, Constr.eval_mkNot, hd, Bool.not_true,
+    Bool.or_false] using this
+
+theorem pinFacts_hyps {ι : Val} {S : STy} {θ : Subst} {d : Constr} (hθ : IExpr.upd ι θ = ι)
+    (hd : d.eval ι = true) (hh' : ∀ p ∈ S.hyps, p.holds ι) :
+    ∀ p ∈ (S.pinFacts θ d).hyps, p.holds ι := by
+  intro p hp
+  simp only [pinFacts, hyps, List.mem_append, List.mem_map, List.mem_cons] at hp
+  rcases hp with ⟨q, hq, rfl⟩ | hp
+  · simp only [Constr.holds, Constr.eval_fold, Constr.eval_subst, hθ]
+    rcases hq with rfl | hq
+    · exact hd
+    · exact hh' q (List.mem_append_left _ hq)
+  · exact hh' p (List.mem_append_right _ hp)
+
+theorem entCaseN_sound : ∀ (n : Nat) {ι : Val} {S : STy} {ψ : Constr}, entCaseN n S ψ = true →
+    (∀ p ∈ S.hyps, p.holds ι) → ψ.holds ι
+  | 0, _, _, _, h, _ => by simp [entCaseN] at h
+  | n + 1, ι, S, ψ, h, hh' => by
+    simp only [entCaseN] at h
+    obtain ⟨h0, hm, hc⟩ := List.any_eq_true.1 h
+    have h0h : h0.eval ι = true := hh' h0 (List.mem_append_left _ hm)
+    split at hc
+    · obtain ⟨d, hd, hdh⟩ := Constr.disjuncts_holds h0h
+      have hcd := List.all_eq_true.1 hc d hd
+      simp only [Bool.and_eq_true, Bool.or_eq_true] at hcd
+      have hθ := IExpr.upd_pins _ (Constr.pins_sound hdh)
+      have hh2 := pinFacts_hyps hθ hdh hh'
+      have hd' : ((d.subst (d.pins.map fun (x, v) => (x, IExpr.lit v))).fold).eval ι = true := by
+        simp only [Constr.eval_fold, Constr.eval_subst, hθ, hdh]
+      have hψ : ((ψ.subst (d.pins.map fun (x, v) => (x, IExpr.lit v))).fold).holds ι := by
+        rcases hcd.2 with hc2 | hc2
+        · exact entIn_sound hc2 hd' hh2
+        · exact entCaseN_sound n hc2 hh2
+      simpa only [Constr.holds, Constr.eval_fold, Constr.eval_subst, hθ] using hψ
+    · cases hc
+
 theorem entCase_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entCase ψ = true)
-    (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
-  unfold entCase at h
-  obtain ⟨h0, hm, hc⟩ := List.any_eq_true.1 h
-  have h0h : h0.eval ι = true := hh' h0 (List.mem_append_left _ hm)
-  split at hc
-  · obtain ⟨d, hd, hdh⟩ := Constr.disjuncts_holds h0h
-    have hcd := List.all_eq_true.1 hc d hd
-    simp only [Bool.and_eq_true] at hcd
-    have := entQ'_sound hcd.2 hh'
-    simp only [Constr.holds, Constr.eval_mkOr, Constr.eval_mkNot, hdh, Bool.not_true,
-      Bool.or_false, Constr.eval_fold, Constr.eval_subst] at this
-    rwa [IExpr.upd_pins _ (Constr.pins_sound hdh)] at this
-  · cases hc
+    (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := entCaseN_sound 2 h hh'
 
 theorem entQ_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entQ ψ = true)
     (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
