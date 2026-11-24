@@ -15,8 +15,8 @@ Details and the full table: `docs/typed/musl-trial.md`, "v0 summary".
 | case(s) | Rust | Lean | which side and why |
 |---------|------|------|--------------------|
 | musl/bcmp, bzero, strncpy, strnlen | accept | reject at the `call`/`tail` pair's `auipc` | Lean (or the harness: code at address 0, `R_RISCV_CALL` unresolved) |
-| musl/ffsl, l64a | accept | reject at the `%pcrel_lo` `addi` | Lean: the export lacks I30's implicit `ro` capabilities (T's open item) |
+| musl/ffsl, l64a | accept | l64a: accept since 5a9707df, linked image (U's local data addresses 9e168d85; T's fold + case split on the invariant's table) | ffsl: see U |
 | musl/memrchr, wmemcpy, wmemset | accept | accept since f4c553c7 (was: reject at the back edge) | resolved: Lean's instantiation applied θ to the source expression (double-shifted loop variables); `andi` mask now names its quotient |
 | musl/strncmp, memccpy-x, stpncpy-x (stpncpy at c3f64fad) | accept | reject at I29 boolean ops / xor then andi (memccpy, stpncpy builds also `struct=false`) | Lean: I29 rules missing |
-| musl/memset | accept | reject at `andi −4` | Lean: `andi` with −2^k (I23) |
+| musl/memset | accept | accept since 5a9707df, linked image (was: reject at `andi −4`, then at word 54) | resolved: the search eliminates through unit equalities (Omega test's equality step) |
 | musl/memcpy, memcpy-x, memmove, memccpy, memccpy-ic; stpncpy | accept | no verdict (heartbeats; 180 s, load-dependent) | resource limit in the harness |

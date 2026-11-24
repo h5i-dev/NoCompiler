@@ -94,3 +94,16 @@ expression `c + a·y + rest` against the source's expression `e` as `a·y = e �
 applies to `rest` only, because at a backward edge a loop variable is a variable of both
 types. The `andi` mask rule names the quotient (`e = 2^k·q + x`, next to `2^k ∣ e − x`), so a
 target type that names it matches through the equations.
+
+Entailment (`STy.ent`, 2026-11-24), in order, each sound by its own lemma (Sound/Inv.lean):
+1. the goal is a fact of the type, as it is or up to linear normal form (`covers`, U's
+   `coversS` through ∧/∨/¬);
+2. the goal with its constant atoms folded (`Constr.fold`: `0 = 0` is `tt`, `0 = 1` is `ff`,
+   ∧/∨/¬ fold with them) goes to the decision procedure;
+3. by cases (`entCase`): a fact that is a disjunction whose every disjunct pins a variable to
+   a constant (an invariant's case table `k = 0 ∨ (k = 1 ∧ …) ∨ …`) is split; in each case the
+   query is `ψ[k := c] ∨ ¬d`, which folds to one case, and keeps the disjunct's variables so
+   an impossible case (goal `ff`) is refuted from the relevant hypotheses.
+The search (untrusted) eliminates a variable exactly through an equality with a unit
+coefficient before pairwise Fourier–Motzkin (the Omega test's equality step), and retries a
+branch with a larger budget when the small one fails.
