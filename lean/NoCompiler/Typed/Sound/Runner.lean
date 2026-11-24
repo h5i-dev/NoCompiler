@@ -9,7 +9,7 @@ instruction later, and `later` for a state after a callee returned (or a final o
 `Runner.total` is `Reach` (all three the same, Theorems A-C). `Runner.fuel n` is `ReachP` with
 `n + 1` steps of fuel: one step leaves `n`; a call (its instruction, then the callee's run)
 leaves at most `n`. The callee judgment is `VerifiedImg` for total runs and `VerifiedImgP` for
-partial ones; a total callee is accepted by both (`ofTotal`).
+partial ones.
 
 No checker definitions here.
 -/
@@ -21,8 +21,6 @@ structure Runner (c : Code) (P : Perm) (D : Dom) (Q : State → Prop) where
   later : State → Prop
   /-- The callee judgment this kind of run accepts. -/
   callee : {α : Type} → Dom → Word → Spec α → Prop
-  ofTotal : ∀ {α : Type} {Dg : Dom} {entry : Word} {sp : Spec α}, VerifiedImg c Dg entry sp →
-    callee Dg entry sp
   later_next : ∀ s, later s → next s
   done : ∀ s, Q s → R s
   done_later : ∀ s, Q s → later s
@@ -70,7 +68,6 @@ def Runner.total (c : Code) (P : Perm) (D : Dom) (Q : State → Prop) : Runner c
   next := Reach c P D Q
   later := Reach c P D Q
   callee := fun Dg entry sp => VerifiedImg c Dg entry sp
-  ofTotal := fun h => h
   later_next := fun _ h => h
   done := fun _ h => .done h
   done_later := fun _ h => .done h
@@ -101,7 +98,6 @@ def Runner.fuel (c : Code) (P : Perm) (D : Dom) (Q : State → Prop) (n : Nat) :
   next := ReachP c P D Q n
   later := fun s => ∀ m ≤ n, ReachP c P D Q m s
   callee := fun Dg entry sp => VerifiedImgP c Dg entry sp
-  ofTotal := fun h => h.toP
   later_next := fun _ h => h n (Nat.le_refl n)
   done := fun _ h => .done h
   done_later := fun _ h m _ => by
