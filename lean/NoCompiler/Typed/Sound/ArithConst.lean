@@ -28,9 +28,24 @@ theorem Fn.andConstOf_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S 
       rw [BitVec.toNat_and, hcu, hk', Nat.and_two_pow_sub_one_eq_mod]
     have hk64 : k < 64 := List.mem_range.1 (List.mem_of_find?_eq_some hk)
     let vs : List Int := [((w.toNat % 2 ^ k : Nat) : Int)]
-    exact hI.fresh4 hprot hrd vs (.var (f.freshAt S)) _ _
-      (hasInt_toNat _ _ _ (by simp [vs, setFrom_x, hv]))
-      (lowFacts_holds (by omega) (hw.of_eq (Fn.eval_setFrom_old hem ι vs).symm) (by simp [vs, setFrom_x]))
+    have hw' := hw.of_eq (Fn.eval_setFrom_old (f := f) hem ι vs).symm
+    have hxv : setFrom ι (f.freshAt S) vs (f.freshAt S) = ((w.toNat % 2 ^ k : Nat) : Int) := by
+      simp [vs, setFrom_x]
+    refine hI.fresh4 hprot hrd vs (.var (f.freshAt S)) _ _
+      (hasInt_toNat _ _ _ (by simp [vs, setFrom_x, hv])) (fun p hp => ?_)
+    rcases List.mem_append.1 hp with hp | hp
+    · exact lowFacts_holds (by omega) hw' hxv p hp
+    · split at hp
+      · rename_i y hy
+        obtain ⟨d, hd, rfl⟩ := List.mem_map.1 hp
+        obtain ⟨q, hq, hqd⟩ := List.mem_filterMap.1 (List.mem_of_mem_take hd)
+        have hqe := xorBitOf_eq hqd
+        have hqι : q.holds (setFrom ι (f.freshAt S) vs) :=
+          (Constr.holds_congr (fun z hz => (setFrom_below (Nat.lt_of_le_of_lt
+            (Nat.le_trans hz (STy.le_maxVar_fact hq)) (f.freshAt_gt S))).symm)).1 (hI.facts q hq)
+        rw [hqe] at hqι
+        exact xorZeroFact_holds (by omega) (by rw [← IExpr.asVar_eq hy]; exact hw') hxv hqι
+      · simp at hp
   · split at ha
     · rename_i k hk
       have hk' := List.find?_some hk

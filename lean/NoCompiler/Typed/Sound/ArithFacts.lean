@@ -54,6 +54,42 @@ theorem lowFacts_holds {ι : Val} {x : Var} {e : IExpr} {n : Nat} (hn : n ≤ 64
     have hM' : ((2 : Int) ^ n) = M := by rw [← hM]; norm_cast
     rw [hM']; omega
 
+theorem xorBitOf_eq {k : Nat} {y : Var} {p : Constr} {d : IExpr} (h : Fn.xorBitOf k y p = some d) :
+    p = Fn.xorBitFactD k y d := by
+  unfold Fn.xorBitOf at h
+  split at h
+  · split at h
+    · rename_i hp; simp only [Option.some.injEq] at h; subst h; exact eq_of_beq hp
+    · simp at h
+  · simp at h
+
+theorem IExpr.asVar_eq {e : IExpr} {y : Var} (h : e.asVar = some y) : e = .var y := by
+  unfold IExpr.asVar at h
+  split at h
+  · simp only [Option.some.injEq] at h; subst h; rfl
+  · simp at h
+
+theorem xorZeroFact_holds {ι : Val} {x y : Var} {d : IExpr} {n : Nat} (hn : n ≤ 64) {w : Word}
+    (hre : HasInt ι w (.var y)) (hx : ι x = ((w.toNat % 2 ^ n : Nat) : Int))
+    (hq : (Fn.xorBitFactD n y d).holds ι) : (Fn.xorZeroFact x n d).holds ι := by
+  unfold HasInt at hre
+  simp only [IExpr.eval_var] at hre
+  generalize hM : ((2 ^ n : Nat) : Int) = M
+  have hd : M ∣ (2 ^ 64 : Int) := by
+    rw [← hM, show (2 ^ 64 : Int) = ((2 ^ 64 : Nat) : Int) by norm_cast]
+    exact Int.natCast_dvd_natCast.2 (Nat.pow_dvd_pow 2 hn)
+  have hW : ((w.toNat : Int) % M) = ι y % M := by
+    rw [← Int.emod_emod_of_dvd _ hd, ← Int.emod_emod_of_dvd (ι y) hd, hre]
+  have hx' : ι x = ι y % M := by rw [hx, ← hW, ← hM, Int.natCast_emod]
+  unfold Fn.xorBitFactD at hq
+  unfold Fn.xorZeroFact
+  simp only [Constr.holds, Constr.eval, Bool.or_eq_true, Bool.and_eq_true, Bool.not_eq_true',
+    decide_eq_true_eq, decide_eq_false_iff_not, IExpr.eval_var, IExpr.eval_lit, hM] at hq ⊢
+  rw [hx']
+  rcases hq with ⟨h1, h2⟩ | ⟨h1, h2⟩
+  · exact Or.inl ⟨h1, h2⟩
+  · exact Or.inr ⟨h1, h2⟩
+
 theorem quotFacts_holds {ι : Val} {x : Var} {u : IExpr} {c : Int} (hc : 0 < c)
     (hx : ι x = u.eval ι / c) : ∀ p ∈ Fn.quotFacts x u c, p.holds ι := by
   intro p hp

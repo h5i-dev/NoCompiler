@@ -527,6 +527,10 @@ struct FnCheck<'a> {
     lo_vars: BTreeMap<usize, Var>,
     /// See `FnExport::xor_bits`.
     xor_bits: std::collections::BTreeSet<u32>,
+    /// The widths k of the function's `andi` masks 2^k − 1: an xor result gets the fact
+    /// `2^k ∣ x ⇔ 2^k ∣ a − b` for each, so the record carries what a later mask needs (the
+    /// Lean checker has no `xor_defs`, only the types).
+    mask_ks: std::collections::BTreeSet<u32>,
     /// The order points are checked in, the back edges, and each loop head's body.
     order: Vec<usize>,
     back: BTreeSet<(usize, usize)>,
@@ -574,6 +578,18 @@ impl<'a> FnCheck<'a> {
             xor_defs: BTreeMap::new(),
             lo_vars: BTreeMap::new(),
             xor_bits: Default::default(),
+            mask_ks: f
+                .instrs
+                .iter()
+                .filter_map(|pi| match pi.instr {
+                    Instr::IOp { op: IOp::Andi, imm, .. }
+                        if imm > 0 && (imm + 1).count_ones() == 1 && imm < (1 << 11) =>
+                    {
+                        Some((imm + 1).trailing_zeros())
+                    }
+                    _ => None,
+                })
+                .collect(),
             order: vec![],
             back: BTreeSet::new(),
             loop_bodies: vec![],
@@ -2619,10 +2635,22 @@ impl<'a> FnCheck<'a> {
                 Formula::and(vec![zero.clone(), Formula::Dvd(TWO64, d.clone())]),
                 Formula::and(vec![
                     Formula::negate(zero),
-                    Formula::negate(Formula::Dvd(TWO64, d)),
+                    Formula::negate(Formula::Dvd(TWO64, d.clone())),
                 ]),
             ]);
             self.add_fact(st, f);
+            // 2^k ∣ x ⇔ 2^k ∣ a − b for the masks the function uses (Lean's `xorBitFact`)
+            for k in self.mask_ks.clone() {
+                let m = 1i128 << k;
+                let f = Formula::or(vec![
+                    Formula::and(vec![Formula::Dvd(m, x.clone()), Formula::Dvd(m, d.clone())]),
+                    Formula::and(vec![
+                        Formula::negate(Formula::Dvd(m, x.clone())),
+                        Formula::negate(Formula::Dvd(m, d.clone())),
+                    ]),
+                ]);
+                self.add_fact(st, f);
+            }
         }
         Ok(x)
     }

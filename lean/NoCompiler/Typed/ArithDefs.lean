@@ -87,6 +87,24 @@ def xorBitFact (k : Nat) (x : Var) (a b : IExpr) : Constr :=
   .or (.and (.dvd (2 ^ k) (.var x)) (.dvd (2 ^ k) (a.sub b)))
     (.and (.not (.dvd (2 ^ k) (.var x))) (.not (.dvd (2 ^ k) (a.sub b))))
 
+/-- `xorBitFact` with the difference given: `2^k ∣ y ⇔ 2^k ∣ d`. -/
+def xorBitFactD (k : Nat) (y : Var) (d : IExpr) : Constr :=
+  .or (.and (.dvd (2 ^ k) (.var y)) (.dvd (2 ^ k) d))
+    (.and (.not (.dvd (2 ^ k) (.var y))) (.not (.dvd (2 ^ k) d)))
+
+/-- The difference `d` of a fact `2^k ∣ y ⇔ 2^k ∣ d` (as the xor rule writes it, or the Rust
+    checker's record), if `p` is one. -/
+def xorBitOf (k : Nat) (y : Var) (p : Constr) : Option IExpr :=
+  match p with
+  | .or (.and _ (.dvd _ d)) _ => if p == xorBitFactD k y d then some d else none
+  | _ => none
+
+/-- `x = 0 ⇔ 2^k ∣ d`: the zero test of a mask `x = y mod 2^k` when `2^k ∣ y ⇔ 2^k ∣ d`
+    (xor then mask, I23; the Rust checker's fact). -/
+def xorZeroFact (x : Var) (k : Nat) (d : IExpr) : Constr :=
+  .or (.and (.eq (.var x) (.lit 0)) (.dvd (2 ^ k) d))
+    (.and (.not (.eq (.var x) (.lit 0))) (.not (.dvd (2 ^ k) d)))
+
 /-- `0 ≤ x ≤ b`. -/
 def boundFacts (x : Var) (b : Int) : List Constr := [.le (.lit 0) (.var x), .le (.var x) (.lit b)]
 
@@ -106,7 +124,12 @@ def bitTable (g : Nat → Nat → Nat) (x : Var) (a b : IExpr) : Constr :=
 def andConstOf (S : STy) (rd : Reg) (x : Var) (e : IExpr) (c : Int) : Option STy :=
   let cu := (c % 2 ^ 64).toNat
   match (List.range 64).find? (fun k => cu == 2 ^ k - 1) with
-  | some k => some ((S.setReg rd (some (.var x))).addFacts (lowFacts x e k))
+  | some k =>
+    -- on an xor result: its zero test, from a fact `2^k ∣ y ⇔ 2^k ∣ a − b` of the type
+    let zs : List Constr := match e.asVar with
+      | some y => ((S.facts.filterMap (xorBitOf k y)).take 1).map (xorZeroFact x k)
+      | none => []
+    some ((S.setReg rd (some (.var x))).addFacts (lowFacts x e k ++ zs))
   | none =>
     match (List.range 64).find? (fun k => cu + 2 ^ k == 2 ^ 64) with
     | some k =>
