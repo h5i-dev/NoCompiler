@@ -87,4 +87,53 @@ theorem Written.two {m0 m : Word → Byte} {d : Word} {G : Nat → Byte} {c : Na
   · rw [if_pos h1, if_pos (Or.inl h1)]
   · rw [if_neg h1, if_neg (by omega)]
 
+/-- A store of `k ≤ 8` pattern bytes at `d + q` that meets or overlaps the prefix (`q ≤ c`) extends
+    it to `max c (q + k)` (a fill's overlapping stores write the same bytes again). -/
+theorem Written2.store_front_ov {m0 m : Word → Byte} {d : Word} {G : Nat → Byte} {c c2 n q : Nat}
+    (h : Written2 m0 m d G c c2 n) (w : Word) {k : Nat} (hk : k ≤ 8) (hq : q ≤ c)
+    (hqk : q + k < 2 ^ 64) (hw : ∀ i < k, byte w i = G (q + i)) :
+    Written2 m0 (writeLE m (d + BitVec.ofNat 64 q) w.toNat k) d G (max c (q + k)) c2 n := by
+  intro p
+  rw [writeLE_apply _ _ _ (by omega), h p]
+  by_cases h1 : (p - (d + BitVec.ofNat 64 q)).toNat < k
+  · rw [if_pos h1]
+    have e : (p - d).toNat = q + (p - (d + BitVec.ofNat 64 q)).toNat := by bv_omega
+    rw [if_pos (Or.inl (by omega))]
+    have hb := hw _ h1
+    rw [byte_eq] at hb
+    have e2 : (2 : Nat) ^ (8 * (p - (d + BitVec.ofNat 64 q)).toNat) =
+        256 ^ (p - (d + BitVec.ofNat 64 q)).toNat := by rw [Nat.pow_mul]
+    rw [e2] at hb
+    rw [hb, e]
+  · rw [if_neg h1]
+    have hout : ¬ ((p - d).toNat < q + k ∧ q ≤ (p - d).toNat) := by bv_omega
+    by_cases h2 : (p - d).toNat < c ∨ (n - c2 ≤ (p - d).toNat ∧ (p - d).toNat < n)
+    · rw [if_pos h2, if_pos (by omega)]
+    · rw [if_neg h2, if_neg (by omega)]
+
+/-- A store of `k ≤ 8` pattern bytes at `d + q` that meets or overlaps the suffix
+    (`n − c2 ≤ q + k ≤ n`) extends it down to `min (n − c2) q`. -/
+theorem Written2.store_back_ov {m0 m : Word → Byte} {d : Word} {G : Nat → Byte} {c c2 n q : Nat}
+    (h : Written2 m0 m d G c c2 n) (w : Word) {k : Nat} (hk : k ≤ 8) (hc2 : c2 ≤ n)
+    (hlo : n - c2 ≤ q + k) (hhi : q + k ≤ n) (hn : n < 2 ^ 64)
+    (hw : ∀ i < k, byte w i = G (q + i)) :
+    Written2 m0 (writeLE m (d + BitVec.ofNat 64 q) w.toNat k) d G c (n - min (n - c2) q) n := by
+  intro p
+  rw [writeLE_apply _ _ _ (by omega), h p]
+  by_cases h1 : (p - (d + BitVec.ofNat 64 q)).toNat < k
+  · rw [if_pos h1]
+    have e : (p - d).toNat = q + (p - (d + BitVec.ofNat 64 q)).toNat := by bv_omega
+    rw [if_pos (Or.inr ⟨by omega, by omega⟩)]
+    have hb := hw _ h1
+    rw [byte_eq] at hb
+    have e2 : (2 : Nat) ^ (8 * (p - (d + BitVec.ofNat 64 q)).toNat) =
+        256 ^ (p - (d + BitVec.ofNat 64 q)).toNat := by rw [Nat.pow_mul]
+    rw [e2] at hb
+    rw [hb, e]
+  · rw [if_neg h1]
+    have hout : ¬ ((p - d).toNat < q + k ∧ q ≤ (p - d).toNat) := by bv_omega
+    by_cases h2 : (p - d).toNat < c ∨ (n - c2 ≤ (p - d).toNat ∧ (p - d).toNat < n)
+    · rw [if_pos h2, if_pos (by omega)]
+    · rw [if_neg h2, if_neg (by omega)]
+
 end NoCompiler.Typed.Track
