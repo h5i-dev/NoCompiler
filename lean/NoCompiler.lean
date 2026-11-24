@@ -34,3 +34,4 @@ import NoCompiler.Typed.Sound.Call
 import NoCompiler.Typed.Sound.Ecall
 import NoCompiler.Typed.Sound.Prog
 import NoCompiler.Typed.Sound.Values
+import NoCompiler.Typed.Bytes
