@@ -4,9 +4,9 @@ NoCompiler is a typed RISC-V assembly language with a formally verified type che
 
 **Motivation**
 
-- Compilers, code generators and LLMs write the code that runs. A proof about the source says nothing about the bytes they emit.
-- Machine-code proofs are one-off expert work. Most of their effort goes to bounds, aliasing and frames, not to what the function computes.
-- Can a type system take that part over, at the level of the bytes, without a compiler in the trusted base?
+- **Why trust a compiler?** Source-level safety guarantees do not automatically extend to executable machine code without trusting the compilation process.
+- **Why manually verify every memory access?** A type system can automatically discharge many of the proof obligations associated with memory safety.
+- **Why restrict AI agents to high-level languages?** A formally verified type checker can provide memory safety guarantees even for directly generated assembly code.
 
 **Our answer**
 
