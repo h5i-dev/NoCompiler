@@ -6,6 +6,9 @@ defaultTargets = ["NoCompiler", "TypedTests"]
 # kernel plus the definitions docs/isa/trust.md lists.
 [[lean_lib]]
 name = "NoCompiler"
+# Native code for `#eval` (the corpus harness runs Fn.check through `lake lean`); the kernel
+# never runs it, so the trusted base is unchanged (no native_decide anywhere).
+precompileModules = true
 
 # Tests of the core library; not part of it.
 [[lean_lib]]

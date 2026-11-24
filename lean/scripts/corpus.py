@@ -165,7 +165,9 @@ def run_file(src, checker, tmp, keep, why=None, linked=False):
     gen = os.path.join(keep or tmp, stem + ".lean")
     open(gen, "w", encoding="utf-8").write("\n".join(lines) + "\n")
     try:
-        r = subprocess.run(["lake", "env", "lean", gen], cwd=os.path.join(ROOT, "lean"),
+        # `lake lean` (not `lake env lean`) loads the precompiled NoCompiler modules, so the
+        # #eval of Fn.check runs native code instead of the interpreter (musl memcpy: 157 s -> 7 s)
+        r = subprocess.run(["lake", "lean", gen], cwd=os.path.join(ROOT, "lean"),
                            capture_output=True, text=True, timeout=TIMEOUT)
     except subprocess.TimeoutExpired as e:
         out = e.stdout.decode() if isinstance(e.stdout, bytes) else (e.stdout or "")
