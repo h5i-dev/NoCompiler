@@ -69,10 +69,33 @@ def cost (xs : List Item) (x : Var) : Nat :=
 
 def found (st : St) : Bool := st.items.any (fun it => Cert.contra it.lin)
 
+/-- An equality among the items (`0 ≤ l` and `0 ≤ −l`) with a coefficient `±1` on some
+    variable: the two items, oriented so that the first has `+1` on it, and the variable. -/
+def unitEq (xs : List Item) : Option (Item × Item × Var) :=
+  xs.findSome? fun it =>
+    match xs.find? (fun o => o.lin.t == it.lin.t.map (fun t => (t.1, -t.2)) && o.lin.c == -it.lin.c) with
+    | none => none
+    | some o => (it.lin.t.find? (fun t => t.2 == 1)).map fun t => (it, o, t.1)
+
+/-- Eliminate `x` exactly through an equality (`pos` has `+1` on `x`, `neg` has `−1`): every
+    other item with `x` is combined with the side that cancels it (the Omega test's equality
+    step; no pairwise products, and nothing is lost to rounding). -/
+def elimEq (st : St) (pos neg : Item) (x : Var) : St :=
+  let rest := st.items.filter (fun it => it.idx != pos.idx && it.idx != neg.idx)
+  let st0 : St := { st with items := rest.filter (fun it => coef it.lin x == 0) }
+  let st1 := (rest.filter (fun it => coef it.lin x != 0)).foldl (fun st it =>
+    let a := coef it.lin x
+    if a > 0 then st.add (.comb it.idx 1 neg.idx a.toNat) (Lin.add it.lin (Lin.smul a.toNat neg.lin))
+    else st.add (.comb it.idx 1 pos.idx (-a).toNat) (Lin.add it.lin (Lin.smul (-a).toNat pos.lin))) st0
+  { st1 with items := dedupe st1.items }
+
 def loop (limit : Nat) : Nat → St → Option St
   | 0, _ => none
   | fuel + 1, st =>
     if found st then some st else
+    match unitEq st.items with
+    | some (p, n, x) => loop limit fuel (elimEq st p n x)
+    | none =>
     match varsOf st.items with
     | [] => none
     | v :: vs =>
