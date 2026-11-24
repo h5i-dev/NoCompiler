@@ -60,4 +60,38 @@ theorem byte_broadcast (w : Word) {i : Nat} (hi : i < 7) :
   · exact digit_gen _ 257 4311810305 1 _ hb (by decide) (by decide) (by decide)
   · exact digit_gen _ 1 1103823438081 0 _ hb (by decide) (by decide) (by decide)
 
+/-- A word whose bytes `0 … 6` are zero is its top byte shifted back up. -/
+theorem eq_shl_of_low_zero {x : Word} (h : ∀ i < 7, byte x i = 0#8) : x = (x >>> 56) <<< 56 := by
+  apply BitVec.eq_of_toNat_eq
+  rw [BitVec.toNat_shiftLeft, BitVec.toNat_ushiftRight, Nat.shiftLeft_eq, Nat.shiftRight_eq_div_pow]
+  have hx := x.isLt
+  -- the low 56 bits are the low bytes
+  have hlow : x.toNat % 2 ^ 56 = 0 := by
+    have hb : ∀ i < 7, x.toNat / 2 ^ (8 * i) % 256 = 0 := by
+      intro i hi
+      have := h i hi
+      rw [byte_eq] at this
+      have := congrArg BitVec.toNat this
+      simpa [BitVec.toNat_ofNat] using this
+    have h0 := hb 0 (by decide); have h1 := hb 1 (by decide); have h2 := hb 2 (by decide)
+    have h3 := hb 3 (by decide); have h4 := hb 4 (by decide); have h5 := hb 5 (by decide)
+    have h6 := hb 6 (by decide)
+    simp only [Nat.mul_zero, Nat.pow_zero, Nat.div_one] at h0
+    omega
+  have e := Nat.mod_add_div x.toNat (2 ^ 56)
+  rw [hlow, Nat.zero_add] at e
+  rw [Nat.mod_eq_of_lt (by omega)]
+  omega
+
+/-- The broadcast of a word whose low bytes are zero: its byte `7` in bytes `0 … 6`. -/
+theorem byte_broadcast' {x : Word} (h : ∀ i < 7, byte x i = 0#8) {i : Nat} (hi : i < 7) :
+    byte (mulhUU x 0x0101010101010100#64) i = byte x 7 := by
+  have hx := eq_shl_of_low_zero h
+  calc byte (mulhUU x 0x0101010101010100#64) i
+      = byte (mulhUU ((x >>> 56) <<< 56) 0x0101010101010100#64) i := by rw [← hx]
+    _ = byte (x >>> 56) 0 := byte_broadcast _ hi
+    _ = byte x 7 := by
+      have := byte_ushiftRight x (i := 0) (b := 7) (by decide)
+      simpa using this
+
 end NoCompiler.Typed.Bytes

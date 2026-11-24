@@ -302,7 +302,7 @@ theorem AState.ok_store_periodic {m0 d G n} {A : AState} {s : State} (h : A.ok m
     (hwP : w % P = 0) {rs2 : Reg} {addr : Word}
     (haddr : addr = s.reg A.cur + BitVec.ofNat 64 A.δ)
     (hbound : (s.reg A.cur - d).toNat + A.δ + w ≤ n)
-    (hpre : ∀ i < w, (A.cells rs2).getD i .unk = .src i) (p : Word) :
+    (hpre : ∀ i < w, ∃ j, (A.cells rs2).getD i .unk = .src j ∧ j % P = i % P) (p : Word) :
     ({ A with δ := A.δ + w } : AState).ok m0 d G n
       ((s.setMem (writeLE s.mem addr (s.reg rs2).toNat w)).setPc p) := by
   obtain ⟨hcn, hc, hr⟩ := h
@@ -315,7 +315,13 @@ theorem AState.ok_store_periodic {m0 d G n} {A : AState} {s : State} (h : A.ok m
   · simp only [hreg]
     show Written m0 (writeLE s.mem addr (s.reg rs2).toNat w) d G ((s.reg A.cur - d).toNat + (A.δ + w))
     rw [e, ← Nat.add_assoc]
-    exact Cells.store_ok hc (hr rs2) hw (by omega) hpre
+    refine hc.store _ hw (by omega) fun i hi => ?_
+    obtain ⟨j, hj, hjm⟩ := hpre i hi
+    have := hr rs2 i (by omega)
+    rw [hj] at this
+    simp only [Cell.ok] at this
+    rw [this]
+    exact periodic_eq hG (by rw [Nat.add_mod, hjm, ← Nat.add_mod])
   · intro r
     simp only [hreg]
     rw [← Nat.add_assoc]
@@ -348,17 +354,46 @@ def Params.nb (P : Params) : IExpr := ⟨0, [((P.w : Int), P.nv)]⟩
 theorem Params.eval_nb (P : Params) (ι : Val) : P.nb.eval ι = P.w * ι P.nv := by
   simp [Params.nb, IExpr.eval]
 
+/-- The cells a store of `k` bytes of a register needs: the pattern's next `k` bytes (a fill: up
+    to its period `w`, with `k` a multiple of it). -/
+def storeCellsOk (P : Params) (cs : Cells) (k : Nat) : Bool :=
+  (!P.fill || k % P.w == 0) &&
+    (List.range k).all fun i => match cs.getD i .unk with
+      | .src j => if P.fill then j % P.w == i % P.w else j == i
+      | _ => false
+
+theorem storeCellsOk_exact {P : Params} {cs : Cells} {k : Nat} (hf : P.fill = false)
+    (h : storeCellsOk P cs k = true) : ∀ i < k, cs.getD i .unk = .src i := by
+  intro i hi
+  simp only [storeCellsOk, hf, Bool.not_false, Bool.true_or, Bool.true_and, List.all_eq_true,
+    List.mem_range] at h
+  have := h i hi
+  split at this
+  · rename_i j hj; simp at this; rw [hj, this]
+  · cases this
+
+theorem storeCellsOk_per {P : Params} {cs : Cells} {k : Nat} (hf : P.fill = true)
+    (h : storeCellsOk P cs k = true) :
+    k % P.w = 0 ∧ ∀ i < k, ∃ j, cs.getD i .unk = .src j ∧ j % P.w = i % P.w := by
+  simp only [storeCellsOk, hf, Bool.not_true, Bool.false_or, Bool.and_eq_true, beq_iff_eq,
+    List.all_eq_true, List.mem_range, if_true] at h
+  refine ⟨h.1, fun i hi => ?_⟩
+  have := h.2 i hi
+  split at this
+  · rename_i j hj; exact ⟨j, hj, by simpa using this⟩
+  · cases this
+
 /-- One abstract step at a point with type `S` (side conditions are entailments on `S`), with
     `o` the load offset hint. -/
 def tstep (S : STy) (P : Params) (o : Nat) (A : AState) : Instr → Option AState
   | .store op rs1 rs2 off =>
     match S.reg rs1, S.reg A.cur with
     | some e1, some ec =>
-      if op ≠ .sh ∧ ((List.range op.width).all fun i => (A.cells rs2).getD i .unk == .src i) = true ∧
+      if op ≠ .sh ∧ storeCellsOk P (A.cells rs2) op.width = true ∧
           S.ent (Constr.eqMod (e1.add (.lit off.toInt)) (ec.add (.lit A.δ))) = true ∧
           S.ent (.le (.var P.dv) ec) = true ∧
           S.ent (.le ((ec.sub (.var P.dv)).add (.lit (A.δ + op.width))) P.nb) = true
-      then some (if P.fill ∧ op.width % P.w = 0 then { A with δ := A.δ + op.width }
+      then some (if P.fill then { A with δ := A.δ + op.width }
         else { A with δ := A.δ + op.width, cells := fun r => (A.cells r).rebase op.width })
       else none
     | _, _ => none
@@ -448,14 +483,15 @@ theorem tstep_ok {m0 : Word → Byte} {d srcB : Word} {n : Nat} {S : STy} {P : P
             word_eq_of_eqMod (hasInt_add hw1 (hasInt_signExtend (by decide) ι off))
               (hasInt_add hwc (hasInt_ofNat ι A.δ)) (hent _ haddr)
           obtain ⟨-, hb⟩ := toNat_sub_exact (d := d) hwc hd hn hn64 (hent _ hlo) (hent _ hhi)
-          have hpre' : ∀ i < op.width, (A.cells rs2).getD i .unk = .src i := fun i hi => by
-            have := List.all_eq_true.1 hpre i (List.mem_range.2 hi)
-            simpa using this
           split
           · rename_i hf
-            exact AState.ok_store_periodic h (hG.2 hf.1) hn64 (StOp.width_le op) hf.2 hea (by omega)
-              hpre' _
-          · exact AState.ok_store h hn64 (StOp.width_le op) hea (by omega) hpre' _
+            obtain ⟨hwP, hper⟩ := storeCellsOk_per hf hpre
+            exact AState.ok_store_periodic h (hG.2 hf) hn64 (StOp.width_le op) hwP hea (by omega)
+              hper _
+          · rename_i hf
+            simp only [Bool.not_eq_true] at hf
+            exact AState.ok_store h hn64 (StOp.width_le op) hea (by omega)
+              (storeCellsOk_exact hf hpre) _
         · cases hx
       · cases ht
     · cases ht

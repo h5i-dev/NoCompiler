@@ -332,4 +332,16 @@ theorem Cells.ok_periodic {G : Nat → Byte} {P : Nat} (hG : ∀ j, G (j + P) = 
   rename_i o
   rw [show c + P * m + o = (c + o) + P * m by omega, hper]; exact hc
 
+/-- A pattern with period `P` takes equal values at positions equal mod `P`. -/
+theorem periodic_eq {G : Nat → Byte} {P : Nat} (hG : ∀ j, G (j + P) = G j) {x y : Nat}
+    (h : x % P = y % P) : G x = G y := by
+  have hper : ∀ m j, G (j + P * m) = G j := by
+    intro m; induction m with
+    | zero => intro j; simp
+    | succ m ih => intro j; rw [Nat.mul_succ, ← Nat.add_assoc, hG, ih]
+  have ex : ∀ z, G z = G (z % P) := fun z => by
+    conv => lhs; rw [← Nat.mod_add_div z P]
+    exact hper _ _
+  rw [ex x, ex y, h]
+
 end NoCompiler.Typed.Track
