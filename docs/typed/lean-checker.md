@@ -101,12 +101,20 @@ Entailment (`STy.ent`, 2026-11-24), in order, each sound by its own lemma (Sound
 2. the goal with its constant atoms folded (`Constr.fold`: `0 = 0` is `tt`, `0 = 1` is `ff`,
    ∧/∨/¬ fold with them) goes to the decision procedure conjunct by conjunct (the negation
    of a conjunction doubles every branch of the normal form);
-3. by cases (`entCaseN`, one level): a fact relevant to the goal that is a disjunction whose
-   every disjunct pins variables to constants (an invariant's case table
-   `k = 0 ∨ (k = 1 ∧ …) ∨ …`, a bit table's rows) is split; in each case the constants go
+3. by cases (`entCaseN`, two levels): a fact relevant to the goal that is a disjunction is
+   split (an invariant's case table `k = 0 ∨ (k = 1 ∧ …) ∨ …`, a bit table's rows, an xor
+   zero test `(x = 0 ∧ …) ∨ (x ≠ 0 ∧ …)`); in each case the constants the disjunct pins go
    into the goal and into the facts, which fold (a table over pinned variables collapses to
-   its row), and each conjunct is queried as `c ∨ ¬d`, which keeps the disjunct's variables
-   so an impossible case (goal `ff`) is refuted from the relevant hypotheses.
+   its row), the disjunct is a hypothesis, and each conjunct is queried as `c ∨ ¬d`, which
+   keeps the disjunct's variables so an impossible case (goal `ff`) is refuted from the
+   relevant hypotheses.
+Each query first uses only the relevant hypotheses without case analysis (`decide2`), then
+all of them: a goal that follows from the plain facts is not drowned in the branches of
+unrelated disjunctions.
+
+An edge to a point the record gives no type is accepted only when the source's facts entail
+`ff` (a branch direction the record found infeasible); in the soundness proof that case is a
+contradiction from the invariant.
 The search (untrusted) eliminates a variable exactly through an equality with a unit
 coefficient before pairwise Fourier–Motzkin (the Omega test's equality step), and retries a
 branch with a larger budget when the small one fails.
