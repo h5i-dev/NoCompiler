@@ -374,3 +374,8 @@ function.
   image with every file's functions and proves `Prog.check code [] prog` over all of them.
   Cost: export-side only (untrusted); the Lean checker re-checks everything as now. Without it
   the ledger says `proved` only within a file whose callees are all in the same file.
+  **T (2026-11-24), Lean side:** no Lean change needed. `Prog.callsOk` keeps comparing
+  signatures by `=` (the trusted check stays syntactic and simple); canonical numbering and
+  per-signature data symbols are the export's job, which is untrusted. Data symbols that a
+  signature uses as parameters fixed by `ℓ_sym = address` in `pre` are already instantiated at
+  calls (`Fn.pinned`), so (2) works with the Lean call rule as it is.
