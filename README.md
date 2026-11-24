@@ -40,29 +40,22 @@ sum:
 	ret
 ```
 
-## Running the checkers
+## Type Checker
 
-Requirements: a Rust toolchain, clang and ld.lld (to assemble and link), and for the Lean checker [elan](https://github.com/leanprover/elan) (the toolchain in `lean/lean-toolchain` is installed on first use).
+We provide the fast Rust checker, and the formally verified Lean checker.
 
-**Rust checker** (fast; trusted, not verified):
+**1. Rust checker** (fast; trusted, not verified):
 
 ```sh
 cargo build --release -p nocompiler-typed
 target/release/nocompiler-typed check examples/typed/sum.s
+# `target/release/nocompiler-typed link A.s B.s …` checks a whole program.
 # sum: checked (9 queries, 439 µs)
 # sum2: checked (7 queries, 205 µs)
 # _start: checked (6 queries, 238 µs)
 ```
 
-The exit status is 0 iff every safe function is accepted. A rejection names the line, the rule, and the state. For example, changing the load to `ld a3, 8(a0)` gives
-`[mem-bounds] no capability provably covers the 8-byte access at ρ + 8*n - 8*k + 8`. Useful options:
-- `--ledger OUT.json`: the ledger, with every query and loop instantiation.
-- `--object FILE.o`: checks that the object's code is the text that was checked.
-- `--export-lean OUT.lean`: the record the Lean checker reads.
-
-`nocompiler-typed link A.s B.s …` checks a whole program.
-
-**Lean checker** (verified; its verdict is a kernel-checked theorem):
+**2. Lean checker** (formally verified):
 
 ```sh
 (cd lean && lake build NoCompiler)        # once: the library and the proofs (a few minutes)
@@ -70,19 +63,11 @@ python3 lean/scripts/kernelcheck.py --checker target/release/nocompiler-typed ex
 # {"function": "sum", "result": "proved", "seconds": 9.5, "axioms": ["propext", "Classical.choice", "Quot.sound"], ...}
 ```
 
-For each function, the script assembles and links the file, exports the record against the linked image, and proves `fn_sum.check code = true` by `decide +kernel` in its own Lean process. `Fn.check_sound` (`lean/NoCompiler/Typed/Sound/Main.lean`) turns that theorem into `Typed.Meets` (⟦σ⟧) for those bytes, with only the standard axioms. Large functions can need several GB in the kernel; `KERNEL_MEM` (default `8G`) caps each process. `--ledger OUT.json` writes a ledger with the proved functions marked `proved`.
-
 More: [docs/typed/rust-checker.md](docs/typed/rust-checker.md), [docs/typed/lean-checker.md](docs/typed/lean-checker.md), the musl trial in [docs/typed/musl-trial.md](docs/typed/musl-trial.md).
-
-## Trust
-
-- Trusted: the Lean kernel, the RISC-V semantics in [lean/NoCompiler](lean/NoCompiler), the definition of ⟦σ⟧, the unsafe contracts you assume, and for now the Rust checker.
-- Not trusted: compilers, the assembler, annotation writers, tactics, proof authors.
-- The semantics are tested against llvm-mc, qemu and Sail. They are not proved equal to Sail.
 
 ## Binary analysis toolkit
 
-The repository also holds the toolkit nocompiler started as. It covers ELF, PE/COFF and Mach-O loaders, x86-64 and AArch64 decoders, a SLEIGH runtime (with RISC-V RV64), an IR with lifters, function and CFG recovery, a decompiler to C and a binary differ. Nothing it computes is an input to a proof.
+The repository also holds the comprehensive binary analysis toolkit, including ELF, PE/COFF and Mach-O loaders, x86-64 and AArch64 decoders, a SLEIGH runtime (with RISC-V RV64), an IR with lifters, function and CFG recovery, a decompiler to C and a binary differ.
 
 ```sh
 cargo build --release -p nocompiler-cli     # target/release/nocompiler
@@ -91,11 +76,13 @@ nocompiler decompile <binary> <symbol|address|all>
 nocompiler diff /bin/true /bin/false
 ```
 
+## Trust
+
+- Trusted: the Lean kernel, the RISC-V semantics in [lean/NoCompiler](lean/NoCompiler), the definition of ⟦σ⟧, the unsafe contracts you assume, and for now the Rust checker.
+- Not trusted: compilers, the assembler, annotation writers, tactics, proof authors.
+- The semantics are tested against llvm-mc, qemu and Sail. They are not proved equal to Sail.
+
 See [docs/toolkit](docs/toolkit/README.md).
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
