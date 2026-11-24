@@ -58,19 +58,19 @@ open NoCompiler NoCompiler.Typed.Bytes
 inductive Cell where
   | unk
   | zero
-  | src (o : Int)
+  | src (o : Nat)
   deriving DecidableEq, Repr
 
 /-- A byte of word `w` satisfies its cell. -/
-def Cell.ok (m0 : Word → Byte) (srcB : Word) (c : Int) (w : Word) (i : Nat) : Cell → Prop
+def Cell.ok (m0 : Word → Byte) (srcB : Word) (c : Nat) (w : Word) (i : Nat) : Cell → Prop
   | .unk => True
   | .zero => byte w i = 0#8
-  | .src o => byte w i = m0 (srcB + BitVec.ofInt 64 (c + o))
+  | .src o => byte w i = m0 (srcB + BitVec.ofNat 64 (c + o))
 
 /-- Eight cells, one per byte (missing ones are `unk`). -/
 abbrev Cells := List Cell
 
-def Cells.ok (m0 : Word → Byte) (srcB : Word) (c : Int) (w : Word) (cs : Cells) : Prop :=
+def Cells.ok (m0 : Word → Byte) (srcB : Word) (c : Nat) (w : Word) (cs : Cells) : Prop :=
   ∀ i < 8, (cs.getD i .unk).ok m0 srcB c w i
 
 def Cells.shl (b : Nat) (cs : Cells) : Cells :=
@@ -163,5 +163,99 @@ theorem Cells.or_ok {m0 srcB c x y xs ys} (hx : Cells.ok m0 srcB c x xs) (hy : C
   intro i hi
   rw [Cells.or, getD_range_map _ hi]
   exact Cell.or_ok (hx i hi) (hy i hi)
+
+end NoCompiler.Typed.Track
+
+namespace NoCompiler.Typed.Track
+open NoCompiler NoCompiler.Typed.Bytes
+
+/-- The cells relative to a prefix `k` bytes longer (bytes before it are already copied: unknown). -/
+def Cells.rebase (k : Nat) (cs : Cells) : Cells :=
+  cs.map fun | .src o => (if o < k then .unk else .src (o - k)) | x => x
+
+theorem Cells.rebase_ok {m0 srcB c w cs} (k : Nat) (h : Cells.ok m0 srcB c w cs) :
+    Cells.ok m0 srcB (c + k) w (cs.rebase k) := by
+  intro i hi
+  have := h i hi
+  simp only [Cells.rebase, List.getD_eq_getElem?_getD, List.getElem?_map] at this ⊢
+  cases hc : cs[i]? with
+  | none => simp [Cell.ok]
+  | some x =>
+    rw [hc] at this
+    cases x with
+    | unk => simp [Cell.ok]
+    | zero => simpa [Cell.ok] using this
+    | src o =>
+      simp only [Option.map_some, Option.getD_some]
+      split
+      · simp [Cell.ok]
+      · simp only [Cell.ok] at this ⊢
+        rw [show c + k + (o - k) = c + o by omega]; exact this
+
+/-- Source and destination ranges apart: every source byte is outside `d[0, n)`. -/
+def Disj (d src : Word) (n : Nat) : Prop := ∀ j < n, n ≤ (src + BitVec.ofNat 64 j - d).toNat
+
+/-- Inside the source range, the current memory still holds the entry bytes. -/
+theorem Copied.src {m0 m : Word → Byte} {d src : Word} {c n : Nat} (h : Copied m0 m d src c)
+    (hd : Disj d src n) (hc : c ≤ n) {j : Nat} (hj : j < n) :
+    m (src + BitVec.ofNat 64 j) = m0 (src + BitVec.ofNat 64 j) := by
+  rw [h, if_neg (by have := hd j hj; omega)]
+
+/-- The cells of a load of `w` bytes from source byte `c + o` (sign bits unknown, or zero). -/
+def Cells.load (o : Nat) (w : Nat) : Cells :=
+  (List.range 8).map fun i => if i < w then .src (o + i) else .unk
+
+end NoCompiler.Typed.Track
+
+namespace NoCompiler.Typed.Track
+open NoCompiler NoCompiler.Typed.Bytes
+
+/-- The bytes of a loaded value are the memory's, for the loads that do not sign-extend past
+    the loaded width's bytes (all of them, below the width). -/
+theorem byte_loadVal (op : LdOp) (m : Word → Byte) (a : Word) {i : Nat} (hi : i < op.width)
+    (hop : op ≠ .lh ∧ op ≠ .lhu) :
+    byte (loadVal op m a) i = m (a + BitVec.ofNat 64 i) := by
+  cases op with
+  | lb =>
+    simp only [LdOp.width] at hi
+    have hi0 : i = 0 := by omega
+    subst hi0
+    simp only [loadVal]
+    rw [byte_signExtend8]
+    have := (m a).isLt
+    apply BitVec.eq_of_toNat_eq
+    simp [readLE, Nat.mod_eq_of_lt this]
+  | lbu => simp only [LdOp.width] at hi; exact byte_ofNat_readLE m a (by decide) hi
+  | lw =>
+    simp only [LdOp.width] at hi
+    simp only [loadVal]
+    rw [byte_signExtend32 _ hi, setWidth_ofNat32 (by have := readLE_lt m a 4; omega)]
+    exact byte_ofNat_readLE m a (by decide) hi
+  | lwu => simp only [LdOp.width] at hi; exact byte_ofNat_readLE m a (by decide) hi
+  | ld => simp only [LdOp.width] at hi; exact byte_ofNat_readLE m a (by decide) hi
+  | lh => exact absurd rfl hop.1
+  | lhu => exact absurd rfl hop.2
+
+end NoCompiler.Typed.Track
+
+namespace NoCompiler.Typed.Track
+open NoCompiler NoCompiler.Typed.Bytes
+
+/-- A load of `op` from source byte `c + o` (inside `src[0, n)`, which `d[0, n)` misses) gives
+    the cells `load o width`. -/
+theorem Cells.load_ok {m0 m : Word → Byte} {d srcB : Word} {c n : Nat} (hC : Copied m0 m d srcB c)
+    (hd : Disj d srcB n) (hcn : c ≤ n) (op : LdOp) (hop : op ≠ .lh ∧ op ≠ .lhu) (o : Nat)
+    (hin : c + o + op.width ≤ n) :
+    Cells.ok m0 srcB c (loadVal op m (srcB + BitVec.ofNat 64 (c + o))) (Cells.load o op.width) := by
+  intro i hi
+  rw [Cells.load, getD_range_map _ hi]
+  split
+  · rename_i hw
+    show byte _ i = _
+    rw [byte_loadVal op m _ hw hop]
+    have e : srcB + BitVec.ofNat 64 (c + o) + BitVec.ofNat 64 i = srcB + BitVec.ofNat 64 (c + (o + i)) := by
+      rw [BitVec.add_assoc]; congr 1; rw [← Nat.add_assoc]; exact (BitVec.ofNat_add _ _).symm
+    rw [e, hC.src hd hcn (by omega)]
+  · trivial
 
 end NoCompiler.Typed.Track
