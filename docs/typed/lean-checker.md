@@ -110,3 +110,9 @@ Entailment (`STy.ent`, 2026-11-24), in order, each sound by its own lemma (Sound
 The search (untrusted) eliminates a variable exactly through an equality with a unit
 coefficient before pairwise Fourier–Motzkin (the Omega test's equality step), and retries a
 branch with a larger budget when the small one fails.
+
+Running the checker (2026-11-24): the NoCompiler lib is built with `precompileModules`, and
+the corpus harness runs each generated module with `lake lean` (which loads the native
+libraries), so `#eval fn.check code` runs compiled code: on musl memcpy (linked image) 7 s
+instead of 157 s in the interpreter. Proofs are unaffected: the kernel never runs native
+code, and nothing uses `native_decide`.
