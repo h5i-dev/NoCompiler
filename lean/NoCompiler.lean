@@ -35,6 +35,7 @@ import NoCompiler.Typed.Sound.Ecall
 import NoCompiler.Typed.Sound.Prog
 import NoCompiler.Typed.Sound.Values
 import NoCompiler.Typed.Bytes
+import NoCompiler.Typed.BytesMul
 import NoCompiler.Typed.Track
 import NoCompiler.Typed.TrackFill
 import NoCompiler.Typed.Sound.TrackStep

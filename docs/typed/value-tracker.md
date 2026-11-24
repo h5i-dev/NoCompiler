@@ -196,3 +196,8 @@ would carry a second entry condition (`Q`: `n` is the register's value), as fill
 does not describe it: the invariant needs a written prefix and a written suffix (`Written` over
 two ranges), with the return showing they meet. The fill word is built by `mulhu` with
 `0x0101…01`, which the cells would need as a rule (a byte broadcast).
+The broadcast is proved (`Typed/BytesMul.lean`: `byte_broadcast`, byte `i < 7` of
+`mulhu (w << 56) 0x0101010101010100` is byte 0 of `w`). Unfolding the 128-bit product with `simp`
+ran out of 2 GB; the route that works states `mulhu` in `Nat` first (`mulhUU_toNat`) and takes each
+byte from a digit decomposition of `0x01010101010101` (`omega` does not prove these
+large-coefficient divisions).
