@@ -188,6 +188,17 @@ def disjuncts : Constr → List Constr
   | .and p q => [.and p q]
   | .not p => [.not p]
 
+/-- The conjuncts of a conjunction. -/
+def conjuncts : Constr → List Constr
+  | .and p q => p.conjuncts ++ q.conjuncts
+  | .tt => [.tt]
+  | .ff => [.ff]
+  | .le a b => [.le a b]
+  | .eq a b => [.eq a b]
+  | .dvd c e => [.dvd c e]
+  | .or p q => [.or p q]
+  | .not p => [.not p]
+
 /-- A variable the constraint pins to a constant (a conjunct `x = c`). -/
 def pinOf : Constr → Option (Var × Int)
   | .eq a b =>
@@ -200,6 +211,13 @@ def pinOf : Constr → Option (Var × Int)
     | some r => some r
     | none => q.pinOf
   | _ => none
+
+/-- Every variable the constraint pins to a constant (its conjuncts `x = c`). -/
+def pins : Constr → List (Var × Int)
+  | .and p q => p.pins ++ q.pins
+  | p => match p.pinOf with
+    | some r => [r]
+    | none => []
 end Constr
 
 namespace STy
@@ -258,17 +276,20 @@ def entQ' (S : STy) (ψ : Constr) : Bool :=
     Without it the normal form of such a fact against such a goal has thousands of branches. -/
 def entCase (S : STy) (ψ : Constr) : Bool :=
   S.facts.any fun h => match h with
-    | .or _ _ => h.disjuncts.all fun d => match d.pinOf with
-      -- `ψ[x := v] ∨ ¬d`: the disjunct's variables stay in the goal, so the hypotheses that
-      -- refute an impossible case (goal `ff`) are not pruned as irrelevant
-      | some (x, v) => S.entQ' (Constr.mkOr (ψ.subst [(x, .lit v)]).fold (Constr.mkNot d))
-      | none => false
+    | .or _ _ => h.disjuncts.all fun d =>
+      -- `ψ[x := v, …] ∨ ¬d` with every variable the disjunct pins (a bit table's row pins
+      -- several): the disjunct's variables stay in the goal, so the hypotheses that refute an
+      -- impossible case (goal `ff`) are not pruned as irrelevant
+      let ps := d.pins
+      !ps.isEmpty && S.entQ' (Constr.mkOr (ψ.subst (ps.map fun (x, v) => (x, .lit v))).fold (Constr.mkNot d))
     | _ => false
 
 /-- `Ψ ⊢ ψ` by the decision procedure, after folding the goal's constant atoms (a goal like
     an invariant `k = 0 ∨ (k = 1 ∧ …) ∨ …` at `k := 0` is `tt`; unfolded, its negation's
     normal form has thousands of branches). -/
-def entQ (S : STy) (ψ : Constr) : Bool := S.entQ' ψ.fold || S.entCase ψ
+def entQ (S : STy) (ψ : Constr) : Bool :=
+  -- a conjunction one conjunct at a time: its negation would double every branch
+  (ψ.fold.conjuncts.all fun c => S.entQ' c) || S.entCase ψ
 
 /-- A linear form that is a constant (no variables) satisfying `ok`. -/
 def constLin (l : Lin) (ok : Int → Bool) : Bool := l.t.isEmpty && ok l.c

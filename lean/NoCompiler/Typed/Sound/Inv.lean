@@ -85,6 +85,15 @@ theorem disjuncts_holds {ι : Val} {p : Constr} (h : p.eval ι = true) :
     · obtain ⟨d, hd, hh⟩ := ihq h; exact ⟨d, by simp [disjuncts, hd], hh⟩
   | _ => exact ⟨_, by simp [disjuncts], h⟩
 
+theorem conjuncts_holds {ι : Val} {p : Constr} (h : ∀ c ∈ p.conjuncts, c.eval ι = true) :
+    p.eval ι = true := by
+  induction p with
+  | and p q ihp ihq =>
+    simp only [conjuncts, List.mem_append] at h
+    simp only [eval, Bool.and_eq_true]
+    exact ⟨ihp fun c hc => h c (.inl hc), ihq fun c hc => h c (.inr hc)⟩
+  | _ => exact h _ (by simp [conjuncts])
+
 theorem pinOf_sound {ι : Val} {p : Constr} {x : Var} {v : Int} (hp : p.pinOf = some (x, v))
     (h : p.eval ι = true) : ι x = v := by
   induction p with
@@ -109,7 +118,51 @@ theorem pinOf_sound {ι : Val} {p : Constr} {x : Var} {v : Int} (hp : p.pinOf = 
       simp only [Option.some.injEq] at hp; subst hp; exact ihp hr h.1
     · exact ihq hp h.2
   | _ => simp [pinOf] at hp
+
+theorem pins_sound {ι : Val} {p : Constr} (h : p.eval ι = true) :
+    ∀ r ∈ p.pins, ι r.1 = r.2 := by
+  induction p with
+  | and p q ihp ihq =>
+    simp only [eval, Bool.and_eq_true] at h
+    intro r hr
+    simp only [pins, List.mem_append] at hr
+    rcases hr with hr | hr
+    · exact ihp h.1 r hr
+    · exact ihq h.2 r hr
+  | _ =>
+    intro r hr
+    simp only [pins] at hr
+    split at hr
+    · rename_i r' hpin
+      simp only [List.mem_singleton] at hr; subst hr
+      exact pinOf_sound hpin h
+    · simp at hr
 end Constr
+
+theorem lookup_some_mem : ∀ {l : List (Var × IExpr)} {y : Var} {e : IExpr},
+    l.lookup y = some e → (y, e) ∈ l
+  | [], _, _, h => by simp [List.lookup] at h
+  | (a, b) :: r, y, e, h => by
+    by_cases hy : y = a
+    · subst hy; simp [List.lookup] at h; subst h; simp
+    · have hb : (y == a) = false := by simpa using hy
+      simp [List.lookup, hb] at h
+      exact List.mem_cons_of_mem _ (lookup_some_mem h)
+
+theorem IExpr.upd_pins {ι : Val} (ps : List (Var × Int)) (h : ∀ r ∈ ps, ι r.1 = r.2) :
+    IExpr.upd ι (ps.map fun (x, v) => (x, IExpr.lit v)) = ι := by
+  funext y
+  simp only [IExpr.upd]
+  split
+  · rename_i e he
+    obtain ⟨⟨x, v⟩, hm, hx, rfl⟩ : ∃ r ∈ ps, y = r.1 ∧ e = IExpr.lit r.2 := by
+      have := lookup_some_mem he
+      simp only [List.mem_map] at this
+      obtain ⟨⟨x, v⟩, hm, heq⟩ := this
+      simp only [Prod.mk.injEq] at heq
+      exact ⟨(x, v), hm, heq.1.symm, heq.2.symm⟩
+    simp only at hx; subst hx; simp [h _ hm]
+  · rfl
 
 theorem IExpr.upd_pin {ι : Val} {x : Var} {v : Int} (hx : ι x = v) :
     IExpr.upd ι [(x, .lit v)] = ι := by
@@ -167,21 +220,19 @@ theorem entCase_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entCase ψ = tru
   split at hc
   · obtain ⟨d, hd, hdh⟩ := Constr.disjuncts_holds h0h
     have hcd := List.all_eq_true.1 hc d hd
-    split at hcd
-    · rename_i x v hpin
-      have hx := Constr.pinOf_sound hpin hdh
-      have := entQ'_sound hcd hh'
-      simp only [Constr.holds, Constr.eval_mkOr, Constr.eval_mkNot, hdh, Bool.not_true,
-        Bool.or_false, Constr.eval_fold, Constr.eval_subst] at this
-      rwa [IExpr.upd_pin hx] at this
-    · cases hcd
+    simp only [Bool.and_eq_true] at hcd
+    have := entQ'_sound hcd.2 hh'
+    simp only [Constr.holds, Constr.eval_mkOr, Constr.eval_mkNot, hdh, Bool.not_true,
+      Bool.or_false, Constr.eval_fold, Constr.eval_subst] at this
+    rwa [IExpr.upd_pins _ (Constr.pins_sound hdh)] at this
   · cases hc
 
 theorem entQ_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entQ ψ = true)
     (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
   unfold entQ at h
   rcases Bool.or_eq_true _ _ ▸ h with h | h
-  · have := entQ'_sound h hh'
+  · have := Constr.conjuncts_holds (ι := ι) (p := ψ.fold) fun c hc =>
+      entQ'_sound (List.all_eq_true.1 h c hc) hh'
     simpa only [Constr.holds, Constr.eval_fold] using this
   · exact entCase_sound h hh'
 
