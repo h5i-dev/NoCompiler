@@ -95,7 +95,10 @@ Every exported signature numbers its variables canonically: its parameters 0.. i
 its `out` variables. Each function's record uses the same numbering for those, then its other
 variables in increasing order (a bijection of `[0, fresh)`; `fresh` is printed as at least the
 bijection's size). The same signature text therefore gives the same `Sig` in every file, which
-the ledger across files needs (P7 steps 2–3 are not done).
+the ledger across files needs. Step 2: a signature lists only the data symbols its function
+uses (its own `auipc %pcrel_hi` symbols, those its clauses mention, and its callees', by a
+fixpoint), and the record drops the other symbols' capabilities and facts. Step 3 (`link
+--prove`) is not done.
 
 ### Linked image (2026-11-23, static data in Lean)
 

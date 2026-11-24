@@ -183,9 +183,18 @@ pub fn exported_sig(s: &Sig, ck: &Checker) -> Sig {
 
 /// The equations `ℓ_sym = address` a linked image gives (export.md "Linked image").
 fn sym_eqs(ck: &Checker, image: Option<&BTreeMap<String, u64>>) -> Vec<Formula> {
+    sym_eqs_used(ck, image, None)
+}
+
+fn sym_eqs_used(
+    ck: &Checker,
+    image: Option<&BTreeMap<String, u64>>,
+    used: Option<&std::collections::BTreeSet<String>>,
+) -> Vec<Formula> {
     let Some(img) = image else { return vec![] };
     ck.sym_vars
         .iter()
+        .filter(|(name, _)| used.is_none_or(|u| u.contains(name.as_str())))
         .filter_map(|(name, v)| {
             let a = *img.get(name)?;
             Formula::eq(&Lin::var(*v), &Lin::konst(a as i128))
@@ -320,11 +329,27 @@ fn pin_state(st: &State, m: &BTreeMap<crate::lin::Var, Lin>) -> State {
 /// `exported_sig`, with the linked addresses of the data symbols in `pre` when an image is
 /// given.
 pub fn exported_sig_at(s: &Sig, ck: &Checker, image: Option<&BTreeMap<String, u64>>) -> Sig {
+    exported_sig_used(s, ck, image, None)
+}
+
+/// `exported_sig_at`, listing only the data symbols in `used` (decisions.md P7 step 2) when it
+/// is given: a signature then depends on what its function (and its callees) touch, not on
+/// the file it is in.
+pub fn exported_sig_used(
+    s: &Sig,
+    ck: &Checker,
+    image: Option<&BTreeMap<String, u64>>,
+    used: Option<&std::collections::BTreeSet<String>>,
+) -> Sig {
     let mut e = s.clone();
     if s.syscall {
         return e;
     }
+    let keep = |name: &str| used.is_none_or(|u| u.contains(name));
     for (name, v) in &ck.sym_vars {
+        if !keep(name) {
+            continue;
+        }
         e.params.push(*v);
         let (size, align) = ck.sym_info[name];
         let l = Lin::var(*v);
@@ -336,7 +361,7 @@ pub fn exported_sig_at(s: &Sig, ck: &Checker, image: Option<&BTreeMap<String, u6
             e.pre.push(Formula::Dvd(align, l));
         }
     }
-    for sd in &ck.statics {
+    for sd in ck.statics.iter().filter(|sd| keep(&sd.name)) {
         e.borrow.push(SigCap {
             guard: Formula::True,
             kind: CapKind::Bytes {
@@ -349,8 +374,67 @@ pub fn exported_sig_at(s: &Sig, ck: &Checker, image: Option<&BTreeMap<String, u6
             out_fields: None,
         });
     }
-    e.pre.extend(sym_eqs(ck, image));
+    e.pre.extend(sym_eqs_used(ck, image, used));
     e
+}
+
+/// The data symbols each function uses (P7 step 2): those its own `auipc %pcrel_hi`
+/// instructions name, those whose address its signature mentions, and its callees', by a
+/// fixpoint over the call graph (finite: S5, no recursion; a cycle would just stop growing).
+pub fn used_syms(
+    prog: &Program,
+    ck: &Checker,
+    rep: &Report,
+) -> BTreeMap<String, std::collections::BTreeSet<String>> {
+    use std::collections::BTreeSet;
+    let by_var: BTreeMap<crate::lin::Var, &str> =
+        ck.sym_vars.iter().map(|(n, v)| (*v, n.as_str())).collect();
+    let mut used: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    for (name, s) in &ck.sigs {
+        let mut vs = BTreeSet::new();
+        let mut lin_vars = |l: &Lin| vs.extend(l.vars());
+        for (_, l) in s.ins.iter().chain(&s.outs) {
+            lin_vars(l);
+        }
+        for c in s.borrow.iter().chain(&s.take).chain(&s.give) {
+            if let CapKind::Bytes { base, len, fields, .. } = &c.kind {
+                lin_vars(base);
+                lin_vars(len);
+                fields.values().for_each(&mut lin_vars);
+            }
+        }
+        let mut fv = BTreeSet::new();
+        for f in s.pre.iter().chain(&s.post) {
+            f.vars(&mut fv);
+        }
+        vs.extend(fv);
+        let mut u: BTreeSet<String> =
+            vs.iter().filter_map(|v| by_var.get(v).map(|n| n.to_string())).collect();
+        if let Some(fr) = rep.funcs.iter().find(|f| &f.name == name) {
+            if let Some(ex) = &fr.export {
+                u.extend(ex.lo_vars.iter().map(|(_, _, sym)| sym.clone()));
+            }
+        }
+        used.insert(name.clone(), u);
+    }
+    loop {
+        let mut changed = false;
+        for name in ck.sigs.keys() {
+            let add: BTreeSet<String> = callees_of(prog, name)
+                .iter()
+                .filter_map(|g| used.get(g).cloned())
+                .flatten()
+                .collect();
+            let e = used.entry(name.clone()).or_default();
+            let before = e.len();
+            e.extend(add);
+            changed |= e.len() != before;
+        }
+        if !changed {
+            break;
+        }
+    }
+    used
 }
 
 /// Word index of each instruction (a `call`/`tail` pair is two words).
@@ -473,8 +557,9 @@ pub fn to_lean_full(
     image: Option<&BTreeMap<String, u64>>,
     code: Option<&(u64, Vec<u32>)>,
 ) -> String {
-    let eqs = sym_eqs(ck, image);
     let pins = sym_addrs(ck, image);
+    // P7 step 2: each signature lists only the data symbols its function uses
+    let usedm = used_syms(prog, ck, rep);
     let addr_of = |name: &str, fallback: Option<u64>| -> Option<u64> {
         match image {
             Some(img) => img.get(name).copied(),
@@ -509,7 +594,7 @@ pub fn to_lean_full(
             "def sig_{} : Sig :=\n  {}\n",
             lean_ident(name).trim_matches(['«', '»']),
             {
-                let es = exported_sig_at(s, ck, image);
+                let es = exported_sig_used(s, ck, image, usedm.get(name));
                 lean_sig(&rename_sig(&es, &canon(&es, 0)))
             }
         );
@@ -527,14 +612,46 @@ pub fn to_lean_full(
             .unwrap_or(0);
         let n = lean_ident(&f.name).trim_matches(['«', '»']).to_string();
         // the record in the signature's canonical numbering (P7)
+        let fused = usedm.get(&f.name);
         let vm = ck
             .sigs
             .get(&f.name)
-            .map(|g| canon(&exported_sig_at(g, ck, image), ex.fresh))
+            .map(|g| canon(&exported_sig_used(g, ck, image, fused), ex.fresh))
             .unwrap_or_default();
         let lm = as_lins(&vm);
         let vv = |x: &crate::lin::Var| vm.get(x).unwrap_or(x).0;
-        let feqs: Vec<Formula> = eqs.iter().map(|f| ren_formula(f, &lm)).collect();
+        let feqs: Vec<Formula> = sym_eqs_used(ck, image, fused)
+            .iter()
+            .map(|f| ren_formula(f, &lm))
+            .collect();
+        // the data symbols this function does not use: their capabilities and facts go
+        let n_own = ex.borrow_ids.len().saturating_sub(ck.statics.len());
+        let unused = |name: &str| fused.is_some_and(|u| !u.contains(name));
+        let drop_ids: Vec<u32> = ck
+            .statics
+            .iter()
+            .enumerate()
+            .filter(|(_, sd)| unused(&sd.name))
+            .filter_map(|(i, _)| ex.borrow_ids.get(n_own + i).copied())
+            .collect();
+        let drop_vars: std::collections::BTreeSet<crate::lin::Var> = ck
+            .sym_vars
+            .iter()
+            .filter(|(n, _)| unused(n))
+            .map(|(_, v)| *v)
+            .collect();
+        let bids: Vec<u32> =
+            ex.borrow_ids.iter().copied().filter(|i| !drop_ids.contains(i)).collect();
+        let trim = |st: &State| -> State {
+            let mut t = st.clone();
+            t.caps.retain(|c| !drop_ids.contains(&c.id));
+            t.facts.retain(|(_, f)| {
+                let mut vs = std::collections::BTreeSet::new();
+                f.vars(&mut vs);
+                vs.is_disjoint(&drop_vars)
+            });
+            t
+        };
         let _ = writeln!(
             o,
             "/-- `{}`: section {} offset {:#x} (entry is the symbol's address in the image) -/",
@@ -654,8 +771,8 @@ pub fn to_lean_full(
             .collect();
         let mut types: Vec<String> = Vec::new();
         for (ix, st) in &ex.snapshots {
-            let pst = pin_state(st, if vm.is_empty() { &fpins } else { &comp });
-            types.push(format!("    ({}, {})", wi[*ix], lean_sty(&pst, &ex.borrow_ids, &feqs)));
+            let pst = pin_state(&trim(st), if vm.is_empty() { &fpins } else { &comp });
+            types.push(format!("    ({}, {})", wi[*ix], lean_sty(&pst, &bids, &feqs)));
             // a call pair is two words: the second one's type is the first one's with the
             // temporary holding auipc's exact value (T's ask a, I21)
             if let Instr::CallPair {
@@ -678,7 +795,7 @@ pub fn to_lean_full(
                     types.push(format!(
                         "    ({}, {})",
                         wi[*ix] + 1,
-                        lean_sty(&st2, &ex.borrow_ids, &feqs)
+                        lean_sty(&st2, &bids, &feqs)
                     ));
                 }
             }
