@@ -235,6 +235,31 @@ theorem covers_sound {ι : Val} {p ψ : Constr} (h : covers p ψ = true) (hp : p
   · rename_i hne1 hne2 hne3 hne4
     simp only [beq_iff_eq] at h; subst h; exact hp
 
+theorem coversS_sound {ι : Val} : ∀ (n : Nat) {p ψ : Constr}, coversS n p ψ = true →
+    p.holds ι → ψ.holds ι
+  | 0, _, _, h, hp => covers_sound (by simpa only [coversS] using h) hp
+  | n + 1, p, ψ, h, hp => by
+    simp only [coversS, Bool.or_eq_true] at h
+    rcases h with h | h
+    · exact covers_sound h hp
+    · split at h
+      · simp only [Bool.and_eq_true] at h
+        simp only [Constr.holds, Constr.eval, Bool.and_eq_true] at hp ⊢
+        exact ⟨coversS_sound n h.1 hp.1, coversS_sound n h.2 hp.2⟩
+      · simp only [Bool.and_eq_true] at h
+        simp only [Constr.holds, Constr.eval, Bool.or_eq_true] at hp ⊢
+        rcases hp with hp | hp
+        · exact Or.inl (coversS_sound n h.1 hp)
+        · exact Or.inr (coversS_sound n h.2 hp)
+      · rename_i a b
+        simp only [Constr.holds, Constr.eval, Bool.not_eq_true'] at hp ⊢
+        cases hb : b.eval ι
+        · rfl
+        · have := coversS_sound (ι := ι) n h hb
+          simp only [Constr.holds] at this
+          rw [this] at hp; exact absurd hp (by decide)
+      · exact absurd h (by decide)
+
 theorem ent_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.ent ψ = true)
     (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
   unfold ent at h
@@ -242,7 +267,7 @@ theorem ent_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.ent ψ = true)
   · rcases Bool.or_eq_true _ _ ▸ h with h | h
     · exact hh' ψ (List.mem_append_left _ (List.contains_iff_mem.1 h))
     · obtain ⟨p, hp, hc⟩ := List.any_eq_true.1 h
-      exact covers_sound hc (hh' p (List.mem_append_left _ hp))
+      exact coversS_sound _ hc (hh' p (List.mem_append_left _ hp))
   · exact entQ_sound h hh'
 theorem entEqMod_sound {ι : Val} {S : STy} {a b : IExpr} (h : S.entEqMod a b = true)
     (hh : ∀ p ∈ S.hyps, p.holds ι) : (a.eval ι - b.eval ι) % 2 ^ 64 = 0 := by

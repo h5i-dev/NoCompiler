@@ -287,9 +287,21 @@ def covers (p ψ : Constr) : Bool :=
   | .dvd k e, .dvd k' e' => k == k' && constLin (e'.sub e).toLin (· % (k : Int) == 0)
   | p, ψ => p == ψ
 
+/-- `covers` through `∧`, `∨` and `¬` (a `¬` swaps the sides: `¬p ⇒ ¬ψ` iff `ψ ⇒ p`), so a
+    compound fact written in another normal form (the Rust checker's record) is still found
+    without the decision procedure. Fuel: structural on `Nat`, so the kernel reduces it. -/
+def coversS : Nat → Constr → Constr → Bool
+  | 0, p, ψ => covers p ψ
+  | n + 1, p, ψ => covers p ψ ||
+    match p, ψ with
+    | .and p q, .and c d => coversS n p c && coversS n q d
+    | .or p q, .or c d => coversS n p c && coversS n q d
+    | .not p, .not ψ => coversS n ψ p
+    | _, _ => false
+
 /-- `Ψ ⊢ ψ`: a fact of `Ψ` as it is or up to linear normal form (most facts of an edge's
     target type are), or by the decision procedure. -/
-def ent (S : STy) (ψ : Constr) : Bool := S.facts.contains ψ || S.facts.any (covers · ψ) || S.entQ ψ
+def ent (S : STy) (ψ : Constr) : Bool := S.facts.contains ψ || S.facts.any (coversS 8 · ψ) || S.entQ ψ
 
 /-- `a ≡ b (mod 2^64)` under Ψ. -/
 def entEqMod (S : STy) (a b : IExpr) : Bool := a.same b || S.ent (Constr.eqMod a b)
