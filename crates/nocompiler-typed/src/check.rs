@@ -175,8 +175,9 @@ pub struct FnExport {
     pub fresh: u32,
     /// The `%pcrel_lo` variable L of each `auipc %pcrel_hi(sym)`: (instruction index, L, sym).
     pub lo_vars: Vec<(usize, Var, String)>,
-    /// The bit counts `k` of the masks `2^k − 1` the xor-then-mask rule used (I23): the Lean
-    /// checker adds `2^k ∣ a xor b ⇔ 2^k ∣ a − b` at each xor for these.
+    /// The bit counts `k` of the masks `2^k − 1` whose fact `2^k ∣ a xor b ⇔ 2^k ∣ a − b` the
+    /// xor rule wrote (I23; the widths of the function's `andi` masks): the Lean checker adds
+    /// the same facts at each xor.
     pub xor_bits: Vec<u32>,
 }
 
@@ -2641,6 +2642,8 @@ impl<'a> FnCheck<'a> {
             self.add_fact(st, f);
             // 2^k ∣ x ⇔ 2^k ∣ a − b for the masks the function uses (Lean's `xorBitFact`)
             for k in self.mask_ks.clone() {
+                // the Lean checker's xor rule writes the same facts for the hint's widths
+                self.xor_bits.insert(k);
                 let m = 1i128 << k;
                 let f = Formula::or(vec![
                     Formula::and(vec![Formula::Dvd(m, x.clone()), Formula::Dvd(m, d.clone())]),
