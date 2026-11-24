@@ -609,6 +609,7 @@ Run: `lean/scripts/corpus.py --link --why tests/typed/corpus/musl`. Each file is
 |-----|--------------|-----------------------|--------------|------------|
 | 998ae0df (v0, unlinked) | 28 | 9 | 13 | 6 |
 | 2a00c908 (linked, 2026-11-24T03:05Z, 4 min) | 26 (memccpy, memccpy-ic: a Rust regression from 3ee59fd6's xor facts, fixed below) | 24 | 2 (memccpy-x, stpncpy) | 0 |
+| b5ff791c (linked, 2026-11-24T03:37Z, 9 min, Lean ≤ 4 GB per file) | 28 | 26 | 0 | 2 (memccpy, memccpy-ic: out of memory in the case split, T) |
 
 What closed the gap, by cause:
 * call/tail pairs at unlinked addresses: the harness links (callee stubs);
@@ -621,7 +622,7 @@ What closed the gap, by cause:
 * back edges: T's instantiation fix and search (fuel, equality elimination);
 * time: T's per-point defs request and precompiled modules.
 
-Every disagreement is still Rust accepts and Lean rejects; none goes the other way.
+The Rust regression at 2a00c908 came from 3ee59fd6's xor-then-mask facts in the Rust checker's own queries, which made its solver give up on memccpy and memccpy-ic. Since e880cadf those facts go into the exported record only. At b5ff791c every function Rust accepts is accepted by Lean, except two that run out of memory; Lean rejects none, and none goes the other way. Theorem D (`Prog.check`): 19 files accept; 7 link stubbed callees (`external-callees`, theorem D needs every callee in `prog`).
 
 ## Files
 
