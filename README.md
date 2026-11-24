@@ -40,11 +40,11 @@ sum:
 	ret
 ```
 
-## Type Checker
+## 1. Type Checker
 
 We provide the fast Rust checker, and the formally verified Lean checker.
 
-**1. Rust checker** (fast; trusted, not verified):
+**a. Rust checker** (fast; trusted, not verified):
 
 ```sh
 cargo build --release -p nocompiler-typed
@@ -55,7 +55,7 @@ target/release/nocompiler-typed check examples/typed/sum.s
 # _start: checked (6 queries, 238 µs)
 ```
 
-**2. Lean checker** (formally verified):
+**b. Lean checker** (formally verified):
 
 ```sh
 (cd lean && lake build NoCompiler)        # once: the library and the proofs (a few minutes)
@@ -65,7 +65,7 @@ python3 lean/scripts/kernelcheck.py --checker target/release/nocompiler-typed ex
 
 More: [docs/typed/rust-checker.md](docs/typed/rust-checker.md), [docs/typed/lean-checker.md](docs/typed/lean-checker.md), the musl trial in [docs/typed/musl-trial.md](docs/typed/musl-trial.md).
 
-## Binary analysis toolkit
+## 2. Binary analysis toolkit
 
 The repository also holds the comprehensive binary analysis toolkit, including ELF, PE/COFF and Mach-O loaders, x86-64 and AArch64 decoders, a SLEIGH runtime (with RISC-V RV64), an IR with lifters, function and CFG recovery, a decompiler to C and a binary differ.
 
@@ -76,12 +76,12 @@ nocompiler decompile <binary> <symbol|address|all>
 nocompiler diff /bin/true /bin/false
 ```
 
-## Trust
+## 3. Trust
 
 - Trusted: the Lean kernel, the RISC-V semantics in [lean/NoCompiler](lean/NoCompiler), the definition of ⟦σ⟧, the unsafe contracts you assume, and for now the Rust checker.
 - Not trusted: compilers, the assembler, annotation writers, tactics, proof authors.
 - The semantics are tested against llvm-mc, qemu and Sail. They are not proved equal to Sail.
 
-## License
+## 4. License
 
 NoCompiler is licensed under the Apache License 2.0. See [LICENSE](./LICENSE).
