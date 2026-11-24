@@ -82,8 +82,6 @@ nocompiler diff /bin/true /bin/false
 - Not trusted: compilers, the assembler, annotation writers, tactics, proof authors.
 - The semantics are tested against llvm-mc, qemu and Sail. They are not proved equal to Sail.
 
-See [docs/toolkit](docs/toolkit/README.md).
-
 ## License
 
-Apache-2.0
+NoCompiler is licensed under the Apache License 2.0. See [LICENSE](./LICENSE).
