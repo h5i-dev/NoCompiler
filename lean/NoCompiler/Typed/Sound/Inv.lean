@@ -256,7 +256,7 @@ theorem entCaseN_sound : ∀ (n : Nat) {ι : Val} {S : STy} {ψ : Constr}, entCa
     · cases hc
 
 theorem entCase_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entCase ψ = true)
-    (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := entCaseN_sound 2 h hh'
+    (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := entCaseN_sound 1 h hh'
 
 theorem entQ_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entQ ψ = true)
     (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
