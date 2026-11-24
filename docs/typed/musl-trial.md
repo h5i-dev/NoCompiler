@@ -611,6 +611,7 @@ Run: `lean/scripts/corpus.py --link --why tests/typed/corpus/musl`. Each file is
 | 2a00c908 (linked, 2026-11-24T03:05Z, 4 min) | 26 (memccpy, memccpy-ic: a Rust regression from 3ee59fd6's xor facts, fixed below) | 24 | 2 (memccpy-x, stpncpy) | 0 |
 | b5ff791c (linked, 2026-11-24T03:37Z, 9 min, Lean ≤ 4 GB per file) | 28 | 26 | 0 | 2 (memccpy, memccpy-ic: out of memory in the case split, T) |
 | c46c2c2a (linked; memccpy and memccpy-ic re-run, Lean ≤ 4 GB per file) | 28 | **28** | 0 | 0 |
+| 6fa83af5 (linked, full run with the note trial, 2026-11-24T09:56Z, 7 min) | 28 (+6 note trial) | 28 (+6) | 0 | 0 |
 
 What closed the gap, by cause:
 * call/tail pairs at unlinked addresses: the harness links (callee stubs);
