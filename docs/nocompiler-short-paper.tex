@@ -1,5 +1,5 @@
 \begin{filecontents*}[overwrite]{nocompiler-references.bib}
-@misc{nocompiler, author={{nocompiler contributors}}, title={{nocompiler}: Source, proofs, design documents, and trial files at commit c3f64fa}, year={2026}, url={https://github.com/h5i-dev/NoCompiler/tree/c3f64fadde409dcfb3cf21a4b7ea7c9580cca711}, note={Pinned artifact; full revision c3f64fadde409dcfb3cf21a4b7ea7c9580cca711}}
+@misc{nocompiler, author={{nocompiler contributors}}, title={{nocompiler}: Source, proofs, design documents, and trial files at commit 998ae0d}, year={2026}, url={https://github.com/h5i-dev/NoCompiler/tree/998ae0df1d52a7d7ce0ed7bca6113d417eec2c39}, note={Pinned artifact; full revision 998ae0df1d52a7d7ce0ed7bca6113d417eec2c39}}
 @inproceedings{pcc96, author={George C. Necula and Peter Lee}, title={Safe Kernel Extensions Without Run-Time Checking}, booktitle={Proceedings of the Second USENIX Symposium on Operating Systems Design and Implementation (OSDI '96)}, pages={229--243}, year={1996}, publisher={ACM}, address={New York, NY, USA}, doi={10.1145/238721.238781}}
 @inproceedings{pcc97, author={George C. Necula}, title={Proof-Carrying Code}, booktitle={Proceedings of the 24th ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages (POPL '97)}, pages={106--119}, year={1997}, publisher={ACM}, address={New York, NY, USA}, doi={10.1145/263699.263712}}
 @article{tal, author={Greg Morrisett and David Walker and Karl Crary and Neal Glew}, title={From System {F} to Typed Assembly Language}, journal={ACM Transactions on Programming Languages and Systems}, volume={21}, number={3}, pages={527--568}, year={1999}, month=may, doi={10.1145/319301.319345}}
@@ -250,13 +250,13 @@ Fix a valuation $\iota$, token meanings $T$ (Definition~\ref{def:tok}), and toke
 \[
 \begin{aligned}&\Valid_{T,\iota,F}(M,\bytes{b}{n}{m}\{k_j{:}\inttype{e_j}\})\iff\\ &\quad 0\le\ev{b}{\iota}\ \land\ 0\le\ev{n}{\iota}\ \land\ \ev{b}{\iota}+\ev{n}{\iota}\le B\ \land\ \textstyle\bigwedge_j\mathrm{Field}_j,\end{aligned}
 \]
-where $\mathrm{Field}_j$ says $k_j+8\le\ev{n}{\iota}$, $8\mid\ev{b}{\iota}+k_j$, and the 8-byte word of $M$ at $\ev{b}{\iota}+k_j$ has type $\inttype{e_j}$; and $\Valid(M,\mathsf{tok}(t))\iff T(t).\mathit{inv}(F(t),M)$.
+where $\mathrm{Field}_j$ says $k_j+8\le\ev{n}{\iota}$, $8\mid\ev{b}{\iota}+k_j$, and the 8-byte word of $M$ at $\ev{b}{\iota}+k_j$ has type $\inttype{e_j}$; a capability marked \textsf{heap} must moreover have a range that is a unit, $T(\mathsf{Heap}).\mathit{unit}(F(\mathsf{Heap}),[\ev{b}{\iota},\ev{b}{\iota}+\ev{n}{\iota}))$. Finally $\Valid(M,\mathsf{tok}(t))\iff T(t).\mathit{inv}(F(t),M)$.
 \end{definition}
 
 A field is a fact about memory contents, not a permission: to use the address it holds, one needs a separate capability for the bytes it points to. A structure holding a pointer and a length is therefore a capability with two fields next to a second capability for the buffer.
 
 \begin{definition}[Token meaning; \lean{TokDef}]\label{def:tok}
-A token meaning is a predicate $\mathit{inv}(R,M)$ on a list of regions and a memory, together with a proof of locality: if $M$ and $M'$ agree on every byte of $R$, then $\mathit{inv}(R,M)\Rightarrow\mathit{inv}(R,M')$.
+A token meaning is a predicate $\mathit{inv}(R,M)$ on a list of regions and a memory, together with a proof of locality: if $M$ and $M'$ agree on every byte of $R$, then $\mathit{inv}(R,M)\Rightarrow\mathit{inv}(R,M')$; and a relation $\mathit{unit}(R,r)$, the live allocation units given the footprint $R$ (empty by default). The allocator's token is the one named $\mathsf{Heap}$.
 \end{definition}
 
 \begin{definition}[Separation; \lean{Separated}]\label{def:sep}
@@ -310,14 +310,15 @@ Let $T$ be token meanings, $\iota$ a valuation, and $F$ token footprints.
 \begin{itemize}
 \item $\Pre_\sigma(T,\iota,F,s)$: every $(r,e)\in\Gamma_{\mathrm{in}}$ has $R(r)\models_\iota\inttype{e}$; $\iota\models\psi_{\mathrm{pre}}$; every entry capability is valid in $M$; the entry capabilities are separated; no entry footprint meets $S_K(s)$; and $K\le\un{R(\mathit{sp})}$.
 \item $\Perm_\sigma(\iota,F,s)$: readable are the footprints of the non-exclusive entry capabilities; writable are the footprints of the exclusive ones and $S_K(s)$.
-\item $\Post_\sigma(T,\iota,F,s,s')$: there are $\iota'$ agreeing with $\iota$ outside $X_{\mathrm{out}}$ and footprints $F'$ such that the registers of $\Gamma_{\mathrm{out}}$ have their types under $\iota'$, $\iota'\models\psi_{\mathrm{post}}$, the exit capabilities are valid in $M'$ and separated, and every byte in the footprint of a given capability or a borrowed token lies in the \emph{pool}
+\item $\Post_\sigma(T,\iota,F,s,s')$: there are $\iota'$ agreeing with $\iota$ outside $X_{\mathrm{out}}$ and footprints $F'$ such that the registers of $\Gamma_{\mathrm{out}}$ have their types under $\iota'$, $\iota'\models\psi_{\mathrm{post}}$, the exit capabilities are valid in $M'$ and separated, every byte in the footprint of a given capability or a borrowed token lies in the \emph{pool}
 \[
-\Pool_\sigma(\iota,F)=\textstyle\bigcup_{\kappa\in\mathcal{T}}\fp_{\iota,F}(\kappa)\ \cup\ \bigcup_{\mathsf{tok}(t)\in\mathcal{B}}F(t).
+\Pool_\sigma(\iota,F)=\textstyle\bigcup_{\kappa\in\mathcal{T}}\fp_{\iota,F}(\kappa)\ \cup\ \bigcup_{\mathsf{tok}(t)\in\mathcal{B}}F(t),
 \]
+and every unit of $\mathsf{Heap}$ at entry that misses the pool and $S_K(s)$ is still a unit under $F'$ (the \emph{unit frame}).
 \end{itemize}
 \end{definition}
 
-The pool condition is what makes allocation sound: whatever a function hands out was given to it to consume, or belongs to a token it borrowed, and therefore overlaps no capability its caller still holds. Memory outside the writable bytes is unchanged on return, but this is not part of $\Post$; it follows from the step relation (\lean{VerifiedImg.frame}).
+The pool condition is what makes allocation sound: whatever a function hands out was given to it to consume, or belongs to a token it borrowed, and therefore overlaps no capability its caller still holds. The unit frame makes an allocator's contract a true statement: \code{malloc} gives a fresh unit cut from the pool of the borrowed $\mathsf{Heap}$, \code{free} takes a whole live unit (its take clause is valid at entry), and the units held by others survive both. Memory outside the writable bytes is unchanged on return, but this is not part of $\Post$; it follows from the step relation (\lean{VerifiedImg.frame}).
 
 \begin{definition}[Verified function; \lean{Entry}, \lean{Spec.Done}, \lean{VerifiedImg}]\label{def:vi}
 A specification $\mathit{sp}$ over logical arguments $\alpha$ provides $\mathit{pre}$, $\mathit{post}$, a permission $\mathit{perm}(a,s)$, and a stack bound. $\Entry_D(e,s)$ holds when $\mathit{pc}=e$, the process runs, $R(\mathit{ra})\notin D$, $4\mid R(\mathit{ra})$, and $16\mid R(\mathit{sp})$. $\Done(a,s,s')$ holds when either the process runs in $s'$, $\mathit{pc}'=R(\mathit{ra})$, the registers $\mathit{sp},\mathit{gp},\mathit{tp},s_0,\dots,s_{11}$ are as in $s$, and $\mathit{post}(a,s,s')$; or $s'$ has exited. Then
@@ -440,7 +441,7 @@ A call to a callee $g$ with signature $\sigma_g$ at a known address (\code{jal r
 \text{each clause of }\sigma_g\text{ lent from a held capability} \\ \text{\textsf{rw} loans pairwise disjoint}}
 {\tau\triangleright\mathrm{afterCall}(\tau,\sigma_g,\theta)}
 \end{mathpar}
-A \textsf{borrow} or \textsf{take} clause $\bytes{b'}{n'}{m'}$ is lent from a held $\bytes{b}{n}{m}$ with $\tau\ent b\le\theta b'\land\theta b'+\theta n'\le b+n\land0\le\theta n'$, with $m=\mathsf{rw}$ if $m'=\mathsf{rw}$, a whole held \textsf{heap} unit for a \textsf{heap} clause, and fields of the clause present in the held capability; a take clause needs an exclusive capability. A token clause is lent from the unique held capability of that name. $\mathrm{afterCall}$ keeps preserved registers and slots, gives the $\Gamma_{\mathrm{out}}^g$ registers their types with $X_{\mathrm{out}}^g$ renamed to fresh variables, makes every other caller-saved register a fresh word, adds $\theta\psi^g_{\mathrm{post}}$, removes capabilities lent to take clauses, forgets the fields of capabilities lent \textsf{rw}, and adds the given capabilities.
+A \textsf{borrow} or \textsf{take} clause $\bytes{b'}{n'}{m'}$ is lent from a held $\bytes{b}{n}{m}$ with $\tau\ent b\le\theta b'\land\theta b'+\theta n'\le b+n\land0\le\theta n'$, with $m=\mathsf{rw}$ if $m'=\mathsf{rw}$, a whole held \textsf{heap} unit for a \textsf{heap} clause, and fields of the clause present in the held capability; a take clause needs an exclusive capability that did not come from one of the caller's own borrows, and every borrow of the caller must still be held over its whole range at the call. A token clause is lent from the unique held capability of that name. $\mathrm{afterCall}$ keeps preserved registers and slots, gives the $\Gamma_{\mathrm{out}}^g$ registers their types with $X_{\mathrm{out}}^g$ renamed to fresh variables, makes every other caller-saved register a fresh word, adds $\theta\psi^g_{\mathrm{post}}$, removes capabilities lent to take clauses, forgets the fields of capabilities lent \textsf{rw}, and adds the given capabilities.
 
 \code{ecall} requires $a_7$ to be a known constant. For \code{exit} the run ends. For \code{write} and \code{read} of $[b,b+n)$ it requires $0\le n<B$ and a held capability covering the buffer (\textsf{rw} for \code{read}); afterwards $a_0$ is a fresh $x$ with
 \[
@@ -534,7 +535,7 @@ Each condition of Definition~\ref{def:subtype} is an entailment from $\mathrm{hy
 If $\Inv(H(k),s,\iota,F)$ and $\mathit{pc}(s)=\mathit{pc}_k$, then $s$ has a $\Step(c,P)$ successor (or, for a call, the callee's execution is safe and ends), and every successor $s'$, or every state in which the callee returns, satisfies $\Inv(\hat\tau,s',\iota',F')$ for the rule's output $\hat\tau$ towards $k'$ and an extension $\iota'$ of $\iota$ that agrees with it below the fresh variables; or $s'$ is final and satisfies $\Done$.
 \end{lem}
 \begin{proof}[Proof sketch]
-By cases on the decoded instruction, with one lemma per rule: \lean{Fn.arith\_sound} and \lean{Fn.arithExt\_sound} (arithmetic), \lean{Fn.branch\_sound}, \lean{Fn.load\_sound} and \lean{Fn.store\_sound} (Section~\ref{sec:rules}), the slot and frame lemmas (\lean{Fn.slotLoad\_sound}, \lean{Fn.slotStore\_sound}, \lean{Fn.framePop\_sound}), \lean{Fn.ecall\_step}, \lean{Fn.call\_step} (Section~\ref{sec:compose}), \lean{Fn.tail\_step}, and the return (Lemma~\ref{lem:ret}).
+By cases on the decoded instruction, with one lemma per rule: \lean{Fn.arith\_sound} and \lean{Fn.arithExt\_sound} (arithmetic), \lean{Fn.branch\_sound}, \lean{Fn.load\_sound} and \lean{Fn.store\_sound} (Section~\ref{sec:rules}), the slot and frame lemmas (\lean{Fn.slotLoad\_sound}, \lean{Fn.slotStore\_sound}, \lean{Fn.framePop\_sound}), \lean{Fn.ecall\_step}, \lean{Fn.call\_step} (Section~\ref{sec:compose}), \lean{Fn.tail\_step}, and the return (Lemma~\ref{lem:ret}). The unit frame of $\Post$ is carried along the run by an auxiliary invariant over the $\mathsf{Heap}$ footprint relative to the entry (\lean{Fn.UnitFrame}).
 \end{proof}
 
 \begin{lem}[Edges; \lean{Fn.edgeOk\_sound}]\label{lem:edge}
@@ -577,7 +578,7 @@ For the nine words of \code{sum} as assembled by clang and the record of Example
 If the call rule accepts a call of $g$ at $k$ and $\Inv(H(k),s,\iota,F)$, then the state after the jump satisfies $\Entry_{D_g}$ and $\Pre_{\sigma_g}$ under $\iota[\theta]$, and $\Perm_{\sigma_g}\le P$; and every state in which the callee returns, satisfying $\Done_g$ and the frame property, satisfies $\Inv(\mathrm{afterCall}(\tau,\sigma_g,\theta),s',\iota',F')$.
 \end{lem}
 \begin{proof}[Proof sketch]
-The callee's clauses lie inside held footprints, so they are valid with non-negative lengths (I4 and the lending condition) and readable or writable under $P$ (I7); with the byte-wise judgment this gives $\Perm_{\sigma_g}\le P$ even when a lent range spans several regions of $P$. Separation of the clauses follows from I5 for different holders and from the disjointness check for loans from one holder. The callee's stack lies below the caller's frame inside $S_K(s_0)$ by $d+K_g\le K$ and misses every footprint by I6. After the return, memory changed only in the callee's writable bytes: lent \textsf{rw} ranges, taken ranges, lent tokens, and its stack. Capabilities kept by the caller lose only the fields that a \textsf{rw} loan may have changed; given capabilities lie in the callee's pool, which the caller lent and no longer holds, so separation is preserved. \lean{VerifiedImg.call} composes the callee's execution with the caller's.
+The callee's clauses lie inside held footprints, so they are valid with non-negative lengths (I4 and the lending condition) and readable or writable under $P$ (I7); with the byte-wise judgment this gives $\Perm_{\sigma_g}\le P$ even when a lent range spans several regions of $P$. Separation of the clauses follows from I5 for different holders and from the disjointness check for loans from one holder. The callee's stack lies below the caller's frame inside $S_K(s_0)$ by $d+K_g\le K$ and misses every footprint by I6. After the return, memory changed only in the callee's writable bytes: lent \textsf{rw} ranges, taken ranges, lent tokens, and its stack. Capabilities kept by the caller lose only the fields that a \textsf{rw} loan may have changed; given capabilities lie in the callee's pool, which the caller lent and no longer holds, so separation is preserved; a \textsf{heap} block the caller kept misses the callee's pool and stack, so by the callee's unit frame it is still a unit. \lean{VerifiedImg.call} composes the callee's execution with the caller's.
 \end{proof}
 
 \begin{definition}[Programs; \lean{Prog.check}]\label{def:prog}
@@ -626,7 +627,6 @@ To believe a theorem of the form of Theorem~\ref{thm:check}, one reads the defin
 \begin{itemize}
 \item The machine model agrees with the hardware by test, not by proof: the decoder agrees with \code{llvm-mc} on 230,005 instruction words, and the semantics with QEMU and with the Sail RISC-V model~\cite{sailriscv} on 48 programs each. Signals, threads, other processes, and other system calls are outside the model.
 \item Hypotheses in $E$ (assumed contracts) and token meanings are trusted as stated.
-\item The \textsf{heap} mark has no meaning in $\sem{\sigma}$ at the pinned commit: the call rule lends a \textsf{heap} clause only from a whole held \textsf{heap} capability, but an assumed contract for \code{free} that takes a \textsf{heap} range promises nothing about allocation units. A meaning (units of the \code{Heap} token, preserved for units outside the pool) is designed and not yet part of the definitions.
 \item Functions accepted only by the Rust checker (Section~\ref{sec:impl}) rely on that checker; its ledger marks them \emph{checked}, and marks \emph{proved} only programs for which Theorem~\ref{thm:prog} was obtained in Lean.
 \end{itemize}
 
@@ -641,10 +641,10 @@ To believe a theorem of the form of Theorem~\ref{thm:check}, one reads the defin
 Component & Lines\\
 \midrule
 Lean: machine model, program logic, adequacy & 1,684\\
-Lean: type language, $\sem{\sigma}$, partial meaning & 450\\
+Lean: type language, $\sem{\sigma}$, partial meaning & 460\\
 Lean: entailment and certificates & 767\\
-Lean: checker, rules, programs & 1,575\\
-Lean: soundness (42 files) & 7,095\\
+Lean: checker, rules, programs & 1,591\\
+Lean: soundness (43 files) & 7,354\\
 Lean: kernel-checked examples & 494\\
 Rust checker, ledger, export & 10,471\\
 \bottomrule
