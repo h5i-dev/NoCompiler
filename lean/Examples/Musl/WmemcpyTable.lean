@@ -64,6 +64,6 @@ def moves : List (Nat × (Reg × Nat)) := [(7, 15, 4)]
 def fins : List Nat := [9]
 
 def table : Table := { frames, hints, moves, fins }
-def args : CopyArgs := ⟨10, 11, 12, ⟨0, 1, 2, 4⟩⟩
+def args : CopyArgs := ⟨10, 11, 12, ⟨0, 1, 2, 4, false⟩⟩
 
 end NoCompiler.Examples.Musl.WmemcpyTable

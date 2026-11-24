@@ -7,9 +7,49 @@ with a prefix of one range copied to another, and a store of the next bytes exte
 namespace NoCompiler.Typed.Track
 open NoCompiler NoCompiler.Typed.Bytes
 
+/-- Memory `m` is the entry memory `m0` with `d[0, c)` holding the pattern `G` (byte `j` of the
+    prefix is `G j`): a copy (`G = srcPat m0 src`) or a fill (`G` periodic). -/
+def Written (m0 m : Word → Byte) (d : Word) (G : Nat → Byte) (c : Nat) : Prop :=
+  ∀ p, m p = if (p - d).toNat < c then G (p - d).toNat else m0 p
+
+/-- The pattern of a copy from `src`: byte `j` is the entry memory's at `src + j`. -/
+def srcPat (m0 : Word → Byte) (src : Word) : Nat → Byte := fun j => m0 (src + BitVec.ofNat 64 j)
+
 /-- Memory `m` is the entry memory `m0` with the first `c` bytes of `src` copied to `d`. -/
 def Copied (m0 m : Word → Byte) (d src : Word) (c : Nat) : Prop :=
   ∀ p, m p = if (p - d).toNat < c then m0 (src + (p - d)) else m0 p
+
+theorem copied_iff_written {m0 m : Word → Byte} {d src : Word} {c : Nat} :
+    Copied m0 m d src c ↔ Written m0 m d (srcPat m0 src) c := by
+  unfold Copied Written srcPat
+  simp only [BitVec.ofNat_toNat, BitVec.setWidth_eq]
+
+theorem Written.zero (m0 : Word → Byte) (d : Word) (G : Nat → Byte) : Written m0 m0 d G 0 := by
+  intro p; simp
+
+/-- A store of `k ≤ 8` bytes of `w` at `d + c`, whose bytes are the pattern's next `k`, extends
+    the written prefix to `c + k`. -/
+theorem Written.store {m0 m : Word → Byte} {d : Word} {G : Nat → Byte} {c : Nat}
+    (h : Written m0 m d G c) (w : Word) {k : Nat} (hk : k ≤ 8) (hck : c + k < 2 ^ 64)
+    (hw : ∀ i < k, byte w i = G (c + i)) :
+    Written m0 (writeLE m (d + BitVec.ofNat 64 c) w.toNat k) d G (c + k) := by
+  intro p
+  rw [writeLE_apply _ _ _ (by omega), h p]
+  have hc : c < 2 ^ 64 := by omega
+  by_cases h1 : (p - (d + BitVec.ofNat 64 c)).toNat < k
+  · rw [if_pos h1]
+    have e : (p - d).toNat = c + (p - (d + BitVec.ofNat 64 c)).toNat := by bv_omega
+    rw [if_pos (by omega)]
+    have hb := hw _ h1
+    rw [byte_eq] at hb
+    have e2 : (2 : Nat) ^ (8 * (p - (d + BitVec.ofNat 64 c)).toNat) = 256 ^ (p - (d + BitVec.ofNat 64 c)).toNat := by
+      rw [Nat.pow_mul]
+    rw [e2] at hb
+    rw [hb, e]
+  · rw [if_neg h1]
+    by_cases h2 : (p - d).toNat < c
+    · rw [if_pos h2, if_pos (by omega)]
+    · rw [if_neg h2, if_neg (by bv_omega)]
 
 theorem Copied.zero (m0 : Word → Byte) (d src : Word) : Copied m0 m0 d src 0 := by
   intro p; simp
@@ -61,17 +101,17 @@ inductive Cell where
   | src (o : Nat)
   deriving DecidableEq, Repr
 
-/-- A byte of word `w` satisfies its cell. -/
-def Cell.ok (m0 : Word → Byte) (srcB : Word) (c : Nat) (w : Word) (i : Nat) : Cell → Prop
+/-- A byte of word `w` satisfies its cell (`src o`: the pattern's byte `c + o`). -/
+def Cell.ok (G : Nat → Byte) (c : Nat) (w : Word) (i : Nat) : Cell → Prop
   | .unk => True
   | .zero => byte w i = 0#8
-  | .src o => byte w i = m0 (srcB + BitVec.ofNat 64 (c + o))
+  | .src o => byte w i = G (c + o)
 
 /-- Eight cells, one per byte (missing ones are `unk`). -/
 abbrev Cells := List Cell
 
-def Cells.ok (m0 : Word → Byte) (srcB : Word) (c : Nat) (w : Word) (cs : Cells) : Prop :=
-  ∀ i < 8, (cs.getD i .unk).ok m0 srcB c w i
+def Cells.ok (G : Nat → Byte) (c : Nat) (w : Word) (cs : Cells) : Prop :=
+  ∀ i < 8, (cs.getD i .unk).ok G c w i
 
 def Cells.shl (b : Nat) (cs : Cells) : Cells :=
   (List.range 8).map fun i => if i < b then .zero else cs.getD (i - b) .unk
@@ -95,8 +135,8 @@ theorem getD_range_map (f : Nat → Cell) {i : Nat} (hi : i < 8) :
     ((List.range 8).map f).getD i .unk = f i := by
   simp [List.getD_eq_getElem?_getD, hi]
 
-theorem Cells.shl_ok {m0 srcB c w cs} (b : Nat) (h : Cells.ok m0 srcB c w cs) :
-    Cells.ok m0 srcB c (w <<< (8 * b)) (cs.shl b) := by
+theorem Cells.shl_ok {G c w cs} (b : Nat) (h : Cells.ok G c w cs) :
+    Cells.ok G c (w <<< (8 * b)) (cs.shl b) := by
   intro i hi
   rw [Cells.shl, getD_range_map _ hi]
   split
@@ -107,8 +147,8 @@ theorem Cells.shl_ok {m0 srcB c w cs} (b : Nat) (h : Cells.ok m0 srcB c w cs) :
     cases cs.getD (i - b) .unk <;> simp only [Cell.ok] <;> intro hc <;>
       first | trivial | (rw [byte_shiftLeft w hi, if_neg (by assumption)]; exact hc)
 
-theorem Cells.shr_ok {m0 srcB c w cs} (b : Nat) (h : Cells.ok m0 srcB c w cs) :
-    Cells.ok m0 srcB c (w >>> (8 * b)) (cs.shr b) := by
+theorem Cells.shr_ok {G c w cs} (b : Nat) (h : Cells.ok G c w cs) :
+    Cells.ok G c (w >>> (8 * b)) (cs.shr b) := by
   intro i hi
   rw [Cells.shr, getD_range_map _ hi]
   split
@@ -119,9 +159,9 @@ theorem Cells.shr_ok {m0 srcB c w cs} (b : Nat) (h : Cells.ok m0 srcB c w cs) :
   · show byte _ i = 0#8
     rw [byte_ushiftRight w hi, if_neg (by assumption)]
 
-theorem Cells.srliw_ok {m0 srcB c w cs} {b : Nat} (hb : 1 ≤ b) (hb4 : b ≤ 3)
-    (h : Cells.ok m0 srcB c w cs) :
-    Cells.ok m0 srcB c (((w.setWidth 32) >>> (8 * b)).signExtend 64) (cs.srliw b) := by
+theorem Cells.srliw_ok {G c w cs} {b : Nat} (hb : 1 ≤ b) (hb4 : b ≤ 3)
+    (h : Cells.ok G c w cs) :
+    Cells.ok G c (((w.setWidth 32) >>> (8 * b)).signExtend 64) (cs.srliw b) := by
   intro i hi
   rw [Cells.srliw, getD_range_map _ hi]
   split
@@ -132,8 +172,8 @@ theorem Cells.srliw_ok {m0 srcB c w cs} {b : Nat} (hb : 1 ≤ b) (hb4 : b ≤ 3)
   · show byte _ i = 0#8
     rw [byte_srliw w hi hb hb4, if_neg (by assumption)]
 
-theorem Cell.or_ok {m0 srcB c x y i} {a b : Cell} (ha : a.ok m0 srcB c x i) (hb : b.ok m0 srcB c y i) :
-    (a.or b).ok m0 srcB c (x ||| y) i := by
+theorem Cell.or_ok {G c x y i} {a b : Cell} (ha : a.ok G c x i) (hb : b.ok G c y i) :
+    (a.or b).ok G c (x ||| y) i := by
   cases a with
   | unk => cases b <;> simp [Cell.or, Cell.ok]
   | zero =>
@@ -158,8 +198,8 @@ theorem Cell.or_ok {m0 srcB c x y i} {a b : Cell} (ha : a.ok m0 srcB c x i) (hb 
         simp
       · simp [Cell.ok]
 
-theorem Cells.or_ok {m0 srcB c x y xs ys} (hx : Cells.ok m0 srcB c x xs) (hy : Cells.ok m0 srcB c y ys) :
-    Cells.ok m0 srcB c (x ||| y) (xs.or ys) := by
+theorem Cells.or_ok {G c x y xs ys} (hx : Cells.ok G c x xs) (hy : Cells.ok G c y ys) :
+    Cells.ok G c (x ||| y) (xs.or ys) := by
   intro i hi
   rw [Cells.or, getD_range_map _ hi]
   exact Cell.or_ok (hx i hi) (hy i hi)
@@ -173,8 +213,8 @@ open NoCompiler NoCompiler.Typed.Bytes
 def Cells.rebase (k : Nat) (cs : Cells) : Cells :=
   cs.map fun | .src o => (if o < k then .unk else .src (o - k)) | x => x
 
-theorem Cells.rebase_ok {m0 srcB c w cs} (k : Nat) (h : Cells.ok m0 srcB c w cs) :
-    Cells.ok m0 srcB (c + k) w (cs.rebase k) := by
+theorem Cells.rebase_ok {G c w cs} (k : Nat) (h : Cells.ok G c w cs) :
+    Cells.ok G (c + k) w (cs.rebase k) := by
   intro i hi
   have := h i hi
   simp only [Cells.rebase, List.getD_eq_getElem?_getD, List.getElem?_map] at this ⊢
@@ -243,10 +283,11 @@ open NoCompiler NoCompiler.Typed.Bytes
 
 /-- A load of `op` from source byte `c + o` (inside `src[0, n)`, which `d[0, n)` misses) gives
     the cells `load o width`. -/
-theorem Cells.load_ok {m0 m : Word → Byte} {d srcB : Word} {c n : Nat} (hC : Copied m0 m d srcB c)
+theorem Cells.load_ok {m0 m : Word → Byte} {d srcB : Word} {c n : Nat}
+    (hC : Written m0 m d (srcPat m0 srcB) c)
     (hd : Disj d srcB n) (hcn : c ≤ n) (op : LdOp) (hop : op ≠ .lh ∧ op ≠ .lhu) (o : Nat)
     (hin : c + o + op.width ≤ n) :
-    Cells.ok m0 srcB c (loadVal op m (srcB + BitVec.ofNat 64 (c + o))) (Cells.load o op.width) := by
+    Cells.ok (srcPat m0 srcB) c (loadVal op m (srcB + BitVec.ofNat 64 (c + o))) (Cells.load o op.width) := by
   intro i hi
   rw [Cells.load, getD_range_map _ hi]
   split
@@ -255,7 +296,8 @@ theorem Cells.load_ok {m0 m : Word → Byte} {d srcB : Word} {c n : Nat} (hC : C
     rw [byte_loadVal op m _ hw hop]
     have e : srcB + BitVec.ofNat 64 (c + o) + BitVec.ofNat 64 i = srcB + BitVec.ofNat 64 (c + (o + i)) := by
       rw [BitVec.add_assoc]; congr 1; rw [← Nat.add_assoc]; exact (BitVec.ofNat_add _ _).symm
-    rw [e, hC.src hd hcn (by omega)]
+    rw [e, (copied_iff_written.2 hC).src hd hcn (by omega)]
+    rfl
   · trivial
 
 end NoCompiler.Typed.Track
@@ -265,13 +307,29 @@ open NoCompiler NoCompiler.Typed.Bytes
 
 /-- A store of `k` bytes of a register whose first `k` cells are the next source bytes, at
     `d + c`, extends the copied prefix to `c + k`. -/
-theorem Cells.store_ok {m0 m : Word → Byte} {d srcB : Word} {c : Nat} (hC : Copied m0 m d srcB c)
-    {w : Word} {cs : Cells} (hcs : Cells.ok m0 srcB c w cs) {k : Nat} (hk : k ≤ 8)
+theorem Cells.store_ok {m0 m : Word → Byte} {d : Word} {G : Nat → Byte} {c : Nat}
+    (hC : Written m0 m d G c)
+    {w : Word} {cs : Cells} (hcs : Cells.ok G c w cs) {k : Nat} (hk : k ≤ 8)
     (hck : c + k < 2 ^ 64) (hpre : ∀ i < k, cs.getD i .unk = .src i) :
-    Copied m0 (writeLE m (d + BitVec.ofNat 64 c) w.toNat k) d srcB (c + k) :=
+    Written m0 (writeLE m (d + BitVec.ofNat 64 c) w.toNat k) d G (c + k) :=
   hC.store w hk hck fun i hi => by
     have := hcs i (by omega)
     rw [hpre i hi] at this
     exact this
+
+/-- A fill's pattern repeats with period `P`: the cells of a register stay valid when the
+    prefix grows by a multiple of `P` (a fill register keeps its value across iterations). -/
+theorem Cells.ok_periodic {G : Nat → Byte} {P : Nat} (hG : ∀ j, G (j + P) = G j) {c : Nat}
+    {w : Word} {cs : Cells} (h : Cells.ok G c w cs) (m : Nat) : Cells.ok G (c + P * m) w cs := by
+  have hper : ∀ m j, G (j + P * m) = G j := by
+    intro m; induction m with
+    | zero => intro j; simp
+    | succ m ih => intro j; rw [Nat.mul_succ, ← Nat.add_assoc, hG, ih]
+  intro i hi
+  have := h i hi
+  revert this
+  cases cs.getD i .unk <;> simp only [Cell.ok] <;> intro hc <;> first | trivial | skip
+  rename_i o
+  rw [show c + P * m + o = (c + o) + P * m by omega, hper]; exact hc
 
 end NoCompiler.Typed.Track

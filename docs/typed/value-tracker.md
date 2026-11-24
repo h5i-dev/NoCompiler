@@ -54,6 +54,14 @@ The tables are computed by a symbolic run over the record (a script, untrusted, 
 certificates); the kernel checks them. The report counts hand-written lines (the spec, the
 tracker's soundness, memcpy's theorem) separately from generated ones.
 
+## Functions proved (musl, linked image, kernel-checked, no hypotheses)
+
+| function | spec | hand-written lines | theorem |
+|---|---|---|---|
+| memcpy | `d[0,n)` = entry `s[0,n)`, rest unchanged, `a0 = d` | 152 | `memcpy_verified` (generated module, U's certificates) |
+| wmemcpy | `d[0,4n)` = entry `s[0,4n)`, rest unchanged | 63 | `Wmemcpy.wmemcpy_verified` |
+| wmemset | byte `j` of `d[0,4n)` = byte `j mod 4` of `c` (for `4n < 2^64`), rest unchanged | 59 | `Wmemset.wmemset_verified` (5 s, 1.0 GB) |
+
 ## musl memcpy: the result (T, 2026-11-24)
 
 Theorem `Examples.Musl.Memcpy.memcpy_correct`: on the linked image, under memcpy's signature
@@ -132,9 +140,9 @@ modules it is generated and stays outside the repo (`nc-briefs/typed/musl-linked
 What a new copy loop needs (all else is the library):
 
 1. its record (`corpus.py --link --keep`), and U's certificate module (`certgen.py --split`);
-2. the table: `scripts/tablegen.lean` with its Configuration block set (record, argument
-   registers and variables, cursor registers to try first), then `scripts/tabcerts.py` for the
-   tracker's certificates and `scripts/tabsplit.py` for the per-point kernel module;
+2. the table: `scripts/trackgen.py RECORD FN MOD --regs DR,SR,NR --vars DV,SV,NV --width W
+   [--fill] [--cursor …]` writes `<MOD>Record`, `<MOD>Table` (the producer, `tablegen.lean`, with
+   its Configuration set), `<MOD>Certs` (`tabcerts.py`) and `<MOD>TabOk` (`tabsplit.py`);
 3. its arguments: `Track.copyArgs_of_sig` (`Sound/TrackArgs.lean`) from the signature's shape
    (registers hold `d, s, n`; the precondition bounds `n`; entry capabilities `d[0, n)` writable
    and `s[0, n)`), by `decide` on the record's signature;
@@ -158,14 +166,33 @@ one general rule: a return reached with different frames (wmemcpy's `n = 0` exit
 enough for search mode). Generated: `WmemcpyRecord`, `WmemcpyTable` (10 points, finished point
 9), `WmemcpyCerts`, `WmemcpyTabOk`.
 
-### Next family: fills (design, not built)
+### Fills: wmemset (2026-11-24)
 
-memset, bzero and wmemset write a constant instead of copying: post `d[0, n)` = `c` (the low byte
-of an argument, or 0), every other byte as on entry. The tracker carries over with one change in
-the cells: a cell `src o` (the source's byte `o`) becomes `fill` (the fill byte), so
-`Copied m0 m d src c` is replaced by `Filled m0 m d b c` (`m p = if (p - d).toNat < c then b
-else m0 p`). Loads disappear; the value algebra is the fill word built by shifts and ors
-(`b * 0x0101…`), which the existing shl/shr/or cell rules already track, with `fill` cells
-instead of `src` cells. `Disj` is not needed (no source). The step lemmas, finished points,
-cursor moves and switches, certificates, widths and the glue are unchanged; the cells become a
-parameter of the tracker (copy or fill) rather than a second copy of it.
+The tracker's invariant is now over a pattern: `Written m0 m d G c` (byte `j` of `d[0, c)` is
+`G j`, the rest is `m0`); a copy is `G = srcPat m0 src` (`Copied` ↔ `Written … srcPat`), a fill
+`G = fillPat v w` (byte `j mod w` of `v`, `TrackFill.lean`). `Params.fill` selects the mode: no
+loads, and a store whose width is a multiple of `w` keeps every cell (`Cells.ok_periodic`: the
+pattern repeats), so the fill register keeps its cells across the loop. The entry frame
+(`CopyArgs.entry`) gives the fill register the pattern's first `w` bytes. The glue is one theorem,
+`Fn.check_sound_pat` (any pattern, an entry condition `Q`), with `check_sound_track` (copies,
+unchanged statement) and `check_sound_fill` as corollaries.
+
+One finding: a fill's single writable capability may cover the whole address space (`d = 0`,
+`w·n = 2^64`); the signature does not exclude it (a copy's two separated capabilities do), and the
+tracker counts below `2^64`. So `check_sound_fill`'s post is "`w·n < 2^64` → filled" (the entry
+condition `Q`), and `fillArgs_of_sig` needs `w ≥ 2` for `n` to be exact (for `w = 1`, `n = 2^64`
+with the register `0` is allowed; a byte fill needs a bound on `n` from its precondition).
+
+`Examples/Musl/Wmemset.lean` (40 lines) and `WmemsetVerified.lean` (19): table 8 points,
+finished point 7, all points pass.
+
+### What memset needs (not built)
+
+musl memset is a byte fill (`w = 1`) with two further obstacles: (1) its precondition is `.tt`,
+so `n < 2^64` exactly is not derivable (the `w = 1` case of `fillArgs_of_sig`): its theorem
+would carry a second entry condition (`Q`: `n` is the register's value), as fills carry
+`w·n < 2^64`; (2) it stores from both ends at once (`sb a1, 0(a0)` and `sb a1, -1(a3)` with
+`a3 = s + n`, then words from both ends, overlapping), so a single cursor with a growing prefix
+does not describe it: the invariant needs a written prefix and a written suffix (`Written` over
+two ranges), with the return showing they meet. The fill word is built by `mulhu` with
+`0x0101…01`, which the cells would need as a rule (a byte broadcast).

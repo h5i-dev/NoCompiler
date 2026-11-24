@@ -711,6 +711,13 @@ under its signature, wmemcpy returns with the signature's post and `d[0, 4n)` = 
 every other byte as on entry. No hypotheses: the type check (`decide +kernel`, search mode) and
 the table check in one module, 11 s, 1.3 GB peak, standard axioms. Hand-written: 63 lines.
 
+### Functional correctness: wmemset (2026-11-24, agent T)
+
+`Examples.Musl.Wmemset.wmemset_verified` (`lean/Examples/Musl/WmemsetVerified.lean`): under its
+signature, wmemset returns with the signature's post and, for fills below `2^64` bytes, byte `j`
+of `d[0, 4n)` = byte `j mod 4` of `c`, every other byte as on entry. No hypotheses; 5 s,
+1.0 GB peak, standard axioms. Hand-written: 59 lines.
+
 ## Files
 
 - `scripts/musl-trial/build.sh` — pinned build (musl tree digest, clang 15.0.7, flags);

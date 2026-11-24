@@ -310,15 +310,15 @@
       ],
       "result": {
        "result": "proved",
-       "seconds": 579,
-       "peak_kb": 3960336,
+       "seconds": 597,
+       "peak_kb": 3975140,
        "axioms": [
         "propext",
         "Classical.choice",
         "Quot.sound"
        ],
-       "date": "2026-11-24T08:15Z",
-       "tab_ok_seconds": 129
+       "date": "2026-11-24T08:48Z",
+       "tab_ok_seconds": 200
       }
      }
     }
@@ -667,14 +667,14 @@
       ],
       "result": {
        "result": "proved",
-       "seconds": 11,
-       "peak_kb": 1338972,
+       "seconds": 12,
+       "peak_kb": 1344316,
        "axioms": [
         "propext",
         "Classical.choice",
         "Quot.sound"
        ],
-       "date": "2026-11-24T07:58Z"
+       "date": "2026-11-24T08:48Z"
       }
      }
     }
@@ -700,6 +700,21 @@
        "Quot.sound"
       ],
       "callees_assumed": []
+     },
+     "functional": {
+      "spec": "returns with the signature post and, for 4n < 2^64, Filled: byte j of d[0,4n) = byte (j mod 4) of c, every other byte as on entry",
+      "theorem": "Examples.Musl.Wmemset.wmemset_verified (lean/Examples/Musl/WmemsetVerified.lean)",
+      "result": {
+       "result": "proved",
+       "seconds": 5,
+       "peak_kb": 1004872,
+       "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+       ],
+       "date": "2026-11-24T08:48Z"
+      }
      }
     }
    ]

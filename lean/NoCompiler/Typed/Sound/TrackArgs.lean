@@ -112,4 +112,42 @@ theorem copyArgs_of_sig {σ : Sig} {C : CopyArgs} {T : TokEnv} {D : Dom} {e : Wo
       BitVec.toNat_ofNat, ← hw, Int.toNat_natCast]
     omega
 
+/-- The arguments of a fill of elements of `w ≥ 2` bytes, from a signature of the usual shape
+    (the registers hold `d` and `n`; a writable capability `d[0, w·n)`): `n` is exact since the
+    capability's length `w·n` is in `[0, 2^64]`, so `0 ≤ n ≤ 2^63`. (For `w = 1` the capability
+    allows `n = 2^64` with `d = 0`, where the register holds `0`: a byte fill needs a bound on `n`
+    from its precondition.) -/
+theorem fillArgs_of_sig {σ : Sig} {C : CopyArgs} {T : TokEnv} {D : Dom} {e : Word}
+    (hd : (C.dr, IExpr.var C.P.dv) ∈ σ.inRegs) (hn : (C.nr, IExpr.var C.P.nv) ∈ σ.inRegs)
+    (hpd : C.P.dv ∈ σ.params) (hpn : C.P.nv ∈ σ.params) (hw2 : 2 ≤ C.P.w)
+    {i : Nat} (hi : i < σ.entryCaps.length) {bd : BytesCap}
+    (hci : σ.entryCaps[i] = { guard := .tt, kind := .bytes bd })
+    (hbd : bd.base = .var C.P.dv ∧ bd.len = C.P.nb) :
+    ∀ a s0, Entry D e s0 → (σ.spec T).pre a s0 →
+      ((s0.reg C.dr).toNat : Int) % 2 ^ 64 = a.1 C.P.dv % 2 ^ 64 ∧
+      ((s0.reg C.nr).toNat : Int) = a.1 C.P.nv ∧ C.P.dv ∈ σ.params ∧ C.P.nv ∈ σ.params := by
+  intro a s0 _ hP
+  obtain ⟨ι, F⟩ := a
+  obtain ⟨hregs, -, hval, -, -⟩ := hP
+  have r0 := hregs _ hd
+  have r2 := hregs _ hn
+  simp only [HasInt, eval_var] at r0 r2
+  have vi := hval _ (List.getElem_mem hi)
+  rw [hci] at vi
+  simp only [Cap.valid, Constr.holds, Constr.eval, true_implies] at vi
+  rw [hbd.1, hbd.2, eval_var, Params.eval_nb] at vi
+  obtain ⟨vi0, vil, vi1, -⟩ := vi
+  have hx0 : 0 ≤ ι C.P.nv := by
+    apply Classical.byContradiction
+    intro hneg
+    have := Int.mul_neg_of_pos_of_neg (show (0 : Int) < C.P.w by omega) (show ι C.P.nv < 0 by omega)
+    omega
+  -- `2·n ≤ w·n ≤ 2^64`
+  have h2 : 2 * ι C.P.nv ≤ (C.P.w : Int) * ι C.P.nv := by
+    have h := Int.mul_nonneg (show (0 : Int) ≤ (C.P.w : Int) - 2 by omega) hx0
+    rw [Int.sub_mul] at h
+    omega
+  have hnx : ((s0.reg C.nr).toNat : Int) = ι C.P.nv := by have := (s0.reg C.nr).isLt; omega
+  exact ⟨r0, hnx, hpd, hpn⟩
+
 end NoCompiler.Typed.Track

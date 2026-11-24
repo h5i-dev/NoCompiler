@@ -12,7 +12,7 @@ open NoCompiler NoCompiler.Typed NoCompiler.Typed.Track NoCompiler.Typed.Export.
 /-! ## Configuration (the only per-function part): the record, the copy's argument registers
     and variables, and the cursor registers to try first. -/
 def F : Fn := fn_memcpy
-def PP : Params := ⟨0, 1, 2, 1⟩
+def PP : Params := ⟨0, 1, 2, 1, false⟩
 def CC : CopyArgs := ⟨10, 11, 12, PP⟩
 def cursorPref : List Reg := [13, 16, 10]
 
@@ -92,7 +92,7 @@ def desired (S : STy) : Option Reg :=
 def run : IO Unit := do
   let f := F
   let mut frames : Array (Option Track.Frame) := Array.replicate f.size none
-  frames := frames.set! 0 (some ⟨CC.dr, 0, []⟩)
+  frames := frames.set! 0 (some CC.entry)
   let mut hints : Array Nat := Array.replicate f.size 0
   let mut moves : Array (Option (Reg × Nat)) := Array.replicate f.size none
   let mut conflicts : List Nat := []

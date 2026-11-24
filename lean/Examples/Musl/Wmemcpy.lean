@@ -39,6 +39,6 @@ theorem wmemcpy_correct (T : TokEnv) (hchk : fn_wmemcpy.check code = true)
   simp only [Bool.and_eq_true, List.all_eq_true, List.mem_range] at hck
   have hst := Fn.structOk_spec hck.1.1
   exact Track.Fn.check_sound_track fn_wmemcpy code T hchk (by decide) (by decide)
-    (fun k hk => fn_wmemcpy.pcOf_mem hst hk) (by decide) args tablec htab args_ok
+    (fun k hk => fn_wmemcpy.pcOf_mem hst hk) (by decide) args rfl tablec htab args_ok
 
 end NoCompiler.Examples.Musl.Wmemcpy

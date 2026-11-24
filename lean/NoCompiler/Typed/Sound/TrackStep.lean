@@ -1,4 +1,5 @@
 import NoCompiler.Typed.Track
+import NoCompiler.Typed.TrackFill
 import NoCompiler.Typed.Sound.Values
 
 /-
@@ -22,16 +23,16 @@ def Frame.get (fr : Frame) (r : Reg) : Cells := (fr.cells.lookup r).getD []
 def Frame.count (fr : Frame) (d : Word) (s : State) : Nat := (s.reg fr.cur - d).toNat + fr.δ
 
 /-- The frame's meaning: memory is the copy so far, the tracked registers hold their cells. -/
-def Frame.ok (m0 : Word → Byte) (d srcB : Word) (fr : Frame) (s : State) : Prop :=
-  Copied m0 s.mem d srcB (fr.count d s) ∧
-  ∀ r : Reg, Cells.ok m0 srcB (fr.count d s) (s.reg r) (fr.get r)
+def Frame.ok (m0 : Word → Byte) (d : Word) (G : Nat → Byte) (fr : Frame) (s : State) : Prop :=
+  Written m0 s.mem d G (fr.count d s) ∧
+  ∀ r : Reg, Cells.ok G (fr.count d s) (s.reg r) (fr.get r)
 
 /-- `a` says no more than `b` (each cell unknown or equal). -/
 def Cells.le (a b : Cells) : Bool :=
   (List.range 8).all fun i => a.getD i .unk == .unk || a.getD i .unk == b.getD i .unk
 
-theorem Cells.ok_of_le {m0 srcB c w} {a b : Cells} (h : a.le b = true) (hb : Cells.ok m0 srcB c w b) :
-    Cells.ok m0 srcB c w a := by
+theorem Cells.ok_of_le {G c w} {a b : Cells} (h : a.le b = true) (hb : Cells.ok G c w b) :
+    Cells.ok G c w a := by
   intro i hi
   have := List.all_eq_true.1 h i (List.mem_range.2 hi)
   simp only [Bool.or_eq_true, beq_iff_eq] at this
@@ -61,10 +62,10 @@ open NoCompiler NoCompiler.Typed NoCompiler.Typed.Bytes
 
 /-- The abstract state's meaning: the copied count `(cur − d) + δ` is at most `n`, memory is the
     copy so far, and every register holds its cells. -/
-def AState.ok (m0 : Word → Byte) (d srcB : Word) (n : Nat) (A : AState) (s : State) : Prop :=
+def AState.ok (m0 : Word → Byte) (d : Word) (G : Nat → Byte) (n : Nat) (A : AState) (s : State) : Prop :=
   (s.reg A.cur - d).toNat + A.δ ≤ n ∧
-  Copied m0 s.mem d srcB ((s.reg A.cur - d).toNat + A.δ) ∧
-  ∀ r : Reg, Cells.ok m0 srcB ((s.reg A.cur - d).toNat + A.δ) (s.reg r) (A.cells r)
+  Written m0 s.mem d G ((s.reg A.cur - d).toNat + A.δ) ∧
+  ∀ r : Reg, Cells.ok G ((s.reg A.cur - d).toNat + A.δ) (s.reg r) (A.cells r)
 
 theorem reg_setReg_setPc (s : State) {rd : Reg} (v : Word) (p : Word) (r : Reg) (hrd : rd ≠ 0) :
     ((s.setReg rd v).setPc p).reg r = if r = rd then v else s.reg r := by
@@ -76,10 +77,10 @@ theorem reg_setReg_setPc (s : State) {rd : Reg} (v : Word) (p : Word) (r : Reg) 
 
 /-- A register write that misses the cursor: the copy is unchanged, the written register gets
     its new cells. -/
-theorem AState.ok_set {m0 d srcB n} {A : AState} {s : State} (h : A.ok m0 d srcB n s) {rd : Reg}
+theorem AState.ok_set {m0 d G n} {A : AState} {s : State} (h : A.ok m0 d G n s) {rd : Reg}
     (hrd : rd ≠ A.cur) (hrd0 : rd ≠ 0) {v : Word} {cs : Cells}
-    (hv : Cells.ok m0 srcB ((s.reg A.cur - d).toNat + A.δ) v cs) (p : Word) :
-    (A.set rd cs).ok m0 d srcB n ((s.setReg rd v).setPc p) := by
+    (hv : Cells.ok G ((s.reg A.cur - d).toNat + A.δ) v cs) (p : Word) :
+    (A.set rd cs).ok m0 d G n ((s.setReg rd v).setPc p) := by
   obtain ⟨hn, hc, hr⟩ := h
   have hcur : ((s.setReg rd v).setPc p).reg A.cur = s.reg A.cur := by
     rw [reg_setReg_setPc s v p _ hrd0, if_neg (Ne.symm hrd)]
@@ -118,12 +119,12 @@ def regStep (A : AState) (i : Instr) : Option AState :=
   | some rd => if rd = 0 then some A else if rd = A.cur then none else some (A.set rd (regCells A i))
   | none => none
 
-theorem regCells_ok {m0 d srcB n} {A : AState} {s : State} (h : A.ok m0 d srcB n s) (i : Instr)
+theorem regCells_ok {m0 d G n} {A : AState} {s : State} (h : A.ok m0 d G n s) (i : Instr)
     {rd : Reg} (hw : writesReg i = some rd) {s' : State} (hx : exec i s = some s') :
     ∃ v, s' = (s.setReg rd v).setPc (s.pc + 4) ∧
-      Cells.ok m0 srcB ((s.reg A.cur - d).toNat + A.δ) v (regCells A i) := by
+      Cells.ok G ((s.reg A.cur - d).toNat + A.δ) v (regCells A i) := by
   have hr := h.2.2
-  have unk : ∀ v : Word, Cells.ok m0 srcB ((s.reg A.cur - d).toNat + A.δ) v [] := by
+  have unk : ∀ v : Word, Cells.ok G ((s.reg A.cur - d).toNat + A.δ) v [] := by
     intro v j hj; simp [Cell.ok]
   cases i <;> simp only [writesReg, Option.some.injEq, reduceCtorEq] at hw <;> subst hw <;>
     simp only [exec, Option.some.injEq] at hx <;> subst hx
@@ -160,12 +161,12 @@ theorem regCells_ok {m0 d srcB n} {A : AState} {s : State} (h : A.ok m0 d srcB n
     simp only [evalR]; exact Cells.or_ok (hr a) (hr b)
   all_goals simp only [regCells]; exact unk _
 
-theorem AState.ok_setPc {m0 d srcB n} {A : AState} {s : State} (h : A.ok m0 d srcB n s) (p : Word) :
-    A.ok m0 d srcB n (s.setPc p) := h
+theorem AState.ok_setPc {m0 d G n} {A : AState} {s : State} (h : A.ok m0 d G n s) (p : Word) :
+    A.ok m0 d G n (s.setPc p) := h
 
 /-- Soundness of the register-only step. -/
-theorem regStep_ok {m0 d srcB n} {A A' : AState} {s s' : State} (h : A.ok m0 d srcB n s)
-    {i : Instr} (hs : regStep A i = some A') (hx : exec i s = some s') : A'.ok m0 d srcB n s' := by
+theorem regStep_ok {m0 d G n} {A A' : AState} {s s' : State} (h : A.ok m0 d G n s)
+    {i : Instr} (hs : regStep A i = some A') (hx : exec i s = some s') : A'.ok m0 d G n s' := by
   unfold regStep at hs
   split at hs
   · rename_i rd hw
@@ -187,9 +188,9 @@ namespace NoCompiler.Typed.Track
 open NoCompiler NoCompiler.Typed NoCompiler.Typed.Bytes
 
 /-- Advancing the cursor by `imm ≤ δ` into `rd` keeps the copied count. -/
-theorem AState.ok_advance {m0 d srcB n} {A : AState} {s : State} (h : A.ok m0 d srcB n s)
+theorem AState.ok_advance {m0 d G n} {A : AState} {s : State} (h : A.ok m0 d G n s)
     (hn : n < 2 ^ 64) {rd : Reg} (hrd0 : rd ≠ 0) {imm : Nat} (himm : imm ≤ A.δ) (p : Word) :
-    ({ cur := rd, δ := A.δ - imm, cells := (A.set rd []).cells } : AState).ok m0 d srcB n
+    ({ cur := rd, δ := A.δ - imm, cells := (A.set rd []).cells } : AState).ok m0 d G n
       ((s.setReg rd (s.reg A.cur + BitVec.ofNat 64 imm)).setPc p) := by
   obtain ⟨hcn, hc, hr⟩ := h
   have hrd : ((s.setReg rd (s.reg A.cur + BitVec.ofNat 64 imm)).setPc p).reg rd = s.reg A.cur + BitVec.ofNat 64 imm := by
@@ -214,9 +215,9 @@ theorem AState.ok_advance {m0 d srcB n} {A : AState} {s : State} (h : A.ok m0 d 
     · exact hr r
 
 /-- Switching the cursor to a register holding `cursor + j` (`j ≤ δ`) keeps the copied count. -/
-theorem AState.ok_switch {m0 d srcB n} {A : AState} {s : State} (h : A.ok m0 d srcB n s)
+theorem AState.ok_switch {m0 d G n} {A : AState} {s : State} (h : A.ok m0 d G n s)
     (hn : n < 2 ^ 64) {r : Reg} {j : Nat} (hj : j ≤ A.δ) (hr : s.reg r = s.reg A.cur + BitVec.ofNat 64 j) :
-    ({ A with cur := r, δ := A.δ - j } : AState).ok m0 d srcB n s := by
+    ({ A with cur := r, δ := A.δ - j } : AState).ok m0 d G n s := by
   obtain ⟨hcn, hc, hrr⟩ := h
   have hcnt : (s.reg r - d).toNat + (A.δ - j) = (s.reg A.cur - d).toNat + A.δ := by
     have : (s.reg A.cur + BitVec.ofNat 64 j - d).toNat = (s.reg A.cur - d).toNat + j := by
@@ -231,23 +232,24 @@ theorem AState.ok_switch {m0 d srcB n} {A : AState} {s : State} (h : A.ok m0 d s
   · intro r'; simp only; rw [hcnt]; exact hrr r'
 
 /-- A load of the next source bytes into `rd` (not the cursor). -/
-theorem AState.ok_load {m0 d srcB n} {A : AState} {s : State} (h : A.ok m0 d srcB n s)
-    (hd : Disj d srcB n) {op : LdOp} (hop : op ≠ .lh ∧ op ≠ .lhu) {rd : Reg} (hrd : rd ≠ A.cur)
+theorem AState.ok_load {m0 d n} {srcB : Word} {A : AState} {s : State}
+    (h : A.ok m0 d (srcPat m0 srcB) n s) (hd : Disj d srcB n) {op : LdOp} (hop : op ≠ .lh ∧ op ≠ .lhu) {rd : Reg} (hrd : rd ≠ A.cur)
     (hrd0 : rd ≠ 0) {o : Nat} {addr : Word}
     (haddr : addr = srcB + BitVec.ofNat 64 ((s.reg A.cur - d).toNat + A.δ + o))
     (hin : (s.reg A.cur - d).toNat + A.δ + o + op.width ≤ n) (p : Word) :
-    (A.set rd (Cells.load o op.width)).ok m0 d srcB n ((s.setReg rd (loadVal op s.mem addr)).setPc p) := by
+    (A.set rd (Cells.load o op.width)).ok m0 d (srcPat m0 srcB) n
+      ((s.setReg rd (loadVal op s.mem addr)).setPc p) := by
   refine AState.ok_set h hrd hrd0 ?_ p
   rw [haddr]
   exact Cells.load_ok h.2.1 hd h.1 op hop o hin
 
 /-- A store at the cursor of a register whose first `w` cells are the next source bytes. -/
-theorem AState.ok_store {m0 d srcB n} {A : AState} {s : State} (h : A.ok m0 d srcB n s)
+theorem AState.ok_store {m0 d G n} {A : AState} {s : State} (h : A.ok m0 d G n s)
     (hn : n < 2 ^ 64) {w : Nat} (hw : w ≤ 8) {rs2 : Reg} {addr : Word}
     (haddr : addr = s.reg A.cur + BitVec.ofNat 64 A.δ)
     (hbound : (s.reg A.cur - d).toNat + A.δ + w ≤ n)
     (hpre : ∀ i < w, (A.cells rs2).getD i .unk = .src i) (p : Word) :
-    ({ A with δ := A.δ + w, cells := fun r => (A.cells r).rebase w } : AState).ok m0 d srcB n
+    ({ A with δ := A.δ + w, cells := fun r => (A.cells r).rebase w } : AState).ok m0 d G n
       ((s.setMem (writeLE s.mem addr (s.reg rs2).toNat w)).setPc p) := by
   obtain ⟨hcn, hc, hr⟩ := h
   have hreg : ∀ r, ((s.setMem (writeLE s.mem addr (s.reg rs2).toNat w)).setPc p).reg r = s.reg r :=
@@ -257,7 +259,7 @@ theorem AState.ok_store {m0 d srcB n} {A : AState} {s : State} (h : A.ok m0 d sr
   refine ⟨?_, ?_, ?_⟩
   · simp only [hreg]; omega
   · simp only [hreg]
-    show Copied m0 (writeLE s.mem addr (s.reg rs2).toNat w) d srcB ((s.reg A.cur - d).toNat + (A.δ + w))
+    show Written m0 (writeLE s.mem addr (s.reg rs2).toNat w) d G ((s.reg A.cur - d).toNat + (A.δ + w))
     rw [e, ← Nat.add_assoc]
     exact Cells.store_ok hc (hr rs2) hw (by omega) hpre
   · intro r
@@ -293,6 +295,34 @@ theorem toNat_sub_exact {ι : Val} {cur d : Word} {ec en : IExpr} {dv : Var} {n 
   rw [BitVec.toNat_sub]
   constructor <;> omega
 
+/-- A fill's store keeps every cell: the pattern repeats with period `P` and the store's width is
+    a multiple of it. -/
+theorem AState.ok_store_periodic {m0 d G n} {A : AState} {s : State} (h : A.ok m0 d G n s)
+    {P : Nat} (hG : ∀ j, G (j + P) = G j) (hn : n < 2 ^ 64) {w : Nat} (hw : w ≤ 8)
+    (hwP : w % P = 0) {rs2 : Reg} {addr : Word}
+    (haddr : addr = s.reg A.cur + BitVec.ofNat 64 A.δ)
+    (hbound : (s.reg A.cur - d).toNat + A.δ + w ≤ n)
+    (hpre : ∀ i < w, (A.cells rs2).getD i .unk = .src i) (p : Word) :
+    ({ A with δ := A.δ + w } : AState).ok m0 d G n
+      ((s.setMem (writeLE s.mem addr (s.reg rs2).toNat w)).setPc p) := by
+  obtain ⟨hcn, hc, hr⟩ := h
+  have hreg : ∀ r, ((s.setMem (writeLE s.mem addr (s.reg rs2).toNat w)).setPc p).reg r = s.reg r :=
+    fun r => rfl
+  have e : addr = d + BitVec.ofNat 64 ((s.reg A.cur - d).toNat + A.δ) := by
+    rw [haddr, BitVec.ofNat_add, BitVec.ofNat_toNat, BitVec.setWidth_eq]; bv_omega
+  refine ⟨?_, ?_, ?_⟩
+  · simp only [hreg]; omega
+  · simp only [hreg]
+    show Written m0 (writeLE s.mem addr (s.reg rs2).toNat w) d G ((s.reg A.cur - d).toNat + (A.δ + w))
+    rw [e, ← Nat.add_assoc]
+    exact Cells.store_ok hc (hr rs2) hw (by omega) hpre
+  · intro r
+    simp only [hreg]
+    rw [← Nat.add_assoc]
+    obtain ⟨m, hm⟩ := Nat.dvd_of_mod_eq_zero hwP
+    rw [hm]
+    exact Cells.ok_periodic hG (hr r) m
+
 end NoCompiler.Typed.Track
 
 namespace NoCompiler.Typed.Track
@@ -308,6 +338,8 @@ structure Params where
   sv : Var
   nv : Var
   w : Nat
+  /-- A fill (the pattern repeats with period `w`; no loads) rather than a copy. -/
+  fill : Bool
   deriving DecidableEq, Repr
 
 /-- The copy's length in bytes, `w · n`. -/
@@ -326,13 +358,14 @@ def tstep (S : STy) (P : Params) (o : Nat) (A : AState) : Instr → Option AStat
           S.ent (Constr.eqMod (e1.add (.lit off.toInt)) (ec.add (.lit A.δ))) = true ∧
           S.ent (.le (.var P.dv) ec) = true ∧
           S.ent (.le ((ec.sub (.var P.dv)).add (.lit (A.δ + op.width))) P.nb) = true
-      then some { A with δ := A.δ + op.width, cells := fun r => (A.cells r).rebase op.width }
+      then some (if P.fill ∧ op.width % P.w = 0 then { A with δ := A.δ + op.width }
+        else { A with δ := A.δ + op.width, cells := fun r => (A.cells r).rebase op.width })
       else none
     | _, _ => none
   | .load op rd rs1 off =>
     match S.reg rs1, S.reg A.cur with
     | some e1, some ec =>
-      if op ≠ .lh ∧ op ≠ .lhu ∧ rd ≠ A.cur ∧ rd ≠ 0 ∧
+      if P.fill = false ∧ op ≠ .lh ∧ op ≠ .lhu ∧ rd ≠ A.cur ∧ rd ≠ 0 ∧
           S.ent (Constr.eqMod (e1.add (.lit off.toInt))
             ((((IExpr.var P.sv).add ec).sub (.var P.dv)).add (.lit (A.δ + o)))) = true ∧
           S.ent (.le (.var P.dv) ec) = true ∧
@@ -391,9 +424,12 @@ theorem signExtend_of_small {imm : BitVec 12} (h : imm.toNat < 2 ^ 11) :
 theorem tstep_ok {m0 : Word → Byte} {d srcB : Word} {n : Nat} {S : STy} {P : Params} {o : Nat} {A A' : AState} {s s' : State}
     {ι : Val} {i : Instr} (hregs : ∀ p ∈ S.regs, HasInt ι (s.reg p.1) p.2)
     (hent : ∀ ψ, S.ent ψ = true → ψ.holds ι) (hd : (d.toNat : Int) % 2 ^ 64 = ι P.dv % 2 ^ 64)
-    (hs : (srcB.toNat : Int) % 2 ^ 64 = ι P.sv % 2 ^ 64) (hn : (n : Int) = P.nb.eval ι) (hn64 : n < 2 ^ 64)
-    (hdisj : Disj d srcB n) (h : A.ok m0 d srcB n s) (ht : tstep S P o A i = some A')
-    (hx : exec i s = some s') : A'.ok m0 d srcB n s' := by
+    (hs : P.fill = false → (srcB.toNat : Int) % 2 ^ 64 = ι P.sv % 2 ^ 64)
+    (hn : (n : Int) = P.nb.eval ι) (hn64 : n < 2 ^ 64)
+    (hdisj : P.fill = false → Disj d srcB n) {G : Nat → Byte}
+    (hG : (P.fill = false → G = srcPat m0 srcB) ∧ (P.fill = true → ∀ j, G (j + P.w) = G j))
+    (h : A.ok m0 d G n s) (ht : tstep S P o A i = some A')
+    (hx : exec i s = some s') : A'.ok m0 d G n s' := by
   cases i
   case store op rs1 rs2 off =>
     simp only [tstep] at ht
@@ -412,10 +448,14 @@ theorem tstep_ok {m0 : Word → Byte} {d srcB : Word} {n : Nat} {S : STy} {P : P
             word_eq_of_eqMod (hasInt_add hw1 (hasInt_signExtend (by decide) ι off))
               (hasInt_add hwc (hasInt_ofNat ι A.δ)) (hent _ haddr)
           obtain ⟨-, hb⟩ := toNat_sub_exact (d := d) hwc hd hn hn64 (hent _ hlo) (hent _ hhi)
-          exact AState.ok_store h hn64 (StOp.width_le op) hea (by omega)
-            (fun i hi => by
-              have := List.all_eq_true.1 hpre i (List.mem_range.2 hi)
-              simpa using this) _
+          have hpre' : ∀ i < op.width, (A.cells rs2).getD i .unk = .src i := fun i hi => by
+            have := List.all_eq_true.1 hpre i (List.mem_range.2 hi)
+            simpa using this
+          split
+          · rename_i hf
+            exact AState.ok_store_periodic h (hG.2 hf.1) hn64 (StOp.width_le op) hf.2 hea (by omega)
+              hpre' _
+          · exact AState.ok_store h hn64 (StOp.width_le op) hea (by omega) hpre' _
         · cases hx
       · cases ht
     · cases ht
@@ -425,7 +465,10 @@ theorem tstep_ok {m0 : Word → Byte} {d srcB : Word} {n : Nat} {S : STy} {P : P
     · rename_i e1 ec h1 hc
       split at ht
       · rename_i hcond
-        obtain ⟨hop1, hop2, hrd, hrd0, haddr, hlo, hhi⟩ := hcond
+        obtain ⟨hfill, hop1, hop2, hrd, hrd0, haddr, hlo, hhi⟩ := hcond
+        obtain rfl := hG.1 hfill
+        have hs := hs hfill
+        have hdisj := hdisj hfill
         cases ht
         simp only [exec] at hx
         split at hx
@@ -523,10 +566,10 @@ theorem tstep_ok {m0 : Word → Byte} {d srcB : Word} {n : Nat} {S : STy} {P : P
       rw [this] at ht; exact regStep_ok h ht hx
   all_goals (simp only [tstep] at ht; exact regStep_ok h ht hx)
 
-theorem tswitch_ok {m0 : Word → Byte} {d srcB : Word} {n : Nat} {S : STy} {A A' : AState}
+theorem tswitch_ok {m0 : Word → Byte} {d : Word} {G : Nat → Byte} {n : Nat} {S : STy} {A A' : AState}
     {s : State} {ι : Val} {m : Option (Reg × Nat)} (hregs : ∀ p ∈ S.regs, HasInt ι (s.reg p.1) p.2)
-    (hent : ∀ ψ, S.ent ψ = true → ψ.holds ι) (hn64 : n < 2 ^ 64) (h : A.ok m0 d srcB n s)
-    (ht : tswitch S A m = some A') : A'.ok m0 d srcB n s := by
+    (hent : ∀ ψ, S.ent ψ = true → ψ.holds ι) (hn64 : n < 2 ^ 64) (h : A.ok m0 d G n s)
+    (ht : tswitch S A m = some A') : A'.ok m0 d G n s := by
   cases m with
   | none => simp only [tswitch, Option.some.injEq] at ht; subst ht; exact h
   | some p =>
@@ -690,15 +733,15 @@ theorem lookup_mem' {α β : Type} [BEq α] [LawfulBEq α] :
 
 /-- `fr'` at the next point, implied by the computed state: the same cursor and δ, cells no
     stronger. -/
-theorem Frame.ok_of_leA {m0 d srcB n} {fr' : Frame} {A : AState} {s : State} (h : fr'.leA A = true)
-    (hA : A.ok m0 d srcB n s) : fr'.toA.ok m0 d srcB n s := by
+theorem Frame.ok_of_leA {m0 d G n} {fr' : Frame} {A : AState} {s : State} (h : fr'.leA A = true)
+    (hA : A.ok m0 d G n s) : fr'.toA.ok m0 d G n s := by
   simp only [Frame.leA, Bool.and_eq_true, beq_iff_eq, List.all_eq_true] at h
   obtain ⟨⟨hc, hd⟩, hcs⟩ := h
   obtain ⟨hn, hcp, hr⟩ := hA
   simp only [Frame.toA]
   rw [hc, hd]
   refine ⟨hn, hcp, fun r => ?_⟩
-  show Cells.ok m0 srcB _ (s.reg r) ((fr'.cells.lookup r).getD [])
+  show Cells.ok G _ (s.reg r) ((fr'.cells.lookup r).getD [])
   cases hl : fr'.cells.lookup r with
   | none => intro i hi; simp [Cell.ok]
   | some cs =>
@@ -723,6 +766,11 @@ structure Table where
   /-- Certificates for the tracker's entailments per point (`.search` when absent). -/
   certs : List (Nat × CertMode) := []
   deriving Repr
+
+/-- The entry frame: nothing written, the cursor at the destination register (a fill: the fill
+    register's bytes are the pattern's first `w`). -/
+def CopyArgs.entry (C : CopyArgs) : Frame :=
+  if C.P.fill then ⟨C.dr, 0, [(C.sr, fillCells C.P.w)]⟩ else ⟨C.dr, 0, []⟩
 
 def Table.frame (t : Table) (k : Nat) : Frame := (t.frames.lookup k).getD ⟨0, 0, []⟩
 def Table.hint (t : Table) (k : Nat) : Nat := (t.hints.lookup k).getD 0
@@ -845,7 +893,7 @@ def pointOk (f : Fn) (c : Code) (C : CopyArgs) (t : Table) (k : Nat) : Bool :=
 /-- The table's check: the entry is not finished, its frame is the empty copy at the destination
     register, and every point passes `pointOk`. Decidable; the kernel runs it. -/
 def tabOk (f : Fn) (c : Code) (C : CopyArgs) (t : Table) : Bool :=
-  !t.done 0 && t.frame 0 == ⟨C.dr, 0, []⟩ && (List.range f.size).all (pointOk f c C t)
+  !t.done 0 && t.frame 0 == C.entry && (List.range f.size).all (pointOk f c C t)
 
 end NoCompiler.Typed.Track
 
@@ -904,13 +952,13 @@ theorem tabOk_point {c : Code} {C : CopyArgs} {t : Table} (ht : tabOk f c C t = 
   exact ht.2 k hk
 
 theorem tabOk_entry {c : Code} {C : CopyArgs} {t : Table} (ht : tabOk f c C t = true) :
-    t.done 0 = false ∧ t.frame 0 = ⟨C.dr, 0, []⟩ := by
+    t.done 0 = false ∧ t.frame 0 = C.entry := by
   simp only [tabOk, Bool.and_eq_true, beq_iff_eq, Bool.not_eq_true'] at ht
   exact ⟨ht.1.1, ht.1.2⟩
 
 /-- `tabOk` from its parts, for a check split into one kernel theorem per point. -/
 theorem tabOk_of_parts {f : Fn} {c : Code} {C : CopyArgs} {t : Table}
-    (h0 : (!t.done 0 && t.frame 0 == ⟨C.dr, 0, []⟩) = true)
+    (h0 : (!t.done 0 && t.frame 0 == C.entry) = true)
     (hall : (List.range f.size).all (pointOk f c C t) = true) : tabOk f c C t = true := by
   unfold tabOk; rw [h0, hall]; rfl
 
@@ -1028,42 +1076,49 @@ theorem finOk_count {S : STy} {C : CopyArgs} {A : AState} {fs : List Constr} {ι
     functions): if `tabOk` holds, the function meets its signature with the copy added to the
     post: `d[0, n)` holds the entry bytes of `src[0, n)`, and the rest of memory is the entry's
     (`Copied`), for `d`, `src`, `n` the entry values of the argument registers. -/
-theorem Fn.check_sound_track (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = true)
+theorem Fn.check_sound_pat (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = true)
     (hnc : f.callees = []) (hp : f.sig.isPartial = false) {D : Dom}
     (hDf : ∀ k < f.size, D.mem (f.pcOf k)) (hsz : 4 * f.size + 2 ^ 21 < 2 ^ 64)
-    (C : CopyArgs) (t : Table) (ht : tabOk f c C t = true)
-    (hargs : ∀ a s0, Entry D f.entry s0 → (f.sig.spec T).pre a s0 →
+    (C : CopyArgs) (t : Table) (ht : tabOk f c C t = true) (G : State → Nat → Byte)
+    (hG : ∀ s0, (C.P.fill = false → G s0 = srcPat s0.mem (s0.reg C.sr)) ∧
+      (C.P.fill = true → ∀ j, G s0 (j + C.P.w) = G s0 j))
+    (hE : ∀ s0 (r : Reg), Cells.ok (G s0) 0 (s0.reg r) (C.entry.get r))
+    (Q : (Val × TokFp) → State → Prop)
+    (hargs : ∀ a s0, Entry D f.entry s0 → (f.sig.spec T).pre a s0 → Q a s0 →
       ((s0.reg C.dr).toNat : Int) % 2 ^ 64 = a.1 C.P.dv % 2 ^ 64 ∧
-      ((s0.reg C.sr).toNat : Int) % 2 ^ 64 = a.1 C.P.sv % 2 ^ 64 ∧
+      (C.P.fill = false → ((s0.reg C.sr).toNat : Int) % 2 ^ 64 = a.1 C.P.sv % 2 ^ 64) ∧
       ((s0.reg C.nr).toNat : Int) = a.1 C.P.nv ∧ C.P.w * (s0.reg C.nr).toNat < 2 ^ 64 ∧
-      C.P.dv ∈ f.sig.params ∧ C.P.sv ∈ f.sig.params ∧ C.P.nv ∈ f.sig.params ∧
-      Disj (s0.reg C.dr) (s0.reg C.sr) (C.P.w * (s0.reg C.nr).toNat)) :
+      C.P.dv ∈ f.sig.params ∧ (C.P.fill = false → C.P.sv ∈ f.sig.params) ∧ C.P.nv ∈ f.sig.params ∧
+      (C.P.fill = false → Disj (s0.reg C.dr) (s0.reg C.sr) (C.P.w * (s0.reg C.nr).toNat))) :
     VerifiedImg c D f.entry
       { f.sig.spec T with
         post := (fun a s s' => (f.sig.spec T).post a s s' ∧
-          Copied s.mem s'.mem (s.reg C.dr) (s.reg C.sr) (C.P.w * (s.reg C.nr).toNat)) } := by
+          (Q a s → Written s.mem s'.mem (s.reg C.dr) (G s) (C.P.w * (s.reg C.nr).toNat))) } := by
   have hck := h
   unfold Fn.check at hck
   simp only [Bool.and_eq_true, List.all_eq_true, List.mem_range] at hck
   have hst := Fn.structOk_spec hck.1.1
   refine f.check_sound_val c T h hnc hp hDf
-    (fun a s0 k s => if t.done k = true then
-        Copied s0.mem s.mem (s0.reg C.dr) (s0.reg C.sr) (C.P.w * (s0.reg C.nr).toNat)
-      else (t.frame k).toA.ok s0.mem (s0.reg C.dr) (s0.reg C.sr) (C.P.w * (s0.reg C.nr).toNat) s)
-    (fun a s0 s' => Copied s0.mem s'.mem (s0.reg C.dr) (s0.reg C.sr) (C.P.w * (s0.reg C.nr).toNat))
+    (fun a s0 k s => Q a s0 → if t.done k = true then
+        Written s0.mem s.mem (s0.reg C.dr) (G s0) (C.P.w * (s0.reg C.nr).toNat)
+      else (t.frame k).toA.ok s0.mem (s0.reg C.dr) (G s0)
+        (C.P.w * (s0.reg C.nr).toNat) s)
+    (fun a s0 s' => Q a s0 → Written s0.mem s'.mem (s0.reg C.dr) (G s0) (C.P.w * (s0.reg C.nr).toNat))
     ?_ ?_ ?_
   · -- the entry: nothing copied yet
-    intro a s0 he hpre
+    intro a s0 he hpre _
     obtain ⟨hd0, hf0⟩ := tabOk_entry ht
     simp only [hd0, Bool.false_eq_true, if_false]
     rw [hf0]
+    have hcur : C.entry.cur = C.dr := by unfold CopyArgs.entry; split <;> rfl
+    have hδ : C.entry.δ = 0 := by unfold CopyArgs.entry; split <;> rfl
     unfold AState.ok
-    simp only [Frame.toA, BitVec.sub_self, BitVec.toNat_zero, Nat.add_zero]
-    refine ⟨Nat.zero_le _, Copied.zero _ _ _, fun r => ?_⟩
-    intro i hi; simp [Frame.get, Cell.ok]
+    simp only [Frame.toA, hcur, hδ, BitVec.sub_self, BitVec.toNat_zero, Nat.add_zero]
+    exact ⟨Nat.zero_le _, Written.zero _ _ _, fun r => hE s0 r⟩
   · -- a step between typed points
-    intro a s0 he hpre k s k' s' htk hJk hstep htk'
-    obtain ⟨hdv, hsv, hnv, hn64, hpd, hps, hpn, hdisj⟩ := hargs a s0 he hpre
+    intro a s0 he hpre k s k' s' htk hJk hstep htk' hq
+    replace hJk := hJk hq
+    obtain ⟨hdv, hsv, hnv, hn64, hpd, hps, hpn, hdisj⟩ := hargs a s0 he hpre hq
     have htk0 := htk
     obtain ⟨S, ι0', F, hS, hk, hpc, hI, -⟩ := htk
     obtain ⟨S', ι1, F1, hS', hk', hpc', -, -⟩ := htk'
@@ -1122,12 +1177,13 @@ theorem Fn.check_sound_track (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = t
         split at htst
         · rename_i A' hA'
           have hdi : ((s0.reg C.dr).toNat : Int) % 2 ^ 64 = ι C.P.dv % 2 ^ 64 := by rw [hparams _ hpd]; exact hdv
-          have hsi : ((s0.reg C.sr).toNat : Int) % 2 ^ 64 = ι C.P.sv % 2 ^ 64 := by rw [hparams _ hps]; exact hsv
+          have hsi : C.P.fill = false → ((s0.reg C.sr).toNat : Int) % 2 ^ 64 = ι C.P.sv % 2 ^ 64 :=
+            fun hf => by rw [hparams _ (hps hf)]; exact hsv hf
           have hni : (((C.P.w * (s0.reg C.nr).toNat) : Nat) : Int) = C.P.nb.eval ι := by
             rw [Params.eval_nb, hparams _ hpn, ← hnv]; push_cast; rfl
           obtain ⟨A0, h0, h1⟩ := Option.bind_eq_some_iff.1 hA'
           have hJ0 := tswitch_ok hregs hent hn64 hJk h0
-          have hok := tstep_ok hregs hent hdi hsi hni hn64 hdisj hJ0 h1 hx
+          have hok := tstep_ok hregs hent hdi hsi hni hn64 hdisj (hG s0) hJ0 h1 hx
           have hnotj : ∀ a b c, i ≠ .jalr a b c := by
             intro a b c he'; subst he'; simp at hnj
           have hmem := succ_mem hsz hk hk' hpc hx hpc' hnotj
@@ -1152,8 +1208,9 @@ theorem Fn.check_sound_track (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = t
             exact Frame.ok_of_leA hsucc hok
         · cases htst
   · -- the return: the copy is complete; nothing else leaves the region
-    intro a s0 he hpre k s s' htk hJk hstep hfin hdone
-    obtain ⟨hdv, hsv, hnv, hn64, hpd, hps, hpn, hdisj⟩ := hargs a s0 he hpre
+    intro a s0 he hpre k s s' htk hJk hstep hfin hdone hq
+    replace hJk := hJk hq
+    obtain ⟨hdv, hsv, hnv, hn64, hpd, hps, hpn, hdisj⟩ := hargs a s0 he hpre hq
     have htk0 := htk
     obtain ⟨S, ι0', F, hS, hk, hpc, hI, -⟩ := htk
     have hpt := tabOk_point ht hk
@@ -1227,5 +1284,74 @@ theorem Fn.check_sound_track (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = t
         rcases hfin with h1 | h1
         · exact h1 (hpc' ▸ hDf k' hk')
         · exact h1 hlive
+
+/-- **Functional correctness of a copy** (leaf functions): with `tabOk`, the function meets its
+    signature with the copy added to the post: `d[0, w·n)` holds the entry bytes of
+    `src[0, w·n)`, the rest of memory the entry's. -/
+theorem Fn.check_sound_track (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = true)
+    (hnc : f.callees = []) (hp : f.sig.isPartial = false) {D : Dom}
+    (hDf : ∀ k < f.size, D.mem (f.pcOf k)) (hsz : 4 * f.size + 2 ^ 21 < 2 ^ 64)
+    (C : CopyArgs) (hcopy : C.P.fill = false) (t : Table) (ht : tabOk f c C t = true)
+    (hargs : ∀ a s0, Entry D f.entry s0 → (f.sig.spec T).pre a s0 →
+      ((s0.reg C.dr).toNat : Int) % 2 ^ 64 = a.1 C.P.dv % 2 ^ 64 ∧
+      ((s0.reg C.sr).toNat : Int) % 2 ^ 64 = a.1 C.P.sv % 2 ^ 64 ∧
+      ((s0.reg C.nr).toNat : Int) = a.1 C.P.nv ∧ C.P.w * (s0.reg C.nr).toNat < 2 ^ 64 ∧
+      C.P.dv ∈ f.sig.params ∧ C.P.sv ∈ f.sig.params ∧ C.P.nv ∈ f.sig.params ∧
+      Disj (s0.reg C.dr) (s0.reg C.sr) (C.P.w * (s0.reg C.nr).toNat)) :
+    VerifiedImg c D f.entry
+      { f.sig.spec T with
+        post := (fun a s s' => (f.sig.spec T).post a s s' ∧
+          Copied s.mem s'.mem (s.reg C.dr) (s.reg C.sr) (C.P.w * (s.reg C.nr).toNat)) } := by
+  have := Track.Fn.check_sound_pat f c T h hnc hp hDf hsz C t ht (fun s0 => srcPat s0.mem (s0.reg C.sr))
+    (fun _ => ⟨fun _ => rfl, fun h => absurd h (by simp [hcopy])⟩)
+    (fun s0 r => by
+      have he : C.entry = ⟨C.dr, 0, []⟩ := by simp [CopyArgs.entry, hcopy]
+      rw [he]; intro i hi; simp [Frame.get, Cell.ok])
+    (fun _ _ => True)
+    (fun a s0 he hpre _ => by
+      obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8⟩ := hargs a s0 he hpre
+      exact ⟨h1, fun _ => h2, h3, h4, h5, fun _ => h6, h7, fun _ => h8⟩)
+  have e : (fun a s s' => (f.sig.spec T).post a s s' ∧
+      Copied s.mem s'.mem (s.reg C.dr) (s.reg C.sr) (C.P.w * (s.reg C.nr).toNat)) =
+      (fun a s s' => (f.sig.spec T).post a s s' ∧ ((fun _ _ => True) a s →
+      Written s.mem s'.mem (s.reg C.dr) (srcPat s.mem (s.reg C.sr)) (C.P.w * (s.reg C.nr).toNat))) := by
+    funext a s s'; rw [copied_iff_written]; simp
+  rw [e]; exact this
+
+/-- **Functional correctness of a fill** (leaf functions): with `tabOk`, the function meets its
+    signature with the fill added to the post: byte `j` of `d[0, w·n)` is byte `j mod w` of the
+    fill register's entry value, the rest of memory the entry's, for fills of fewer than `2^64`
+    bytes (a single writable capability may cover the whole address space, `d = 0`, `w·n = 2^64`;
+    the signature does not exclude it). -/
+theorem Fn.check_sound_fill (f : Fn) (c : Code) (T : TokEnv) (h : f.check c = true)
+    (hnc : f.callees = []) (hp : f.sig.isPartial = false) {D : Dom}
+    (hDf : ∀ k < f.size, D.mem (f.pcOf k)) (hsz : 4 * f.size + 2 ^ 21 < 2 ^ 64)
+    (C : CopyArgs) (hfill : C.P.fill = true) (hw8 : C.P.w ≤ 8) (t : Table) (ht : tabOk f c C t = true)
+    (hargs : ∀ a s0, Entry D f.entry s0 → (f.sig.spec T).pre a s0 →
+      ((s0.reg C.dr).toNat : Int) % 2 ^ 64 = a.1 C.P.dv % 2 ^ 64 ∧
+      ((s0.reg C.nr).toNat : Int) = a.1 C.P.nv ∧
+      C.P.dv ∈ f.sig.params ∧ C.P.nv ∈ f.sig.params) :
+    VerifiedImg c D f.entry
+      { f.sig.spec T with
+        post := (fun a s s' => (f.sig.spec T).post a s s' ∧
+          (C.P.w * (s.reg C.nr).toNat < 2 ^ 64 →
+            Filled s.mem s'.mem (s.reg C.dr) (s.reg C.sr) C.P.w (C.P.w * (s.reg C.nr).toNat))) } :=
+  Track.Fn.check_sound_pat f c T h hnc hp hDf hsz C t ht (fun s0 => fillPat (s0.reg C.sr) C.P.w)
+    (fun _ => ⟨fun h => absurd h (by simp [hfill]), fun _ j => fillPat_periodic _ _ j⟩)
+    (fun s0 r => by
+      have he : C.entry = ⟨C.dr, 0, [(C.sr, fillCells C.P.w)]⟩ := by simp [CopyArgs.entry, hfill]
+      rw [he]
+      by_cases hr : r = C.sr
+      · subst hr
+        simpa [Frame.get, List.lookup] using fillCells_ok (s0.reg C.sr) hw8
+      · have hb : (r == C.sr) = false := by simpa using hr
+        have : (Frame.get ⟨C.dr, 0, [(C.sr, fillCells C.P.w)]⟩ r) = [] := by
+          simp [Frame.get, List.lookup, hb]
+        rw [this]; intro i hi; simp [Cell.ok])
+    (fun _ s => C.P.w * (s.reg C.nr).toNat < 2 ^ 64)
+    (fun a s0 he hpre hq => by
+      obtain ⟨h1, h3, h5, h7⟩ := hargs a s0 he hpre
+      exact ⟨h1, fun h => absurd h (by simp [hfill]), h3, hq, h5, fun h => absurd h (by simp [hfill]),
+        h7, fun h => absurd h (by simp [hfill])⟩)
 
 end NoCompiler.Typed.Track
