@@ -173,8 +173,15 @@ def run_file(src, checker, tmp, keep, why=None, linked=False):
     try:
         # `lake lean` (not `lake env lean`) loads the precompiled NoCompiler modules, so the
         # #eval of Fn.check runs native code instead of the interpreter (musl memcpy: 157 s -> 7 s)
-        r = subprocess.run(["lake", "lean", gen], cwd=os.path.join(ROOT, "lean"),
+        # CORPUS_MEM (e.g. 4G): each file's Lean process in its own memory scope, so running out
+        # of memory loses that file's verdict only, not the whole run
+        mem = os.environ.get("CORPUS_MEM")
+        pre = (["systemd-run", "--user", "--scope", "--quiet", "-p", f"MemoryMax={mem}",
+                "-p", "MemorySwapMax=0"] if mem else [])
+        r = subprocess.run([*pre, "lake", "lean", gen], cwd=os.path.join(ROOT, "lean"),
                            capture_output=True, text=True, timeout=TIMEOUT)
+        if r.returncode < 0 or r.returncode == 137:
+            r = subprocess.CompletedProcess([], 1, r.stdout + "\nOUT-OF-MEMORY", "")
     except subprocess.TimeoutExpired as e:
         out = e.stdout.decode() if isinstance(e.stdout, bytes) else (e.stdout or "")
         r = subprocess.CompletedProcess([], 1, out + "\nTIMEOUT", "")
@@ -189,7 +196,9 @@ def run_file(src, checker, tmp, keep, why=None, linked=False):
             lean[m.group(1)] = m.group(2)
     if r.returncode != 0 and not lean:
         err = (r.stdout + r.stderr).strip().splitlines()
-        lean = {"*": "timeout" if "TIMEOUT" in r.stdout else "lean-error: " + (err[0] if err else "?")}
+        lean = {"*": "timeout" if "TIMEOUT" in r.stdout else
+                 "out-of-memory" if "OUT-OF-MEMORY" in r.stdout else
+                 "lean-error: " + (err[0] if err else "?")}
     return stem, lean, rust, gen
 
 
