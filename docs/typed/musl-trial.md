@@ -691,8 +691,10 @@ nine under the same 8 GB cap; memccpy-x and stpncpy peak at 7.8 GB, close to it.
 | stpncpy-x.s | `__stpncpy` | proved | 132 | 3.3 |
 | stpncpy.s | `__stpncpy` | proved | 224 (270 before the conjunctive minimization) | 5.7 (was 7.8) |
 | strncmp.s | `strncmp` | proved | 28 | 1.6 |
+| memccpy.s | `memccpy` | proved (with split paths) | 231 | 6.0 |
+| memccpy-ic.s | `memccpy` | proved (with split paths) | 180 | 5.5 |
 
-  With T's 17 (search in the kernel), all 26 functions Lean accepts on the linked image are kernel-checked, with standard axioms only. The ledger's `check FILE.s --image … --prove --certs` takes the same path for theorem D. On memcpy.s it proved `prog_meets` with standard axioms in 653 s at 4.1 GB, and the ledger records memcpy as `proved`. With the conjunctive minimization the largest peak is 5.7 GB (stpncpy); memccpy-x and stpncpy were at 7.8 GB before it. Results per function: `nc-briefs/typed/musl-linked/kernel-cert.jsonl`.
+  With T's 17 (search in the kernel), all 28 functions Lean accepts on the linked image (all 28 the Rust checker accepts) are kernel-checked, with standard axioms only. memccpy and memccpy-ic needed one more fix: a recorded case split carries its whole path, so the kernel searches no split (memccpy's back edge alone ran out of 8 GB before). The ledger's `check FILE.s --image … --prove --certs` takes the same path for theorem D. On memcpy.s it proved `prog_meets` with standard axioms in 653 s at 4.1 GB, and the ledger records memcpy as `proved`. With the conjunctive minimization the largest peak is 5.7 GB (stpncpy); memccpy-x and stpncpy were at 7.8 GB before it. Results per function: `nc-briefs/typed/musl-linked/kernel-cert.jsonl`.
 
 ### Functional correctness: memcpy (2026-11-24, agent T)
 
