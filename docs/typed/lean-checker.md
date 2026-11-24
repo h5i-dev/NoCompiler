@@ -83,6 +83,14 @@ and remainder by constants and by positive divisors, shifts, masks, single bits,
 `lean/TypedTests/Sum.lean` (outside the core library): the note's `sum`, assembled by
 clang, with a hand-written record; `sum_meets` is `Meets` for it, from `check_sound` and a
 kernel `decide` of `fn.check code = true` (about 15 s). Six broken variants are rejected.
-Performance on larger functions is not measured; kernel evaluation of the checker may need
-the certificates and instantiations to be supplied in the record (docs/typed/export.md)
-instead of searched.
+Kernel cost (2026-11-24, the linked `note-trial/sum.s`): an entailment whose goal is already
+a fact of the type skips the search (`STy.ent`), and `capSub` skips the guard entailment for
+two unguarded capabilities; the whole ledger module (three functions, theorem D, `#print
+axioms`) went from 185 s / 7.7 GB to 33 s / 2.2 GB. Certificates in the record were not
+needed for this.
+
+Instantiation (untrusted, `sub` re-checks it): `solveFrom` solves a target register's
+expression `c + a·y + rest` against the source's expression `e` as `a·y = e − θ rest`; `θ`
+applies to `rest` only, because at a backward edge a loop variable is a variable of both
+types. The `andi` mask rule names the quotient (`e = 2^k·q + x`, next to `2^k ∣ e − x`), so a
+target type that names it matches through the equations.

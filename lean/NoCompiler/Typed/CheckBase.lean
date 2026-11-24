@@ -194,9 +194,26 @@ def entQ (S : STy) (ψ : Constr) : Bool :=
   | .dvd _ e => e.same (.lit 0) || q.decide
   | _ => q.decide
 
-/-- `Ψ ⊢ ψ`: a fact of `Ψ` as it is (most facts of an edge's target type are), or by the
-    decision procedure. -/
-def ent (S : STy) (ψ : Constr) : Bool := S.facts.contains ψ || S.entQ ψ
+/-- A linear form that is a constant (no variables) satisfying `ok`. -/
+def constLin (l : Lin) (ok : Int → Bool) : Bool := l.t.isEmpty && ok l.c
+
+/-- The fact `p` gives the goal `ψ` up to linear normal form: `a ≤ b` gives `c ≤ d` when
+    `(d − c) − (b − a)` is a constant `≥ 0`; `a = b` gives `c = d` (either orientation) and
+    `c ≤ d`; `k ∣ e` gives `k ∣ e'` when `e' − e` is a constant multiple of `k`. Records
+    and rules write the same fact in different forms (`.lt a b`, `.le 0 (b − a)`, ...). -/
+def covers (p ψ : Constr) : Bool :=
+  match p, ψ with
+  | .le a b, .le c d => constLin ((d.sub c).sub (b.sub a)).toLin (0 ≤ ·)
+  | .eq a b, .eq c d =>
+    constLin ((c.sub d).sub (a.sub b)).toLin (· == 0) || constLin ((c.sub d).add (a.sub b)).toLin (· == 0)
+  | .eq a b, .le c d =>
+    constLin ((d.sub c).sub (a.sub b)).toLin (0 ≤ ·) || constLin ((d.sub c).add (a.sub b)).toLin (0 ≤ ·)
+  | .dvd k e, .dvd k' e' => k == k' && constLin (e'.sub e).toLin (· % (k : Int) == 0)
+  | p, ψ => p == ψ
+
+/-- `Ψ ⊢ ψ`: a fact of `Ψ` as it is or up to linear normal form (most facts of an edge's
+    target type are), or by the decision procedure. -/
+def ent (S : STy) (ψ : Constr) : Bool := S.facts.contains ψ || S.facts.any (covers · ψ) || S.entQ ψ
 
 /-- `a ≡ b (mod 2^64)` under Ψ. -/
 def entEqMod (S : STy) (a b : IExpr) : Bool := a.same b || S.ent (Constr.eqMod a b)
@@ -227,8 +244,10 @@ def vars (S : STy) : List Var :=
 /-! ### Instantiation (heuristic; any θ is checked) -/
 
 /-- Find `θ y` from a register whose target type is `c + a·y + rest` with `a = ±1` and
-    every variable of `rest` already known. -/
-def solveFrom (S S' : STy) (y : Var) (known : List Var) : Option IExpr :=
+    every variable of `rest` already known: `a·y = e − θ rest`, with `e` the source's
+    expression (in the source's variables, so `θ` applies to `rest` only: at a backward edge
+    a loop variable is a variable of both). -/
+def solveFrom (S S' : STy) (θ : Subst) (y : Var) (known : List Var) : Option IExpr :=
   S'.regs.findSome? fun (r, e') =>
     match S.reg r with
     | none => none
@@ -238,10 +257,10 @@ def solveFrom (S S' : STy) (y : Var) (known : List Var) : Option IExpr :=
       | some (a, _) =>
         let rest : IExpr := ⟨e'.const, e'.terms.filter (·.2 != y)⟩
         if (e'.terms.filter (·.2 == y)).length == 1 && rest.vars.all (fun x => known.contains x) then
-          if a == 1 || a == -1 then some ((e.sub rest).smul a)
+          if a == 1 || a == -1 then some ((e.sub (rest.subst θ)).smul a)
           else
-            -- `a·y = e − rest`: solvable when `a` divides every coefficient of `e − rest`
-            let l := (e.sub rest).toLin
+            -- `a·y = e − θ rest`: solvable when `a` divides every coefficient
+            let l := (e.sub (rest.subst θ)).toLin
             if a != 0 && l.c % a == 0 && l.t.all (fun t => t.2 % a == 0) then
               some ⟨l.c / a, l.t.map fun t => (t.2 / a, t.1)⟩
             else none
@@ -299,8 +318,8 @@ def instantiate (S S' : STy) (newVars : List Var) : Subst :=
   let step (acc : Subst × List Var) : Subst × List Var :=
     newVars.foldl (fun (θ, kn) y =>
       if (θ.lookup y).isSome then (θ, kn) else
-      match S.solveFrom S' y kn with
-      | some e => ((y, e.subst θ) :: θ, y :: kn)
+      match S.solveFrom S' θ y kn with
+      | some e => ((y, e) :: θ, y :: kn)
       | none => (θ, kn)) acc
   S.instantiateExt S' newVars (step (step (step ([], known0)))).1
 

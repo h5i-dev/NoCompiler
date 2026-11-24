@@ -86,10 +86,15 @@ def refute (hs : List Lin) (fuel : Nat := 40) (limit : Nat := 400) : Option Cert
   let st := (List.range hs.length).foldl (fun st i => st.add (.hyp i) (hs[i]?.getD ⟨0, []⟩)) ({} : St)
   (loop limit fuel { st with items := dedupe st.items }).map (·.steps.toList)
 
-/-- Certificates for every branch of a query. -/
+/-- Certificates for every branch of a query: a small budget first, a larger one for a
+    branch it does not refute (e.g. many variables with large divisibility moduli), so easy
+    queries cost no more. -/
 def prove (q : Query) : Option (List Cert) :=
   let bs := q.branches
-  if bs.length > 256 then none else bs.mapM (refute ·)
+  if bs.length > 256 then none else bs.mapM fun b =>
+    match refute b with
+    | some c => some c
+    | none => refute b 200 4000
 
 end NoCompiler.Typed.Search
 

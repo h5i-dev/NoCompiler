@@ -72,11 +72,64 @@ theorem entQ_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entQ ψ = true)
   · exact Query.decide_sound h ι hh
 
 
+theorem constLin_eval {l : Lin} {ok : Int → Bool} (h : constLin l ok = true) (ι : Val) :
+    l.eval ι = l.c ∧ ok l.c = true := by
+  unfold constLin at h
+  simp only [Bool.and_eq_true, List.isEmpty_iff] at h
+  obtain ⟨ht, hc⟩ := h
+  refine ⟨?_, hc⟩
+  simp only [Lin.eval, ht, Lin.evalT]; omega
+
+theorem covers_sound {ι : Val} {p ψ : Constr} (h : covers p ψ = true) (hp : p.holds ι) :
+    ψ.holds ι := by
+  unfold covers at h
+  split at h
+  · rename_i a b c d
+    obtain ⟨he, hc⟩ := constLin_eval h ι
+    simp only [IExpr.eval_toLin, IExpr.eval_sub] at he
+    simp only [decide_eq_true_eq] at hc
+    simp only [Constr.holds, Constr.eval, decide_eq_true_eq] at hp ⊢; omega
+  · rename_i a b c d
+    simp only [Constr.holds, Constr.eval, decide_eq_true_eq] at hp ⊢
+    rcases Bool.or_eq_true _ _ ▸ h with h | h
+    · obtain ⟨he, hc⟩ := constLin_eval h ι
+      simp only [IExpr.eval_toLin, IExpr.eval_sub] at he
+      simp only [beq_iff_eq] at hc; omega
+    · obtain ⟨he, hc⟩ := constLin_eval h ι
+      simp only [IExpr.eval_toLin, IExpr.eval_sub, IExpr.eval_add] at he
+      simp only [beq_iff_eq] at hc; omega
+  · rename_i a b c d
+    simp only [Constr.holds, Constr.eval, decide_eq_true_eq] at hp ⊢
+    rcases Bool.or_eq_true _ _ ▸ h with h | h
+    · obtain ⟨he, hc⟩ := constLin_eval h ι
+      simp only [IExpr.eval_toLin, IExpr.eval_sub] at he
+      simp only [decide_eq_true_eq] at hc; omega
+    · obtain ⟨he, hc⟩ := constLin_eval h ι
+      simp only [IExpr.eval_toLin, IExpr.eval_sub, IExpr.eval_add] at he
+      simp only [decide_eq_true_eq] at hc; omega
+  · rename_i k e k' e'
+    simp only [Bool.and_eq_true, beq_iff_eq] at h
+    obtain ⟨rfl, h⟩ := h
+    obtain ⟨he, hc⟩ := constLin_eval h ι
+    simp only [IExpr.eval_toLin, IExpr.eval_sub] at he
+    simp only [beq_iff_eq] at hc
+    simp only [Constr.holds, Constr.eval, decide_eq_true_eq] at hp ⊢
+    have h1 := Int.dvd_of_emod_eq_zero hp
+    have h2 := Int.dvd_of_emod_eq_zero hc
+    apply Int.emod_eq_zero_of_dvd
+    have h3 : e'.eval ι = e.eval ι + ((e'.sub e).toLin).c := by omega
+    rw [h3]; exact Int.dvd_add h1 h2
+  · rename_i hne1 hne2 hne3 hne4
+    simp only [beq_iff_eq] at h; subst h; exact hp
+
 theorem ent_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.ent ψ = true)
     (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
   unfold ent at h
   rcases Bool.or_eq_true _ _ ▸ h with h | h
-  · exact hh' ψ (List.mem_append_left _ (List.contains_iff_mem.1 h))
+  · rcases Bool.or_eq_true _ _ ▸ h with h | h
+    · exact hh' ψ (List.mem_append_left _ (List.contains_iff_mem.1 h))
+    · obtain ⟨p, hp, hc⟩ := List.any_eq_true.1 h
+      exact covers_sound hc (hh' p (List.mem_append_left _ hp))
   · exact entQ_sound h hh'
 theorem entEqMod_sound {ι : Val} {S : STy} {a b : IExpr} (h : S.entEqMod a b = true)
     (hh : ∀ p ∈ S.hyps, p.holds ι) : (a.eval ι - b.eval ι) % 2 ^ 64 = 0 := by

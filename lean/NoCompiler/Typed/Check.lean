@@ -44,12 +44,14 @@ def arith (S : STy) (i : Instr) : Option STy :=
     -- a single bit `2^k` (k ≥ 1) and a negative mask go to `arithExt` (agent U's rules)
     if 0 ≤ imm.toInt ∧
         ((List.range 12).any fun k => 1 ≤ k && imm.signExtend 64 == BitVec.twoPow 64 k) = false then
-      -- with a mask `c = 2^k − 1`, also `e ≡ x (mod 2^k)` (the note's table)
+      -- with a mask `c = 2^k − 1`, also `e ≡ x (mod 2^k)` (the note's table), and the
+      -- quotient named: `e = 2^k·q + x` with `q = x + 1` (so a record that names it matches)
       let mask : List Constr :=
         match r rs with
         | some e =>
           match (List.range 13).find? (fun k => imm.toInt == 2 ^ k - 1) with
-          | some k => [.dvd (2 ^ k) (e.sub (.var x))]
+          | some k => [.dvd (2 ^ k) (e.sub (.var x)),
+                       .eq e (((IExpr.var (x + 1)).smul (2 ^ k)).add (.var x))]
           | none => []
         | none => []
       some ((S.setReg rd (some (.var x))).addFacts

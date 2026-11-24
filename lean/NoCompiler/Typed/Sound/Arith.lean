@@ -152,10 +152,18 @@ theorem Fn.arith_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' : 
         simp only [Option.some.injEq] at ha; subst ha
         simp only [exec, Option.some.injEq] at hx; subst hx
         simp only [evalI]
-        obtain ⟨h1, h2, h3⟩ := setFrom_fresh hprot S ι [((s.reg rs &&& imm.signExtend 64).toNat : Int)]
-        have hx := setFrom_at (ι := ι) (x := f.freshAt S)
-          (vs := [((s.reg rs &&& imm.signExtend 64).toNat : Int)]) 0 (by simp)
-        simp only [Nat.add_zero, List.getElem?_cons_zero, Option.getD_some] at hx
+        -- the value, and the quotient of the mask fact (any integer when there is none)
+        let w : Int := ((s.reg rs &&& imm.signExtend 64).toNat : Int)
+        let qv : Int := match S.reg rs with
+          | some e => match (List.range 13).find? (fun k => imm.toInt == 2 ^ k - 1) with
+            | some k => (e.eval ι - w) / 2 ^ k
+            | none => 0
+          | none => 0
+        obtain ⟨h1, h2, h3⟩ := setFrom_fresh hprot S ι [w, qv]
+        have hx := setFrom_at (ι := ι) (x := f.freshAt S) (vs := [w, qv]) 0 (by simp)
+        have hx1 := setFrom_at (ι := ι) (x := f.freshAt S) (vs := [w, qv]) 1 (by simp)
+        simp only [Nat.add_zero, List.getElem?_cons_zero, Option.getD_some,
+          List.getElem?_cons_succ] at hx hx1
         have hse := hasInt_signExtend (by omega) ι imm
         have hlt := (imm.signExtend 64).isLt
         have hv := hse.toNat_eq (by simpa using hpos.1) (by
@@ -172,19 +180,18 @@ theorem Fn.arith_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' : 
             omega
           · simp only [Constr.holds, Constr.eval, decide_eq_true_eq, IExpr.eval_var, IExpr.eval_lit, hx]
             omega
-          · -- the mask fact
+          · -- the mask facts
             split at hp
             · rename_i e hr
               split at hp
               · rename_i k hk
-                simp only [List.mem_singleton] at hp; subst hp
                 have hk' := List.find?_some hk
                 have hkr := List.mem_range.1 (List.mem_of_find?_eq_some hk)
                 simp only [beq_iff_eq] at hk'
                 have hre := STy.reg_hasInt hI.regs hr
-                have hev : e.eval (setFrom ι (f.freshAt S) [((s.reg rs &&& imm.signExtend 64).toNat : Int)]) =
-                    e.eval ι := IExpr.eval_congr_max (fun y hy => h1 y (by
-                      have := STy.reg_maxVar hr; omega))
+                have hev : e.eval (setFrom ι (f.freshAt S) [w, qv]) = e.eval ι :=
+                  IExpr.eval_congr_max (fun y hy => h1 y (by
+                    have := STy.reg_maxVar hr; omega))
                 have hmask : (imm.signExtend 64).toNat = 2 ^ k - 1 := by
                   have h2k : 1 ≤ 2 ^ k := Nat.one_le_two_pow
                   have h1' : ((imm.signExtend 64).toNat : Int) + 1 = ((2 ^ k : Nat) : Int) := by
@@ -193,17 +200,38 @@ theorem Fn.arith_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' : 
                   omega
                 have hmod : (s.reg rs &&& imm.signExtend 64).toNat = (s.reg rs).toNat % 2 ^ k := by
                   rw [BitVec.toNat_and, hmask, Nat.and_two_pow_sub_one_eq_mod]
-                simp only [Constr.holds, Constr.eval, decide_eq_true_eq, IExpr.eval_var, IExpr.eval_sub]
-                rw [hev, hx, hmod, Int.natCast_emod]
-                -- e ≡ w (mod 2^64) and 2^k ∣ 2^64
+                -- e ≡ w (mod 2^64) and 2^k ∣ 2^64, so 2^k ∣ e − w
                 unfold HasInt at hre
                 have hd : ((2 ^ k : Nat) : Int) ∣ (2 ^ 64 : Int) := by
                   rw [← c64]; exact Int.natCast_dvd_natCast.2 (Nat.pow_dvd_pow 2 (by omega))
                 have hW : ((s.reg rs).toNat : Int) % ((2 ^ k : Nat) : Int) =
                     e.eval ι % ((2 ^ k : Nat) : Int) := by
                   rw [← Int.emod_emod_of_dvd _ hd, ← Int.emod_emod_of_dvd (e.eval ι) hd, hre]
-                rw [Int.sub_emod, Int.emod_emod_of_dvd _ (Int.dvd_refl _), hW, Int.sub_self,
-                  Int.zero_emod]
+                have hwv : w = ((s.reg rs).toNat : Int) % ((2 ^ k : Nat) : Int) := by
+                  show ((s.reg rs &&& imm.signExtend 64).toNat : Int) = _
+                  rw [hmod, Int.natCast_emod]
+                have hdvd : ((2 ^ k : Nat) : Int) ∣ e.eval ι - w := by
+                  apply Int.dvd_of_emod_eq_zero
+                  rw [Int.sub_emod, hwv, Int.emod_emod_of_dvd _ (Int.dvd_refl _), hW, Int.sub_self,
+                    Int.zero_emod]
+                have hq : qv = (e.eval ι - w) / 2 ^ k := by
+                  show (match S.reg rs with
+                    | some e => match (List.range 13).find? (fun k => imm.toInt == 2 ^ k - 1) with
+                      | some k => (e.eval ι - w) / 2 ^ k
+                      | none => 0
+                    | none => 0) = _
+                  rw [hr]; simp only [hk]
+                simp only [List.mem_cons, List.mem_singleton, List.not_mem_nil, or_false] at hp
+                rcases hp with rfl | rfl
+                · simp only [Constr.holds, Constr.eval, decide_eq_true_eq, IExpr.eval_var, IExpr.eval_sub]
+                  rw [hev, hx]
+                  rw [hwv, Int.sub_emod, Int.emod_emod_of_dvd _ (Int.dvd_refl _), hW, Int.sub_self,
+                    Int.zero_emod]
+                · simp only [Constr.holds, Constr.eval, decide_eq_true_eq, IExpr.eval_var,
+                    IExpr.eval_add, IExpr.eval_smul]
+                  rw [hev, hx, hx1, hq]
+                  have hd' : (2 : Int) ^ k ∣ e.eval ι - w := by exact_mod_cast hdvd
+                  rw [Int.mul_ediv_cancel' hd']; omega
               · simp at hp
             · simp at hp
       · exact f.arithExt_sound hprot hI (by simp [writesReg]) hrd ha hx
