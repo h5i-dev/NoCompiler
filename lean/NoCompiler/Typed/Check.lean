@@ -51,7 +51,11 @@ def arith (S : STy) (i : Instr) : Option STy :=
         | some e =>
           match (List.range 13).find? (fun k => imm.toInt == 2 ^ k - 1) with
           | some k => [.dvd (2 ^ k) (e.sub (.var x)),
-                       .eq e (((IExpr.var (x + 1)).smul (2 ^ k)).add (.var x))]
+                       .eq e (((IExpr.var (x + 1)).smul (2 ^ k)).add (.var x))] ++
+            -- on an xor result: its zero test, from a fact `2^k ∣ y ⇔ 2^k ∣ a − b` (U)
+            (match e.asVar with
+             | some y => ((S.facts.filterMap (xorBitOf k y)).take 1).map (xorZeroFact x k)
+             | none => [])
           | none => []
         | none => []
       some ((S.setReg rd (some (.var x))).addFacts

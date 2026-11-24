@@ -221,6 +221,23 @@ theorem Fn.arith_sound (hprot : ∀ x ∈ f.protectedVars, x < f.fresh) {S S' : 
                       | none => 0
                     | none => 0) = _
                   rw [hr]; simp only [hk]
+                rcases List.mem_append.1 hp with hp | hp
+                rotate_left
+                · -- the zero test of an xor result
+                  split at hp
+                  · rename_i y hy
+                    obtain ⟨d, hd, rfl⟩ := List.mem_map.1 hp
+                    obtain ⟨q, hq, hqd⟩ := List.mem_filterMap.1 (List.mem_of_mem_take hd)
+                    have hqι : q.holds (setFrom ι (f.freshAt S) [w, qv]) :=
+                      (Constr.holds_congr (fun z hz => (h1 z
+                        (Nat.le_trans hz (STy.le_maxVar_fact hq))).symm)).1 (hI.facts q hq)
+                    rw [xorBitOf_eq hqd] at hqι
+                    have hre' : HasInt (setFrom ι (f.freshAt S) [w, qv]) (s.reg rs) (.var y) := by
+                      rw [← IExpr.asVar_eq hy]; unfold HasInt; rw [hev]; exact hre
+                    refine xorZeroFact_holds (by omega) hre' ?_ hqι
+                    rw [hx]; show ((s.reg rs &&& imm.signExtend 64).toNat : Int) = _
+                    rw [hmod]
+                  · simp at hp
                 simp only [List.mem_cons, List.mem_singleton, List.not_mem_nil, or_false] at hp
                 rcases hp with rfl | rfl
                 · simp only [Constr.holds, Constr.eval, decide_eq_true_eq, IExpr.eval_var, IExpr.eval_sub]
