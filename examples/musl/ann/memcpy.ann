@@ -1,0 +1,49 @@
+# musl 1.2.5 src/string/memcpy.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh.
+# Instructions as compiled, unchanged (scripts/musl-trial/verify.sh checks the bytes).
+# Annotations are the lines that start with hash-colon (provisional syntax of docs/Tab 1.md; see docs/typed/musl-trial.md).
+# Predicted (fixed before compiling): reject (v0 rules: andi n, 2^k tails)
+# Expected now (after reading the compiled code): reject. (1) As predicted, the tails 'if (n&8)', 'if (n&4)', ... are andi a1, a2, 8 + beq (0x15c, 0x17c, ...): x != 0 does not give k >= 8, so lw 4(a4) at 0x168 fails. (2) S2: 33 violations (11 backward-edge targets; the misaligned cases share tail blocks reached backwards). (3) The head loop test '(uintptr_t)s % 4 && n' is branch-free (0x0-0x10, 0x30-0x4c). Annotated in full (added when the checker got --loops natural; same scheme as memcpy-x.ann): head loop, aligned loop, the three misaligned loops, and a join at every tail block.
+#! expect memcpy: accept
+#! expect-interval memcpy: reject cfg
+#: fn memcpy [d, s, n]
+#:   in     a0: int(d), a1: int(s), a2: u64(n)
+#:   borrow d |-> bytes[n] rw
+#:   borrow s |-> bytes[n] ro
+#:   out    a0: int(d)
+#:   stack  0
+[at .Lmemcpy_1c]
+#: inv [m] a1: int(s + n - m), a5: int(s + n - m + 1), a6: int(d + n - m), a2: int(m) where 1 <= m <= n decreases m
+[at .Lmemcpy_120]
+#: join [k] a4: int(s + n - k), a3: int(d + n - k), a2: int(k) where 0 <= k <= n, 4 | d + n - k, (k = 0 || 4 | s + n - k)
+[at .Lmemcpy_12c]
+#: inv [k] a4: int(s + n - k), a3: int(d + n - k), a2: int(k) where 16 <= k <= n, 4 | s + n - k, 4 | d + n - k decreases k
+[at .Lmemcpy_15c]
+#: join [k] a4: int(s + n - k), a3: int(d + n - k), a2: int(k) where 0 <= k <= 15, k <= n, 4 | d + n - k, (k = 0 || 4 | s + n - k)
+[at .Lmemcpy_58]
+#: join [m, x] a4: int(s + n - m), a3: int(d + n - m), a2: int(m), a1: int(x) where 0 <= m <= n, 1 <= x <= 3, 4 | d + n - m - x, (m = 0 || 4 | s + n - m)
+[at .Lmemcpy_a0]
+#: inv [j] a1: int(s + n - j + 13), a3: int(d + n - j), a2: int(j) where 17 <= j <= n, 4 | s + n - j + 1, 4 | d + n - j decreases j
+[at .Lmemcpy_17c]
+#: join [j, r] a2: int(j), a4: int(s + n - r), a3: int(d + n - r) where 0 <= r <= 7, 8 | j - r, 0 <= j <= 15, j <= n, 4 | d + n - r, (j = 0 || 4 | s + n - r)
+[at .Lmemcpy_1b0]
+#: inv [j] a1: int(s + n - j + 15), a3: int(d + n - j), a2: int(j) where 19 <= j <= n, 4 | s + n - j + 3, 4 | d + n - j decreases j
+[at .Lmemcpy_214]
+#: join [j] a2: int(j), a4: int(s + n - j), a3: int(d + n - j) where 0 <= j <= 31, j <= n
+[at .Lmemcpy_21c]
+#: join [j, r] a2: int(j), a4: int(s + n - r), a3: int(d + n - r) where 0 <= r <= 15, 16 | j - r, 0 <= j <= 31, j <= n
+[at .Lmemcpy_224]
+#: join [j, r] a2: int(j), a4: int(s + n - r), a3: int(d + n - r) where 0 <= r <= 7, 8 | j - r, 0 <= j <= 31, j <= n
+[at .Lmemcpy_22c]
+#: join [j, r] a2: int(j), a4: int(s + n - r), a3: int(d + n - r) where 4 <= r <= 7, 8 | j - r, 0 <= j <= 31, j <= n
+[at .Lmemcpy_258]
+#: join [j, r] a2: int(j), a4: int(s + n - r), a3: int(d + n - r) where 0 <= r <= 3, 4 | j - r, 0 <= j <= 31, j <= n
+[at .Lmemcpy_26c]
+#: join [j, r] a2: int(j), a4: int(s + n - r), a3: int(d + n - r) where 2 <= r <= 3, 4 | j - r, 0 <= j <= 31, j <= n
+[at .Lmemcpy_290]
+#: join a4: int(s + n - 1), a3: int(d + n - 1) where 1 <= n
+[at .Lmemcpy_2bc]
+#: inv [j] a1: int(s + n - j + 14), a3: int(d + n - j), a2: int(j) where 18 <= j <= n, 4 | s + n - j + 2, 4 | d + n - j decreases j
+[at .Lmemcpy_328]
+#: join [j] a2: int(j), a4: int(s + n - j), a3: int(d + n - j) where 16 <= j <= 31, j <= n
+[at .Lmemcpy_3bc]
+#: join [j, r] a2: int(j), a4: int(s + n - r), a3: int(d + n - r) where 8 <= r <= 15, 16 | j - r, 0 <= j <= 31, j <= n

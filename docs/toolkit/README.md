@@ -8,7 +8,7 @@ working on the core. Nothing it computes is an input to a proof.
 
 | Path | What |
 | --- | --- |
-| `crates/nocompiler-*` | the toolkit crates (every crate but `crates/nocompiler`, the core); `nocompiler-cli` is the binary |
+| `crates/nocompiler-*` | the toolkit crates (every crate but `crates/nocompiler-typed`, the typed checker); `nocompiler-cli` is the binary |
 | `docs/toolkit/` | [MANUAL.md](MANUAL.md), [design notes](design/README.md), [scorecard](scorecard.md) and [benchmarks](benchmarks.md); [ROADMAP-toolkit.md](ROADMAP-toolkit.md) is the toolkit's milestone record |
 | `fixtures/` | sources of the test corpus; `scripts/toolkit/build-fixtures.sh` builds it into `fixtures/build/` |
 | `scripts/toolkit/` | corpus, benchmark, comparison and release scripts; they run from the repository root |

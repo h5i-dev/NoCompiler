@@ -1,0 +1,15 @@
+# examples/typed/src/hello.c (bcb19fed), compiled by scripts/typed-trial/build.sh, unchanged;
+# annotations are the '#:' lines (docs/typed/note-trial.md).
+#! expect write_all: accept
+#! expect hello: accept
+#: fn write_all [fd, b, n]
+#:   in     a0: int(fd), a1: int(b), a2: int(n)
+#:   borrow b ↦ bytes[n] ro
+#:   where  0 ≤ n < 2^64
+#:   out    a0: int
+#:   stack  0
+#: fn hello []
+#:   frame  16 slots 8
+#:   stack  16
+[at .LBB0_1]
+#: inv [m] a1: int(b + n − m), a2: int(m) where 0 ≤ m ≤ n decreases m

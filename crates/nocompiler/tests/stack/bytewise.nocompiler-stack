@@ -1,5 +1,0 @@
-nocompiler-stack 1
-# refine-sum-a.elf with sum replaced by sum-bytewise.s (tests/treediff.rs, tests/stack.rs)
-base 751554eceaa0cd0f5324733c5d72de7c9b2c505041f49bcaf69093464211428b ../../../../examples/elf/refine-sum-a.elf
-patch c49c3331d610552e47a181eabb06f0457c39d958eea0ee257371bc121d2ebd18 sum-bytewise.s
-result f3b6754e1ad9a1ab920f565524326f1c46bb9906700057b6966ca224f2985dd8

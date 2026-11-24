@@ -216,10 +216,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "nocompiler"
-version = "0.1.0"
-
-[[package]]
 name = "nocompiler-analysis"
 version = "0.1.0"
 dependencies = [
@@ -266,7 +262,6 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "memmap2",
- "nocompiler",
  "nocompiler-analysis",
  "nocompiler-api",
  "nocompiler-arch",
@@ -352,7 +347,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "nocompiler-ptx"
+name = "nocompiler-rv"
 version = "0.1.0"
 
 [[package]]
@@ -371,19 +366,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "nocompiler-types"
-version = "0.1.0"
-
-[[package]]
-name = "nocompiler-verify"
+name = "nocompiler-typed"
 version = "0.1.0"
 dependencies = [
- "nocompiler-core",
- "nocompiler-format",
- "nocompiler-ptx",
- "serde",
  "serde_json",
 ]
+
+[[package]]
+name = "nocompiler-types"
+version = "0.1.0"
 
 [[package]]
 name = "once_cell_polyfill"

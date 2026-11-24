@@ -1,0 +1,36 @@
+# musl 1.2.5 src/string/stpncpy.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh
+# with -mllvm -riscv-disable-using-constant-pool-for-large-ints -mllvm -jump-is-expensive=false
+# (constants inline; && kept as branches). Instructions as compiled, unchanged (verify.sh).
+# Annotations are the lines that start with hash-colon (docs/typed/syntax.md).
+# Predicted (fixed before building this variant): reject
+# Expected now (after reading the compiled code): reject: S2 5 violations (4 non-loop backward edges); xor alignment test, so the sd at 0xec fails 8 | a. Annotated: signature and the three natural loops 0x24, 0x5c, 0xd8. Not annotated: the non-loop backward targets and joins.
+#! expect __stpncpy: accept
+#! expect-interval __stpncpy: reject cfg
+#: fn memset [s, n]
+#:   in     a0: int(s), a2: int(n)
+#:   borrow s |-> bytes[n] rw
+#:   out    a0: int(s)
+#:   stack  0
+#: fn __stpncpy [d, s, n]
+#:   in     a0: int(d), a1: int(s), a2: u64(n)
+#:   borrow d |-> bytes[n] rw
+#:   borrow s |-> bytes[n] ro
+#:   out    a0: int
+#:   stack  16
+#:   frame  16 slots 0, 8
+[at .L__stpncpy_24]
+#: inv [m] s0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 1 <= m <= n decreases m
+[at .L__stpncpy_5c]
+#: inv [m] s0: int(d + n - m), a1: int(s + n - m), a2: int(m), a4: int(s + n - m + 1) where 1 <= m <= n decreases m
+[at .L__stpncpy_d8]
+#: inv [m] s0: int(d + n - m), a1: int(s + n - m), a2: int(m) where 8 <= m <= n, 8 | s + n - m, 8 | d + n - m decreases m
+[at .L__stpncpy_1c]
+#: join [m] s0: int(d + n - m), a1: int(s + n - m), a2: int(m) where 0 <= m <= n
+[at .L__stpncpy_20]
+#: join [m] s0: int(d + n - m), a1: int(s + n - m), a2: int(m) where 1 <= m <= n
+[at .L__stpncpy_8c]
+#: join [m, b] s0: int(d + n - m), a1: int(s + n - m), a2: int(m), a0: int(b) where 0 <= m <= n, ((b = 0 && m = 0) || (b = 1 && 1 <= m && 8 | s + n - m && 8 | d + n - m))
+[at .L__stpncpy_104]
+#: join [p] s0: int(p) where d <= p <= d + n
+[at .L__stpncpy_108]
+#: join [p, m] s0: int(p), a3: int(m) where d <= p, 0 <= m, p + m <= d + n

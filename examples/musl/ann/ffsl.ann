@@ -1,0 +1,10 @@
+# musl 1.2.5 src/misc/ffsl.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh.
+# Instructions as compiled, unchanged (scripts/musl-trial/verify.sh checks the bytes).
+# Annotations are the lines that start with hash-colon (docs/typed/syntax.md).
+# Predicted (batch 3, fixed before compiling): accept
+# Expected now (after reading the compiled code): accept, with a twist: musl's a_ctz_64 is a De Bruijn multiply and a lookup in a 64-byte read-only table (I30), not Zbb ctz. The index comes from srli 58, so it is in [0, 64) without a comparison: the note's 'no extra check' case.
+#! expect ffsl: accept
+#: fn ffsl [x]
+#:   in     a0: int(x)
+#:   out    a0: int
+#:   stack  0

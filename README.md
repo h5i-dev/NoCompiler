@@ -1,62 +1,95 @@
 # nocompiler
 
-`nocompiler` is a RISC-V profile whose machine code is proved correct in Lean 4.
+`nocompiler` is typed RISC-V assembly. A checker proves that safe functions are memory-safe. Unsafe functions state the same kind of signature as a contract.
+
+> **Status: restarted on 2026-11-23.** The design is new and the checkers are being written. Everything below the "Status" section describes the target, not what works today.
 
 **Motivation**
 
-- Compilers, code generators and LLMs write the code that runs. Which of them do you trust?
-- A proof about C source says nothing about the emitted bytes. Can the claim be about the bytes?
-- Machine-code proofs are usually one-off expert work. Can they be routine?
+- Compilers, code generators and LLMs write the code that runs. A proof about the source says nothing about the bytes they emit.
+- Machine-code proofs are one-off expert work. Most of their effort goes to bounds, aliasing and frames, not to what the function computes.
+- Can a type system take that part over, at the level of the bytes, without a compiler in the trusted base?
 
-**Our Answer**
+**Our answer**
 
-- A subset of RV64 (RV64IM + Zba + Zbb) with structured control flow and a fixed stack discipline.
-- It is ordinary RISC-V: it runs on any RV64 Linux machine and follows the LP64 calling convention.
-- One theorem per function, about its bytes: correct, memory-safe, terminating and ABI-preserving.
-- The Lean kernel is the only judge. Compilers, tools, tactics and proof authors are untrusted ([trust.md](docs/isa/trust.md)).
+- Ordinary RV64 assembly with signatures and loop annotations. It assembles with the usual tools and follows the LP64 calling convention.
+- Types track only two facts. A register holds a linear expression over integer variables, mod 2^64. A function may use a given byte range.
+- **Safe** functions are checked: every load and store lands inside a range the function holds. The checker decides this with quantifier-free Presburger arithmetic.
+- **Unsafe** functions (allocators, syscall wrappers, code outside the model) carry the same kind of signature as a contract. The contract is assumed, or proved by hand in Lean.
+- Every signature has one meaning ⟦σ⟧, defined in Lean over the RISC-V machine semantics. A ledger records why each function meets it: checked, proved, or assumed.
 
-**Potential pushback**
+```
+fn sum [ρ, n]
+  in     a0: int(ρ), a1: int(n)
+  borrow ρ ↦ bytes[8n] ro
+  where  8 ∣ ρ
+  out    a0: int
+  stack  0
 
-- *"Why not verify the C source?"* → Then you trust the compiler.
-- *"Isn't this NaCl, eBPF or WebAssembly?"* → It borrows from all three, on real RISC-V with no runtime.
-- *"Why trust your semantics?"* → They are tested against llvm-mc, qemu and Sail, not yet proved equal to Sail.
-- *"Does it run on real hardware?"* → The binaries are plain static RV64 Linux ELFs; we run them under qemu and Sail.
-- *"What about libc and the OS?"* → A Linux process model covers file I/O, `brk` and `mmap`.
+sum:
+    addi a2, zero, 0
+    beq  a1, zero, done
+loop:                    # inv [m] a0: int(ρ + 8n − 8m), a1: int(m), a2: int
+                         #     where 1 ≤ m ≤ n   decreases m
+    ld   a3, 0(a0)
+    add  a2, a3, a2
+    addi a1, a1, -1
+    addi a0, a0, 8
+    bne  a1, zero, loop
+done:
+    addi a0, a2, 0
+    jalr zero, 0(ra)
+```
 
-## CLI example
+The syntax is provisional.
 
-One binary, `nocompiler`. The toolkit commands at the end work on any ELF, PE or Mach-O, and never enter a proof.
+**What is claimed, and what is not**
+
+- Claimed: a checked safe function, given that the contracts of the functions it calls hold, satisfies ⟦σ⟧. It reads and writes only what its signature grants. It returns to `ra` with `sp` and the callee-saved registers intact, gives back what it borrowed, and terminates unless it is marked `partial`.
+- Not claimed: functional correctness (still a hand proof, now with fewer side conditions), the contents of memory, absence of leaks or of integer overflow, and the truth of unsafe contracts.
+- Until the Lean-verified checker exists, "safe" means "accepted by the Rust checker". The soundness argument is so far a proof in natural language.
+
+## Status
+
+| Part | State |
+| --- | --- |
+| Design note v0 and soundness proof in natural language | written ([設計ノート](docs/Tab%201.md), [健全性の証明](docs/健全性の証明.md)) |
+| Lean: machine model, byte-wise permissions (decision 10) | done ([Step.lean](lean/NoCompiler/Step.lean)) |
+| Lean: type language and ⟦σ⟧, total version | done ([Typed/Lang.lean](lean/NoCompiler/Typed/Lang.lean), [Typed/Sem.lean](lean/NoCompiler/Typed/Sem.lean)) |
+| Rust checker: parser, typing rules, Presburger decision, ledger | running ([crates/nocompiler-typed](crates/nocompiler-typed)): loops are natural loops of a reducible CFG checked in a loop-contiguous order τ (user decision 2026-11-23; the address-interval rule stays as `--loops interval`); shared corpus of 140 verdicts as expected; static data; whole-program `link`; export for the Lean checker (with τ); every accepted function also run 300× on a permission-enforcing interpreter (no fault); an independent review's findings fixed (I33). The ledger says `proved` where the Lean checker established theorem D on the linked image (`--prove`), `checked` where only this checker accepted. The note's own trial ([note-trial.md](docs/typed/note-trial.md)): `sum`, `sum2`, `_start`, `write_all`, `hello`, `cobs_decode` accepted as compiled. Trusted, not yet cross-checked by Lean |
+| Lean checker, proved sound against ⟦σ⟧ (theorems A–D) | v0 complete (998ae0df): `Fn.check_sound` (check on the decoded image ⇒ ⟦σ⟧ total, standard axioms only) with frames, calls (`jal ra`, clang `call`/`tail` pairs), syscalls, `take`/`give`, tokens, static data, the heap mark's meaning (I38), every arithmetic rule of the Rust checker, `partial` functions (`Fn.check_soundP` ⇒ the partial meaning), and theorem D for whole programs (`Prog.check_sound`, callees first, external functions assumed). The note's `sum`, `sum2`, `_start`, linked, are proved by theorem D through the ledger (`--prove`) ([docs/typed/lean-checker.md](docs/typed/lean-checker.md)) |
+| Trial set: musl 1.2.5 functions as compiled, annotated, with verdicts predicted in advance | 29 functions (+8 flag variants) compiled, annotated, byte-verified, qemu-sanity-checked; Rust checker (default, natural loops): 23 of 29 accepted as compiled (19 with the old interval rule); rejected: 2 function pointers, `strlen` (NUL precondition not expressible), `memchr`, `fwrite`, `a64l` (missing `strchr` contract) ([musl-trial.md](docs/typed/musl-trial.md)) |
+| `partial` functions (I19) | done: partial meaning `Typed.MeetsP`, `Fn.check_soundP` (standard axioms) |
+| Pointer structures of unbounded size (lists, trees) | not started; unsafe for now (v1) |
+
+Decisions taken where the design is silent are in [docs/typed/decisions.md](docs/typed/decisions.md).
+
+## Trust
+
+- Trusted: the Lean kernel, the RISC-V semantics in [lean/NoCompiler](lean/NoCompiler), the definition of ⟦σ⟧, the unsafe contracts you assume, and for now the Rust checker.
+- Not trusted: compilers, the assembler, annotation writers, tactics, proof authors.
+- The semantics are tested against llvm-mc, qemu and Sail. They are not proved equal to Sail.
+
+## Binary analysis toolkit
+
+The repository also holds the toolkit nocompiler started as. It covers ELF, PE/COFF and Mach-O loaders, x86-64 and AArch64 decoders, a SLEIGH runtime (with RISC-V RV64), an IR with lifters, function and CFG recovery, a decompiler to C and a binary differ. Nothing it computes is an input to a proof.
 
 ```sh
-cargo build --release -p nocompiler-cli                     # target/release/nocompiler
-
-# The profile (cc needs clang and ld.lld)
-nocompiler cc -O2 examples/sum.c -o sum.elf                 # compile into the profile and check
-nocompiler check examples/elf/sum.elf                       # the level of every function
-nocompiler disasm examples/elf/sum.elf sum                  # the code as a block/loop tree
-nocompiler export examples/elf/sum.elf --namespace Examples.Sum.Image -o lean/Examples/Sum/Image.lean
-
-# The proofs, and the check that they are about the committed binaries
-cd lean && lake build && lake exe nocompiler-audit && cd ..
-scripts/core/check-proof-controls.sh                        # every mutated binary must break its proof
-
-# The toolkit
+cargo build --release -p nocompiler-cli     # target/release/nocompiler
 nocompiler funcs /bin/ls
+nocompiler decompile <binary> <symbol|address|all>
 nocompiler diff /bin/true /bin/false
 ```
 
-## Formally verified in Lean 4
+See [docs/toolkit](docs/toolkit/README.md).
 
-Each theorem is proved once for every binary, with only the standard axioms ([Audit.lean](lean/Audit.lean)).
+## Layout
 
-- **Your theorem holds on the machine.** It is a statement about the CPU running the bytes ([Adequacy.lean](lean/NoCompiler/Adequacy.lean)).
-- **The checker's verdict is a theorem.** A function accepted at L1 has structured control flow; at L2 its frame rules hold too.
-- **Proofs work on the structure.** A proof over the block/loop tree holds on the machine ([SSem.lean](lean/NoCompiler/SSem.lean)).
-- **Proofs compose.** A caller uses only its callee's spec, never its code ([Spec.lean](lean/NoCompiler/Spec.lean)).
-- **Proofs survive linking.** A leaf function's proof holds at every layout ([Relocate.lean](lean/NoCompiler/Relocate.lean)).
-- **Edits keep guarantees.** If B refines A, every proof about A is a proof about B ([refine.md](docs/isa/refine.md)).
+| Path | What |
+| --- | --- |
+| `lean/NoCompiler/` | machine semantics, `Spec`/`VerifiedImg`, adequacy to the hardware step, `Typed/` (type language, ⟦σ⟧, the Lean checker) |
+| `crates/nocompiler-*` | the binary analysis toolkit and decompiler; the typed checker crate is being added |
+| `docs/` | the design note, the soundness proof, `typed/` decisions, toolkit docs |
+| `fixtures/` | the toolkit's test corpus |
 
-Per function you write a spec and one invariant per loop; `nocompiler_auto` does the rest.
-Examples are in [lean/Examples](lean/Examples) and [examples/demo](examples/demo/README.md).
-
-[Docs](docs/README.md) · [Roadmap](docs/ROADMAP.md) · [Contributing](CONTRIBUTING.md) · Apache-2.0
+[Contributing](CONTRIBUTING.md) · Apache-2.0

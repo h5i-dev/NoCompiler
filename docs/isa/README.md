@@ -1,15 +1,11 @@
-# The nocompiler profile
+# The machine model
 
-Read in this order: [profile.md](profile.md) (what the profile is),
-[spec.md](spec.md) (what a proof about a function says),
-[toolchain.md](toolchain.md) (how to get a binary and prove something about
-it), [trust.md](trust.md) (what the result rests on). Then
-[environment.md](environment.md) and [metadata.md](metadata.md) for the
-details, [vocab.md](vocab.md) for the library specifications are written
-with and the checks on specifications themselves, and
-[related-work.md](related-work.md).
+What every nocompiler guarantee is stated over: RV64IM + Zba + Zbb in user mode, with
+Linux syscalls. The typed-RISC-V design itself is in the
+[design note](../Tab%201.md) and the [soundness proof](../健全性の証明.md).
 
-[v1.md](v1.md) is the version 1 specification being implemented (rules R4 to
-R6, conformance levels, the structured form and semantics, relocatable
-proofs); [v1-results.md](v1-results.md) records its acceptance criteria as
-measured.
+- [spec.md](spec.md): the step relations, `Reach`/`Exec`, `Spec` and `VerifiedImg`, what
+  they say about the hardware, and how a signature's meaning ⟦σ⟧ is a `Spec`.
+- [trust.md](trust.md): what a result depends on, by where it comes from (Rust checker,
+  Lean checker, hand proof, assumed contract).
+- [environment.md](environment.md): the syscall model behind `ecall` and its assumptions.

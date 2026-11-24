@@ -1,0 +1,40 @@
+# name  source (relative to musl src/)   symbol   [extra clang flags]
+labs     stdlib/labs.c      labs
+memcmp   string/memcmp.c    memcmp
+bcmp     string/bcmp.c      bcmp
+memrchr  string/memrchr.c   __memrchr
+memchr   string/memchr.c    memchr
+strnlen  string/strnlen.c   strnlen
+strncmp  string/strncmp.c   strncmp
+swab     string/swab.c      swab
+bzero    string/bzero.c     bzero
+memset   string/memset.c    memset
+memcpy   string/memcpy.c    memcpy
+memccpy  string/memccpy.c   memccpy
+memmove  string/memmove.c   memmove
+strlen   string/strlen.c    strlen
+malloc   malloc/mallocng/malloc.c  malloc
+free     malloc/mallocng/free.c    free
+fwrite   stdio/fwrite.c     fwrite
+memchr-ic  string/memchr.c   memchr   -mllvm -riscv-disable-using-constant-pool-for-large-ints
+memccpy-ic string/memccpy.c  memccpy  -mllvm -riscv-disable-using-constant-pool-for-large-ints
+strlen-ic  string/strlen.c   strlen   -mllvm -riscv-disable-using-constant-pool-for-large-ints
+wmemcpy  string/wmemcpy.c   wmemcpy
+wmemset  string/wmemset.c   wmemset
+wmemcmp  string/wmemcmp.c   wmemcmp
+wmemchr  string/wmemchr.c   wmemchr
+stpncpy  string/stpncpy.c   __stpncpy
+strncpy  string/strncpy.c   strncpy
+strncmp-x  string/strncmp.c  strncmp   -mllvm -riscv-disable-using-constant-pool-for-large-ints -mllvm -jump-is-expensive=false
+memcpy-x   string/memcpy.c   memcpy    -mllvm -riscv-disable-using-constant-pool-for-large-ints -mllvm -jump-is-expensive=false
+memchr-x   string/memchr.c   memchr    -mllvm -riscv-disable-using-constant-pool-for-large-ints -mllvm -jump-is-expensive=false
+memccpy-x  string/memccpy.c  memccpy   -mllvm -riscv-disable-using-constant-pool-for-large-ints -mllvm -jump-is-expensive=false
+stpncpy-x  string/stpncpy.c  __stpncpy -mllvm -riscv-disable-using-constant-pool-for-large-ints -mllvm -jump-is-expensive=false
+_Exit     exit/_Exit.c       _Exit
+__towrite stdio/__towrite.c  __towrite
+__fwritex stdio/fwrite.c     __fwritex
+bsearch   stdlib/bsearch.c   bsearch
+ffsl      misc/ffsl.c        ffsl
+div       stdlib/div.c       div
+a64l      misc/a64l.c        a64l
+l64a      misc/a64l.c        l64a

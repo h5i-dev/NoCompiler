@@ -1,13 +1,11 @@
-# nocompiler: a formal-verification-friendly RISC-V profile, with Lean 4 proofs.
+# nocompiler: typed RISC-V assembly with a memory-safety checker, and a binary analysis toolkit.
 #
-# crates/nocompiler    the core: profile checker, metadata, Lean exporter (library `nocompiler`); lean/ has the proofs
-# crates/nocompiler-*  the binary analysis toolkit (loaders, decoders, IR, decompiler, differ, ...)
-# experiment/crates/   the PTX and RV32 firmware verifiers (`nocompiler-exp`), experiments
+# crates/nocompiler-typed  the typed-RISC-V checker (lean/ has the machine model and the Lean side)
+# crates/nocompiler-*      the binary analysis toolkit (loaders, decoders, IR, decompiler, differ, ...)
 #
-# The core library depends on no other crate. Toolkit crate boundaries are
-# documented in docs/toolkit/ROADMAP-toolkit.md.
+# Toolkit crate boundaries are documented in docs/toolkit/boundaries.md.
 [workspace]
-members = ["crates/*", "experiment/crates/*"]
+members = ["crates/*"]
 resolver = "3"
 
 [workspace.package]
@@ -25,7 +23,6 @@ keywords = ["risc-v", "formal-verification", "lean4", "binary", "elf"]
 categories = ["command-line-utilities", "development-tools::debugging"]
 
 [workspace.dependencies]
-nocompiler = { path = "crates/nocompiler", version = "0.1.0" }
 nocompiler-core = { path = "crates/nocompiler-core", version = "0.1.0" }
 nocompiler-format = { path = "crates/nocompiler-format", version = "0.1.0" }
 nocompiler-arch = { path = "crates/nocompiler-arch", version = "0.1.0" }
@@ -38,7 +35,6 @@ nocompiler-diff = { path = "crates/nocompiler-diff", version = "0.1.0" }
 nocompiler-ir = { path = "crates/nocompiler-ir", version = "0.1.0" }
 nocompiler-decomp = { path = "crates/nocompiler-decomp", version = "0.1.0" }
 nocompiler-api = { path = "crates/nocompiler-api", version = "0.1.0" }
-nocompiler-ptx = { path = "experiment/crates/nocompiler-ptx", version = "0.1.0" }
 
 # Kept deliberately short. Loaders and decoders are written here rather than
 # pulled in, because provenance tagging and hostile-input behaviour are the

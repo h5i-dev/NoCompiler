@@ -1,0 +1,567 @@
+{
+ "checker": "lean/scripts/kernelcheck.py",
+ "meaning": "proved: Fn.check_sound with a kernel proof of fn.check on the linked image (standard axioms only); checked: the Rust checker alone (trusted)",
+ "files": [
+  {
+   "file": "tests/typed/corpus/musl/_Exit.s",
+   "functions": [
+    {
+     "name": "_Exit",
+     "status": "proved",
+     "kernel": {
+      "result": "proved",
+      "seconds": 1.5,
+      "peak_kb": 613824
+     },
+     "evidence": {
+      "lean_module": "lean/scripts/kernelcheck.py (linked image)",
+      "theorem": "chk__Exit : fn__Exit.check code = true",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ],
+      "callees_assumed": []
+     }
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/__towrite.s",
+   "functions": [
+    {
+     "name": "__towrite",
+     "status": "proved",
+     "kernel": {
+      "result": "proved",
+      "seconds": 12.1,
+      "peak_kb": 1800256
+     },
+     "evidence": {
+      "lean_module": "lean/scripts/kernelcheck.py (linked image)",
+      "theorem": "chk___towrite : fn___towrite.check code = true",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ],
+      "callees_assumed": []
+     }
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/bcmp.s",
+   "functions": [
+    {
+     "name": "bcmp",
+     "status": "proved",
+     "kernel": {
+      "result": "proved",
+      "seconds": 1.9,
+      "peak_kb": 652320
+     },
+     "evidence": {
+      "lean_module": "lean/scripts/kernelcheck.py (linked image)",
+      "theorem": "chk_bcmp : fn_bcmp.check code = true",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ],
+      "callees_assumed": [
+       "memcmp"
+      ]
+     }
+    },
+    {
+     "name": "memcmp",
+     "status": "declared"
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/bzero.s",
+   "functions": [
+    {
+     "name": "bzero",
+     "status": "proved",
+     "kernel": {
+      "result": "proved",
+      "seconds": 1.9,
+      "peak_kb": 654452
+     },
+     "evidence": {
+      "lean_module": "lean/scripts/kernelcheck.py (linked image)",
+      "theorem": "chk_bzero : fn_bzero.check code = true",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ],
+      "callees_assumed": [
+       "memset"
+      ]
+     }
+    },
+    {
+     "name": "memset",
+     "status": "declared"
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/div.s",
+   "functions": [
+    {
+     "name": "div",
+     "status": "proved",
+     "kernel": {
+      "result": "proved",
+      "seconds": 3.3,
+      "peak_kb": 790048
+     },
+     "evidence": {
+      "lean_module": "lean/scripts/kernelcheck.py (linked image)",
+      "theorem": "chk_div : fn_div.check code = true",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ],
+      "callees_assumed": []
+     }
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/ffsl.s",
+   "functions": [
+    {
+     "name": "ffsl",
+     "status": "proved",
+     "kernel": {
+      "result": "proved",
+      "seconds": 11.1,
+      "peak_kb": 1736640
+     },
+     "evidence": {
+      "lean_module": "lean/scripts/kernelcheck.py (linked image)",
+      "theorem": "chk_ffsl : fn_ffsl.check code = true",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ],
+      "callees_assumed": []
+     }
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/l64a.s",
+   "functions": [
+    {
+     "name": "l64a",
+     "status": "checked",
+     "kernel": {
+      "result": "out-of-memory",
+      "seconds": 64.5
+     }
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/labs.s",
+   "functions": [
+    {
+     "name": "labs",
+     "status": "proved",
+     "kernel": {
+      "result": "proved",
+      "seconds": 3.6,
+      "peak_kb": 732372
+     },
+     "evidence": {
+      "lean_module": "lean/scripts/kernelcheck.py (linked image)",
+      "theorem": "chk_labs : fn_labs.check code = true",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ],
+      "callees_assumed": []
+     }
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/memccpy-x.s",
+   "functions": [
+    {
+     "name": "memccpy",
+     "status": "checked",
+     "kernel": {
+      "result": "out-of-memory",
+      "seconds": 76.9
+     }
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/memcmp.s",
+   "functions": [
+    {
+     "name": "memcmp",
+     "status": "proved",
+     "kernel": {
+      "result": "proved",
+      "seconds": 7.6,
+      "peak_kb": 1225384
+     },
+     "evidence": {
+      "lean_module": "lean/scripts/kernelcheck.py (linked image)",
+      "theorem": "chk_memcmp : fn_memcmp.check code = true",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ],
+      "callees_assumed": []
+     }
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/memcpy-x.s",
+   "functions": [
+    {
+     "name": "memcpy",
+     "status": "checked",
+     "kernel": {
+      "result": "out-of-memory",
+      "seconds": 100.4
+     }
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/memcpy.s",
+   "functions": [
+    {
+     "name": "memcpy",
+     "status": "checked",
+     "kernel": {
+      "result": "out-of-memory",
+      "seconds": 113.1
+     }
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/memmove.s",
+   "functions": [
+    {
+     "name": "memmove",
+     "status": "checked",
+     "kernel": {
+      "result": "out-of-memory",
+      "seconds": 83.7
+     }
+    },
+    {
+     "name": "memcpy",
+     "status": "declared"
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/memrchr.s",
+   "functions": [
+    {
+     "name": "__memrchr",
+     "status": "proved",
+     "kernel": {
+      "result": "proved",
+      "seconds": 5.9,
+      "peak_kb": 972072
+     },
+     "evidence": {
+      "lean_module": "lean/scripts/kernelcheck.py (linked image)",
+      "theorem": "chk___memrchr : fn___memrchr.check code = true",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ],
+      "callees_assumed": []
+     }
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/memset.s",
+   "functions": [
+    {
+     "name": "memset",
+     "status": "checked",
+     "kernel": {
+      "result": "out-of-memory",
+      "seconds": 73.1
+     }
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/stpncpy-x.s",
+   "functions": [
+    {
+     "name": "__stpncpy",
+     "status": "checked",
+     "kernel": {
+      "result": "out-of-memory",
+      "seconds": 91.3
+     }
+    },
+    {
+     "name": "memset",
+     "status": "declared"
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/stpncpy.s",
+   "functions": [
+    {
+     "name": "__stpncpy",
+     "status": "checked",
+     "kernel": {
+      "result": "out-of-memory",
+      "seconds": 92.6
+     }
+    },
+    {
+     "name": "memset",
+     "status": "declared"
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/strncmp-x.s",
+   "functions": [
+    {
+     "name": "strncmp",
+     "status": "proved",
+     "kernel": {
+      "result": "proved",
+      "seconds": 15.6,
+      "peak_kb": 2181064
+     },
+     "evidence": {
+      "lean_module": "lean/scripts/kernelcheck.py (linked image)",
+      "theorem": "chk_strncmp : fn_strncmp.check code = true",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ],
+      "callees_assumed": []
+     }
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/strncmp.s",
+   "functions": [
+    {
+     "name": "strncmp",
+     "status": "checked",
+     "kernel": {
+      "result": "out-of-memory",
+      "seconds": 76.2
+     }
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/strncpy.s",
+   "functions": [
+    {
+     "name": "strncpy",
+     "status": "proved",
+     "kernel": {
+      "result": "proved",
+      "seconds": 5.2,
+      "peak_kb": 887844
+     },
+     "evidence": {
+      "lean_module": "lean/scripts/kernelcheck.py (linked image)",
+      "theorem": "chk_strncpy : fn_strncpy.check code = true",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ],
+      "callees_assumed": [
+       "__stpncpy"
+      ]
+     }
+    },
+    {
+     "name": "__stpncpy",
+     "status": "declared"
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/strnlen.s",
+   "functions": [
+    {
+     "name": "strnlen",
+     "status": "proved",
+     "kernel": {
+      "result": "proved",
+      "seconds": 6.3,
+      "peak_kb": 1019872
+     },
+     "evidence": {
+      "lean_module": "lean/scripts/kernelcheck.py (linked image)",
+      "theorem": "chk_strnlen : fn_strnlen.check code = true",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ],
+      "callees_assumed": [
+       "memchr"
+      ]
+     }
+    },
+    {
+     "name": "memchr",
+     "status": "declared"
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/swab.s",
+   "functions": [
+    {
+     "name": "swab",
+     "status": "proved",
+     "kernel": {
+      "result": "proved",
+      "seconds": 7.4,
+      "peak_kb": 1214348
+     },
+     "evidence": {
+      "lean_module": "lean/scripts/kernelcheck.py (linked image)",
+      "theorem": "chk_swab : fn_swab.check code = true",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ],
+      "callees_assumed": []
+     }
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/wmemchr.s",
+   "functions": [
+    {
+     "name": "wmemchr",
+     "status": "proved",
+     "kernel": {
+      "result": "proved",
+      "seconds": 5.2,
+      "peak_kb": 1018948
+     },
+     "evidence": {
+      "lean_module": "lean/scripts/kernelcheck.py (linked image)",
+      "theorem": "chk_wmemchr : fn_wmemchr.check code = true",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ],
+      "callees_assumed": []
+     }
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/wmemcmp.s",
+   "functions": [
+    {
+     "name": "wmemcmp",
+     "status": "proved",
+     "kernel": {
+      "result": "proved",
+      "seconds": 11.2,
+      "peak_kb": 1710428
+     },
+     "evidence": {
+      "lean_module": "lean/scripts/kernelcheck.py (linked image)",
+      "theorem": "chk_wmemcmp : fn_wmemcmp.check code = true",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ],
+      "callees_assumed": []
+     }
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/wmemcpy.s",
+   "functions": [
+    {
+     "name": "wmemcpy",
+     "status": "proved",
+     "kernel": {
+      "result": "proved",
+      "seconds": 7.6,
+      "peak_kb": 1318780
+     },
+     "evidence": {
+      "lean_module": "lean/scripts/kernelcheck.py (linked image)",
+      "theorem": "chk_wmemcpy : fn_wmemcpy.check code = true",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ],
+      "callees_assumed": []
+     }
+    }
+   ]
+  },
+  {
+   "file": "tests/typed/corpus/musl/wmemset.s",
+   "functions": [
+    {
+     "name": "wmemset",
+     "status": "proved",
+     "kernel": {
+      "result": "proved",
+      "seconds": 4.7,
+      "peak_kb": 978912
+     },
+     "evidence": {
+      "lean_module": "lean/scripts/kernelcheck.py (linked image)",
+      "theorem": "chk_wmemset : fn_wmemset.check code = true",
+      "axioms": [
+       "propext",
+       "Classical.choice",
+       "Quot.sound"
+      ],
+      "callees_assumed": []
+     }
+    }
+   ]
+  }
+ ]
+}

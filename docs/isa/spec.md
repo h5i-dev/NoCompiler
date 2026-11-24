@@ -1,24 +1,53 @@
-# Function specifications and what a proof establishes
+# The machine-level judgment, and how a signature becomes one
 
-The definitions are in `lean/NoCompiler/Spec.lean`; the run predicates in
-`lean/NoCompiler/Step.lean`; what they mean for the machine in
-`lean/NoCompiler/Adequacy.lean`. This page explains them.
+Every guarantee in nocompiler is a statement of one form, `VerifiedImg`, about a
+function in a code image. A function the typed checker accepts, an unsafe function
+proved by hand, and an assumed contract all state the same thing: `VerifiedImg` of the
+specification a signature means (⟦σ⟧, below).
 
-## The predicate a proof is about
+The definitions are in `lean/NoCompiler/Step.lean` (step relations, `Reach`, `Exec`),
+`lean/NoCompiler/Spec.lean` (`Spec`, `Entry`, `VerifiedImg`) and
+`lean/NoCompiler/Adequacy.lean` (what they mean for the hardware step). This page
+explains them.
 
-`Reach c P D Q s`: every execution from state `s`, with instructions taken
-from the code image `c`, reaches a state satisfying `Q`; until it does, it
-stays inside the code region `D`, never faults (misaligned access or jump,
-an instruction outside the profile, an unmodeled syscall), and only reads and
-writes memory the permission `P` allows. It is an inductive predicate, so
-every execution is finite: termination is always part of the claim. Where
-the environment chooses (how much a `write` accepts, what a `read` returns),
-every choice has to reach `Q`.
+## Two step relations
 
-`Exec c P D Q s` is `Reach` stopped at the first state that leaves `D` or
-has exited. That first state is the return, seen from inside a function.
+- `HwStep` is the machine: fetch the 32-bit word at `pc` from memory, decode it
+  (`lean/NoCompiler/Isa.lean`), execute it (`lean/NoCompiler/Machine.lean`), or hand an
+  `ecall` to the environment model (`lean/NoCompiler/Env.lean`, [environment.md](environment.md)).
+  It checks no permission.
+- `Step c P` is what proofs and the checker reason about. The instruction comes from the
+  code image `c` (the `.text` words), not from memory, and every load, store and syscall
+  buffer must lie in the permission `P`.
 
-## A specification
+A misaligned access, a jump to an address that is not a multiple of 4, an undecodable
+word and an unmodelled syscall have no successor in either relation.
+
+## Permissions are byte by byte
+
+A `Perm` is two lists of regions: `rd` (read only) and `wr` (read and write). A region is
+`size` bytes from `base`, wrapping at 2^64. `P.canRead a n` says that every one of the `n`
+bytes from `a` is readable; `P.canWrite a n` says the same for writing. The bytes need not
+lie in one region. This is decision 10 of the design note: a capability returned by
+`give` may span two regions of the receiver's permission. The one-region form survives as
+the lemmas `Perm.canRead_of_covers` and `Perm.canWrite_of_covers`.
+
+## Reach and Exec
+
+`Reach c P D Q s` says that every execution from `s` reaches a state satisfying `Q`. Until
+it does, the execution stays inside the code region `D`, takes only `Step c P` steps and
+never gets stuck. It is inductive, so every execution is finite: termination is part of
+the claim. Where the environment chooses (how many bytes a `write` takes, what a `read`
+returns), every choice must reach `Q`.
+
+`Exec c P D Q s` is `Reach` stopped at the first state that leaves `D` or has exited. Seen
+from inside a function, that first state is its return.
+
+The program logic is proved from these definitions, not trusted: `Reach.mono`,
+`Reach.bind`, `Reach.trans`, `Reach.inv`, `Reach.loop` (an invariant and a decreasing
+measure), `Reach.exec_step` and `Reach.sys_step`.
+
+## Spec and VerifiedImg
 
 ```lean
 structure Spec (α : Type) where
@@ -30,118 +59,83 @@ structure Spec (α : Type) where
   stack  : Nat := 0                         -- bytes below the entry sp it may use
 ```
 
-`α` holds the logical arguments: for `sum`, the array's address and its
-contents as a list. Memory regions may depend on them and on the entry state
-(a region at the address passed in `a0`).
+`α` holds the logical arguments. Regions may depend on them and on the entry state.
+`spec.perm a s` allows `reads` for reading, and `writes` together with `[sp - stack, sp)`
+for both.
 
-`VerifiedImg c D entry spec` says: for every `a` and every state `s` with
-`Entry D entry s` (pc at the entry, not exited, return address outside `D`
-and 4-byte aligned, `sp` 16-byte aligned) and `spec.pre a s`,
-
-```lean
-Exec c (spec.perm a s) D (spec.Done a s) s
-```
-
-where `spec.perm a s` allows `reads` for reading, `writes` and
-`[sp - stack, sp)` for both, and `spec.Done a s s'` is either
-
-- returned: not exited, `s'.pc = s.reg ra`, `Preserved s s'` (sp, gp, tp,
-  s0 to s11 unchanged) and `spec.post a s s'`; or
-- exited, and `spec.onExit a s s'`.
-
-So one theorem gives functional correctness (`post`), memory safety (every
-access inside `perm`, every access aligned), the calling convention
-(`Preserved`, return to `ra`) and termination.
-
-`D` is the function's code together with everything it calls, transitively;
-`nocompiler export` writes it as `<name>_dom`. Requiring the return address outside
-`D` is what lets "leaving `D`" mean "returning".
-
-### Over every layout: `Verified M f spec` (v1)
-
-`VerifiedImg` is about one code image at fixed addresses. The v1 statement
-(`lean/NoCompiler/Module.lean`, [v1.md](v1.md)) is about a module: relocatable
-functions (words with their relocated fields zero, and the `call`,
-`pcrelHi`, `pcrelLoI`/`S` relocations medany code has) and data.
+`Entry D entry s`: `pc` is at the entry, the process has not exited, the return address
+is outside `D` and 4-byte aligned, and `sp` is 16-byte aligned.
 
 ```lean
-def Verified (M : Module) (f : Sym) (spec : Spec α) : Prop :=
-  ∀ L, M.Ok L → VerifiedImg (M.link L) (M.dom L f) (L.addr f) spec
+def VerifiedImg (c : Code) (D : Dom) (entry : Word) (sp : Spec α) : Prop :=
+  ∀ a s, Entry D entry s → sp.pre a s → Exec c (sp.perm a s) D (sp.Done a s) s
 ```
 
-`L : Layout` gives every symbol an address; `M.Ok L` says the functions are
-aligned, inside the image, disjoint, uniquely named, and every relocation in
-reach; `M.link L` is the image they make there and `M.dom L f` the code of
-`f` and its callees. `Verified.img` gives the code-level statement at any one
-layout. `link` is not trusted: the audit compares it, at the layout read from
-an ELF, with the ELF's bytes.
+`sp.Done a s s'` holds in one of two cases:
+- The function returned: not exited, `pc` at the entry `ra`, `sp`, `gp`, `tp` and `s0`–`s11`
+  as on entry (`Preserved`), and `post`.
+- The process exited, and `onExit` holds.
+
+`D` is the code of the function and of everything it calls. Requiring the return address
+outside `D` is what lets "leaving `D`" mean "returning".
 
 ## What comes for free
 
-- **Frame** (`VerifiedImg.frame`): memory outside `writes` and the stack region
-  is unchanged at return. It is derived from the permission once, in
-  `Reach.frame`, and never has to be proved per function.
-- **Calls** (`VerifiedImg.call`): inside a caller's proof, a call to a verified
-  function continues from every state the callee's specification allows,
-  with its frame property, provided the callee's region and permission are
-  within the caller's. This is the modular rule: a caller's proof uses the
-  callee's specification, never its code.
-- **Loops** (`Reach.loop`): an invariant `I` at the loop head and a measure
-  that decreases on every trip around the loop.
-- **The machine** (`VerifiedImg.hw`, from `lean/NoCompiler/Adequacy.lean`): the step
-  relation proofs use takes instructions from the image and checks
-  permissions. The machine (`HwStep`) fetches from memory and checks
-  nothing. Given that memory holds the image when the function is entered
-  (`Code.Loaded`, what the loader does) and that nothing the function may
-  write overlaps the code (`Protected`), every machine execution from the
-  entry state
-  - can always take a step while inside `D`, and every step it can take is
-    one the permission allows (`Exec.hw_safe`);
-  - satisfies `Done` when it leaves `D` or exits (`Exec.hw_final`);
-  - cannot stay in `D` forever (`Exec.hw_terminates`).
+- **Frame** (`VerifiedImg.frame`): memory that the permission does not let the function
+  write is unchanged at the end.
+- **Calls** (`VerifiedImg.call`): inside a caller with region `D` and permission `P`, a
+  call to a verified function continues from every way the callee can end. This holds
+  when the callee's region is inside `D` and its permission is below `P`. A caller uses
+  the callee's specification, never its code.
+- **The machine** (`VerifiedImg.hw`, from `Adequacy.lean`). Assume memory holds the image on
+  entry (`Code.Loaded`) and nothing the function may write overlaps the code
+  (`Protected`). Then every hardware execution from the entry state has three properties:
+  - It can always take a step while inside `D`, and every step it takes is a step the
+    permission allows (`Exec.hw_safe`).
+  - It satisfies `Done` when it leaves `D` or exits (`Exec.hw_final`).
+  - It cannot stay in `D` forever (`Exec.hw_terminates`).
+
+## ⟦σ⟧: a signature as a Spec
+
+`lean/NoCompiler/Typed/Lang.lean` defines the type language of the design note:
+- index expressions and Presburger constraints;
+- `int(e)`;
+- byte capabilities `e ↦ bytes[n] ro|rw [heap]` with fields, opaque tokens, and guarded
+  capabilities;
+- signatures with `in`, `borrow`, `take`, `where`, `out`, `give` and `stack`.
+
+`lean/NoCompiler/Typed/Sem.lean` turns a signature `σ` into `σ.spec T : Spec (Val × TokFp)`.
+The logical argument is a valuation of the index variables, together with a footprint
+for each token. `T` gives each token's invariant (`TokDef`), which may depend only on the
+bytes of its footprint.
+
+- `pre` is the entry conditions P2–P6 of the soundness proof. The registers are as `in`
+  says, the entry constraint holds, and every borrowed and taken capability is valid. The
+  writable capabilities and tokens do not overlap each other, and none of them meets the
+  stack.
+- The permission gives each capability's region (read only for `ro`; writable for `rw`
+  and for a token's regions), plus the stack.
+- `post` is the exit conditions Q2–Q4:
+  - the `out` registers have their types under an extension of the entry valuation, and
+    the exit constraint holds;
+  - the borrowed capabilities (with their exit fields) and the given ones are valid and
+    separated;
+  - every byte of a returned token or a given capability comes from the `take`
+    capabilities and the borrowed tokens (the pool).
+- A run that ends the process promises nothing more.
+
+```lean
+def Meets (c : Code) (D : Dom) (entry : Word) (T : TokEnv) (σ : Sig) : Prop :=
+  VerifiedImg c D entry (σ.spec T)
+```
+
+`Meets` is the total version, which is the default. The partial version, for functions
+marked `partial`, is not defined yet. The design note defers it until a partial function
+is actually needed.
 
 ## The conditions are the caller's
 
-Nothing enforces a specification at run time. The theorem is conditional:
-if the function is entered as `Entry` and `pre` say, the conclusions hold.
-Unverified code in the same process can break the precondition, for example
-by overwriting the array while `sum` runs (there are no threads in the
-model, so only by being the caller). VerifiedImg callers discharge callee
-preconditions in their own proofs; the conditions at the outermost verified
-function are the assumptions of the whole result.
-
-## Writing a proof
-
-`lean/Examples/Sum.lean` is the worked example: the specification of
-`u64 sum(const u64 *a, u64 n)`, the loop invariant at the loop head the
-compiler chose, and the proof over the compiled instructions.
-`lean/Examples/Sum2.lean` is the example for calls: a 32-byte frame saving
-`ra` and three callee-saved registers, two calls through `VerifiedImg.call`, and
-the frame reloaded with the lemmas of `lean/NoCompiler/Mem.lean` (a load after a
-store at the same and at a disjoint slot, an array untouched by writes
-outside it). `lean/Examples/Hello.lean` is the example for syscalls: a
-`write_all` loop whose invariant is the trace (`writtenTo` in
-`lean/NoCompiler/Trace.lean`), an `ecall` stepped with `Reach.sys_step` and taken
-apart by the outcomes `Sys` allows, and a function that ends the process
-(`onExit`) and reads `.rodata` (`Segment.Loaded`). The tactics:
-
-| Tactic | Does |
-| --- | --- |
-| `nocompiler_step [facts]` | steps over one instruction: looks it up in the image, discharges "pc in region" and "not exited", proves the permission side condition when there is none, normalises the next state. A load or store leaves its permission goal and alignment `if`. |
-| `nocompiler_steps n [facts]` | `nocompiler_step` n times |
-| `nocompiler_norm [facts]` | the normaliser on its own |
-| `nocompiler_same` | closes `Same s0 s' rs` (registers outside `rs` unchanged) along a sequence of writes |
-| `nocompiler_auto f s he (loop_inv pc inv measure μ)*` | the whole run of a leaf function (`lean/NoCompiler/Auto.lean`): steps every path between the loop heads of its block/loop tree `f`, discharges the permission, alignment, `Same`/`Preserved` and return conditions, and leaves each invariant, measure and postcondition as a goal named after its path, in a normal form of natural numbers and lists |
-
-A conditional branch leaves an `if` on its condition, taken apart with
-`by_cases` or `split`. `lean/NoCompiler/Arith.lean` has the word-arithmetic
-rewrites compiled code needs (a counter decremented with `addi -1`, a
-pointer advanced by a constant, alignment of `a + 8k`). Prefer them to
-`simp` on `toNat` of an expression with a 64-bit literal, which can be
-very slow.
-
-Facts about the specification rather than the code (buffers updated in
-place, folds, the first zero byte, frames and regions) are in
-`lean/NoCompiler/Vocab/`; [vocab.md](vocab.md) lists them, and the checks
-that a specification says what it should (spec mutation tests, and
-computable specifications run against independent references).
+Nothing enforces a specification at run time. The theorem is conditional: if the
+function is entered as `Entry` and `pre` say, the conclusions hold. Callers discharge
+callee preconditions in their own proofs, or the checker discharges them at each call.
+The conditions at the outermost function are the assumptions of the whole result.

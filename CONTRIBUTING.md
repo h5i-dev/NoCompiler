@@ -29,8 +29,9 @@ and under what licence, in the file that uses it.
 ## What a change has to come with
 
 Every claim this tool makes is measured, and a change that makes a claim has to
-bring its measurement. `docs/ROADMAP.md` says what each part of the core is gated on
-(and `docs/toolkit/ROADMAP-toolkit.md` for the toolkit); the
+bring its measurement. For the typed checkers, the measurements are the shared corpus
+(`tests/typed/corpus/`) and the trial results (`docs/typed/musl-trial.md`).
+`docs/toolkit/ROADMAP-toolkit.md` says what each part of the toolkit is gated on. The
 short version:
 
 - **An external oracle wherever one exists.** A decoder is compared against
@@ -57,42 +58,31 @@ short version:
 
 ## Building
 
-This checkout is release-only. The development machine has 7.5 GB of RAM, and a
-dev-profile build of this workspace is too large for it. Every command takes
-`--release`, and the binaries are under `target/release/`:
+The shared development machine is small, so build the release profile and cap the jobs:
 
 ```
 CARGO_BUILD_JOBS=4 cargo build --release
 CARGO_BUILD_JOBS=4 cargo test --release
-(cd lean && lake build && lake exe nocompiler-audit)   # the core's proofs and their audit
-bash examples/build.sh                          # rebuild the examples, compare with examples/elf/
-bash scripts/toolkit/build-fixtures.sh         # the toolkit corpus its gates measure against
-bash scripts/toolkit/check-determinism.sh      # the same input must give the same output
+(cd lean && lake build)                          # the Lean library and its tests (TypedTests)
+bash scripts/toolkit/build-fixtures.sh           # the toolkit corpus its gates measure against
+bash scripts/toolkit/check-determinism.sh        # the same input must give the same output
 ```
 
-The core's oracle tests (`crates/nocompiler/tests`) need llvm-mc, clang, ld.lld,
-qemu-riscv64, lake and the Sail RISC-V emulator; each tool can be named by an
-environment variable (`LLVM_MC`, `CLANG`, `LLD`, `QEMU_RISCV64`, `LAKE`,
-`SAIL_RISCV_SIM`; the CI workflow shows which Sail release). A test whose tool is
-missing prints `SKIPPED` and its reason.
+Lean proofs use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`):
+no `sorry`, no `native_decide`. Check a new theorem with `#print axioms`.
 
-Where things go: the core is `crates/nocompiler`, `lean/`, `examples/` and
-`docs/isa/`; experiments are under `experiment/`, the toolkit is the other
-`crates/nocompiler-*` crates (docs in `docs/toolkit/`, corpus in `fixtures/`). The core
-library depends on nothing in either.
+The machine model's oracle tests compare decoding against llvm-mc and semantics against
+qemu-riscv64 and the Sail RISC-V emulator. They are being restored as
+`crates/nocompiler-rv`, and need llvm-mc, clang, ld.lld, qemu-riscv64, lake and the Sail
+emulator. A test whose tool is missing prints `SKIPPED` and its reason.
 
-Whether a dev build is affordable is a fact about the machine, so the guards
-are opt-in and not committed settings:
-
-- `scripts/core/no-debug-guard.sh on` puts a regular file at `target/debug`, so cargo
-  stops with "failed to create directory ... File exists" before it compiles
-  anything. `off` and `status` do what they say.
-- `scripts/core/deny-debug-build.py` is a PreToolUse hook for coding agents that
-  refuses dev-profile cargo commands, target-directory redirection and attempts
-  to remove the guard.
-
-Do not work around a "File exists" failure on `target/debug`: build release,
-or turn the guard off deliberately.
+Where things go:
+- The core is the Lean library `lean/NoCompiler/` and the typed checker crate.
+- Tests, examples, the shared corpus `tests/typed/corpus/` and benchmarks live outside
+  the core and only use it. Nothing in the core is shaped around a particular example or
+  benchmark.
+- The toolkit is the other `crates/nocompiler-*` crates (docs in `docs/toolkit/`, corpus
+  in `fixtures/`). The core depends on nothing in it.
 
 CI runs on disposable runners and builds the dev profile on purpose. Do not add
 `--release` there. Dev profile panics on an overflowing `-` where release wraps
@@ -117,7 +107,7 @@ CI on GitHub runs only for pull requests. Before pushing, run its jobs here:
 
 ```sh
 scripts/ci/local.sh check   # always: fmt, clippy
-scripts/ci/local.sh core    # lean/**, crates/nocompiler/**, crates/nocompiler-cli/**, examples/**
+scripts/ci/local.sh core    # lean/**, the typed checker, examples/**
 scripts/ci/local.sh test    # any crate: the whole suite with the fixture corpus, in a container
 ```
 

@@ -1,5 +1,0 @@
-nocompiler-stack 1
-# refine-sum-a.elf with sum replaced by sum-unrolled.s (tests/treediff.rs, tests/stack.rs)
-base 751554eceaa0cd0f5324733c5d72de7c9b2c505041f49bcaf69093464211428b ../../../../examples/elf/refine-sum-a.elf
-patch ce3d31dffecae9c2c4b74c57405767a65eb0ac051f82a33a578b70e20ff13a89 sum-unrolled.s
-result d315c45c349bde97ca1f3cc77f8182020b05e51d7955055276831ba025576e6f

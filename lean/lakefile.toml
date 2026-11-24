@@ -1,36 +1,21 @@
 name = "nocompiler"
 version = "0.1.0"
-defaultTargets = ["NoCompiler", "Examples", "LPS", "Demo", "nocompiler-audit"]
+defaultTargets = ["NoCompiler", "TypedTests"]
 
-# No dependencies on purpose: the trusted base of an nocompiler proof is the Lean
+# No dependencies on purpose: the trusted base of a nocompiler proof is the Lean
 # kernel plus the definitions docs/isa/trust.md lists.
 [[lean_lib]]
 name = "NoCompiler"
+# Native code for `#eval` (the corpus harness runs Fn.check through `lake lean`); the kernel
+# never runs it, so the trusted base is unchanged (no native_decide anywhere).
+precompileModules = true
 
+# Tests of the core library; not part of it.
+[[lean_lib]]
+name = "TypedTests"
+globs = ["TypedTests.+"]
+
+# Functional proofs on top of the type check (not part of the core library).
 [[lean_lib]]
 name = "Examples"
-
-# A Lean port of LPS (theorem-labs/rocq-linux-process-semantics, MIT) at f1006fe8, the model oss-verify's
-# statements are written against (docs/design/lps-bridge.md).
-[[lean_lib]]
-name = "LPS"
-# No root file: every module under lean/LPS.
-globs = ["LPS.+"]
-
-# The A-vs-B demo (examples/demo/README.md).
-[[lean_lib]]
-name = "Demo"
-
-[[lean_exe]]
-name = "nocompiler-audit"
-root = "Audit"
-
-# Runs compressed code in the extension's semantics, for examples/demo/test/rvc_exec.py.
-[[lean_exe]]
-name = "rvc-run"
-root = "RvcRun"
-
-# Evaluates the example specifications for scripts/core/check-spec-references.py.
-[[lean_exe]]
-name = "spec-eval"
-root = "SpecEval"
+globs = ["Examples.+"]

@@ -1,0 +1,28 @@
+# musl 1.2.5 src/string/memccpy.c (MIT, see examples/musl/COPYRIGHT), compiled by scripts/musl-trial/build.sh
+# with -mllvm -riscv-disable-using-constant-pool-for-large-ints -mllvm -jump-is-expensive=false
+# (constants inline; && kept as branches). Instructions as compiled, unchanged (verify.sh).
+# Annotations are the lines that start with hash-colon (docs/typed/syntax.md).
+# Predicted (fixed before building this variant): reject
+# Expected now (after reading the compiled code): reject: S2 6 violations (4 non-loop backward edges); xor alignment test, so the sd at 0x118 fails 8 | a. Annotated: signature and the three natural loops 0x18, 0x58, 0x100. Not annotated: the non-loop backward targets (joins under the natural-loop reading).
+#! expect memccpy: accept
+#! expect-interval memccpy: reject cfg
+#: fn memccpy [d, s, n]
+#:   in     a0: int(d), a1: int(s), a3: int(n)
+#:   borrow d |-> bytes[n] rw
+#:   borrow s |-> bytes[n] ro
+#:   out    a0: int
+#:   stack  0
+[at .Lmemccpy_18]
+#: inv [m] a0: int(d + n - m + 1), a1: int(s + n - m), a3: int(m) where 1 <= m <= n decreases m
+[at .Lmemccpy_58]
+#: inv [i] a7: int(i) where 0 <= i <= n - 1 decreases n - i
+[at .Lmemccpy_100]
+#: inv [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 8 <= m <= n, 8 | s + n - m, 8 | d + n - m decreases m
+[at .Lmemccpy_10]
+#: join [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 0 <= m <= n
+[at .Lmemccpy_14]
+#: join [m] a0: int(d + n - m), a1: int(s + n - m), a3: int(m) where 1 <= m <= n
+[at .Lmemccpy_94]
+#: join [m, b] a0: int(d + n - m), a1: int(s + n - m), a3: int(m), a4: int(b) where 0 <= m <= n, ((b = 0 && 8 | s + n - m && 8 | d + n - m) || (b = 1 && m = 0))
+[at .Lmemccpy_84]
+#: join [i, r] a6: int(i), a7: int(i + 1), t0: int(r) where 0 <= i <= n - 1, 0 <= r <= 7, ((r = 0 && 8 | s + i + 1 && 8 | d + i + 1) || (r != 0 && i = n - 1))

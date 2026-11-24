@@ -7,8 +7,8 @@ memory. ECALL is given meaning by the environment model (NoCompiler/Env.lean).
 
 Part of the trusted base, together with NoCompiler/Isa.lean and NoCompiler/Env.lean. The
 semantics follow the RISC-V unprivileged specification (version 20240411) for
-RV64I, M, Zba and Zbb, restricted to user mode. Two profile choices narrow it
-(docs/isa/profile.md, section 3):
+RV64I, M, Zba and Zbb, restricted to user mode. Two choices narrow it
+(docs/isa/README.md):
 
 * A misaligned load or store has no successor. The hardware may trap or may
   perform it slowly; the profile excludes it, so a proof has to show every

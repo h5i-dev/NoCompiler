@@ -1,12 +1,12 @@
 /-
-nocompiler instruction set: the RV64IM + Zba + Zbb subset the profile admits
-(docs/isa/profile.md, section 2), as an abstract syntax with a decoder from
-the 32-bit instruction word and an encoder back.
+nocompiler instruction set: RV64IM + Zba + Zbb in user mode, without the C
+extension (docs/isa/README.md), as an abstract syntax with a decoder from the
+32-bit instruction word and an encoder back.
 
 The decoder is part of the trusted base: it is what turns the bytes of a
 binary into the instructions a proof talks about. It is checked against
-llvm-objdump and against the Rust decoder (crates/nocompiler) by the
-differential tests, and `decode_encode` below proves the two directions of
+llvm-objdump and against the Rust decoder by the differential tests (being
+restored as crates/nocompiler-rv; docs/isa/trust.md), and `decode_encode` below proves the two directions of
 this file agree.
 
 Not in the profile, so `decode` returns `none` for them and a proof can never
@@ -104,7 +104,7 @@ inductive Instr
   | uop (op : UOp) (rd rs1 : Reg)
   | ecall
   /-- `unimp` (0xc0001073): a trap; the process dies (SIGILL). It has no step
-      (Machine.lean), as LPS's `MachineFault` (docs/isa/profile.md). -/
+      (Machine.lean). -/
   | unimp
   deriving DecidableEq, Repr
 

@@ -1,79 +1,84 @@
 # Roadmap
 
-Status: 2026-11-20. This file is the scope authority for nocompiler.
+nocompiler restarted on 2026-11-23 around typed RISC-V assembly ([design note](Tab%201.md),
+[soundness proof](健全性の証明.md)). This page is the order of work, not a schedule. What
+exists today is in the README's status table. Implementation choices are recorded in
+[typed/decisions.md](typed/decisions.md).
 
-**Decision (2026-11-20).** The core of nocompiler is the nocompiler profile: a
-formal-verification-friendly profile of RISC-V, with the Lean 4 library
-proofs about it are written in and the tools that check binaries against it
-([docs/isa/](isa/README.md)). The PTX and RV32 firmware verifiers move to
-[experiment/](../experiment/README.md) and the binary analysis toolkit with
-its decompiler to [docs/toolkit/](toolkit/README.md). When they compete for
-effort, the core comes first. The previous roadmap, including the toolkit's
-milestones and its "not building" list, is kept as
-[docs/toolkit/ROADMAP-toolkit.md](toolkit/ROADMAP-toolkit.md).
+## Now: v0 end to end
 
-## Principles
+Three streams run in parallel. They meet in a shared corpus, `tests/typed/corpus/`: typed
+programs with their expected verdicts, which every checker must agree on.
 
-- **Binaries stay binaries.** Profile code runs on any RV64 machine. Nothing
-  rejects a binary at load time; a proof is an optional, separate artifact
-  about exact bytes.
-- **Proofs are about what the compiler emitted**, checked by the Lean kernel.
-  Compilers, tools and whoever writes code or proofs are not trusted.
-- **One theorem per function** carries correctness, memory safety,
-  termination and the calling convention, and composes through calls by
-  specification alone.
-- **The trusted base is listed** ([isa/trust.md](isa/trust.md)) and each part
-  of it has an external oracle wherever one exists.
+**Lean (agent T)**
+- Done:
+  - the machine model with byte-wise permissions (decision 10);
+  - the type language and ⟦σ⟧, total (`Typed/Lang.lean`, `Typed/Sem.lean`);
+  - Presburger entailment with checked cutting-plane certificates (`Typed/Lin.lean`,
+    `Typed/Presburger.lean`, untrusted search in `Typed/Search.lean`).
+- Next: a checker written in Lean over the decoded image. It takes per-point state types
+  from untrusted hints and applies the local typing rules, with ranking functions for
+  termination.
+- Then:
+  - its soundness against ⟦σ⟧, which is lemmas 2–10 and theorems A–C of the soundness
+    proof, mechanized;
+  - theorem D (a whole program, given its unsafe and external contracts) with the ledger.
+- After that, a checked function's guarantee is a kernel-checked `Meets` and the Rust
+  checker is no longer trusted.
 
-## Version 0
+**Rust (agent U)**
+- The checker in `crates/nocompiler-typed`:
+  - a parser for the provisional syntax;
+  - the typing rules;
+  - quantifier-free Presburger decision;
+  - ledger output.
+- The note's examples (`sum`, stack buffer and call, `malloc`/`free` contracts) and one
+  rejected case per rule.
+- The export of parsed programs for the Lean checker ([typed/](typed/)).
+- Restoring the machine model's oracle tests (decoding against llvm-mc, semantics against
+  qemu and Sail) as `crates/nocompiler-rv`.
+- Keeping the binary analysis toolkit and decompiler building and tested.
 
-| Part | State |
+**Trial set (agent V)**
+- musl 1.2.5 functions as compiled, with signatures and loop annotations added. No hand
+  edits to the instructions.
+- Verdicts predicted before annotating ([typed/musl-trial.md](typed/musl-trial.md)), then
+  run through both checkers.
+- Results recorded against the predictions, including failures.
+
+## The tests the design has to pass
+
+The note lists five outcomes that would send v0 back for redesign:
+1. Most of the trial functions fall to unsafe.
+2. Annotations cannot be written reliably.
+3. Checking is too slow to use interactively.
+4. A soundness hole cannot be fixed locally.
+5. Contracts cannot be stated in the type language.
+
+The musl trial is the first measurement for 1 and 5. Checking time (3) is measured once
+the checkers run.
+
+## After v0, in the order the trials ask for
+
+From the note's "v0 に入れないものと、足す順". The order is decided by real examples. The cheap
+ones come first, and unbounded pointer structures are the next big design step.
+
+| Feature | Needs |
 | --- | --- |
-| Instruction subset RV64IM + Zba + Zbb, decoder, semantics in Lean | done; decoder checked against llvm-mc, semantics against qemu-riscv64 |
-| Environment model: write, read, exit, exit_group | done |
-| `Reach`/`Exec`, program logic (sequencing, loops, calls, frame) | done, proved |
-| Adequacy: no fault, memory safety, postcondition, termination on the machine | done, proved |
-| Function specifications with the LP64 calling convention | done |
-| Step tactics and word-arithmetic lemmas | done |
-| `nocompiler` tool: check R1 to R5, recover structure, `.nocompiler.struct`, export, disasm | done |
-| Lean ELF reader and `nocompiler-audit`: `.text` and every data section match the binary, axioms | done |
-| Worked examples from clang `-O2`: `sum` (a loop over an array) and `sum2` (a stack frame and two calls to `sum`, proved from its specification alone) | done |
-| Negative controls: mutated binaries must break their proofs (`scripts/core/check-proof-controls.sh`) | done |
-| Syscall examples: `write_all` (a loop over short writes, with errors) and `hello` (writes a `.rodata` message through it, then exits) | done |
-| The structural checker in Lean (R1 to R3), `<name>_checked` theorems for every exported function, and `Struct.cfi`: a checked function only transfers control as the rules allow | done |
-| R4 and R5 (registers, stack discipline) in Lean | next |
-| `nocompiler cc`: clang and ld.lld with the flags that keep ordinary C in the profile, then annotate and check; tested on a corpus | done |
-| Loop invariants placed from `.nocompiler.struct` by the tactics instead of by hand | next |
-| Spec vocabulary (`lean/NoCompiler/Vocab/`: buffers, folds, words, frames) and spec QA: spec mutation tests, computable specs against independent references ([isa/vocab.md](isa/vocab.md)) | done |
-| Differential test against the Sail RISC-V model's C emulator (pinned release), random programs over every instruction | done |
-| Lean semantics generated from the Sail RISC-V model (its Lean backend) and proved equal to `NoCompiler.exec` | planned: needs the Sail toolchain built (OCaml 5, opam) and a generated model of tens of thousands of lines |
+| Splitting and joining owned capabilities | `split` / `join` annotations with no instruction |
+| Block-level unsafe | state types at the block's entry and exit |
+| `partial` functions | the partial version of ⟦σ⟧ (a new judgment beside `Exec`) |
+| Unbounded pointer structures: arrays of pointers, linked lists, trees | recursive types or quantified capabilities, with fold/unfold annotations |
+| Recursive data types | the above |
+| Recursion | `stack` as an index expression (decision 8 deferred it) |
+| Function pointers | a change to the indirect-jump rule |
+| Concurrency, floating point | an extension of the machine model |
 
-## Version 1
+Other work that waits for v0:
+- Hand proofs that existing compiled code (for example musl's `memcpy`) meets an unsafe
+  contract, as ledger entries of the "proved" kind.
+- A rebuilt axiom audit over every declaration.
+- Proving the semantics equal to Sail's generated Lean model.
 
-- Jump tables as a recognised pattern; typed indirect calls (function
-  pointers, vtables, `dyn Trait`).
-- Recursion with a variant and a stack bound.
-- The `+nocompiler` target feature in LLVM's RISC-V backend with WebAssembly's
-  structuring passes, emitting `.nocompiler.struct` ([isa/toolchain.md](isa/toolchain.md)).
-  Not started: it needs an LLVM build tree (tens of GB), which the current
-  development machine has no room for. `nocompiler cc` covers what flags can.
-- A Rust target specification and a `no_std` example.
-- `mmap`/`brk` in the environment model.
-
-## Version 2
-
-- The A extension and more than one thread, which needs reasoning under the
-  RVWMO memory model.
-- F and D (IEEE 754 rounding), then V.
-- A constant-time discipline (no secret-dependent branches or addresses) as
-  an additional relational property.
-
-## Not building
-
-- Enforcement at load time in the style of the eBPF verifier. The profile is
-  a convention plus proofs, not a sandbox.
-- A new instruction encoding. The profile is a subset of RISC-V so that
-  existing hardware, emulators and compilers keep working.
-- x86 or Arm profiles. Variable-length encodings and condition flags are the
-  costs the profile exists to avoid.
-- A verified compiler. The compiler is outside the trusted base by design.
+The binary analysis toolkit has its own milestone record,
+[toolkit/ROADMAP-toolkit.md](toolkit/ROADMAP-toolkit.md).

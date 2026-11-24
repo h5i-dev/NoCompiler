@@ -1,10 +1,10 @@
-//! The `nocompiler` command line: the core commands (`check`, `annotate`,
-//! `cc`, `export`, `module`, `disasm`; implemented in `nocompiler::cmd`) and the binary
-//! analysis toolkit (`info`, `funcs`, `decompile`, `diff`, `xrefs`, `repl`, ...).
+//! The `nocompiler` command line: the binary analysis toolkit (`info`, `funcs`,
+//! `disasm`, `decompile`, `diff`, `xrefs`, `repl`, ...). The typed RISC-V checker
+//! is its own binary, `nocompiler-typed` (crates/nocompiler-typed).
 //!
 //! A thin client: it parses arguments, calls the libraries, and prints. Every
 //! toolkit command takes `--json`, and the JSON is the same facts the text
-//! shows; of the core commands, `check` does.
+//! shows.
 
 // One unsafe block, in `map_file`: memory-mapping a file is inherently
 // unsafe because another process can truncate it underneath us. Denied rather
@@ -51,16 +51,11 @@ mod exit {
 #[command(
     name = "nocompiler",
     version,
-    about = "nocompiler: a formal-verification-friendly RISC-V profile, and a binary analysis toolkit",
-    long_about = "The core commands (check, annotate, cc, export, module, disasm) check a RISC-V \
-                  binary against the nocompiler profile, record its structure and export \
-                  it to Lean 4 for proof (docs/isa/). The other commands are the binary \
-                  analysis toolkit (docs/toolkit/): they load a binary, recover functions, \
-                  disassemble, decompile and diff, and report what they found and why. \
+    about = "nocompiler: a binary analysis toolkit (the typed RISC-V checker is nocompiler-typed)",
+    long_about = "The binary analysis toolkit (docs/toolkit/): load a binary, recover functions, \
+                  disassemble, decompile and diff, and report what was found and why. \
                   Nothing the toolkit computes is an input to a proof.\n\n\
-                  Exit codes: 0 ok; 1 a function violates the profile (check, annotate, cc) \
-                  or nothing was found; 2 bad usage, and for the core commands also an \
-                  unreadable or unsupported input; 3 bad input (toolkit commands)."
+                  Exit codes: 0 ok; 1 nothing was found; 2 bad usage; 3 bad input."
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -109,60 +104,6 @@ pub struct Common {
 
 #[derive(Subcommand)]
 pub enum Command {
-    /// Check every function against the nocompiler profile (docs/isa/profile.md).
-    Check {
-        /// The RISC-V ELF to check.
-        file: PathBuf,
-        /// Emit JSON instead of text.
-        #[arg(long, global = true)]
-        json: bool,
-    },
-    /// Write FILE with a `.nocompiler.struct` section (docs/isa/metadata.md) to OUT.
-    ///
-    /// Not the annotation log; that is `nocompiler notes`.
-    Annotate {
-        /// The RISC-V ELF to annotate.
-        file: PathBuf,
-        /// Where to write the annotated copy.
-        #[arg(short = 'o', value_name = "OUT")]
-        out: PathBuf,
-    },
-    /// Compile and link C or assembly into the profile, record
-    /// `.nocompiler.struct` and check (docs/isa/toolchain.md).
-    ///
-    /// Usage: nocompiler cc [CLANG ARGS] SOURCES... -o OUT. Every argument
-    /// but `-o OUT` goes to clang.
-    #[command(disable_help_flag = true)]
-    Cc {
-        /// Clang arguments and sources, and `-o OUT`.
-        #[arg(trailing_var_arg = true, allow_hyphen_values = true, required = true)]
-        args: Vec<String>,
-    },
-    /// Export `.text` and every conforming function to Lean 4.
-    Export {
-        /// The RISC-V ELF to export.
-        file: PathBuf,
-        /// The Lean namespace of the image.
-        #[arg(long, value_name = "NS")]
-        namespace: String,
-        /// `chunks`: one number literal per function, no lemma per instruction
-        /// (scales to whole binaries); default: one array, a lemma per instruction.
-        #[arg(long, value_name = "FORMAT", value_parser = ["chunks", "array"], default_value = "array")]
-        format: String,
-        /// Prove each function's level in Lean (`<f>_checked`, by `decide`).
-        /// Default: the Rust checker's level, as the statement `<f>_level`
-        /// that a theorem needing it takes as a hypothesis.
-        #[arg(long)]
-        lean_level_check: bool,
-        /// Also what a process-level proof needs: the entry point (`elfEntry`),
-        /// the program headers as the auxiliary vector gives them (`phdrInfo`),
-        /// and their bytes where the binary maps them (`seg_phdrs`).
-        #[arg(long)]
-        process: bool,
-        /// Write the Lean file here instead of to standard output.
-        #[arg(short = 'o', value_name = "OUT.lean")]
-        out: Option<PathBuf>,
-    },
     /// Manage and monitor every registered project from one local UI.
     Ui {
         /// Loopback port; zero chooses a free port.
@@ -189,157 +130,6 @@ pub enum Command {
     Exports(Common),
     /// Recovered functions, with the evidence for each.
     Funcs(Common),
-    /// The relocatable module of a linked RISC-V binary, and its layout, as Lean.
-    Module {
-        /// The linked RISC-V ELF.
-        file: PathBuf,
-        /// The Lean namespace of the module.
-        #[arg(long, value_name = "NS")]
-        namespace: String,
-        /// `chunks`: one `RChunk` per function, all numbers, in groups
-        /// (lean/NoCompiler/ModuleChunks.lean; scales to whole binaries, no
-        /// layout); default: lists of words and the binary's layout.
-        #[arg(long, value_name = "FORMAT", value_parser = ["chunks", "list"], default_value = "list")]
-        format: String,
-        /// Write the Lean file here instead of to standard output.
-        #[arg(short = 'o', value_name = "OUT.lean")]
-        out: Option<PathBuf>,
-    },
-    /// Run a profile binary in the simulated performance oracle: instruction counts and
-    /// modelled cycles (docs/isa/sim.md). The report goes to standard error.
-    Sim {
-        /// The static RV64 ELF.
-        file: PathBuf,
-        /// Feed this file to the program's reads.
-        #[arg(long, value_name = "IN")]
-        stdin: Option<PathBuf>,
-        /// Report only this function.
-        #[arg(long, value_name = "NAME")]
-        function: Option<String>,
-        /// The report as JSON.
-        #[arg(long, global = true)]
-        json: bool,
-        /// Stop after this many instructions.
-        #[arg(long, value_name = "N")]
-        fuel: Option<u64>,
-    },
-    /// Diff a function's block/loop trees in two binaries: lockstep pairs and changed regions
-    /// for a refinement proof (docs/isa/refine.md).
-    Refine {
-        /// A, the original (the specification).
-        a: PathBuf,
-        /// B, the edited binary.
-        b: PathBuf,
-        /// The function (in A, and in B unless --func-b).
-        func: String,
-        /// The function's name in B.
-        #[arg(long, value_name = "NAME")]
-        func_b: Option<String>,
-        /// The Lean namespace of the generated file.
-        #[arg(long, value_name = "NS")]
-        namespace: Option<String>,
-        /// Write the certificate and regions as Lean here.
-        #[arg(short = 'o', value_name = "OUT.lean")]
-        out: Option<PathBuf>,
-        /// The Lean modules of A's and B's images (`nocompiler export`):
-        /// also write the proofs (`region<k>_ok`, `refines`, by
-        /// NoCompiler.RefineAuto).
-        #[arg(long, num_args = 2, value_names = ["IMG_A", "IMG_B"])]
-        images: Option<Vec<String>>,
-        /// Close straight-line regions in the bv_decide tier.
-        #[arg(long)]
-        bv: bool,
-    },
-    /// Assemble structured text (what `disasm` prints) into a relocatable object (docs/isa/asm.md).
-    Asm {
-        /// The structured text.
-        file: PathBuf,
-        /// The object to write.
-        #[arg(short = 'o', value_name = "OUT.o")]
-        out: PathBuf,
-    },
-    /// Rebuild a patched binary from its patch stack: the base ELF, then each `.s` patch
-    /// assembled and linked in (docs/toolkit/patch-stack.md).
-    Link {
-        /// The stack file (`nocompiler-stack 1`, base, patches, result).
-        stack: PathBuf,
-        /// Write the rebuilt binary here.
-        #[arg(short = 'o', value_name = "OUT.elf")]
-        out: Option<PathBuf>,
-        /// Status 1 unless the rebuilt binary's SHA-256 is the recorded `result`.
-        #[arg(long)]
-        check: bool,
-        /// Write the rebuilt binary's SHA-256 into the stack's `result` line.
-        #[arg(long, conflicts_with = "check")]
-        record: bool,
-    },
-    /// A RISC-V binary as text for `git diff`: per function, by name, addresses masked
-    /// (docs/toolkit/git-diff.md).
-    Textconv {
-        /// The RISC-V ELF.
-        file: PathBuf,
-    },
-    /// The ledger entries of a linked RISC-V binary's functions (docs/isa/ledger.md).
-    Ledger {
-        /// The linked RISC-V ELF.
-        file: PathBuf,
-        /// The functions with a proof: a proofs file, or
-        /// `function<TAB>theorem<TAB>spec` lines.
-        #[arg(long, value_name = "FILE")]
-        proofs: Option<PathBuf>,
-    },
-    /// From a binary to its theorems: check, export, the generator, and a report of the
-    /// functions not proved and why (docs/toolkit/prove.md).
-    Prove {
-        /// The RISC-V ELF.
-        file: PathBuf,
-        /// The specifications the generator tries, in order (Prove.py's: safe, anyread,
-        /// anymem, rodata, offframe, alignargs).
-        #[arg(
-            long,
-            value_name = "LIST",
-            default_value = "safe,anyread,anymem,rodata,offframe,alignargs"
-        )]
-        spec: String,
-        /// Where the image, the theorems and REPORT.md go.
-        #[arg(long, value_name = "DIR")]
-        work: PathBuf,
-        /// Functions proved in parallel (each capped at 6 GB).
-        #[arg(long, default_value_t = 1)]
-        jobs: usize,
-        /// The repository (where lean/ is); default NOCOMPILER_ROOT or the build's.
-        #[arg(long, value_name = "DIR")]
-        root: Option<PathBuf>,
-        /// Only these functions and their callees (comma-separated names).
-        #[arg(long, value_name = "NAMES", value_delimiter = ',')]
-        only: Vec<String>,
-    },
-    /// Which theorems proved about one build still cover another
-    /// (docs/toolkit/proof-status.md). Status 1 unless every proof carries.
-    Status {
-        /// The new build: a linked RISC-V ELF or a patch stack.
-        file: PathBuf,
-        /// The proofs file of the old build.
-        #[arg(long, value_name = "OLD.nocompiler-proofs")]
-        proofs: PathBuf,
-        /// Write the Lean reuse theorems for the proofs that carry.
-        #[arg(long, value_name = "OUT.lean")]
-        lean: Option<PathBuf>,
-        /// What the reuse theorems state: `Verified` in the new module, or
-        /// `Refines` of the two images.
-        #[arg(long, value_parser = ["verified", "refines"], default_value = "verified", requires = "lean")]
-        form: String,
-        /// The Lean namespace of the `--lean` file.
-        #[arg(long, value_name = "NS", default_value = "NoCompilerStatus")]
-        namespace: String,
-        /// Write the new build's proofs file: the proofs that carry, `by-key`.
-        #[arg(long, value_name = "NEW.nocompiler-proofs")]
-        record: Option<PathBuf>,
-        /// The compiled `--lean` file (beside its `.lean`): record the carried
-        /// proofs that were `checked` as `checked`.
-        #[arg(long, value_name = "OUT.olean", requires = "record")]
-        checked: Option<PathBuf>,
-    },
     /// Disassemble a function, a range, or everything.
     ///
     /// A RISC-V binary is listed with its block/loop structure (the profile's
@@ -838,20 +628,6 @@ impl Command {
             // Both writers are redirected into a file the first time and
             // never read on screen.
             Command::Completions { .. } | Command::Manpage => None,
-            // The core commands print plain text that scripts read.
-            Command::Check { .. }
-            | Command::Annotate { .. }
-            | Command::Cc { .. }
-            | Command::Export { .. }
-            | Command::Module { .. }
-            | Command::Ledger { .. }
-            | Command::Status { .. }
-            | Command::Prove { .. }
-            | Command::Textconv { .. }
-            | Command::Link { .. }
-            | Command::Asm { .. }
-            | Command::Sim { .. }
-            | Command::Refine { .. } => None,
             Command::Project { .. } | Command::Ui { .. } => Some((out::When::Auto, false)),
             _ => {
                 let c = self.common();
@@ -878,20 +654,7 @@ impl Command {
             Command::Project { .. }
             | Command::Ui { .. }
             | Command::Completions { .. }
-            | Command::Manpage
-            | Command::Check { .. }
-            | Command::Annotate { .. }
-            | Command::Cc { .. }
-            | Command::Export { .. }
-            | Command::Module { .. }
-            | Command::Ledger { .. }
-            | Command::Status { .. }
-            | Command::Prove { .. }
-            | Command::Textconv { .. }
-            | Command::Link { .. }
-            | Command::Asm { .. }
-            | Command::Sim { .. }
-            | Command::Refine { .. } => {
+            | Command::Manpage => {
                 unreachable!("handled before a file is opened")
             }
             Command::Vtables { common, .. }
@@ -911,185 +674,6 @@ impl Command {
             | Command::Strings { common, .. } => common,
         }
     }
-}
-
-/// The core commands, which read the file themselves (`nocompiler::cmd`), and
-/// `disasm` on a RISC-V binary. `None` for every other command.
-///
-/// They keep the exit codes they always had: 0, 1 for a profile violation,
-/// and 2 for an unreadable or unsupported input as well as for bad usage.
-fn core(cli: &Cli, w: &mut out::Out) -> Option<Result<u8, String>> {
-    use nocompiler::cmd;
-    let mut text = String::new();
-    let result = match &cli.command {
-        Command::Check { file, json } => cmd::check(file, *json, &mut text),
-        Command::Annotate { file, out } => cmd::annotate(file, out, &mut text),
-        Command::Cc { args } => {
-            let mut rest = Vec::new();
-            let mut dst = None;
-            let mut it = args.iter();
-            while let Some(a) = it.next() {
-                if a == "-o" {
-                    dst = it.next();
-                } else {
-                    rest.push(a.clone());
-                }
-            }
-            match dst {
-                Some(dst) => cmd::cc(&rest, std::path::Path::new(dst), &mut text),
-                None => Err("cc: -o OUT missing".into()),
-            }
-        }
-        Command::Export {
-            file,
-            namespace,
-            format,
-            lean_level_check,
-            process,
-            out,
-        } => cmd::export(
-            file,
-            namespace,
-            format == "chunks",
-            *lean_level_check,
-            *process,
-            out.as_deref(),
-            &mut text,
-        ),
-        Command::Module {
-            file,
-            namespace,
-            format,
-            out,
-        } => cmd::module(
-            file,
-            namespace,
-            format == "chunks",
-            out.as_deref(),
-            &mut text,
-        ),
-        Command::Ledger { file, proofs } => cmd::ledger(file, proofs.as_deref(), &mut text),
-        Command::Prove {
-            file,
-            spec,
-            work,
-            jobs,
-            root,
-            only,
-        } => nocompiler::prove::prove(
-            file,
-            &nocompiler::prove::Options {
-                work: work.clone(),
-                specs: spec.clone(),
-                jobs: *jobs,
-                root: root.clone(),
-                only: only.clone(),
-            },
-            &mut text,
-        )
-        .map(|rows| {
-            if rows
-                .iter()
-                .all(|r| matches!(r.outcome, nocompiler::prove::Outcome::Proved { .. }))
-            {
-                0
-            } else {
-                1
-            }
-        }),
-        Command::Status {
-            file,
-            proofs,
-            lean,
-            form,
-            namespace,
-            record,
-            checked,
-        } => cmd::status(
-            file,
-            proofs,
-            &cmd::StatusOpts {
-                lean: lean.as_deref(),
-                refines: form == "refines",
-                namespace,
-                record: record.as_deref(),
-                checked: checked.as_deref(),
-            },
-            &mut text,
-        ),
-        Command::Textconv { file } => cmd::textconv(file, &mut text),
-        Command::Link {
-            stack,
-            out,
-            check,
-            record,
-        } => cmd::link(stack, out.as_deref(), *check, *record, &mut text),
-        Command::Asm { file, out } => cmd::asm(file, out, &mut text),
-        Command::Refine {
-            a,
-            b,
-            func,
-            func_b,
-            namespace,
-            out,
-            images,
-            bv,
-        } => cmd::refine(
-            a,
-            b,
-            func,
-            func_b.as_deref(),
-            namespace.as_deref(),
-            out.as_deref(),
-            images.as_deref().map(|v| (v[0].as_str(), v[1].as_str())),
-            *bv,
-            &mut text,
-        ),
-        Command::Sim {
-            file,
-            stdin,
-            function,
-            json,
-            fuel,
-        } => cmd::sim(file, stdin.as_deref(), function.as_deref(), *json, *fuel),
-        Command::Funcs(c) if is_risc_v(&c.file) => cmd::funcs(&c.file, c.json, &mut text),
-        Command::Xrefs {
-            common,
-            target,
-            from,
-        } if is_risc_v(&common.file) => {
-            cmd::xrefs(&common.file, target, *from, common.json, &mut text)
-        }
-        Command::Disasm { common, .. } if common.json && is_risc_v(&common.file) => {
-            Err("disasm: --json is not available for a RISC-V binary".into())
-        }
-        Command::Disasm { common, target, .. } if is_risc_v(&common.file) => {
-            let only = (target != "all").then_some(target.as_str());
-            cmd::disasm(&common.file, only, &mut text)
-        }
-        _ => return None,
-    };
-    w.raw(&text);
-    Some(match result {
-        Ok(code) => Ok(code),
-        Err(e) => {
-            // Printed here rather than returned, so the status stays 2.
-            eprintln!("nocompiler: {e}");
-            Ok(exit::USAGE)
-        }
-    })
-}
-
-/// Whether FILE is a RISC-V ELF, which the toolkit does not decode and the
-/// core lists in its structured form.
-fn is_risc_v(file: &std::path::Path) -> bool {
-    use std::io::Read as _;
-    let mut head = [0u8; 20];
-    std::fs::File::open(file)
-        .and_then(|mut f| f.read_exact(&mut head))
-        .is_ok()
-        && head[..4] == *b"\x7fELF"
-        && u16::from_le_bytes([head[18], head[19]]) == nocompiler::elf::EM_RISCV
 }
 
 fn parse_u64(s: &str) -> Result<u64, String> {
@@ -1138,9 +722,6 @@ pub fn run(cli: &Cli, w: &mut out::Out) -> Result<u8, String> {
             return Ok(exit::OK);
         }
         _ => {}
-    }
-    if let Some(code) = core(cli, w) {
-        return code;
     }
     let common = cli.command.common();
 
@@ -1256,17 +837,6 @@ pub fn dispatch(
     load_opts: &LoadOptions,
     opts: &Options,
 ) -> Result<u8, String> {
-    if matches!(
-        cli.command,
-        Command::Check { .. }
-            | Command::Annotate { .. }
-            | Command::Cc { .. }
-            | Command::Export { .. }
-    ) {
-        return Err(
-            "the core commands read the file themselves; run them outside a session".into(),
-        );
-    }
     let common = cli.command.common();
 
     // Names from the log override what the container said, because the point

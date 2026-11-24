@@ -44,27 +44,44 @@ structure Perm where
   wr : List Region
 
 namespace Perm
-def canRead (P : Perm) (a : Word) (n : Nat) : Prop :=
-  n = 0 ∨ ∃ r ∈ P.rd ++ P.wr, r.covers a n
-def canWrite (P : Perm) (a : Word) (n : Nat) : Prop :=
-  n = 0 ∨ ∃ r ∈ P.wr, r.covers a n
+/-- The byte at `x` may be read. -/
+def readable (P : Perm) (x : Word) : Prop := ∃ r ∈ P.rd ++ P.wr, r.mem x
+/-- The byte at `x` may be written. -/
 def writable (P : Perm) (x : Word) : Prop := ∃ r ∈ P.wr, r.mem x
 
-/-- `P` allows no more than `Q`. -/
-structure le (P Q : Perm) : Prop where
-  read : ∀ a n, P.canRead a n → Q.canRead a n
-  write : ∀ a n, P.canWrite a n → Q.canWrite a n
+/-- Every byte of the `n` bytes from `a` may be read (decision 10 of the typed-RISC-V
+    design note: each byte on its own; the bytes need not lie in one region). -/
+def canRead (P : Perm) (a : Word) (n : Nat) : Prop :=
+  ∀ i, i < n → P.readable (a + BitVec.ofNat 64 i)
+/-- Every byte of the `n` bytes from `a` may be written. -/
+def canWrite (P : Perm) (a : Word) (n : Nat) : Prop :=
+  ∀ i, i < n → P.writable (a + BitVec.ofNat 64 i)
 
-theorem le_refl (P : Perm) : P.le P := ⟨fun _ _ h => h, fun _ _ h => h⟩
+/-- `P` allows no more than `Q`, byte by byte. -/
+structure le (P Q : Perm) : Prop where
+  read : ∀ x, P.readable x → Q.readable x
+  write : ∀ x, P.writable x → Q.writable x
+
+theorem le_refl (P : Perm) : P.le P := ⟨fun _ h => h, fun _ h => h⟩
 
 theorem le_trans {P Q R : Perm} (h1 : P.le Q) (h2 : Q.le R) : P.le R :=
-  ⟨fun a n h => h2.read a n (h1.read a n h), fun a n h => h2.write a n (h1.write a n h)⟩
+  ⟨fun x h => h2.read x (h1.read x h), fun x h => h2.write x (h1.write x h)⟩
+
+theorem readable_of_writable {P : Perm} {x : Word} (h : P.writable x) : P.readable x := by
+  obtain ⟨r, hr, hm⟩ := h
+  exact ⟨r, List.mem_append.2 (.inr hr), hm⟩
 
 theorem canRead_of_canWrite {P : Perm} {a : Word} {n : Nat} (h : P.canWrite a n) :
-    P.canRead a n := by
-  rcases h with h | ⟨r, hr, hc⟩
-  · exact .inl h
-  · exact .inr ⟨r, List.mem_append.2 (.inr hr), hc⟩
+    P.canRead a n := fun i hi => readable_of_writable (h i hi)
+
+theorem canRead_mono {P Q : Perm} (h : P.le Q) {a : Word} {n : Nat} (hc : P.canRead a n) :
+    Q.canRead a n := fun i hi => h.read _ (hc i hi)
+
+theorem canWrite_mono {P Q : Perm} (h : P.le Q) {a : Word} {n : Nat} (hc : P.canWrite a n) :
+    Q.canWrite a n := fun i hi => h.write _ (hc i hi)
+
+theorem canRead_zero (P : Perm) (a : Word) : P.canRead a 0 := fun _ h => absurd h (by omega)
+theorem canWrite_zero (P : Perm) (a : Word) : P.canWrite a 0 := fun _ h => absurd h (by omega)
 
 /-- Everything; what the hardware allows a user process, as far as nocompiler models it. -/
 def top : Perm := { rd := [], wr := [⟨0, 2 ^ 64⟩] }
@@ -82,9 +99,10 @@ def InstrOk (P : Perm) : Instr → State → Prop
   | _, _ => True
 
 theorem InstrOk.mono {P Q : Perm} (h : P.le Q) : ∀ {i s}, InstrOk P i s → InstrOk Q i s
-  | .load .., _, hi => h.read _ _ hi
-  | .store .., _, hi => h.write _ _ hi
-  | .ecall, _, ⟨hw, hr⟩ => ⟨fun e => h.read _ _ (hw e), fun e => h.write _ _ (hr e)⟩
+  | .load .., _, hi => Perm.canRead_mono h hi
+  | .store .., _, hi => Perm.canWrite_mono h hi
+  | .ecall, _, ⟨hw, hr⟩ =>
+    ⟨fun e => Perm.canRead_mono h (hw e), fun e => Perm.canWrite_mono h (hr e)⟩
   | .lui .., _, _ | .auipc .., _, _ | .jal .., _, _ | .jalr .., _, _ | .branch .., _, _
   | .iop .., _, _ | .addiw .., _, _ | .shift .., _, _ | .shiftw .., _, _ | .rop .., _, _
   | .rwop .., _, _ | .uop .., _, _ | .unimp, _, _ => trivial

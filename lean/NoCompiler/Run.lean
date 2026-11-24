@@ -2,7 +2,7 @@ import NoCompiler.Step
 
 /-
 An executable run of the deterministic semantics, for the differential test
-against qemu-riscv64 (crates/nocompiler/tests/semantics.rs). Not used by proofs.
+against qemu-riscv64 and Sail (crates/nocompiler-rv/tests, being restored). Not used by proofs.
 -/
 namespace NoCompiler
 

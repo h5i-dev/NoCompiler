@@ -1,0 +1,12 @@
+[package]
+name = "nocompiler-rv"
+description = "nocompiler: the RV64IM + Zba + Zbb instruction set as the Lean model has it (decoder, ELF reader), with the differential tests that check the Lean model against llvm-mc, qemu and Sail."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+
+# No dependencies: small enough to read, and nothing here is trusted by a proof.
+[dependencies]
