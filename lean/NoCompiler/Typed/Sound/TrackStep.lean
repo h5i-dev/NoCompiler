@@ -249,3 +249,204 @@ theorem AState.ok_store {m0 d srcB n} {A : AState} {s : State} (h : A.ok m0 d sr
     exact Cells.rebase_ok w (hr r)
 
 end NoCompiler.Typed.Track
+
+namespace NoCompiler.Typed.Track
+open NoCompiler NoCompiler.Typed NoCompiler.Typed.Bytes
+
+/-- Two words holding expressions that are equal mod 2^64 are equal. -/
+theorem word_eq_of_eqMod {ι : Val} {w1 w2 : Word} {e1 e2 : IExpr} (h1 : HasInt ι w1 e1)
+    (h2 : HasInt ι w2 e2) (h : (Constr.eqMod e1 e2).holds ι) : w1 = w2 := by
+  unfold HasInt at h1 h2
+  simp only [Constr.holds, Constr.eqMod, Constr.eval, IExpr.eval_sub, decide_eq_true_eq] at h
+  apply BitVec.eq_of_toNat_eq
+  have := w1.isLt; have := w2.isLt
+  omega
+
+/-- The exact distance of the cursor from `d`, from the bounds `d ≤ cur` and
+    `cur − d + k ≤ n` on its expression (`n < 2^64`). -/
+theorem toNat_sub_exact {ι : Val} {cur d : Word} {ec : IExpr} {dv nv : Var} {n k : Nat}
+    (hc : HasInt ι cur ec) (hd : (d.toNat : Int) = ι dv) (hn : (n : Int) = ι nv) (hn64 : n < 2 ^ 64)
+    (hlo : (Constr.le (.var dv) ec).holds ι)
+    (hhi : (Constr.le ((ec.sub (.var dv)).add (.lit k)) (.var nv)).holds ι) :
+    ((cur - d).toNat : Int) = ec.eval ι - ι dv ∧ (cur - d).toNat + k ≤ n := by
+  unfold HasInt at hc
+  simp only [Constr.holds, Constr.eval, IExpr.eval_sub, IExpr.eval_add, IExpr.eval_var, IExpr.eval_lit,
+    decide_eq_true_eq] at hlo hhi
+  have hcur := cur.isLt; have hd' := d.isLt
+  rw [BitVec.toNat_sub]
+  constructor <;> omega
+
+end NoCompiler.Typed.Track
+
+namespace NoCompiler.Typed.Track
+open NoCompiler NoCompiler.Typed NoCompiler.Typed.Bytes
+
+theorem hasInt_ofNat (ι : Val) (k : Nat) : HasInt ι (BitVec.ofNat 64 k) (.lit k) := by
+  unfold HasInt; simp [BitVec.toNat_ofNat]
+
+/-- The variables of the copy's parameters: destination, source, length. -/
+structure Params where
+  dv : Var
+  sv : Var
+  nv : Var
+  deriving DecidableEq, Repr
+
+/-- One abstract step at a point with type `S` (side conditions are entailments on `S`), with
+    `o` the load offset hint. -/
+def tstep (S : STy) (P : Params) (o : Nat) (A : AState) : Instr → Option AState
+  | .store op rs1 rs2 off =>
+    match S.reg rs1, S.reg A.cur with
+    | some e1, some ec =>
+      if op ≠ .sh ∧ ((List.range op.width).all fun i => (A.cells rs2).getD i .unk == .src i) = true ∧
+          S.ent (Constr.eqMod (e1.add (.lit off.toInt)) (ec.add (.lit A.δ))) = true ∧
+          S.ent (.le (.var P.dv) ec) = true ∧
+          S.ent (.le ((ec.sub (.var P.dv)).add (.lit (A.δ + op.width))) (.var P.nv)) = true
+      then some { A with δ := A.δ + op.width, cells := fun r => (A.cells r).rebase op.width }
+      else none
+    | _, _ => none
+  | .load op rd rs1 off =>
+    match S.reg rs1, S.reg A.cur with
+    | some e1, some ec =>
+      if op ≠ .lh ∧ op ≠ .lhu ∧ rd ≠ A.cur ∧ rd ≠ 0 ∧
+          S.ent (Constr.eqMod (e1.add (.lit off.toInt))
+            ((((IExpr.var P.sv).add ec).sub (.var P.dv)).add (.lit (A.δ + o)))) = true ∧
+          S.ent (.le (.var P.dv) ec) = true ∧
+          S.ent (.le ((ec.sub (.var P.dv)).add (.lit (A.δ + o + op.width))) (.var P.nv)) = true
+      then some (A.set rd (Cells.load o op.width))
+      else none
+    | _, _ => none
+  | .iop .addi rd rs imm =>
+    if rs = A.cur ∧ rd ≠ 0 ∧ imm.toNat < 2 ^ 11 ∧ imm.toNat ≤ A.δ then
+      some { cur := rd, δ := A.δ - imm.toNat, cells := (A.set rd []).cells }
+    else regStep A (.iop .addi rd rs imm)
+  | .branch _ _ _ _ => some A
+  | .jal 0 _ => some A
+  | .jalr 0 _ _ => some A
+  | i => regStep A i
+
+end NoCompiler.Typed.Track
+
+namespace NoCompiler.Typed.Track
+open NoCompiler NoCompiler.Typed NoCompiler.Typed.Bytes
+
+theorem LdOp.width_le (op : LdOp) : op.width ≤ 8 := by cases op <;> decide
+theorem StOp.width_le (op : StOp) : op.width ≤ 8 := by cases op <;> decide
+
+theorem signExtend_of_small {imm : BitVec 12} (h : imm.toNat < 2 ^ 11) :
+    imm.signExtend 64 = BitVec.ofNat 64 imm.toNat := by
+  have hm : imm.msb = false := by rw [BitVec.msb_eq_false_iff_two_mul_lt]; omega
+  rw [BitVec.signExtend_eq_setWidth_of_msb_false hm]
+  apply BitVec.eq_of_toNat_eq
+  simp [BitVec.toNat_setWidth]
+
+/-- **Soundness of the abstract step.** -/
+theorem tstep_ok {m0 : Word → Byte} {d srcB : Word} {n : Nat} {S : STy} {P : Params} {o : Nat} {A A' : AState} {s s' : State}
+    {ι : Val} {i : Instr} (hregs : ∀ p ∈ S.regs, HasInt ι (s.reg p.1) p.2)
+    (hent : ∀ ψ, S.ent ψ = true → ψ.holds ι) (hd : (d.toNat : Int) = ι P.dv)
+    (hs : (srcB.toNat : Int) = ι P.sv) (hn : (n : Int) = ι P.nv) (hn64 : n < 2 ^ 64)
+    (hdisj : Disj d srcB n) (h : A.ok m0 d srcB n s) (ht : tstep S P o A i = some A')
+    (hx : exec i s = some s') : A'.ok m0 d srcB n s' := by
+  cases i
+  case store op rs1 rs2 off =>
+    simp only [tstep] at ht
+    split at ht
+    · rename_i e1 ec h1 hc
+      split at ht
+      · rename_i hcond
+        obtain ⟨hop, hpre, haddr, hlo, hhi⟩ := hcond
+        cases ht
+        simp only [exec] at hx
+        split at hx
+        · cases hx
+          have hw1 := STy.reg_hasInt hregs h1
+          have hwc := STy.reg_hasInt hregs hc
+          have hea : ea s rs1 off = s.reg A.cur + BitVec.ofNat 64 A.δ :=
+            word_eq_of_eqMod (hasInt_add hw1 (hasInt_signExtend (by decide) ι off))
+              (hasInt_add hwc (hasInt_ofNat ι A.δ)) (hent _ haddr)
+          obtain ⟨-, hb⟩ := toNat_sub_exact (d := d) hwc hd hn hn64 (hent _ hlo) (hent _ hhi)
+          exact AState.ok_store h hn64 (StOp.width_le op) hea (by omega)
+            (fun i hi => by
+              have := List.all_eq_true.1 hpre i (List.mem_range.2 hi)
+              simpa using this) _
+        · cases hx
+      · cases ht
+    · cases ht
+  case load op rd rs1 off =>
+    simp only [tstep] at ht
+    split at ht
+    · rename_i e1 ec h1 hc
+      split at ht
+      · rename_i hcond
+        obtain ⟨hop1, hop2, hrd, hrd0, haddr, hlo, hhi⟩ := hcond
+        cases ht
+        simp only [exec] at hx
+        split at hx
+        · cases hx
+          have hw1 := STy.reg_hasInt hregs h1
+          have hwc := STy.reg_hasInt hregs hc
+          obtain ⟨hex, hb⟩ := toNat_sub_exact (d := d) hwc hd hn hn64 (hent _ hlo) (hent _ hhi)
+          have hrhs : HasInt ι (srcB + BitVec.ofNat 64 ((s.reg A.cur - d).toNat + A.δ + o))
+              ((((IExpr.var P.sv).add ec).sub (.var P.dv)).add (.lit (A.δ + o))) := by
+            unfold HasInt
+            simp only [BitVec.toNat_add, BitVec.toNat_ofNat, IExpr.eval_add, IExpr.eval_sub,
+              IExpr.eval_var, IExpr.eval_lit]
+            have := srcB.isLt
+            omega
+          have hea : ea s rs1 off = srcB + BitVec.ofNat 64 ((s.reg A.cur - d).toNat + A.δ + o) :=
+            word_eq_of_eqMod (hasInt_add hw1 (hasInt_signExtend (by decide) ι off)) hrhs (hent _ haddr)
+          exact AState.ok_load h hdisj ⟨hop1, hop2⟩ hrd hrd0 hea (by omega) _
+        · cases hx
+      · cases ht
+    · cases ht
+  case iop op rd rs imm =>
+    cases op
+    case addi =>
+      simp only [tstep] at ht
+      split at ht
+      · rename_i hcond
+        obtain ⟨hrs, hrd0, hnn, hle⟩ := hcond
+        cases ht
+        subst hrs
+        simp only [exec, Option.some.injEq] at hx
+        subst hx
+        simp only [evalI]
+        rw [signExtend_of_small hnn]
+        exact AState.ok_advance h hn64 hrd0 hle _
+      · exact regStep_ok h ht hx
+    all_goals (simp only [tstep] at ht; exact regStep_ok h ht hx)
+  case branch op rs1 rs2 off =>
+    simp only [tstep, Option.some.injEq] at ht
+    subst ht
+    simp only [exec] at hx
+    split at hx
+    · simp only [jumpTo] at hx; split at hx
+      · cases hx; exact AState.ok_setPc h _
+      · cases hx
+    · cases hx; exact AState.ok_setPc h _
+  case jal rd off =>
+    by_cases hrd : rd = 0
+    · subst hrd
+      simp only [tstep, Option.some.injEq] at ht
+      subst ht
+      simp only [exec, State.setReg, if_true, jumpTo] at hx
+      split at hx
+      · cases hx; exact AState.ok_setPc h _
+      · cases hx
+    · have : tstep S P o A (.jal rd off) = regStep A (.jal rd off) := by
+        simp only [tstep]; split <;> simp_all
+      rw [this] at ht; exact regStep_ok h ht hx
+  case jalr rd rs1 off =>
+    by_cases hrd : rd = 0
+    · subst hrd
+      simp only [tstep, Option.some.injEq] at ht
+      subst ht
+      simp only [exec, State.setReg, if_true, jumpTo] at hx
+      split at hx
+      · cases hx; exact AState.ok_setPc h _
+      · cases hx
+    · have : tstep S P o A (.jalr rd rs1 off) = regStep A (.jalr rd rs1 off) := by
+        simp only [tstep]; split <;> simp_all
+      rw [this] at ht; exact regStep_ok h ht hx
+  all_goals (simp only [tstep] at ht; exact regStep_ok h ht hx)
+
+end NoCompiler.Typed.Track
