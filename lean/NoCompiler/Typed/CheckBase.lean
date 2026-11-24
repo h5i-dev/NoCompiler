@@ -144,7 +144,7 @@ structure HCap where
 inductive CertMode where
   | search
   | log (tag : Nat)
-  | table (t : List (Constr × Nat × List Nat × List Cert)) (splits : List (Constr × Nat) := []) (oks : List Constr := [])
+  | table (t : List (Constr × Nat × List Nat × List Cert)) (splits : List (Constr × Nat × List (Option Nat)) := []) (oks : List Constr := [])
   deriving DecidableEq, Repr
 
 /-- The type of a program point: Γ (a register not listed is `int`), Ψ, C. (Φ, the
@@ -431,6 +431,46 @@ def entCaseN : Nat → STy → Constr → Bool
 def splitCands (S : STy) (ψ : Constr) : List Constr :=
   if ψ.vars.isEmpty then S.facts else relevant S.facts ψ
 
+/-- `entCaseN 1` on one fact `h`: by cases on its disjuncts, each case by `entIn` (no further
+    split). -/
+def splitOn0 (S : STy) (ψ h : Constr) : Bool :=
+  match h with
+  | .or _ _ => h.disjuncts.all fun d =>
+    let θ : Subst := d.pins.map fun (x, v) => (x, .lit v)
+    (S.pinFacts θ d).entIn ((d.subst θ).fold) ((ψ.subst θ).fold)
+  | _ => false
+
+/-- `entCaseN 2` along a recorded path: the first level on `h`, and for its k-th disjunct
+    either `entIn` (`hs[k] = none`) or the second level on the candidate fact `hs[k] = some j`. -/
+def splitPath (S : STy) (ψ h : Constr) (hs : List (Option Nat)) : Bool :=
+  match h with
+  | .or _ _ =>
+    let ds := h.disjuncts
+    ds.length == hs.length && (List.range ds.length).all fun k =>
+      match ds[k]?, hs[k]? with
+      | some d, some o =>
+        let θ : Subst := d.pins.map fun (x, v) => (x, .lit v)
+        let S' := S.pinFacts θ d
+        let ψ' := (ψ.subst θ).fold
+        S'.entIn ((d.subst θ).fold) ψ' ||
+          (match o with
+           | some j => match (S'.splitCands ψ')[j]? with
+             | some h2 => S'.splitOn0 ψ' h2
+             | none => false
+           | none => false)
+      | _, _ => false
+  | _ => false
+
+/-- The path `splitPath` needs for `h`: per disjunct, `none` when `entIn` proves the case, else
+    the first second-level candidate that does (untrusted; table mode re-checks it). -/
+def splitHint (S : STy) (ψ h : Constr) : List (Option Nat) :=
+  h.disjuncts.map fun d =>
+    let θ : Subst := d.pins.map fun (x, v) => (x, .lit v)
+    let S' := S.pinFacts θ d
+    let ψ' := (ψ.subst θ).fold
+    if S'.entIn ((d.subst θ).fold) ψ' then none
+    else (S'.splitCands ψ').findIdx? (S'.splitOn0 ψ')
+
 /-- `entCaseN 2`'s first level on one fact `h` (its second level searches as before). -/
 def splitOn (S : STy) (ψ h : Constr) : Bool :=
   match h with
@@ -455,14 +495,15 @@ def splitQ (S : STy) (ψ : Constr) : Bool :=
     -- over them, so the same goals succeed)
     match (S.splitCands ψ).find? (S.splitOn ψ) with
     | some h =>
-      dbgTrace s!"SPLIT {tag} {(S.splitCands ψ).idxOf h} {(repr ψ).pretty 1000000000}" fun _ => true
+      dbgTrace s!"SPLIT {tag} {(S.splitCands ψ).idxOf h} {S.splitHint ψ h} {(repr ψ).pretty 1000000000}"
+        fun _ => true
     | none => false
   -- only the recorded goal, and only on the recorded fact
   | .table _ sp _ =>
     match sp.find? (·.1 == ψ) with
-    | some (_, i) =>
+    | some (_, i, hs) =>
       match (S.splitCands ψ)[i]? with
-      | some h => S.splitOn ψ h
+      | some h => S.splitPath ψ h hs
       | none => false
     | none => false
 

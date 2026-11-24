@@ -88,9 +88,12 @@ def parse_log(output, fns):
         elif line.startswith("SPLIT ") or line.startswith("ENT "):
             kind, tag, g = line.split(" ", 2)
             if kind == "SPLIT":
-                # `SPLIT tag i goal`: the index of the fact the first level splits on
-                i, g = g.split(" ", 1)
-                g = f"{g}, {i}"
+                # `SPLIT tag i [hint] goal`: the index of the fact the first level splits on,
+                # and per case `none` (entIn) or `some j` (the second-level fact)
+                i, rest2 = g.split(" ", 1)
+                j = rest2.index("]") + 1
+                hint, g = rest2[:j], rest2[j:].lstrip()
+                g = f"{g}, {i}, {hint}"
             i, k = divmod(int(tag), 1000000)
             key = (fns[i], "entry" if k == ENTRY else str(k))
             sp = (splits if kind == "SPLIT" else OKS).setdefault(key, [])
