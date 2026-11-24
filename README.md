@@ -95,6 +95,6 @@ If you find NoCompiler useful in your research, please cite:
   title  = {NoCompiler: Formally Verified Typed Assembly for RISC-V},
   author = {Takahashi, Hideaki},
   year   = {2026},
-  url    = {https://github.com/h5i-dev/NoCompiler/blob/main/docs/nocompiler-short-paper.pdf}
+  url    = {https://github.com/h5i-dev/NoCompiler}
 }
 ```
