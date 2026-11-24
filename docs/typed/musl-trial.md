@@ -703,6 +703,13 @@ On top of the type check, musl memcpy (memcpy.s, linked image) is proved to copy
 145 s / 5.0 GB). Result (2026-11-24T07:31Z): proved, 778 s, 5.0 GB peak (8 GB cap), standard axioms. Details and line counts:
 `docs/typed/value-tracker.md`.
 
+### Functional correctness: wmemcpy (2026-11-24, agent T)
+
+`Examples.Musl.Wmemcpy.wmemcpy_verified` (in the repo: `lean/Examples/Musl/WmemcpyVerified.lean`):
+under its signature, wmemcpy returns with the signature's post and `d[0, 4n)` = entry `s[0, 4n)`,
+every other byte as on entry. No hypotheses: the type check (`decide +kernel`, search mode) and
+the table check in one module, 11 s, 1.3 GB peak, standard axioms. Hand-written: 63 lines.
+
 ## Files
 
 - `scripts/musl-trial/build.sh` — pinned build (musl tree digest, clang 15.0.7, flags);

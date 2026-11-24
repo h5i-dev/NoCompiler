@@ -655,6 +655,26 @@
        "Quot.sound"
       ],
       "callees_assumed": []
+     },
+     "functional": {
+      "spec": "returns with the signature post and Copied: d[0,4n) = entry s[0,4n), every other byte as on entry",
+      "theorem": "Examples.Musl.Wmemcpy.wmemcpy_verified (lean/Examples/Musl/WmemcpyVerified.lean)",
+      "uses": [
+       "chk_wmemcpy (decide +kernel, search mode)",
+       "WmemcpyTabOk.tab_ok",
+       "wmemcpy_correct"
+      ],
+      "result": {
+       "result": "proved",
+       "seconds": 11,
+       "peak_kb": 1338972,
+       "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+       ],
+       "date": "2026-11-24T07:58Z"
+      }
      }
     }
    ]
