@@ -55,10 +55,10 @@ theorem hyps_holds {T : TokEnv} {ι : Val} {F : TokFp} {m : Word → Byte} {S : 
       · exact .inl (by simpa using hg)
     · cases e
 
-theorem ent_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.ent ψ = true)
+theorem entQ_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entQ ψ = true)
     (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
   have hh : ∀ p ∈ relevant S.hyps ψ, p.holds ι := fun p hp => hh' p (List.mem_filter.1 hp).1
-  unfold ent at h
+  unfold entQ at h
   split at h
   · rfl
   · rename_i a b
@@ -71,6 +71,13 @@ theorem ent_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.ent ψ = true)
     · exact Query.decide_sound h ι hh
   · exact Query.decide_sound h ι hh
 
+
+theorem ent_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.ent ψ = true)
+    (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
+  unfold ent at h
+  rcases Bool.or_eq_true _ _ ▸ h with h | h
+  · exact hh' ψ (List.mem_append_left _ (List.contains_iff_mem.1 h))
+  · exact entQ_sound h hh'
 theorem entEqMod_sound {ι : Val} {S : STy} {a b : IExpr} (h : S.entEqMod a b = true)
     (hh : ∀ p ∈ S.hyps, p.holds ι) : (a.eval ι - b.eval ι) % 2 ^ 64 = 0 := by
   unfold entEqMod at h

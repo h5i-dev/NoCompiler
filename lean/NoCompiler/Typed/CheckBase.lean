@@ -185,14 +185,18 @@ def relevant (hs : List Constr) (ψ : Constr) : List Constr :=
   let vs := grow (grow (grow (grow ψ.vars)))
   hs.filter fun p => p.vars.any vs.contains || p.vars.isEmpty
 
-/-- `Ψ ⊢ ψ`. -/
-def ent (S : STy) (ψ : Constr) : Bool :=
+/-- `Ψ ⊢ ψ` by the decision procedure. -/
+def entQ (S : STy) (ψ : Constr) : Bool :=
   let q := Query.mk (relevant S.hyps ψ) ψ
   match ψ with
   | .tt => true
   | .eq a b => a.same b || q.decide
   | .dvd _ e => e.same (.lit 0) || q.decide
   | _ => q.decide
+
+/-- `Ψ ⊢ ψ`: a fact of `Ψ` as it is (most facts of an edge's target type are), or by the
+    decision procedure. -/
+def ent (S : STy) (ψ : Constr) : Bool := S.facts.contains ψ || S.entQ ψ
 
 /-- `a ≡ b (mod 2^64)` under Ψ. -/
 def entEqMod (S : STy) (a b : IExpr) : Bool := a.same b || S.ent (Constr.eqMod a b)
