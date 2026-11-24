@@ -665,6 +665,13 @@ the functions with the largest records, where the kernel evaluates the Presburge
 itself. They will be re-run with U's certificate-carrying check (the kernel checks recorded
 certificates instead of searching). Raw results: `docs/typed/musl-kernel.jsonl`.
 
+### Kernel checks with certificates (2026-11-24, agent U)
+
+`theorem chk_<f> : fn.check code = true := by decide +kernel` on the linked image, one Lean process at a time under an 8 GB cap.
+* Search in the kernel (T, f2cb56f1): 17 of the 26 Lean accepts are proved (≤ 16 s, ≤ 2.2 GB, standard axioms). l64a, memccpy-x, memcpy-x, memcpy, memmove, memset, stpncpy-x, stpncpy and strncmp hit the 8 GB cap after 64-115 s.
+* Certificates (U, export.md "Certificates"), whole-function theorem: l64a is **proved** in 40.8 s / 5.2 GB with standard axioms. memset, memccpy-x and memcpy-x still hit the cap: without the search, the rest of the checker on the whole function is still too big for one declaration.
+* Certificates and one theorem per point (`certgen.py --split`): results in `nc-briefs/typed/musl-linked/kernel-cert.jsonl`.
+
 ## Files
 
 - `scripts/musl-trial/build.sh` — pinned build (musl tree digest, clang 15.0.7, flags);

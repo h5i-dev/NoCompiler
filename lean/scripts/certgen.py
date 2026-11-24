@@ -51,10 +51,16 @@ def log_module(base, fns):
         t = i * 1000000
         out.append(f"""
 def fnlog_{f} : Fn :=
-  {{ fn_{f} with types := fn_{f}.types.map (fun p => (p.1, {{ p.2 with certs := .log ({t} + p.1) }})),
-               entryCerts := .log {t + ENTRY} }}
+  {{ fn_{f} with
+    types := fn_{f}.types.map (fun p => (p.1, {{ p.2 with certs := .log ({t} + p.1) }})),
+    entryCerts := .log {t + ENTRY} }}
 
-#eval IO.println s!"DONE {f} {{fnlog_{f}.structOk && fnlog_{f}.edge none fnlog_{f}.initTy 0}} {{(List.range fnlog_{f}.size).map (fnlog_{f}.instr code)}}"
+-- behind a runtime value (z = 0), so the compiler cannot hoist a check into a closed term
+-- evaluated outside the #eval (its certificates would not be printed here)
+#eval show IO Unit from do
+  let t ← IO.monoMsNow
+  let z := t - t
+  IO.println s!"DONE {f} {{fnlog_{f}.structOk && fnlog_{f}.edge none fnlog_{f}.initTy z}} {{(List.range fnlog_{f}.size).map (fun k => fnlog_{f}.instr code (k + z))}}"
 """)
     return "\n".join(out)
 
@@ -62,38 +68,54 @@ def fnlog_{f} : Fn :=
 def parse_log(output, fns):
     """{(fn, point): [(goal, certs)]} and {fn: DONE line} from the log run's output."""
     certs, done = {}, {}
+    splits = SPLITS
     for line in output.splitlines():
         if line.startswith("CERT "):
-            tag, rest = line[5:].split(" ", 1)
+            tag, n, rest = line[5:].split(" ", 2)
             if " ::: " not in rest or not rest.rstrip().endswith("]"):
                 continue  # a broken line: that query just gets no certificate
             g, cs = rest.split(" ::: ", 1)
+            g = f"{g}, {n}"  # the entry's goal and its query's number of hypotheses
             i, k = divmod(int(tag), 1000000)
             key = (fns[i], "entry" if k == ENTRY else str(k))
             lst = certs.setdefault(key, [])
             if (g, cs) not in lst:
                 lst.append((g, cs))
+        elif line.startswith("SPLIT ") or line.startswith("ENT "):
+            kind, tag, g = line.split(" ", 2)
+            i, k = divmod(int(tag), 1000000)
+            key = (fns[i], "entry" if k == ENTRY else str(k))
+            sp = (splits if kind == "SPLIT" else OKS).setdefault(key, [])
+            if g not in sp:
+                sp.append(g)
         elif line.startswith("DONE "):
             _, f, rest = line.split(" ", 2)
             done[f] = rest
     return certs, done
 
 
-def table(entries):
-    if not entries:
-        return ".table []"
-    return ".table [" + ", ".join(f"({g}, {cs})" for g, cs in entries) + "]"
+SPLITS = {}  # (fn, point) -> goals the case split proved (parse_log fills it)
+OKS = {}  # (fn, point) -> goals `STy.ent` proved
+
+
+def table(entries, key=None):
+    sp = SPLITS.get(key, []) if key else []
+    ok = OKS.get(key, []) if key else []
+    ts = "[" + ", ".join(f"({g}, {cs})" for g, cs in entries) + "]"
+    return f".table {ts} [{', '.join(sp)}] [{', '.join(ok)}]"
 
 
 def out_module(base, fns, sizes, certs, split):
     out = [base]
     for f in fns:
-        pts = sorted([k for (g, k) in certs if g == f and k != "entry"], key=int)
+        pts = sorted({k for (g, k) in list(certs) + list(SPLITS) + list(OKS)
+                      if g == f and k != "entry"},
+                     key=int)
         # one declaration per point (a single literal of all of them is too big to elaborate);
         # a point without one gets an empty table (no search in the kernel either)
         for k in pts:
             out.append(f"""set_option maxHeartbeats 0 in
-def certs_{f}_{k} : CertMode := {table(certs[(f, k)])}
+def certs_{f}_{k} : CertMode := {table(certs.get((f, k), []), (f, k))}
 """)
         rows = ", ".join(f"({k}, certs_{f}_{k})" for k in pts)
         out.append(f"""
@@ -103,7 +125,7 @@ def certs_{f} : List (Nat × CertMode) := [{rows}]
 def fnc_{f} : Fn :=
   {{ fn_{f} with
     types := fn_{f}.types.map (fun p => (p.1, {{ p.2 with certs := (certs_{f}.lookup p.1).getD (.table []) }})),
-    entryCerts := {table(certs.get((f, "entry"), []))} }}
+    entryCerts := {table(certs.get((f, "entry"), []), (f, "entry"))} }}
 """)
         if not split:
             out.append(f"""set_option maxRecDepth 100000 in
@@ -121,12 +143,12 @@ theorem chk_{f}_s : (fnc_{f}.structOk && fnc_{f}.edge none fnc_{f}.initTy 0) = t
             out.append(f"""set_option maxRecDepth 100000 in
 theorem chk_{f}_{k} : fnc_{f}.instr code {k} = true := by decide +kernel
 """)
-        term = f"rangeAll_zero (fnc_{f}.instr code)"
+        term = f"(rangeAll_zero (fnc_{f}.instr code))"
         for k in range(n):
             term = f"(rangeAll_succ {term} chk_{f}_{k})"
         out.append(f"""set_option maxRecDepth 100000 in
 theorem chk_{f} : fnc_{f}.check code = true :=
-  Fn.check_of_parts _ chk_{f}_s {term}
+  Fn.check_of_parts_n _ (n := {n}) rfl chk_{f}_s {term}
 
 #print axioms chk_{f}
 """)
@@ -166,6 +188,11 @@ def main():
     log_path = os.path.splitext(a.out)[0] + ".log.lean"
     open(log_path, "w", encoding="utf-8").write(log_module(base, fns))
     r = run_lean(log_path, a.timeout)
+    errs = [l for l in (r.stdout + r.stderr).splitlines() if ": error" in l]
+    if errs:
+        # a log module that does not elaborate records nothing reliable (a structure update that
+        # fails to parse leaves its types in .search, so their certificates are not printed)
+        sys.exit(f"{log_path}: {errs[0][:300]}")
     certs, done = parse_log(r.stdout + "\n" + r.stderr, fns)
     bad = [f for f in fns if f not in done or "false" in done[f]]
     if r.returncode != 0 or bad:

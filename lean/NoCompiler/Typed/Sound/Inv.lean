@@ -229,7 +229,7 @@ theorem decideQ_sound {ι : Val} {m : CertMode} {q : Query} (h : decideQ m q = t
       · rename_i cs _ hc; exact Query.check_sound hc ι hh
       · cases h
     · cases h
-  · obtain ⟨⟨g, cs⟩, -, hgc⟩ := List.any_eq_true.1 h
+  · obtain ⟨⟨g, n, cs⟩, -, hgc⟩ := List.any_eq_true.1 h
     simp only [Bool.and_eq_true] at hgc
     exact Query.check_sound hgc.2 ι hh
 
@@ -314,7 +314,13 @@ theorem entQ_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entQ ψ = true)
   · have := Constr.conjuncts_holds (ι := ι) (p := ψ.fold) fun c hc =>
       entQ'_sound (List.all_eq_true.1 h c hc) hh'
     simpa only [Constr.holds, Constr.eval_fold] using this
-  · exact entCase_sound h hh'
+  · unfold splitQ at h
+    split at h
+    · exact entCase_sound h hh'
+    · split at h
+      · exact entCase_sound (by assumption) hh'
+      · cases h
+    · exact entCase_sound (Bool.and_eq_true _ _ ▸ h).2 hh'
 
 theorem constLin_eval {l : Lin} {ok : Int → Bool} (h : constLin l ok = true) (ι : Val) :
     l.eval ι = l.c ∧ ok l.c = true := by
@@ -402,9 +408,9 @@ theorem ent0_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.ent0 ψ = true)
       exact coversS_sound _ hc (Constr.eval_of_conjunct hcm (hh' p (List.mem_append_left _ hp)))
   · exact entQ_sound h hh'
 
-theorem ent_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.ent ψ = true)
+theorem entFull_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entFull ψ = true)
     (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
-  unfold ent at h
+  unfold entFull at h
   rcases Bool.or_eq_true _ _ ▸ h with h | h
   · exact ent0_sound h hh'
   · split at h
@@ -412,6 +418,16 @@ theorem ent_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.ent ψ = true)
       exact Constr.eval_of_disjunct hd (ent0_sound hh hh')
     · exact Constr.conjuncts_holds fun c hc => ent0_sound (List.all_eq_true.1 h c hc) hh'
     · simp at h
+
+theorem ent_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.ent ψ = true)
+    (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
+  unfold ent at h
+  split at h
+  · exact entFull_sound h hh'
+  · split at h
+    · exact entFull_sound (by assumption) hh'
+    · cases h
+  · exact entFull_sound (Bool.and_eq_true _ _ ▸ h).2 hh'
 theorem entEqMod_sound {ι : Val} {S : STy} {a b : IExpr} (h : S.entEqMod a b = true)
     (hh : ∀ p ∈ S.hyps, p.holds ι) : (a.eval ι - b.eval ι) % 2 ^ 64 = 0 := by
   unfold entEqMod at h

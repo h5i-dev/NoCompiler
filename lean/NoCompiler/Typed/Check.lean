@@ -632,6 +632,13 @@ theorem check_of_parts {c : Code} (hs : (f.structOk && f.edge none f.initTy 0) =
     (hi : (List.range f.size).all (f.instr c) = true) : f.check c = true := by
   unfold check; simp only [Bool.and_eq_true] at hs ⊢; exact ⟨hs, hi⟩
 
+/-- `check_of_parts` with the size given as a literal (`hn := rfl` unfolds only `size`), so
+    assembling the per-point theorems never compares two `List.all` terms by evaluation. -/
+theorem check_of_parts_n {c : Code} {n : Nat} (hn : f.size = n)
+    (hs : (f.structOk && f.edge none f.initTy 0) = true)
+    (hi : (List.range n).all (f.instr c) = true) : f.check c = true :=
+  f.check_of_parts hs (hn ▸ hi)
+
 end Fn
 
 theorem rangeAll_zero (p : Nat → Bool) : (List.range 0).all p = true := rfl
