@@ -644,7 +644,14 @@ pub fn to_lean_text(
     let _ = writeln!(
         o,
         "import {}\n",
-        if with_thm { "NoCompiler.Typed.Sound.Prog" } else { "NoCompiler.Typed.Check" }
+        if with_thm {
+            "NoCompiler.Typed.Sound.Prog"
+        } else if image.is_some() {
+            // `def prog` below, for `Prog.check`
+            "NoCompiler.Typed.Prog"
+        } else {
+            "NoCompiler.Typed.Check"
+        }
     );
     let _ = writeln!(o, "namespace {module}\nopen NoCompiler NoCompiler.Typed\n");
     for (name, s) in &ck.sigs {

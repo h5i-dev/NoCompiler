@@ -85,6 +85,17 @@ theorem disjuncts_holds {ι : Val} {p : Constr} (h : p.eval ι = true) :
     · obtain ⟨d, hd, hh⟩ := ihq h; exact ⟨d, by simp [disjuncts, hd], hh⟩
   | _ => exact ⟨_, by simp [disjuncts], h⟩
 
+theorem eval_of_disjunct {ι : Val} {p d : Constr} (hd : d ∈ p.disjuncts) (h : d.eval ι = true) :
+    p.eval ι = true := by
+  induction p with
+  | or p q ihp ihq =>
+    simp only [disjuncts, List.mem_append] at hd
+    simp only [eval, Bool.or_eq_true]
+    rcases hd with hd | hd
+    · exact .inl (ihp hd)
+    · exact .inr (ihq hd)
+  | _ => simp only [disjuncts, List.mem_singleton] at hd; subst hd; exact h
+
 theorem conjuncts_holds {ι : Val} {p : Constr} (h : ∀ c ∈ p.conjuncts, c.eval ι = true) :
     p.eval ι = true := by
   induction p with
@@ -342,15 +353,25 @@ theorem coversS_sound {ι : Val} : ∀ (n : Nat) {p ψ : Constr}, coversS n p ψ
           rw [this] at hp; exact absurd hp (by decide)
       · exact absurd h (by decide)
 
-theorem ent_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.ent ψ = true)
+theorem ent0_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.ent0 ψ = true)
     (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
-  unfold ent at h
+  unfold ent0 at h
   rcases Bool.or_eq_true _ _ ▸ h with h | h
   · rcases Bool.or_eq_true _ _ ▸ h with h | h
     · exact hh' ψ (List.mem_append_left _ (List.contains_iff_mem.1 h))
     · obtain ⟨p, hp, hc⟩ := List.any_eq_true.1 h
       exact coversS_sound _ hc (hh' p (List.mem_append_left _ hp))
   · exact entQ_sound h hh'
+
+theorem ent_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.ent ψ = true)
+    (hh' : ∀ p ∈ S.hyps, p.holds ι) : ψ.holds ι := by
+  unfold ent at h
+  rcases Bool.or_eq_true _ _ ▸ h with h | h
+  · exact ent0_sound h hh'
+  · split at h
+    · obtain ⟨d, hd, hh⟩ := List.any_eq_true.1 h
+      exact Constr.eval_of_disjunct hd (ent0_sound hh hh')
+    · simp at h
 theorem entEqMod_sound {ι : Val} {S : STy} {a b : IExpr} (h : S.entEqMod a b = true)
     (hh : ∀ p ∈ S.hyps, p.holds ι) : (a.eval ι - b.eval ι) % 2 ^ 64 = 0 := by
   unfold entEqMod at h
