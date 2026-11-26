@@ -2,11 +2,6 @@
 
 ## Typed RISC-V
 
-- [Tab 1.md](Tab%201.md): the design note, v0 (in Japanese). It covers the safety claim, the
-  type language, the typing rules, the meaning of a signature, unsafe and contracts, the
-  trust base, and the decisions of 2026-11-23. It is the specification.
-- [健全性の証明.md](健全性の証明.md): the soundness proof in natural language (definitions D1–D8,
-  lemmas 1–10, theorems A–D).
 - [typed/decisions.md](typed/decisions.md): readings taken where the note is silent, as
   implemented.
 - [typed/musl-trial.md](typed/musl-trial.md): the trial on musl functions as compiled, with
