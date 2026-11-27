@@ -42,8 +42,8 @@ pub fn run_lean(lean_dir: &Path, module_text: &str, theorem: &str) -> Result<Vec
 }
 
 /// The certificate path (docs/typed/export.md "Certificates"): the exported module's record and
-/// `def code` (cut before its search-mode theorems) go through `lean/scripts/certgen.py --split
-/// --prog`, which records the search's certificates by compiled evaluation and writes the
+/// `def code` (cut before its search-mode theorems) go through compiled Lean evaluation.
+/// This records the search's certificates and writes the
 /// program's theorem D with one kernel theorem per point (`prog_meets`, in the root namespace).
 /// Returns that module's text. The certificates are hints: the kernel re-checks every one.
 pub fn certify(lean_dir: &Path, module_text: &str, module: &str) -> Result<String, String> {
@@ -57,35 +57,9 @@ pub fn certify(lean_dir: &Path, module_text: &str, module: &str) -> Result<Strin
     certgen_text(lean_dir, &input)
 }
 
-/// `certgen.py --split --prog` on a module that has the records, `def code` and `def prog` (no
-/// theorems): the module with the certificate tables, the kernel theorems and theorem D.
+/// Generate a Lean module with logged certificates and per-point kernel theorems.
 pub fn certgen_text(lean_dir: &Path, input: &str) -> Result<String, String> {
-    let tmp = std::env::temp_dir();
-    let id = std::process::id();
-    let inp = tmp.join(format!("nocompiler-certin-{id}.lean"));
-    let outp = tmp.join(format!("nocompiler-cert-{id}.lean"));
-    std::fs::write(&inp, input).map_err(|e| format!("{}: {e}", inp.display()))?;
-    let script = lean_dir.join("scripts").join("certgen.py");
-    let out = Command::new("python3")
-        .arg(&script)
-        .arg(&inp)
-        .arg(&outp)
-        .args(["--split", "--prog"])
-        .current_dir(lean_dir)
-        .output()
-        .map_err(|e| format!("python3: {e}"))?;
-    let _ = std::fs::remove_file(&inp);
-    if !out.status.success() {
-        let err = String::from_utf8_lossy(&out.stderr);
-        return Err(format!(
-            "certgen: {}",
-            err.lines().last().unwrap_or("failed")
-        ));
-    }
-    let text = std::fs::read_to_string(&outp).map_err(|e| format!("{}: {e}", outp.display()))?;
-    let _ = std::fs::remove_file(&outp);
-    let _ = std::fs::remove_file(tmp.join(format!("nocompiler-cert-{id}.log.lean")));
-    Ok(text)
+    crate::certgen::generate(lean_dir, input)
 }
 
 /// The axiom list of `#print axioms` output.

@@ -2,7 +2,7 @@
 # Compare compiler-generated loop invariants with the signature-only baseline.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-export PATH="$PWD/tools/rust-annotate:$PATH"
+export PATH="$PWD/target/release:$PATH"
 artifacts=$(mktemp -d)
 echo "Loop evaluation artifacts: $artifacts"
 

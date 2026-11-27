@@ -2,7 +2,7 @@
 # Exercise compiler-driven annotations on two independent Rust crates.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-export PATH="$PWD/tools/rust-annotate:$PATH"
+export PATH="$PWD/target/release:$PATH"
 artifacts=$(mktemp -d)
 echo "Integration artifacts: $artifacts"
 

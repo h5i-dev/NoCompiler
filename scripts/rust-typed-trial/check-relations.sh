@@ -2,7 +2,7 @@
 # Verify relational joins and capabilities inferred for called raw-pointer functions.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-export PATH="$PWD/tools/rust-annotate:$PATH"
+export PATH="$PWD/target/release:$PATH"
 artifacts=$(mktemp -d)
 echo "Relational inference artifacts: $artifacts"
 buffer=(--manifest-path examples/rust-typed/fixtures/buffer_ops/Cargo.toml --bin buffer_ops)

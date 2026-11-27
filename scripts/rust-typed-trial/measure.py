@@ -10,7 +10,7 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
-CHECK = ROOT / "tools/rust-annotate/cargo-nocompiler"
+CHECK = ROOT / "target/release/cargo-nocompiler"
 FIXTURES = ROOT / "examples/rust-typed/fixtures"
 
 

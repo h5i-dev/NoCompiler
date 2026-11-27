@@ -37,7 +37,7 @@ work.
 
 ## Compiler-driven annotation with Cargo
 
-The Cargo subcommand captures argument and return layouts during compilation,
+The Rust binary in `crates/cargo-nocompiler` captures argument and return layouts during compilation,
 generates entry contracts, and checks the resulting linked RV64 ELF.
 It supports a selected binary and named functions or compiled instances.
 Supported inputs include register-sized integers, thin raw pointers,
@@ -53,7 +53,8 @@ and make `llvm-symbolizer` available on your PATH. Then register the subcommand:
 ```sh
 rustup toolchain install nightly-2026-09-17 --component rustc-dev,llvm-tools
 rustup target add --toolchain nightly-2026-09-17 riscv64imac-unknown-none-elf
-export PATH="$PWD/tools/rust-annotate:$PATH"
+cargo build --release -p cargo-nocompiler -p nocompiler-typed
+export PATH="$PWD/target/release:$PATH"
 
 cargo nocompiler check \
     --manifest-path examples/rust-typed/fixtures/buffer_ops/Cargo.toml \
@@ -68,6 +69,12 @@ instructions, linker relaxation, and LTO for the selected binary. It enables
 before using rustc's entry ABI. LLVM can specialize an internal function's
 calling convention, including by removing arguments. Proofs refer to the
 `verified.elf` emitted by this build, identified by SHA-256 in the report.
+
+The frontend and annotation passes use Rust and share the RV64 parser and
+control-flow analysis with `nocompiler-typed`. Rust collects certificates
+from Lean and invokes the kernel check. Outside a repository checkout, provide the built
+Lean library via `--lean-dir` or `NOCOMPILER_LEAN_DIR`. Use `--checker` if
+the `nocompiler-typed` binary is installed in a different directory.
 
 The printed artifact directory contains `abi.tsv`, `contracts.s`,
 `report.json`, and the checker's ledger and Lean files when the functions

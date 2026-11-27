@@ -2,7 +2,7 @@
 # Verify concrete collection layouts, variable-stride loops, and heap caller obligations.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-export PATH="$PWD/tools/rust-annotate:$PATH"
+export PATH="$PWD/target/release:$PATH"
 artifacts=$(mktemp -d)
 echo "Aggregate and ownership artifacts: $artifacts"
 fixture=examples/rust-typed/fixtures/heapless_probe

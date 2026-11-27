@@ -896,26 +896,6 @@ impl<'a> FnCheck<'a> {
 
     // ------------------------------------------------------------------ structure
 
-    /// Static successors of instruction `ix` (S1/S2 prepass): `None` = leaves the function.
-    fn static_succs(&self, ix: usize) -> Vec<usize> {
-        let i = &self.f.instrs[ix].instr;
-        let next = ix + 1;
-        match i {
-            Instr::Branch {
-                target: Target::Local(t),
-                ..
-            } => vec![*t, next],
-            Instr::Jal {
-                rd,
-                target: Target::Local(t),
-            } if *rd == ZERO => vec![*t],
-            Instr::Jal { rd, .. } | Instr::CallPair { rd, .. } if *rd == ZERO => vec![],
-            Instr::Jalr { .. } | Instr::Unimp => vec![],
-            Instr::Ecall => vec![next],
-            _ => vec![next],
-        }
-    }
-
     fn structure(&mut self) -> F<()> {
         let n = self.f.instrs.len();
         if n == 0 {
@@ -1056,7 +1036,7 @@ impl<'a> FnCheck<'a> {
         let n = self.f.instrs.len();
         let mut ends: BTreeMap<usize, usize> = BTreeMap::new();
         for ix in 0..n {
-            for t in self.static_succs(ix) {
+            for t in crate::cfg::static_successors(&self.f.instrs[ix].instr, ix) {
                 if t < n && t <= ix {
                     self.line = self.f.instrs[ix].line;
                     match self.f.invs.get(&t) {
@@ -1086,7 +1066,7 @@ impl<'a> FnCheck<'a> {
             }
         }
         for ix in 0..n {
-            for t in self.static_succs(ix) {
+            for t in crate::cfg::static_successors(&self.f.instrs[ix].instr, ix) {
                 for (h, e) in &ivs {
                     if t > *h && t <= *e && (ix < *h || ix > *e) {
                         self.line = self.f.instrs[ix].line;
@@ -1109,101 +1089,21 @@ impl<'a> FnCheck<'a> {
     /// topological order of the acyclic graph.
     fn structure_natural(&mut self) -> F<()> {
         let n = self.f.instrs.len();
-        let succ: Vec<Vec<usize>> = (0..n)
-            .map(|i| {
-                self.static_succs(i)
-                    .into_iter()
-                    .filter(|t| *t < n)
-                    .collect()
-            })
-            .collect();
-        // reverse postorder from the entry
-        let mut post = Vec::new();
-        let mut seen = vec![false; n];
-        let mut stack: Vec<(usize, usize)> = vec![(0, 0)];
-        seen[0] = true;
-        while let Some((u, k)) = stack.pop() {
-            if k < succ[u].len() {
-                stack.push((u, k + 1));
-                let v = succ[u][k];
-                if !seen[v] {
-                    seen[v] = true;
-                    stack.push((v, 0));
-                }
-            } else {
-                post.push(u);
-            }
-        }
-        let rpo: Vec<usize> = post.iter().rev().copied().collect();
-        let mut num = vec![usize::MAX; n];
-        for (i, u) in rpo.iter().enumerate() {
-            num[*u] = i;
-        }
-        let mut preds: Vec<Vec<usize>> = vec![vec![]; n];
-        for u in 0..n {
-            if seen[u] {
-                for &v in &succ[u] {
-                    preds[v].push(u);
+        let graph = crate::cfg::ControlFlow::new(self.f);
+        let succ = graph.successors;
+        let rpo = graph.reverse_postorder;
+        for (u, t) in graph.back_edges {
+            self.line = self.f.instrs[u].line;
+            match self.f.invs.get(&t) {
+                Some((inv, _)) if inv.is_loop => {}
+                _ => {
+                    return self.err(
+                        Rule::Cfg,
+                        "back edge (to a dominating label) without an 'inv' annotation (P1)",
+                    );
                 }
             }
-        }
-        // dominators (Cooper, Harvey, Kennedy)
-        let mut idom = vec![usize::MAX; n];
-        idom[0] = 0;
-        let intersect = |idom: &Vec<usize>, mut a: usize, mut b: usize| {
-            while a != b {
-                while num[a] > num[b] {
-                    a = idom[a];
-                }
-                while num[b] > num[a] {
-                    b = idom[b];
-                }
-            }
-            a
-        };
-        let mut changed = true;
-        while changed {
-            changed = false;
-            for &u in rpo.iter().skip(1) {
-                let mut new = usize::MAX;
-                for &p in &preds[u] {
-                    if idom[p] != usize::MAX {
-                        new = if new == usize::MAX {
-                            p
-                        } else {
-                            intersect(&idom, p, new)
-                        };
-                    }
-                }
-                if new != idom[u] {
-                    idom[u] = new;
-                    changed = true;
-                }
-            }
-        }
-        let dominates = |h: usize, mut u: usize| loop {
-            if u == h {
-                return true;
-            }
-            if u == 0 || idom[u] == usize::MAX {
-                return false;
-            }
-            u = idom[u];
-        };
-        for &u in &rpo {
-            for &t in &succ[u] {
-                if dominates(t, u) {
-                    self.line = self.f.instrs[u].line;
-                    match self.f.invs.get(&t) {
-                        Some((inv, _)) if inv.is_loop => {}
-                        _ => return self.err(
-                            Rule::Cfg,
-                            "back edge (to a dominating label) without an 'inv' annotation (P1)",
-                        ),
-                    }
-                    self.back.insert((u, t));
-                }
-            }
+            self.back.insert((u, t));
         }
         // the graph without back edges is acyclic: Kahn's algorithm over reached points
         let mut indeg = vec![0usize; n];
@@ -1238,18 +1138,7 @@ impl<'a> FnCheck<'a> {
                 "the control-flow graph is irreducible: a cycle without a dominating head (P1)",
             );
         }
-        // natural loops
-        let mut bodies: BTreeMap<usize, BTreeSet<usize>> = BTreeMap::new();
-        for &(u, h) in &self.back {
-            let body = bodies.entry(h).or_insert_with(|| BTreeSet::from([h]));
-            let mut work = vec![u];
-            while let Some(x) = work.pop() {
-                if body.insert(x) {
-                    work.extend(preds[x].iter().copied());
-                }
-            }
-        }
-        let _ = order;
+        let bodies = crate::cfg::loop_bodies(&graph.predecessors, &self.back);
         // τ (T's form of P1): an order of the reached points in which every edge other than
         // a back edge goes up and every natural loop is an interval. Built per region of
         // the loop-nesting forest: inner loops collapsed to their head, the region sorted
