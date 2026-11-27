@@ -50,6 +50,7 @@ pub struct Build {
     pub image: PathBuf,
     pub symbols: Symbols,
     pub version: String,
+    pub llvm_hints: crate::llvm::Hints,
 }
 pub fn compile(args: &Args, dir: &Path) -> Result<Build> {
     let pin = format!("+{TOOLCHAIN}");
@@ -62,6 +63,8 @@ pub fn compile(args: &Args, dir: &Path) -> Result<Build> {
         .ok_or("rustc did not report a host")?;
     let driver_source = dir.join("capture.rs");
     fs::write(&driver_source, include_str!("rustc_driver.rs"))?;
+    fs::write(dir.join("capture_mir.rs"), include_str!("capture_mir.rs"))?;
+    fs::write(dir.join("contract_ir.rs"), include_str!("contract_ir.rs"))?;
     let driver = dir.join("capture-rustc");
     let lib = sysroot.join("lib");
     output(
@@ -77,22 +80,41 @@ pub fn compile(args: &Args, dir: &Path) -> Result<Build> {
             .arg(&driver_source),
     )?;
     let assembly = dir.join("rustc.s");
+    let llvm_ir = dir.join("rustc.ll");
+    let mut emit = format!("--emit=asm={}", assembly.display());
+    if args.llvm_hints {
+        emit.push_str(&format!(",llvm-ir={}", llvm_ir.display()));
+    }
     let mut command = Command::new("cargo");
     command
         .args([&pin, "rustc", "--manifest-path"])
         .arg(&args.manifest_path)
         .args(["--target", TARGET, "--target-dir"])
         .arg(dir.join("target"))
-        .args(["--release", "--bin", &args.bin, "--message-format=json"]);
+        .args([
+            "--profile",
+            &args.profile,
+            "--bin",
+            &args.bin,
+            "--message-format=json",
+        ]);
     if let Some(package) = &args.package {
         command.args(["--package", package]);
     }
+    if !args.features.is_empty() {
+        command.arg("--features").arg(args.features.join(","));
+    }
+    for (enabled, flag) in [
+        (args.no_default_features, "--no-default-features"),
+        (args.all_features, "--all-features"),
+        (args.locked, "--locked"),
+    ] {
+        if enabled {
+            command.arg(flag);
+        }
+    }
     let result = command
-        .args([
-            "--",
-            "--nocompiler-capture",
-            &format!("--emit=asm={}", assembly.display()),
-        ])
+        .args(["--", "--nocompiler-capture", &emit])
         .args(flags(!args.no_source_trace))
         .env("RUSTC_WRAPPER", &driver)
         .env("RUSTC_WORKSPACE_WRAPPER", "")
@@ -103,6 +125,7 @@ pub fn compile(args: &Args, dir: &Path) -> Result<Build> {
         .stderr(Stdio::inherit())
         .output()?;
     let mut executables = vec![];
+    let mut artifacts = vec![];
     for line in String::from_utf8(result.stdout)?.lines() {
         let event: Value = serde_json::from_str(line)?;
         if event["reason"] == "compiler-message" {
@@ -112,14 +135,22 @@ pub fn compile(args: &Args, dir: &Path) -> Result<Build> {
             {
                 eprint!("{msg}");
             }
-        } else if event["reason"] == "compiler-artifact"
-            && event["target"]["name"] == args.bin
-            && event["target"]["kind"]
-                .as_array()
-                .is_some_and(|v| v.iter().any(|x| x == "bin"))
-            && let Some(path) = event["executable"].as_str()
-        {
-            executables.push(path.to_owned());
+        } else if event["reason"] == "compiler-artifact" {
+            artifacts.push(json!({
+                "package_id": event["package_id"],
+                "target": event["target"]["name"],
+                "kind": event["target"]["kind"],
+                "features": event["features"],
+                "profile": event["profile"],
+            }));
+            if event["target"]["name"] == args.bin
+                && event["target"]["kind"]
+                    .as_array()
+                    .is_some_and(|v| v.iter().any(|x| x == "bin"))
+                && let Some(path) = event["executable"].as_str()
+            {
+                executables.push(path.to_owned());
+            }
         }
     }
     if !result.status.success() {
@@ -128,9 +159,19 @@ pub fn compile(args: &Args, dir: &Path) -> Result<Build> {
     let [path] = executables.as_slice() else {
         return Err("Cargo did not produce exactly one selected executable".into());
     };
+    crate::write_json(
+        &dir.join("cargo-build.json"),
+        &json!({"artifacts": artifacts}),
+    )?;
     let image = dir.join("verified.elf");
     fs::copy(path, &image)?;
-    let nm = sysroot.join("lib/rustlib").join(host).join("bin/llvm-nm");
+    let llvm_bin = sysroot.join("lib/rustlib").join(host).join("bin");
+    let llvm_hints = if args.llvm_hints {
+        crate::llvm::capture(&llvm_bin, &llvm_ir, dir)?
+    } else {
+        crate::llvm::Hints::default()
+    };
+    let nm = llvm_bin.join("llvm-nm");
     let symbols = output(
         Command::new(nm)
             .args(["--defined-only", "--format=posix"])
@@ -154,6 +195,7 @@ pub fn compile(args: &Args, dir: &Path) -> Result<Build> {
     .collect();
     Ok(Build {
         assembly: fs::read_to_string(assembly)?,
+        llvm_hints,
         image,
         symbols,
         version: version.lines().next().unwrap_or_default().into(),

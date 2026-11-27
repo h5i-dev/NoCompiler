@@ -53,6 +53,23 @@ functions whose program theorem the Lean checker established (export.md, "The le
 | `subtype` (D7), `build_point`, `back_edge`, measures | 合流とループ | Lemma 4, Theorem C |
 | static data: implicit `ro` capabilities, `auipc`/`%pcrel_lo` (I30) | 静的データ | S6 |
 
+After a call, the Rust checker uses the same field propagation rule as Lean.
+It preserves existing fields proved disjoint from every write loan from their holder,
+then takes each nonempty field map from an unconditional borrow postcondition with a normalized constant
+nonnegative offset and a normalized constant nonnegative difference between the held
+length and the end of the borrow. It translates the returned field offsets relative
+to the held base. Earlier clauses take precedence at duplicate field offsets. It adds given capabilities with their substituted field values.
+
+For `check --image ... --prove`, the frontend tracks up to eight possible base
+words for each register, joining incoming sets. Each computed address must
+resolve to exactly one annotated linked symbol. For more than one base word
+at a non-tail call, the frontend adds a join disjunction unless the user
+already supplied an annotation at that point. Rust uses a representative
+direct-call view to construct a candidate record. The proof table includes
+all candidate callees. Object comparison uses the original assembly, and
+Lean checks the decoded `jalr` in the supplied ELF.
+The command returns failure if Lean does not establish the proof.
+
 - **Queries.** Every side condition is `Ψ ⊢ goal`, decided by `presburger.rs` (lazy DNF +
   Omega test over checked `i128`; overflow or budget = "not proved"). Syntactically equal
   expressions skip the solver.

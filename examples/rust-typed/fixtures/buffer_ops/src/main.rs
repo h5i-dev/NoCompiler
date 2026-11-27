@@ -247,3 +247,238 @@ pub fn write_two_halves(input: &mut [u64], value: u64) {
         unsafe { write_split(left.as_mut_ptr(), right.as_mut_ptr(), value) };
     }
 }
+
+#[inline(never)]
+pub unsafe fn copy_last(dst: *mut u64, src: *const u64, count: usize) {
+    if count != 0 {
+        unsafe { dst.add(count - 1).write(src.add(count - 1).read()) };
+    }
+}
+
+#[inline(never)]
+pub fn copy_last_shifted(dst: &mut [u64], src: &[u64], count: usize) {
+    if count < dst.len() && count < src.len() {
+        unsafe { copy_last(dst.as_mut_ptr().add(1), src.as_ptr().add(1), count) };
+    }
+}
+
+#[inline(never)]
+pub unsafe fn copy_last_short(dst: &mut [u64], src: &[u64], count: usize) {
+    if count <= dst.len() && count <= src.len() {
+        unsafe { copy_last(dst.as_mut_ptr().add(1), src.as_ptr().add(1), count) };
+    }
+}
+
+pub struct Counter {
+    pub remaining: usize,
+    pub capacity: usize,
+}
+
+#[inline(never)]
+pub fn clear(counter: &mut Counter) {
+    counter.remaining = 0;
+}
+
+#[inline(never)]
+pub fn middle(xs: &[u64; 4]) -> &[u64] {
+    unsafe { core::slice::from_raw_parts(xs.as_ptr().add(1), 2) }
+}
+
+#[inline(never)]
+pub fn read_middle(xs: &[u64; 4], index: usize) -> u64 {
+    let view = middle(xs);
+    if index < view.len() {
+        unsafe { view.as_ptr().add(index).read() }
+    } else {
+        0
+    }
+}
+
+#[inline(never)]
+pub fn reset_and_read(counter: &mut Counter, xs: &[u64; 1]) -> u64 {
+    clear(counter);
+    unsafe { xs.as_ptr().add(counter.remaining).read() }
+}
+
+#[inline(never)]
+pub fn choose_suffix(words: &[u64; 4], selector: usize) -> &[u64] {
+    let skip = if selector == 0 {
+        core::hint::black_box(());
+        1
+    } else {
+        2
+    };
+    unsafe { core::slice::from_raw_parts(words.as_ptr().add(skip), 4 - skip) }
+}
+
+#[inline(never)]
+pub fn bounded_word(value: u64) -> u64 {
+    value & 7
+}
+
+#[inline(never)]
+pub fn fixed_store(output: &mut [u64; 1024], value: u64) {
+    for index in 0..1024 {
+        unsafe { core::ptr::write_volatile(output.as_mut_ptr().add(index), value) };
+    }
+}
+
+#[inline(never)]
+pub fn bounded_read(words: &[u64; 8], value: u64) -> u64 {
+    let index = bounded_word(value);
+    unsafe { words.as_ptr().add(index as usize).read() }
+}
+
+#[inline(never)]
+pub fn stack_via_register(value: u64) -> u64 {
+    let mut slot = core::mem::MaybeUninit::<u64>::uninit();
+    let result: u64;
+    unsafe {
+        core::arch::asm!(
+            "sd {value}, 0({address})",
+            "ld {result}, 0({address})",
+            address = in(reg) slot.as_mut_ptr(),
+            value = in(reg) value,
+            result = lateout(reg) result,
+            options(nostack),
+        );
+    }
+    result
+}
+
+#[inline(never)]
+pub fn repeat_store(output: &mut u64, count: usize, value: u64) {
+    for _ in 0..count {
+        unsafe { core::ptr::write_volatile(output, value) };
+    }
+}
+
+#[inline(always)]
+fn suffix_at<const N: usize>(words: &[u64; 8]) -> &[u64] {
+    unsafe {
+        // Keep distinct paths through the compiler until the slice is materialized.
+        core::arch::asm!("addi zero, zero, {n}", n = const N, options(nostack, nomem));
+        core::slice::from_raw_parts(words.as_ptr().add(N), 8 - N)
+    }
+}
+
+#[inline(never)]
+pub fn choose_many_suffixes(words: &[u64; 8], selector: usize) -> &[u64] {
+    let slice = match selector {
+        0 => suffix_at::<1>(words),
+        1 => suffix_at::<2>(words),
+        2 => suffix_at::<3>(words),
+        3 => suffix_at::<4>(words),
+        _ => suffix_at::<5>(words),
+    };
+    core::hint::black_box(());
+    slice
+}
+
+#[inline(never)]
+pub fn choose_inconsistent_suffix(words: &[u64; 8], selector: usize) -> &[u64] {
+    let slice = match selector {
+        0 => suffix_at::<1>(words),
+        1 => suffix_at::<2>(words),
+        2 => suffix_at::<3>(words),
+        3 => suffix_at::<4>(words),
+        _ => &words[..1],
+    };
+    core::hint::black_box(());
+    slice
+}
+
+#[inline(never)]
+pub fn trim_many_suffixes(words: &[u64; 8], selector: usize) -> &[u64] {
+    let slice = match selector {
+        0 => suffix_at::<1>(words),
+        1 => suffix_at::<2>(words),
+        2 => suffix_at::<3>(words),
+        3 => suffix_at::<4>(words),
+        _ => suffix_at::<5>(words),
+    };
+    let [_, middle @ .., _] = slice else {
+        return &words[..7];
+    };
+    middle
+}
+
+#[inline(never)]
+pub unsafe fn invoke_runtime_target(target: *const (), value: u64) -> u64 {
+    let call: fn(u64) -> u64 = unsafe { core::mem::transmute(target) };
+    call(value)
+}
+
+#[inline(never)]
+pub fn repeat_two_stores(first: &mut u64, second: &mut u64, n: usize, m: usize, value: u64) {
+    for _ in 0..n {
+        unsafe { core::ptr::write_volatile(first, value) };
+    }
+    for _ in 0..m {
+        unsafe { core::ptr::write_volatile(second, value) };
+    }
+}
+
+#[inline(never)]
+pub fn repeat_nested_stores(output: &mut u64, rows: usize, cols: usize, value: u64) {
+    for _ in 0..rows {
+        for _ in 0..cols {
+            unsafe { core::ptr::write_volatile(output, value) };
+        }
+    }
+}
+
+#[inline(never)]
+pub fn affine_result(value: u64) -> u64 {
+    value.wrapping_add(value).wrapping_add(3)
+}
+
+#[inline(never)]
+pub fn read_affine_result(words: &[u64; 6], selector: usize) -> u64 {
+    let index = affine_result((selector & 1) as u64);
+    unsafe { words.as_ptr().add(index as usize).read() }
+}
+
+#[inline(never)]
+pub fn affine_spilled_result(value: u64) -> u64 {
+    let mut slot = core::mem::MaybeUninit::<u64>::uninit();
+    unsafe {
+        slot.as_mut_ptr().write_volatile(value.wrapping_add(5));
+        slot.as_ptr().read_volatile().wrapping_add(1)
+    }
+}
+
+#[inline(never)]
+pub fn reset_and_get(counter: &mut Counter) -> usize {
+    clear(counter);
+    counter.remaining
+}
+
+#[inline(never)]
+pub fn reset_and_get_relay(counter: &mut Counter) -> usize {
+    reset_and_get(counter)
+}
+
+#[inline(never)]
+pub fn affine_spilled_across_join(value: u64, flag: u64) -> u64 {
+    let mut slot = core::mem::MaybeUninit::<u64>::uninit();
+    unsafe {
+        slot.as_mut_ptr().write_volatile(value.wrapping_add(5));
+        if flag == 0 {
+            slot.as_ptr().read_volatile();
+        }
+        slot.as_ptr().read_volatile().wrapping_add(1)
+    }
+}
+
+#[inline(never)]
+pub fn differing_stack_writes(value: u64, flag: u64) -> u64 {
+    let mut slot = core::mem::MaybeUninit::<u64>::uninit();
+    unsafe {
+        slot.as_mut_ptr().write_volatile(value);
+        if flag == 0 {
+            slot.as_mut_ptr().write_volatile(value.wrapping_add(1));
+        }
+        slot.as_ptr().read_volatile()
+    }
+}

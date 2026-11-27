@@ -271,6 +271,20 @@ comments can cite them.
     came from one of the function's own borrows, and every borrow of the function is still held
     at a call. The invariant gains "the capability of borrow i covers borrow i's entry range".
 
+- **I39 Field guarantees across calls.** Both checkers preserve old fields proved disjoint from
+  every write loan from their holder. A surviving byte capability receives field maps from each
+  unconditional borrow exit clause with nonempty fields, a nonnegative constant offset
+  from the held base, and a nonnegative constant difference between the held length and
+  the end of the borrow. Normalize both differences and translate each field offset. Earlier clauses take
+  precedence at duplicate offsets. Retain the held capability's identity, origin, guard, mode, and
+  heap mark. A field whose disjointness cannot be proved is removed before installing
+  the returned fields. `Fn.callee_writes` bounds writes through the actual loans and
+  `Fn.kept_cap` uses the callee frame property to justify preservation.
+  `give` adds capabilities with their fields substituted alongside the base and length.
+  Lean derives field validity from the callee's postcondition
+  (`Cap.subst_valid`, `Cap.restoreFields_valid`, `Fn.afterCall_inv`). The rule leaves
+  separation, permissions, and heap-unit conditions unchanged.
+
 ## Proposals (not adopted: the default checker does not use them)
 
 - **P1 Natural loops instead of address intervals** (adopted as I36, 2026-11-23, user; docs/Tab 1.md decision 11, docs/健全性の証明.md S2 and Theorem C) (from the musl trial, docs/typed/musl-trial.md

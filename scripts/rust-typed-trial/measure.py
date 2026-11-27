@@ -47,7 +47,17 @@ RUNS = [
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--artifacts", type=Path, default=None)
+    parser.add_argument("--no-mir-hints", action="store_true")
+    parser.add_argument("--llvm-hints", action="store_true")
+    parser.add_argument("--entry-contracts", type=Path, metavar="DIR",
+                        help="directory of reviewed per-run JSON files, named <run>.json")
     args = parser.parse_args()
+    if args.entry_contracts:
+        args.entry_contracts = args.entry_contracts.resolve()
+        missing = [label for label, _, _ in RUNS
+                   if not (args.entry_contracts / f"{label}.json").is_file()]
+        if missing:
+            parser.error("missing reviewed entry contract files: " + ", ".join(missing))
     root = args.artifacts.resolve() if args.artifacts else Path(tempfile.mkdtemp(prefix="nocompiler-coverage-"))
     root.mkdir(parents=True, exist_ok=True)
     def measure(run):
@@ -56,6 +66,12 @@ def main():
         log = root / f"{label}.log"
         command = [CHECK, "check", "--manifest-path", FIXTURES / binary / "Cargo.toml",
                    "--bin", binary, "--artifacts", directory, "--allow-assumptions"]
+        if args.no_mir_hints:
+            command.append("--no-mir-hints")
+        if args.llvm_hints:
+            command.append("--llvm-hints")
+        if args.entry_contracts:
+            command.extend(["--entry-contracts", args.entry_contracts / f"{label}.json"])
         for _, name in entries:
             command.extend(["--function", name])
         with log.open("x") as output:
@@ -73,7 +89,10 @@ def main():
     for row in rows:
         for group in ("all", row["category"], row["run"]):
             counts[group][row["result"]["status"]] += 1
-    (root / "coverage.json").write_text(json.dumps({"counts": counts, "targets": rows}, indent=2) + "\n")
+    settings = {"mir_hints": not args.no_mir_hints, "llvm_hints": args.llvm_hints,
+                "reviewed_entry_contracts": args.entry_contracts is not None}
+    coverage = {"settings": settings, "counts": counts, "targets": rows}
+    (root / "coverage.json").write_text(json.dumps(coverage, indent=2) + "\n")
     for group, values in counts.items():
         total = sum(values.values())
         print(f"{group}: {values['proved']}/{total} proved ({values['proved'] / total:.1%}), {dict(values)}")

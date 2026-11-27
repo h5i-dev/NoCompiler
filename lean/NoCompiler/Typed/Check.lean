@@ -412,14 +412,52 @@ def lendsApart (S : STy) (ls : List (BytesCap × HCap)) : Bool :=
     i == j || p.2.id != q.2.id || (p.1.mode == .ro && q.1.mode == .ro) ||
     S.ent (.or (.le (p.1.base.add p.1.len) q.1.base) (.le (q.1.base.add q.1.len) p.1.base))
 
-/-- A capability lent `rw` to a callee: its per-field facts are dropped (the callee may
-    have written the bytes). -/
-def clearLent (ls : List (BytesCap × HCap)) (c : HCap) : HCap :=
+/-- The field is outside every write loan taken from this capability. -/
+def fieldOutsideLoans (S : STy) (ls : List (BytesCap × HCap)) (id : Nat)
+    (held : BytesCap) (field : Field) : Bool :=
+  let start := held.base.add (.lit field.off)
+  ls.all fun (b, c) =>
+    if c.id == id && b.mode == .rw then
+      S.ent (.or (.le (b.base.add b.len) start) (.le (start.add (.lit 8)) b.base))
+    else true
+
+/-- Invalidate only fields that may overlap a write loan. -/
+def clearLent (S : STy) (ls : List (BytesCap × HCap)) (c : HCap) : HCap :=
   if ls.any (fun p => p.2.id == c.id && p.1.mode == .rw) then
     match c.cap.kind with
-    | .bytes h => { c with cap := { c.cap with kind := .bytes { h with fields := [] } } }
+    | .bytes h => { c with cap := { c.cap with kind := .bytes {
+        h with fields := h.fields.filter (fieldOutsideLoans S ls c.id h) } } }
     | .token _ => c
   else c
+
+/-- The constant offset of a guaranteed borrow within a held range. -/
+def borrowFieldOffset (h : BytesCap) (c : Cap) : Option Nat :=
+  match c.kind with
+  | .bytes b => do
+    if c.guard != .tt || b.fields.isEmpty then none else
+      let offset ← constOff b.base h.base
+      let _ ← constOff h.len (b.len.add (.lit (offset : Int)))
+      some offset
+  | .token _ => none
+
+/-- Restore a returned field map at its offsets in the held range. -/
+def restoreBorrowOne (out : Cap) (c : HCap) : HCap :=
+  match c.cap.kind with
+  | .token _ => c
+  | .bytes h =>
+    match out.kind, borrowFieldOffset h out with
+    | .bytes b, some offset =>
+      let fields := b.fields.map fun f => { f with off := offset + f.off }
+      let old := h.fields.filter fun f => !fields.any (fun g => f.off == g.off)
+      { c with cap := { c.cap with kind := .bytes { h with fields := fields ++ old } } }
+    | _, _ => c
+
+/-- Earlier borrow clauses take precedence at the same field offset. -/
+def restoreBorrow (returned : List Cap) (c : HCap) : HCap :=
+  returned.foldr restoreBorrowOne c
+
+def afterBorrow (S : STy) (g : Sig) (ρ : Subst) (ls : List (BytesCap × HCap)) (c : HCap) : HCap :=
+  restoreBorrow (g.borrow.map fun b => b.exitCap.subst ρ) (clearLent S ls c)
 
 /-- The held capabilities `take` clauses are lent from: the callee keeps them. -/
 def takenIds (g : Sig) (ls : List (BytesCap × HCap)) : List Nat :=
@@ -431,9 +469,7 @@ def callIds (k : Nat) (S : STy) : List Nat :=
   | some S' => (S'.caps.filter (fun (c : HCap) => !S.caps.any (fun d => d.id == c.id))).map (·.id)
   | none => []
 
-/-- The type after the call returns: preserved registers kept, the `out` registers with the
-    callee's `out` variables renamed to fresh ones, its exit constraint, the fields of
-    capabilities lent `rw` forgotten. -/
+/-- The type after the call returns, with the callee's outputs and proved memory effects. -/
 def afterCall (S : STy) (g : Sig) (θ : Subst) (ls : List (BytesCap × HCap)) (ids : List Nat) : STy :=
   let x := f.freshAt S
   let ρ := θ ++ g.outVars.zipIdx.map fun (p : Var × Nat) => (p.1, IExpr.var (x + p.2))
@@ -446,7 +482,7 @@ def afterCall (S : STy) (g : Sig) (θ : Subst) (ls : List (BytesCap × HCap)) (i
       ((List.finRange 32).filter fun r => !preservedRegs.contains r && !g.outRegs.any (·.1 == r)).map
         fun r => (r, IExpr.var (x + g.outVars.length + r.val))
     facts := g.post.subst ρ :: S.facts
-    caps := (S.caps.filter (fun c => !(takenIds g ls).contains c.id)).map (clearLent ls) ++
+    caps := (S.caps.filter (fun c => !(takenIds g ls).contains c.id)).map (afterBorrow S g ρ ls) ++
       g.give.zipIdx.map fun (p : Cap × Nat) =>
         { id := ids.getD p.2 (base + p.2), origin := none, cap := p.1.subst ρ } }
 
@@ -474,11 +510,25 @@ def callAt (k : Nat) (S : STy) (t : Word) : Bool :=
 /-- `jal ra, off` to a callee in the table. -/
 def callOk (k : Nat) (S : STy) (off : BitVec 21) : Bool := f.callAt k S (f.pcOf k + off.signExtend 64)
 
-/-- `jalr ra, off(rs)` with `rs` holding a known constant: clang's `call f`, the pair
-    `auipc t, %pcrel_hi(f)` + `jalr ra, %pcrel_lo(f)(t)` (I21), with `auipcOk`'s exact rule. -/
+/-- Architecturally computed target of a register call. -/
+def regCallTarget (base : Word) (off : BitVec 12) : Word :=
+  (base + off.signExtend 64) &&& ~~~1
+
+/-- The two possible source words for each aligned callee address. -/
+def regCallBases (f : Fn) (off : BitVec 12) : List Word :=
+  f.callees.flatMap fun (address, _) =>
+    [address - off.signExtend 64, address + 1 - off.signExtend 64]
+
+def regCallCases (e : IExpr) (xs : List Word) : Constr :=
+  xs.foldr (fun base rest => .or (Constr.eqMod e (.lit base.toNat)) rest) (.le (.lit 1) (.lit 0))
+
+/-- Check the constant fast path or a finite set of possible register calls. -/
 def callRegOk (k : Nat) (S : STy) (rs : Reg) (off : BitVec 12) : Bool :=
   match S.reg rs with
-  | some e => e.terms.isEmpty && f.callAt k S ((BitVec.ofInt 64 e.const + off.signExtend 64) &&& ~~~1)
+  | some e =>
+    if e.terms.isEmpty then f.callAt k S (regCallTarget (BitVec.ofInt 64 e.const) off)
+    else S.ent (regCallCases e ((f.regCallBases off).filter fun base =>
+      f.callAt k S (regCallTarget base off)))
   | none => false
 
 /-- A tail call of the callee at `t` (I21 `tail`, 健全性の証明 末尾呼出し): the call's check, at
@@ -574,8 +624,8 @@ def Sig.scoped (σ : Sig) : Bool :=
   (σ.post.vars.all (fun y => σ.params.contains y || σ.outVars.contains y)) &&
   σ.outVars.Nodup && (σ.outVars.all fun y => !σ.params.contains y)
 
-/-- What the call rule needs of a callee's signature (v0 of the Lean checker): byte
-    capabilities without entry fields, no take/give/tokens, `out` registers caller-saved. -/
+/-- The call rule requires scoped signatures and caller-saved output registers.
+    A callee giving back a heap region must hold the heap token. -/
 def calleeOk (g : Sig) : Bool :=
   Sig.scoped g && g.params.Nodup &&
   (g.entryCaps.all fun c => c.guard == .tt) && g.tokNames.Nodup &&
@@ -583,7 +633,7 @@ def calleeOk (g : Sig) : Bool :=
   (g.outRegs.all fun p => !preservedRegs.contains p.1) &&
   (g.take.all fun c => c.vars.all g.params.contains) &&
   (g.give.all fun c => (match c.kind with
-      | .bytes x => x.fields.isEmpty && (!x.heap || g.tokNames.contains heapTok)
+      | .bytes x => (!x.heap || g.tokNames.contains heapTok)
       | .token _ => true) &&
     c.vars.all (fun y => g.params.contains y || g.outVars.contains y))
 

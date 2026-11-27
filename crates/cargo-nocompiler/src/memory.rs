@@ -120,7 +120,11 @@ pub fn requirements(
     all
 }
 
-fn frame(func: &Func, requirements: &Requirements) -> (i128, String) {
+fn frame(
+    func: &Func,
+    requirements: &Requirements,
+    machine: Option<&crate::llvm::Frame>,
+) -> (i128, String) {
     let size = match func.instrs.first().map(|p| &p.instr) {
         Some(Instr::IOp {
             op: IOp::Addi,
@@ -133,8 +137,27 @@ fn frame(func: &Func, requirements: &Requirements) -> (i128, String) {
     if size <= 0 || size % 16 != 0 {
         return (0, String::new());
     }
+    let known_slots = machine
+        .filter(|frame| frame.size == size)
+        .map(|frame| &frame.slots);
     let mut taken = BTreeSet::new();
     walk(func, entry(), |instr, state| {
+        if let Some(slots) = known_slots
+            && let Some((base, offset, width, _)) = access(instr)
+            && base != SP
+            && let Some(start) = state
+                .reg(base)
+                .zip(state.reg(SP))
+                .and_then(|(base, sp)| base.sub(&sp))
+                .and_then(|e| e.add_const(offset.into()))
+                .and_then(|e| e.as_const())
+            && let Some(end) = start.checked_add(width.into())
+            && slots.iter().any(|&(lo, hi)| lo <= start && end <= hi)
+        {
+            // Indirect access requires an addressable range even if the
+            // compiler describes the object as a word-sized stack slot.
+            taken.insert((start, end));
+        }
         if let Some((name, false)) = call(instr)
             && let Some(regions) = requirements.get(name)
         {
@@ -204,10 +227,11 @@ pub fn stack(
     funcs: &[Func],
     requirements: &Requirements,
     mut budgets: BTreeMap<String, i128>,
+    machine: &BTreeMap<String, crate::llvm::Frame>,
 ) -> BTreeMap<String, String> {
     let frames: BTreeMap<_, _> = funcs
         .iter()
-        .map(|f| (f.name.clone(), frame(f, requirements)))
+        .map(|f| (f.name.clone(), frame(f, requirements, machine.get(&f.name))))
         .collect();
     loop {
         let ready: Vec<_> = funcs

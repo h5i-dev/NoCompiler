@@ -58,7 +58,7 @@ theorem Fn.afterCall_inv (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {
   let F1 := callF g Ft Fg'
   let ρ : Subst := θ ++ g.outVars.zipIdx.map fun (p : Var × Nat) => (p.1, IExpr.var (x + p.2))
   let base := S.caps.foldr (fun (c : HCap) m => max (c.id + 1) m) 0
-  have hkept := fun {c0 : HCap} (hc0 : c0 ∈ S.caps) hnt =>
+  have hkept0 := fun {c0 : HCap} (hc0 : c0 ∈ S.caps) hnt =>
     f.kept_cap hst hI hok hstk hls hregs hmem hframe (ι' := ι') g1 hc0 hnt
   have hexitLen : g.exitCaps.length = g.borrow.length + g.give.length := by simp [Sig.exitCaps]
   -- the exit capabilities: a borrow's (a token's is its clause), a given one
@@ -68,6 +68,28 @@ theorem Fn.afterCall_inv (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {
     intro j hj; simp only [Sig.exitCaps]; rw [List.getElem_append_right (by simp)]; simp
   have hEnt : ∀ i (hi : i < g.borrow.length), g.entryCaps[i]'(by simp only [Sig.entryCaps, List.length_append, List.length_map]; omega) = g.borrow[i].cap := by
     intro i hi; simp only [Sig.entryCaps]; rw [List.getElem_append_left (by simpa using hi)]; simp
+  let returned := g.borrow.map fun b => b.exitCap.subst ρ
+  have hreturned : ∀ c ∈ returned, c.valid T ι' Fg' s2.mem := by
+    intro c hc
+    obtain ⟨b, hb, rfl⟩ := List.mem_map.1 hc
+    have hv := hgval b.exitCap (List.mem_append.2 (.inl (List.mem_map.2 ⟨b, hb, rfl⟩)))
+    have hs := Cap.congr_vars (T := T) (F := Fg')
+      (c := b.exitCap) (fun y hy => hupd y (hok.borrowExitScoped b hb y hy))
+    cases hk : b.exitCap.kind with
+    | bytes x =>
+      exact (Cap.subst_valid hk ρ ι' Fg' Fg' (fun _ => rfl) s2.mem).2 ((hs.2 _).2 hv)
+    | token t =>
+      exact (Cap.subst_valid_tok hk ρ ι' Fg' s2.mem).2 ((hs.2 _).2 hv)
+  have hkept : ∀ {c0}, c0 ∈ S.caps → (¬ ∃ t, c0.cap.kind = .token t ∧ t ∈ g.tokNames) →
+      (Fn.afterBorrow S g ρ ls c0).id = c0.id ∧
+      (Fn.afterBorrow S g ρ ls c0).cap.exclusive = c0.cap.exclusive ∧
+      (∀ z, (Fn.afterBorrow S g ρ ls c0).cap.fp ι' Ft z ↔ c0.cap.fp ι Ft z) ∧
+      (Fn.afterBorrow S g ρ ls c0).cap.valid T ι' Ft s2.mem := by
+    intro c0 hc0 hnt
+    obtain ⟨hi, he, hf, hv⟩ := hkept0 hc0 hnt
+    obtain ⟨hi', _, he', hf'⟩ := Fn.restoreBorrow_shape returned (Fn.clearLent S ls c0) ι' Ft
+    exact ⟨hi'.trans hi, he'.trans he, fun z => (hf' z).trans (hf z),
+      Fn.restoreBorrow_valid hv hreturned⟩
   -- what the callee returns fresh lies in a held capability that went to it
   let Gone : HCap → Prop := fun h => h.id ∈ Fn.takenIds g ls ∨ ∃ t, h.cap.kind = .token t ∧ t ∈ g.tokNames
   have hfreshGone : ∀ e ∈ g.fresh, ∀ z, e.fp ιg' Fg' z →
@@ -114,8 +136,8 @@ theorem Fn.afterCall_inv (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {
   have hgValid : ∀ j (hj : j < g.give.length), ((g.give[j]).subst ρ).valid T ι' F1 s2.mem := by
     intro j hj
     have hv := hgval _ (by simp [Sig.exitCaps, List.getElem_mem hj] : g.give[j] ∈ g.exitCaps)
-    rcases hok.giveKind _ (List.getElem_mem hj) with ⟨xb, hk, hf0, hheap⟩ | ⟨t, hk⟩
-    · rw [Cap.subst_valid hk hf0 _ _ _ Fg' (fun hh => by simp [F1, callF, hheap hh])]
+    rcases hok.giveKind _ (List.getElem_mem hj) with ⟨xb, hk, hheap⟩ | ⟨t, hk⟩
+    · rw [Cap.subst_valid hk _ _ _ Fg' (fun hh => by simp [F1, callF, hheap hh])]
       exact ((Cap.congr_vars (T := T) (F := Fg')
         (fun y hy => hupd y (hok.giveScoped _ (List.getElem_mem hj) y hy))).2 _).2 hv
     · have ht : t ∈ g.giveToks := List.mem_filterMap.2 ⟨_, List.getElem_mem hj, by simp [hk]⟩
@@ -145,7 +167,7 @@ theorem Fn.afterCall_inv (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {
     have := hv (by rw [hgi]; rfl)
     simpa [F1, callF, ht] using this
   have hcaps' : ∀ c ∈ (f.afterCall S g θ ls ids).caps,
-      (∃ c0 ∈ S.caps, c0.id ∉ Fn.takenIds g ls ∧ c = Fn.clearLent ls c0) ∨
+      (∃ c0 ∈ S.caps, c0.id ∉ Fn.takenIds g ls ∧ c = Fn.afterBorrow S g ρ ls c0) ∨
       (∃ j, ∃ hj : j < g.give.length, c.id = ids.getD j (base + j) ∧ c.cap = (g.give[j]).subst ρ) := by
     intro c hc
     simp only [Fn.afterCall, List.mem_append, List.mem_map, List.mem_filter, Bool.not_eq_true',
@@ -174,7 +196,7 @@ theorem Fn.afterCall_inv (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {
       · obtain ⟨t, hk, ht⟩ := hlt
         obtain ⟨i, hi, hbk, hg0⟩ := hlentTok c0 hc0 hnt t hk ht
         right
-        rw [Fn.clearLent_token hk]
+        rw [Fn.afterBorrow_token hk]
         refine ⟨i, .inl ⟨hi, hc0, hnt, t, hk, hbk⟩, by rw [hexitLen]; omega, ?_,
           htokFp c0 hc0 t hk hg0 ht i hi hbk⟩
         rw [hEb i hi]; simp [Cap.exclusive, Borrow.exitCap, hk, hbk]
@@ -186,8 +208,8 @@ theorem Fn.afterCall_inv (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {
           · exact hlt hg
         · rw [← f1 z]
           refine Cap.fp_F_congr (fun t hk => ?_) ι' z
-          have : t ∉ g.tokNames := fun ht => hlt ⟨t, Fn.clearLent_kind hk, ht⟩
-          have := hnotGive c0 hc0 t (Fn.clearLent_kind hk) this
+          have : t ∉ g.tokNames := fun ht => hlt ⟨t, Fn.afterBorrow_kind hk, ht⟩
+          have := hnotGive c0 hc0 t (Fn.afterBorrow_kind hk) this
           simp [F1, callF, *]
     · right
       refine ⟨g.borrow.length + j, .inr ⟨j, rfl, hj, hid, hcj⟩, by rw [hexitLen]; omega, ?_, fun z => ?_⟩
@@ -258,9 +280,9 @@ theorem Fn.afterCall_inv (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {
     · by_cases hlt : ∃ t, c0.cap.kind = .token t ∧ t ∈ g.tokNames
       · obtain ⟨t, hk, ht⟩ := hlt
         obtain ⟨i, hi, hbk, -⟩ := hlentTok c0 hc0 hnt t hk ht
-        rw [Fn.clearLent_token hk]
+        rw [Fn.afterBorrow_token hk]
         exact htokValid c0 hc0 t hk ht i hi hbk
-      · by_cases hhp : ∃ b, (Fn.clearLent ls c0).cap.kind = .bytes b ∧ b.heap = true
+      · by_cases hhp : ∃ b, (Fn.afterBorrow S g ρ ls c0).cap.kind = .bytes b ∧ b.heap = true
         · -- a kept heap block: still a unit, by the callee's Q5 (it misses the callee's Pool and stack)
           obtain ⟨b, hkb, -⟩ := hhp
           have hfp0 := (hkept hc0 hlt).2.2.1
@@ -277,7 +299,7 @@ theorem Fn.afterCall_inv (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {
             rw [e1]
             refine hgQ5 _ hu (fun x hx => ?_)
             have hxc : c0.cap.fp ι Ft x := (hfp0 x).1 (by
-              have hg' : (Fn.clearLent ls c0).cap.guard.eval ι' = true := hg
+              have hg' : (Fn.afterBorrow S g ρ ls c0).cap.guard.eval ι' = true := hg
               unfold Cap.fp Cap.regions
               rw [if_pos hg', hkb]
               exact ⟨_, List.mem_singleton_self _, hx⟩)
@@ -293,14 +315,14 @@ theorem Fn.afterCall_inv (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {
               exact e ▸ List.mem_map.2 ⟨_, hd, rfl⟩
             · have := eq_of_id_eq hI.ids hm hc0 e
               rw [this] at hkt
-              rw [Fn.clearLent_token hkt, hkt] at hkb
+              rw [Fn.afterBorrow_token hkt, hkt] at hkb
               cases hkb
           · have e1 : F1 heapTok = Ft heapTok := by simp [F1, callF, hH]
             rw [e1]; exact hu
         · refine (Cap.valid_F_congr (fun t hk => ?_) (fun b hb hh => absurd ⟨b, hb, hh⟩ hhp) ι'
             s2.mem).1 (hkept hc0 hlt).2.2.2
-          have : t ∉ g.tokNames := fun ht => hlt ⟨t, Fn.clearLent_kind hk, ht⟩
-          have := hnotGive c0 hc0 t (Fn.clearLent_kind hk) this
+          have : t ∉ g.tokNames := fun ht => hlt ⟨t, Fn.afterBorrow_kind hk, ht⟩
+          have := hnotGive c0 hc0 t (Fn.afterBorrow_kind hk) this
           simp [F1, callF, *]
     · rw [hcj]; exact hgValid j hj
   · simp only [Fn.afterCall]
@@ -314,7 +336,7 @@ theorem Fn.afterCall_inv (hst : f.StructSpec) {S : STy} {s : State} {ι : Val} {
       refine congrArg (BitVec.ofNat 64) (readLE_congr fun i hi => ?_)
       rw [← hmem]
       refine hframe _ fun hzw => ?_
-      rcases f.callee_writes hst hI hok hstk hls hregs _ hzw with ⟨j, hj, -, hfp, hm, -⟩ | ⟨hlt, -⟩
+      rcases f.callee_writes hst hI hok hstk hls hregs _ hzw with ⟨j, hj, -, hfp, hm, -, -⟩ | ⟨hlt, -⟩
       · exact (hb i hi).2 (hI.stack _ hm _ hfp (hb i hi).1)
       · obtain ⟨Fr, hfr, hd, hj'⟩ := h1
         have hg := f.frame_geom hst.frameDecl hfr

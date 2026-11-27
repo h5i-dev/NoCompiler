@@ -37,6 +37,8 @@ pub struct Func {
 pub struct Program {
     pub sigs: Vec<(SSig, usize)>,
     pub funcs: Vec<Func>,
+    /// Additional candidate callees for decoded indirect calls in an ELF proof.
+    pub indirect_callees: BTreeMap<String, BTreeSet<String>>,
     /// Symbols of data sections (I30).
     pub data: BTreeMap<String, DataSym>,
 }

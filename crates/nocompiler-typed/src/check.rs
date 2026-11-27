@@ -3084,6 +3084,51 @@ impl<'a> FnCheck<'a> {
                 ),
             );
         }
+        let mut write_loans = BTreeMap::<u32, Vec<_>>::new();
+        for m in matched.iter().filter(|m| !m.take) {
+            if let CapKind::Bytes {
+                base,
+                len,
+                mode: Mode::Rw,
+                ..
+            } = &sg.borrow[m.clause].kind
+            {
+                let start = base.subst_all(&th).ok_or_else(ovf_)?;
+                let size = len.subst_all(&th).ok_or_else(ovf_)?;
+                let end = start.add(&size).ok_or_else(ovf_)?;
+                write_loans.entry(m.cap_id).or_default().push((start, end));
+            }
+        }
+        let mut fields_after_writes = BTreeMap::new();
+        for cap in &st.caps {
+            let CapKind::Bytes { base, fields, .. } = &cap.kind else {
+                continue;
+            };
+            let Some(loans) = write_loans.get(&cap.id) else {
+                continue;
+            };
+            let mut retained = BTreeMap::new();
+            for (&offset, expr) in fields {
+                let start = base.add_const(offset).ok_or_else(ovf_)?;
+                let end = start.add_const(8).ok_or_else(ovf_)?;
+                let mut outside = true;
+                for (loan_start, loan_end) in loans {
+                    let disjoint = Formula::or(vec![
+                        Formula::le(loan_end, &start).ok_or_else(ovf_)?,
+                        Formula::le(&end, loan_start).ok_or_else(ovf_)?,
+                    ]);
+                    if !self.prove(&st, &disjoint, "write loan misses field") {
+                        outside = false;
+                        break;
+                    }
+                }
+                if outside {
+                    retained.insert(offset, expr.clone());
+                }
+            }
+            fields_after_writes.insert(cap.id, retained);
+        }
+
         // 5. the state after the call
         let mut th2 = th.clone();
         for v in &sg.out_vars {
@@ -3101,72 +3146,58 @@ impl<'a> FnCheck<'a> {
         for (r, e) in &sg.outs {
             st.regs[r.0 as usize] = e.subst_all(&th2).ok_or_else(ovf_)?;
         }
-        // capabilities: take'd ones leave; rw-lent ranges lose overlapping fields, then get
-        // the callee's exit fields
+        // Apply field invalidation before installing the callee's postconditions.
         let taken: BTreeSet<u32> = matched
             .iter()
             .filter(|m| m.take)
             .map(|m| m.cap_id)
             .collect();
         st.caps.retain(|c| !taken.contains(&c.id));
-        for m in &matched {
-            if m.take {
+        let mut returned = Vec::new();
+        for clause in &sg.borrow {
+            if clause.guard != Formula::True {
                 continue;
             }
-            let clause = &sg.borrow[m.clause];
-            let CapKind::Bytes {
-                base: cb,
-                len: cl,
-                mode: Mode::Rw,
-                ..
-            } = &clause.kind
-            else {
-                continue;
-            };
-            let (lb, ll) = (
-                cb.subst_all(&th).ok_or_else(ovf_)?,
-                cl.subst_all(&th).ok_or_else(ovf_)?,
-            );
-            let Some(i) = st.caps.iter().position(|c| c.id == m.cap_id) else {
-                continue;
-            };
-            let CapKind::Bytes {
-                base,
-                len,
-                mode,
-                heap,
-                mut fields,
-            } = st.caps[i].kind.clone()
-            else {
-                continue;
-            };
-            let keys: Vec<i128> = fields.keys().copied().collect();
-            for k in keys {
-                let fstart = base.add_const(k).ok_or_else(ovf_)?;
-                let disj = Formula::or(vec![
-                    Formula::le(&lb.add(&ll).ok_or_else(ovf_)?, &fstart).ok_or_else(ovf_)?,
-                    Formula::le(&fstart.add_const(8).ok_or_else(ovf_)?, &lb).ok_or_else(ovf_)?,
-                ]);
-                if !self.prove(&st, &disj, "lent range misses field") {
-                    fields.remove(&k);
+            if let CapKind::Bytes { base, len, .. } = &clause.kind {
+                let fields = clause.exit_fields();
+                if !fields.is_empty() {
+                    returned.push((
+                        base.subst_all(&th2).ok_or_else(ovf_)?,
+                        len.subst_all(&th2).ok_or_else(ovf_)?,
+                        fields
+                            .into_iter()
+                            .map(|(off, expr)| Ok((off, expr.subst_all(&th2).ok_or_else(ovf_)?)))
+                            .collect::<F<BTreeMap<_, _>>>()?,
+                    ));
                 }
             }
-            let exitf = clause.exit_fields();
-            if !exitf.is_empty() {
-                let d = lb.sub(&base).ok_or_else(ovf_)?;
-                if let Some(d) = d.as_const() {
-                    for (k, e) in exitf {
-                        fields.insert(d + k, e.subst_all(&th2).ok_or_else(ovf_)?);
+        }
+        for cap in &mut st.caps {
+            if let CapKind::Bytes {
+                base, len, fields, ..
+            } = &mut cap.kind
+            {
+                if let Some(retained) = fields_after_writes.remove(&cap.id) {
+                    *fields = retained;
+                }
+                for (borrow_base, borrow_len, restored) in returned.iter().rev() {
+                    let Some(offset) = borrow_base.sub(base).and_then(|d| d.as_const()) else {
+                        continue;
+                    };
+                    let Some(slack) = borrow_len
+                        .add_const(offset)
+                        .and_then(|end| len.sub(&end))
+                        .and_then(|d| d.as_const())
+                    else {
+                        continue;
+                    };
+                    if offset >= 0 && slack >= 0 {
+                        for (&off, expr) in restored {
+                            fields.insert(off.checked_add(offset).ok_or_else(ovf_)?, expr.clone());
+                        }
                     }
                 }
             }
-            st.caps[i].kind = CapKind::Bytes {
-                base,
-                len,
-                mode,
-                heap,
-                fields,
-            };
         }
         for g in &sg.give {
             let guard = g

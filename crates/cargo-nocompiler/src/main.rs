@@ -1,9 +1,13 @@
 mod build;
+#[allow(dead_code)] // This module also supplies the encoder used by the embedded rustc driver.
+mod contract_ir;
 mod contracts;
 mod flow;
 mod heap;
+mod llvm;
 mod loops;
 mod memory;
+mod scope;
 
 use clap::{Parser, Subcommand};
 use nocompiler_typed::asm;
@@ -38,6 +42,16 @@ struct Args {
     manifest_path: PathBuf,
     #[arg(long)]
     package: Option<String>,
+    #[arg(long, value_delimiter = ',')]
+    features: Vec<String>,
+    #[arg(long)]
+    no_default_features: bool,
+    #[arg(long)]
+    all_features: bool,
+    #[arg(long)]
+    locked: bool,
+    #[arg(long, default_value = "release")]
+    profile: String,
     #[arg(long, default_value = "llvm-symbolizer")]
     symbolizer: PathBuf,
     #[arg(long)]
@@ -50,8 +64,20 @@ struct Args {
     global_allocator_stack: u64,
     #[arg(long)]
     allow_assumptions: bool,
+    /// Require the generated contracts for these public entries to match a reviewed JSON file.
+    #[arg(long)]
+    entry_contracts: Option<PathBuf>,
+    /// Require an existing deployment ELF to match the bytes given to the checker.
+    #[arg(long)]
+    deployment_elf: Option<PathBuf>,
     #[arg(long)]
     no_infer_loops: bool,
+    /// Report MIR candidates without using them to generate annotations.
+    #[arg(long)]
+    no_mir_hints: bool,
+    /// Generate additional candidates from optimized LLVM IR and post-allocation Machine IR.
+    #[arg(long)]
+    llvm_hints: bool,
     #[arg(long)]
     bin: String,
     #[arg(long, required = true)]
@@ -157,9 +183,38 @@ fn write_json(path: &Path, value: &Value) -> Result<()> {
     Ok(())
 }
 
+fn elf_digest(path: &Path) -> Result<String> {
+    use std::io;
+    let mut digest = Sha256::new();
+    io::copy(&mut fs::File::open(path)?, &mut digest)?;
+    Ok(format!("{:x}", digest.finalize()))
+}
+
 fn run(args: &Args, dir: &Path) -> Result<u8> {
+    let reviewed: Option<TextMap> = args
+        .entry_contracts
+        .as_ref()
+        .map(|path| -> Result<_> { Ok(serde_json::from_slice(&fs::read(path)?)?) })
+        .transpose()?;
+    if let Some(reviewed) = &reviewed
+        && (reviewed.is_empty() || reviewed.keys().any(|name| !args.function.contains(name)))
+    {
+        return Err("reviewed entry contracts must name at least one selected function".into());
+    }
     let image = build::compile(args, dir)?;
+    let elf_sha256 = elf_digest(&image.image)?;
+    if let Some(path) = &args.deployment_elf
+        && elf_digest(path)? != elf_sha256
+    {
+        return Err(format!(
+            "deployment ELF differs from the proof input: {}",
+            path.display()
+        )
+        .into());
+    }
     let (targets, layouts) = metadata(dir)?;
+    let mir = contract_ir::Summary::decode(&fs::read_to_string(dir.join("mir-contracts.tsv"))?)
+        .ok_or("malformed MIR contract record")?;
     let unsupported: TextMap = tsv(&dir.join("unsupported.tsv"))?.into_iter().collect();
     if targets.keys().any(|key| unsupported.contains_key(key))
         || targets.len() + unsupported.len() != args.function.len()
@@ -275,23 +330,82 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
         BTreeMap::new()
     };
     let (inferred, inferred_report) = contracts::discover(&funcs, &layouts);
-    let stack = memory::stack(&funcs, &requirements, budgets);
+    let stack = memory::stack(&funcs, &requirements, budgets, &image.llvm_hints.frames);
     let mut all = String::new();
     let mut selected_text = String::new();
     let mut annotations = BTreeMap::new();
-    for name in args.function.iter().filter_map(|path| targets.get(path)) {
+    let mut source_contracts = BTreeMap::new();
+    let mut entry_contracts = TextMap::new();
+    for (path, name) in args
+        .function
+        .iter()
+        .filter_map(|path| targets.get(path).map(|name| (path, name)))
+    {
         let layout = &layouts[name];
+        let summary = mir.get(name);
+        let empty = contract_ir::Summary::default();
+        let ir = contracts::infer_source(layout, summary.unwrap_or(&empty));
+        let llvm_trips = image
+            .llvm_hints
+            .trips
+            .get(name)
+            .map(Vec::as_slice)
+            .unwrap_or_default();
+        let llvm_range = image.llvm_hints.ranges.get(name).copied();
+        let llvm_result = image.llvm_hints.affine_results.get(name).filter(|_| {
+            layout
+                .args
+                .iter()
+                .all(|arg| matches!(arg.as_str(), "word" | "uword"))
+        });
         let mut contract = contracts::build(
             name,
             layout,
             requirements.get(name),
+            (!args.no_mir_hints).then_some(&ir),
+            llvm_range,
+            llvm_result,
             &declared,
             &inferred,
             heap_users.contains(name) || contracts::owned(layout),
         )?;
+        let prefix = format!("#: fn {name} ");
+        let signature = contract
+            .text
+            .strip_prefix(&prefix)
+            .ok_or("generated contract has an unexpected signature")?;
+        entry_contracts.insert(path.clone(), signature.trim().to_owned());
         let frame = stack.get(name).map(String::as_str).unwrap_or("stack 0");
         contract.text.push_str(&format!(" {frame}\n"));
         all.push_str(&contract.text);
+        let mut source = contracts::source_report(layout, summary, &ir);
+        if let Some(value) = llvm_result {
+            source["llvm_affine_result"] =
+                json!({"register": "a0", "expression": value.render(contracts::input_name)});
+        }
+        if let Some(range) = llvm_range {
+            source["llvm_result_range"] =
+                json!({"register": "a0", "lower": range.lower, "upper_exclusive": range.upper});
+        }
+        if !llvm_trips.is_empty() {
+            let candidates: Vec<_> = llvm_trips
+                .iter()
+                .map(|trip| {
+                    json!({
+                        "iterations": trip.iterations.map(|n| n.to_string()),
+                        "latch_operands": [trip.left.name(), trip.right.name()],
+                        "count_arg_register": trip.count_arg.map(|reg| reg.name()),
+                    })
+                })
+                .collect();
+            source["llvm_loop_trip"] = candidates[0].clone();
+            source["llvm_loop_trips"] = json!(candidates);
+        }
+        if let Some(frame) = image.llvm_hints.frames.get(name) {
+            source["llvm_stack"] = json!({"frame_size": frame.size as u64, "slots":
+                frame.slots.iter().map(|&(a, b)| [a as u64, b as u64]).collect::<Vec<_>>()});
+        }
+        source_contracts.insert(name.clone(), source);
         if selected.contains(name) {
             selected_text.push_str(&contract.text);
             if !args.no_infer_loops
@@ -302,6 +416,7 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
                     &contract.state,
                     &mut contract.names,
                     &contract.slices,
+                    llvm_trips,
                 ));
             }
         }
@@ -311,10 +426,25 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
         selected_text.push_str(contract);
     }
     fs::write(dir.join("contracts.s"), all)?;
+    write_json(
+        &dir.join("contracts.json"),
+        &json!({
+            "schema_version": 1,
+            "mir_hints_enabled": !args.no_mir_hints,
+            "functions": source_contracts,
+        }),
+    )?;
+    write_json(&dir.join("entry-contracts.json"), &json!(entry_contracts))?;
+    let changed: BTreeSet<_> = reviewed
+        .iter()
+        .flat_map(|entries| entries.iter())
+        .filter(|(name, signature)| entry_contracts.get(*name) != Some(*signature))
+        .map(|(name, _)| name.as_str())
+        .collect();
     let ledger = dir.join("ledger.json");
     let mut report = json!({"checker":null,"functions":[],"global_errors":[]});
     let mut status = 0;
-    if !selected.is_empty() {
+    if changed.is_empty() && !selected.is_empty() {
         for (index, line) in body.split_inclusive('\n').enumerate() {
             if let Some(annotation) = annotations.get(&(index + 1)) {
                 selected_text.push_str(annotation);
@@ -356,6 +486,18 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
             )]);
         }
     }
+    if elf_digest(&image.image)? != elf_sha256 {
+        return Err("proof input ELF changed during verification".into());
+    }
+    if let Some(path) = &args.deployment_elf
+        && elf_digest(path)? != elf_sha256
+    {
+        return Err(format!(
+            "deployment ELF changed during verification: {}",
+            path.display()
+        )
+        .into());
+    }
     let functions = report["functions"]
         .as_array()
         .ok_or("invalid checker ledger")?;
@@ -365,7 +507,11 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
             .as_array()
             .is_some_and(|e| !e.is_empty());
     for name in &args.function {
-        let entry = if let Some(reason) = unsupported.get(name) {
+        let entry = if changed.contains(name.as_str()) {
+            json!({"status":"entry_contract_mismatch","reason":"generated contract differs from reviewed contract or is unavailable"})
+        } else if !changed.is_empty() {
+            json!({"status":"not_checked","reason":"a reviewed entry contract did not match"})
+        } else if let Some(reason) = unsupported.get(name) {
             json!({"status":"unsupported","reason":reason})
         } else {
             let symbol = &targets[name];
@@ -397,17 +543,27 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
     write_json(
         &dir.join("report.json"),
         &json!({
-            "schema_version":1,"elf_sha256":format!("{:x}",Sha256::digest(fs::read(&image.image)?)),
-            "target":build::TARGET,"profile":"release","rustc_flags":build::flags(!args.no_source_trace),
+            "schema_version":1,"elf_sha256":elf_sha256,
+            "deployment_elf_matched":args.deployment_elf.is_some(),
+            "entry_contract_file":"entry-contracts.json",
+            "reviewed_entries":reviewed.as_ref().map(|entries| entries.keys().collect::<Vec<_>>()),
+            "target":build::TARGET,"profile":args.profile,"rustc_flags":build::flags(!args.no_source_trace),
+            "cargo":{"artifacts_file":"cargo-build.json","package":args.package,"binary":args.bin,"features":args.features,
+                     "default_features":!args.no_default_features,"all_features":args.all_features,"locked":args.locked},
             "rust_toolchain":build::TOOLCHAIN,"rustc_version":image.version,"checker":report["checker"],
-            "contract_file":"contracts.s","infer_loops":!args.no_infer_loops,"functions":results,
+            "proof_attempt":report["proof_attempt"],
+            "checker_exit_code": (changed.is_empty() && !selected.is_empty()).then_some(status),
+            "contract_file":"contracts.s","contract_ir_file":"contracts.json","mir_hints":!args.no_mir_hints,"llvm_hints":args.llvm_hints,"infer_loops":!args.no_infer_loops,"functions":results,
             "declared_type_invariants":declared,"inferred_type_invariants":inferred_report,"allocator_assumptions":specs,
             "mir_inlined_callees":callees(&dir.join("inlined.tsv"))?,"mir_direct_callees":callees(&dir.join("mir-calls.tsv"))?,
+            "static_call_scope":scope::report(&targets, &funcs, &image.symbols, &external),
             "dwarf_inline_ranges":trace,"inferred_raw_pointer_requirements":inferred_raw,"global_errors":report["global_errors"]
         }),
     )?;
     Ok(
-        if !matches!(status, 0 | 1) || (!selected.is_empty() && !ledger.exists()) {
+        if !matches!(status, 0 | 1)
+            || (changed.is_empty() && !selected.is_empty() && !ledger.exists())
+        {
             2
         } else {
             u8::from(failed)

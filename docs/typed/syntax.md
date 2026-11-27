@@ -106,6 +106,9 @@ false` in their positions.
   `−2^63 ≤ e < 2^63`.
 - `borrow c`: lent for the call and returned as it was (with the `-> {…}` fields on exit, I6).
   `take c`: consumed. `give [ψ ⇒] c`: handed out on exit (only `rw` bytes or tokens).
+  Field maps on `give` are available to the caller under the capability's guard. For
+  `borrow`, the caller can use returned fields when the borrow has a proven constant offset within the held range and its end
+  fits with a constant nonnegative difference (I39).
 - `stack K`: bytes below the entry `sp` the function may use, including its callees.
 - `frame F slots k1, … addr [o, o+l), …` (I8): the prologue is `addi sp, sp, -F` (F a multiple
   of 16, F ≤ K); slots are 8-byte save slots at `sp + k`; each `addr` range becomes an `rw`

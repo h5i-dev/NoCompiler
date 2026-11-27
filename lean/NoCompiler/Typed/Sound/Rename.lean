@@ -1,4 +1,4 @@
-import NoCompiler.Typed.Sound.CallSpec
+import NoCompiler.Typed.Sound.CallTok
 
 /-
 Calls: the callee's parameters and `out` variables at the caller (instantiation and renaming).
@@ -151,15 +151,147 @@ theorem Cap.subst_fp {c : Cap} {b : BytesCap} (hk : c.kind = .bytes b) (ρ : Sub
   simp only [Constr.eval_subst]
   simp [BytesCap.region, IExpr.eval_subst]
 
-theorem Cap.subst_valid {T : TokEnv} {c : Cap} {b : BytesCap} (hk : c.kind = .bytes b) (hf : b.fields = [])
+theorem Cap.subst_valid {T : TokEnv} {c : Cap} {b : BytesCap} (hk : c.kind = .bytes b)
     (ρ : Subst) (ι : Val) (F F' : TokFp) (hF : b.heap = true → F heapTok = F' heapTok)
     (m : Word → Byte) :
     (c.subst ρ).valid T ι F m ↔ c.valid T (IExpr.upd ι ρ) F' m := by
   unfold Cap.subst Cap.valid
   rw [hk]
   by_cases hh : b.heap = true
-  · simp [Constr.holds, Constr.eval_subst, IExpr.eval_subst, hf, hF hh, BytesCap.region]
-  · simp [Constr.holds, Constr.eval_subst, IExpr.eval_subst, hf, hh]
+  · simp [Constr.holds, Constr.eval_subst, IExpr.eval_subst, Cap.Field.holds, HasInt, hF hh, BytesCap.region]
+  · simp [Constr.holds, Constr.eval_subst, IExpr.eval_subst, Cap.Field.holds, HasInt, hh]
+
+/-- Translating fields to the caller's offsets preserves their memory meaning. -/
+theorem Cap.restoreFields_valid {T : TokEnv} {ι : Val} {F F' : TokFp} {m : Word → Byte}
+    {held returned : Cap} {h r : BytesCap} {offset : Nat}
+    (hh : held.kind = .bytes h) (hr : returned.kind = .bytes r)
+    (hb : r.base.eval ι = h.base.eval ι + offset)
+    (hl : r.len.eval ι + offset ≤ h.len.eval ι)
+    (hg : returned.guard.holds ι)
+    (hv : held.valid T ι F m) (hp : returned.valid T ι F' m) :
+    ({ held with kind := .bytes { h with fields := (r.fields.map fun f => { f with off := offset + f.off }) ++
+      (h.fields.filter fun f => !(r.fields.map (fun x => { x with off := offset + x.off })).any (fun g => f.off == g.off)) } } : Cap).valid T ι F m := by
+  unfold Cap.valid at hv hp ⊢
+  rw [hh] at hv
+  rw [hr] at hp
+  intro guard
+  obtain ⟨base, len, bounds, old, heap⟩ := hv guard
+  refine ⟨base, len, bounds, ?_, heap⟩
+  intro field member
+  rcases List.mem_append.1 member with hm | hm
+  · have hm' : ∃ orig ∈ r.fields, { orig with off := offset + orig.off } = field :=
+      List.mem_map.1 hm
+    obtain ⟨orig, hmOrig, rfl⟩ := hm'
+    obtain ⟨hsize, halign, hvalue⟩ := (hp hg).2.2.2.1 orig hmOrig
+    simp only [Cap.Field.holds, Int.natCast_add] at hsize halign hvalue ⊢
+    rw [hb] at halign hvalue
+    rw [Int.add_assoc] at halign hvalue
+    exact ⟨by omega, halign, hvalue⟩
+  · exact old field (List.mem_filter.1 hm).1
+
+theorem Fn.borrowFieldOffset_facts {held returned : BytesCap} {c : Cap} {offset : Nat}
+    (hk : c.kind = .bytes returned) (hm : Fn.borrowFieldOffset held c = some offset) (ι : Val) :
+    c.guard = .tt ∧ returned.base.eval ι = held.base.eval ι + offset ∧
+      returned.len.eval ι + offset ≤ held.len.eval ι := by
+  by_cases hg : c.guard = .tt
+  · cases he : returned.fields.isEmpty with
+    | true => simp [Fn.borrowFieldOffset, hk, hg, he] at hm
+    | false =>
+      cases hoff : Fn.constOff returned.base held.base with
+      | none => simp [Fn.borrowFieldOffset, hk, hg, he, hoff] at hm
+      | some k =>
+        cases hl : Fn.constOff held.len (returned.len.add (.lit (k : Int))) with
+        | none => simp [Fn.borrowFieldOffset, hk, hg, he, hoff, hl] at hm
+        | some extra =>
+          simp [Fn.borrowFieldOffset, hk, hg, he, hoff, hl] at hm
+          subst offset
+          have hlen := constOff_sound hl ι
+          simp only [IExpr.eval_add, IExpr.eval_lit] at hlen
+          exact ⟨hg, constOff_sound hoff ι, by omega⟩
+  · simp [Fn.borrowFieldOffset, hk, hg] at hm
+
+theorem Fn.restoreBorrowOne_valid {T : TokEnv} {ι : Val} {F F' : TokFp} {m : Word → Byte}
+    {out : Cap} {c : HCap} (hv : c.cap.valid T ι F m) (hp : out.valid T ι F' m) :
+    (Fn.restoreBorrowOne out c).cap.valid T ι F m := by
+  cases hk : c.cap.kind with
+  | token t => simpa [Fn.restoreBorrowOne, hk] using hv
+  | bytes h =>
+    cases hr : out.kind with
+    | token t => simpa [Fn.restoreBorrowOne, hk, hr] using hv
+    | bytes r =>
+      cases hOff : Fn.borrowFieldOffset h out with
+      | none => simpa [Fn.restoreBorrowOne, hk, hr, hOff] using hv
+      | some offset =>
+        obtain ⟨hg, hb, hl⟩ := Fn.borrowFieldOffset_facts hr hOff ι
+        simpa only [Fn.restoreBorrowOne, hk, hr, hOff] using
+          (Cap.restoreFields_valid hk hr hb hl (by simp [Constr.holds, hg, Constr.eval]) hv hp)
+
+theorem Fn.restoreBorrow_valid {T : TokEnv} {ι : Val} {F F' : TokFp} {m : Word → Byte}
+    {returned : List Cap} {c : HCap} (hv : c.cap.valid T ι F m)
+    (hp : ∀ out ∈ returned, out.valid T ι F' m) :
+    (Fn.restoreBorrow returned c).cap.valid T ι F m := by
+  induction returned with
+  | nil => exact hv
+  | cons out tail ih =>
+    exact Fn.restoreBorrowOne_valid (ih (fun d hd => hp d (.tail out hd))) (hp out (.head tail))
+
+theorem Fn.restoreBorrowOne_shape (out : Cap) (c : HCap) (ι : Val) (F : TokFp) :
+    (Fn.restoreBorrowOne out c).id = c.id ∧
+    (Fn.restoreBorrowOne out c).cap.guard = c.cap.guard ∧
+    (Fn.restoreBorrowOne out c).cap.exclusive = c.cap.exclusive ∧
+    (∀ z, (Fn.restoreBorrowOne out c).cap.fp ι F z ↔ c.cap.fp ι F z) := by
+  cases hk : c.cap.kind with
+  | token t => simp [Fn.restoreBorrowOne, hk]
+  | bytes h =>
+    cases hr : out.kind with
+    | token t => simp [Fn.restoreBorrowOne, hk, hr]
+    | bytes r =>
+      cases hOff : Fn.borrowFieldOffset h out <;>
+        simp [Fn.restoreBorrowOne, hk, hr, hOff, Cap.exclusive, Cap.fp, Cap.regions, BytesCap.region]
+
+theorem Fn.restoreBorrow_shape (returned : List Cap) (c : HCap) (ι : Val) (F : TokFp) :
+    (Fn.restoreBorrow returned c).id = c.id ∧
+    (Fn.restoreBorrow returned c).cap.guard = c.cap.guard ∧
+    (Fn.restoreBorrow returned c).cap.exclusive = c.cap.exclusive ∧
+    (∀ z, (Fn.restoreBorrow returned c).cap.fp ι F z ↔ c.cap.fp ι F z) := by
+  induction returned with
+  | nil => exact ⟨rfl, rfl, rfl, fun _ => Iff.rfl⟩
+  | cons out tail ih =>
+    obtain ⟨hi, hg, he, hf⟩ := Fn.restoreBorrowOne_shape out (Fn.restoreBorrow tail c) ι F
+    exact ⟨hi.trans ih.1, hg.trans ih.2.1, he.trans ih.2.2.1, fun z => (hf z).trans (ih.2.2.2 z)⟩
+
+theorem Fn.restoreBorrow_token {returned : List Cap} {c : HCap} {t : String}
+    (hk : c.cap.kind = .token t) : Fn.restoreBorrow returned c = c := by
+  induction returned with
+  | nil => rfl
+  | cons out tail ih =>
+    show Fn.restoreBorrowOne out (Fn.restoreBorrow tail c) = c
+    simp [ih, Fn.restoreBorrowOne, hk]
+
+theorem Fn.afterBorrow_token {S : STy} {g : Sig} {ρ : Subst} {ls : List (BytesCap × HCap)}
+    {c : HCap} {t : String} (hk : c.cap.kind = .token t) :
+    Fn.afterBorrow S g ρ ls c = c := by
+  simp [Fn.afterBorrow, Fn.clearLent_token hk, Fn.restoreBorrow_token hk]
+
+theorem Fn.restoreBorrow_kind {returned : List Cap} {c : HCap} {t : String}
+    (hk : (Fn.restoreBorrow returned c).cap.kind = .token t) : c.cap.kind = .token t := by
+  induction returned with
+  | nil => exact hk
+  | cons out tail ih =>
+    apply ih
+    change (Fn.restoreBorrowOne out (Fn.restoreBorrow tail c)).cap.kind = .token t at hk
+    cases h : (Fn.restoreBorrow tail c).cap.kind with
+    | token t' => simpa [Fn.restoreBorrowOne, h] using hk
+    | bytes b =>
+      cases ho : out.kind with
+      | token t' => simp [Fn.restoreBorrowOne, h, ho] at hk
+      | bytes r =>
+        cases hm : Fn.borrowFieldOffset b out <;> simp [Fn.restoreBorrowOne, h, ho, hm] at hk
+
+theorem Fn.afterBorrow_kind {S : STy} {g : Sig} {ρ : Subst} {ls : List (BytesCap × HCap)}
+    {c : HCap} {t : String} (hk : (Fn.afterBorrow S g ρ ls c).cap.kind = .token t) :
+    c.cap.kind = .token t :=
+  Fn.clearLent_kind (Fn.restoreBorrow_kind hk)
 
 theorem Cap.subst_fp_tok {c : Cap} {t : String} (hk : c.kind = .token t) (ρ : Subst) (ι : Val)
     (F : TokFp) (z : Word) : (c.subst ρ).fp ι F z ↔ c.fp (IExpr.upd ι ρ) F z := by

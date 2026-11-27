@@ -4,7 +4,10 @@ use nocompiler_typed::{
     isa::{BrOp, IOp, Instr, Reg, SP, Target, ZERO},
     lin::{Lin, Names, Var},
 };
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    borrow::Cow,
+    collections::{BTreeMap, BTreeSet},
+};
 
 #[derive(Clone)]
 pub struct Slice {
@@ -97,11 +100,39 @@ fn candidate(
                             || (context.prefixes.get(&v) == Some(&n) && k == -1)
                     })
             })
-            .or_else(|| trip.as_var().and_then(|v| context.tails.get(&v).copied()))?;
+            .or_else(|| trip.as_var().and_then(|v| context.tails.get(&v).copied()));
+        let upper = if let Some(length) = length {
+            context.names.name(length).to_owned()
+        } else {
+            if op != BrOp::Bne {
+                return None;
+            }
+            context.loop_trips.iter().find_map(|hint| {
+                if !((hint.left == left && hint.right == right)
+                    || (hint.left == right && hint.right == left))
+                    || hint
+                        .count_arg
+                        .is_some_and(|reg| context.initial.reg(reg).as_ref() != Some(&trip))
+                {
+                    return None;
+                }
+                match hint.iterations {
+                    Some(iterations) if trip.as_const() == Some(iterations) => {
+                        Some(iterations.to_string())
+                    }
+                    None if trip.as_const().is_none()
+                        && trip.vars().all(|v| !context.hidden(v)) =>
+                    {
+                        Some(trip.display(context.names).to_string())
+                    }
+                    _ => None,
+                }
+            })?
+        };
         let mut bounds = vec![format!(
             "{lower} <= {} <= {}",
             context.names.name(remaining),
-            context.names.name(length)
+            upper
         )];
         let shift = trip.sub(&Lin::var(remaining))?;
         let mut regs = Registers::new();
@@ -186,6 +217,8 @@ fn candidate(
 }
 
 struct Context<'a> {
+    loop_trips: &'a [crate::llvm::LoopTrip],
+    initial: &'a State,
     names: &'a mut Names,
     slices: &'a [Slice],
     opaque: BTreeSet<Var>,
@@ -313,6 +346,7 @@ pub fn annotate(
     initial: &State,
     names: &mut Names,
     slices: &[Slice],
+    loop_trips: &[crate::llvm::LoopTrip],
 ) -> BTreeMap<usize, String> {
     let graph = Graph::new(func);
     let loops = graph.natural_loops();
@@ -333,6 +367,8 @@ pub fn annotate(
         })
         .collect();
     let mut context = Context {
+        loop_trips,
+        initial,
         names,
         slices,
         opaque: BTreeSet::new(),
@@ -351,7 +387,25 @@ pub fn annotate(
         let mut state = if node == 0 {
             initial.clone()
         } else {
-            let incoming: Vec<_> = preds.iter().map(|&p| &states[p]).collect();
+            let refined: Vec<_> = preds
+                .iter()
+                .map(|&p| {
+                    let mut edge = Cow::Borrowed(&states[p]);
+                    if let Instr::Branch {
+                        op: op @ (BrOp::Beq | BrOp::Bne),
+                        rs1,
+                        rs2: ZERO,
+                        target: Target::Local(t),
+                    } = func.instrs[p].instr
+                        && t != p + 1
+                        && (node == t) == (op == BrOp::Beq)
+                    {
+                        edge.to_mut().regs.insert(rs1, Lin::default());
+                    }
+                    edge
+                })
+                .collect();
+            let incoming: Vec<_> = refined.iter().map(Cow::as_ref).collect();
             let mut merged = merge(incoming.iter().copied());
             merged.regs.retain(|_, e| {
                 !e.vars().any(|v| {
@@ -415,6 +469,7 @@ pub fn annotate(
                 format!("remaining{}", annotations.len())
             };
             let remaining = context.names.fresh(&name);
+            let name = context.names.name(remaining).to_owned();
             let mut iteration = BTreeMap::<usize, State>::new();
             for &i in schedule.order.iter().filter(|i| body.contains(i)) {
                 let mut local = if i == node {

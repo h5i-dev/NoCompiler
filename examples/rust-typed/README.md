@@ -76,12 +76,116 @@ from Lean and invokes the kernel check. Outside a repository checkout, provide t
 Lean library via `--lean-dir` or `NOCOMPILER_LEAN_DIR`. Use `--checker` if
 the `nocompiler-typed` binary is installed in a different directory.
 
-The printed artifact directory contains `abi.tsv`, `contracts.s`,
+The printed artifact directory contains `abi.tsv`, `contracts.json`, `contracts.s`,
 `report.json`, and the checker's ledger and Lean files when the functions
 reach that stage. The command returns 0 when every selected function is
 proved, 1 for verification failures or unsupported selections, and 2 for
 build or tool invocation errors. Generated contracts describe assumptions at
 function entry, including the caller's buffer permissions.
+
+For a public entry, review the exact generated signature in
+`entry-contracts.json` and pass that JSON map, or a subset of its entries, as
+`--entry-contracts FILE` on subsequent runs. The map uses Rust function paths
+as keys. The comparison includes requirements and guarantees and excludes the
+linker symbol and inferred frame. A difference prevents verification and is
+reported as `entry_contract_mismatch`. An exact match checks contract stability.
+The review establishes whether the contract describes the public API.
+
+Use `--deployment-elf FILE` to require the existing deployment ELF to match
+the checker input by SHA-256. The proof report includes the digest. A mismatch
+ends the command before Lean runs.
+
+`--features`, `--all-features`, `--no-default-features`, and `--locked`
+are forwarded to Cargo for the checked build. `cargo-build.json` records
+the package IDs, resolved feature lists, and profiles reported by Cargo for
+the built artifacts. The target is RV64. Use `--profile` to select a Cargo profile (default: release).
+The report's `proof_attempt` field records whether the Lean proof was
+produced, blocked before proof generation, or failed, with a reason when
+available. Per-function statuses still distinguish a function checked by
+the Rust checker from one with a completed proof.
+
+`static_call_scope` traces the direct call graph among the selected optimized
+assembly bodies for each entry. It lists selected bodies, declared external
+contracts, linked symbols without selected bodies or contracts, missing linked
+symbols, and unresolved indirect sites. This diagnostic can include statically
+present calls on infeasible paths. The linked-image proof determines the
+verified scope.
+
+The rustc adapter extracts argument-relative effects from concrete optimized MIR.
+`contracts.json` records the candidate contracts using argument indices and
+symbolic byte ranges. The RV64 lowering maps those arguments to ABI registers
+and emits the clauses in `contracts.s`. The linked-image checker verifies the
+emitted contracts, including whether a caller can supply a callee's inferred
+buffer permissions. Use `--no-mir-hints` to measure which results rely on these
+candidates. The candidate report remains available in this mode.
+
+`scripts/rust-typed-trial/check-mir.sh` exercises a run-time length on raw
+pointers, a shifted call that supplies enough memory, a call that cannot
+supply it, and return guarantees for a sub-slice and a field write. The MIR
+analysis keeps up to four distinct states per block, including the pairing
+between a pointer and its length. At wider joins it intersects the exact facts
+and retains a common slice-end relation even when the component values differ.
+Taking a subslice that trims a known number of elements from the end
+adjusts that relation by the number of bytes removed.
+If every analyzed return path for a slice has the same end address,
+the tool can emit a relation between the returned pointer and length even
+when each value differs across paths. A field-write postcondition can be
+proved on the callee and used by a caller such as `reset_and_read` when the
+borrow contract identifies a contained constant-offset range. The
+`scripts/rust-typed-trial/check-borrowed-fields.sh` regression verifies this
+on a linked RV64 image with and without the inferred guarantee. The
+analysis covers the declared machine-level field values.
+
+For a resolved, selected direct MIR callee, the analyzer substitutes the
+actual arguments into the callee's effects, field writes, scalar result, and
+returned slice. It analyzes these callees before their callers. Unknown calls
+or calls with an unwind successor invalidate the caller's field facts. Known
+drop effects invalidate aliases derived from the dropped argument in the
+candidate analysis. The linked-image proof still checks the resulting contracts.
+
+For ownership transfer with `take` and `give`, the Lean call rule carries
+the fields promised on the returned capability into the caller's state.
+`scripts/rust-typed-trial/check-owned-fields.sh` verifies an owned word
+initialized by the callee and read by the caller on a linked RV64 image.
+
+## LLVM-derived candidates
+
+Pass `--llvm-hints` to also emit the optimized LLVM IR and run pinned LLVM
+`opt` and `llc`. This produces `rustc.ll`, `llvm-scev.txt`, and
+`llvm-machine.mir`. A scalar `i64` result range can refine a contract when
+all Machine IR return sites use `a0`. For each supported loop the tool matches the
+physical latch operands against the RV64 branch. It checks an exact constant
+ScalarEvolution trip count against the RV64 affine recurrence. If
+ScalarEvolution reports a symbolic count, the tool can instead derive the
+count from a supported affine RV64 recurrence before emitting an invariant.
+For a count of the form `(-1 + %argument)` in a supported LLVM signature,
+it also resolves the SSA argument to its integer ABI register and checks
+that the RV64 recurrence yields that same entry value.
+Distinct LLVM loop headers can supply candidates for separate or nested RV64
+loops when Machine IR preserves their association.
+Machine stack object ranges can
+also supply an addressable frame annotation for a constant register-relative
+stack access when the RV64 frame size and computed address agree with Machine
+IR. The linked ELF is still the input
+to the proof. Machine IR is generated in a separate backend run and serves
+as a candidate source. General mapping of LLVM SSA values to registers or
+spills, and non-affine recurrence inference, are outside the supported subset.
+
+For scalar functions with word arguments, the tool can also reconstruct a
+common affine result across LLVM returns from `add`, `sub`, and constant
+`mul` or `shl` definitions. It can keep equal affine inputs at a `phi`, and
+follow stores and reloads through a recognized local word-sized stack slot.
+For acyclic control flow a slot value survives a join only if every incoming
+path has the same affine value. Unknown stores and calls invalidate those
+slot facts, and cyclic or unsupported control flow uses block-local facts.
+Machine IR checks the `a0` return location, and
+the linked-image proof checks the resulting postcondition.
+`scripts/rust-typed-trial/check-llvm-affine.sh` verifies a caller that needs
+that equality to prove a buffer access, with MIR hints disabled.
+
+`scripts/rust-typed-trial/check-compiler-hints.sh` compares an LLVM-derived
+return bound used by a caller, a fixed-trip loop, a register-relative stack
+access, and a MIR-derived slice-end relation with a run that disables the compiler-derived candidates.
 
 Run `scripts/rust-typed-trial/check-auto.sh` to exercise both fixture crates.
 The fixtures use Rust ABI functions with mangled symbols, including a
@@ -160,8 +264,9 @@ concrete struct reference. `instances.tsv` lists compiled instances and
 their symbols. The report includes direct MIR callees and inlining recorded
 by rustc's MIR inliner. The report also records linked instruction ranges and inline stacks from LLVM
 DWARF, including functions that still appear as direct calls in MIR.
-Register-pair returns are checked as machine words, with no inferred
-contract linking a returned reference to its source region.
+For a returned slice with an affine offset and length derived from an argument,
+the tool proposes register-pair postconditions. When MIR cannot determine that
+relation, the return is checked using unrefined machine words.
 
 `--invariants FILE.json` maps a Rust type to length fields and their
 backing array fields. For example:
@@ -228,6 +333,11 @@ invariant file. Each selected target contributes to the denominator,
 including targets the current compiler integration cannot select. The
 `coverage.json` output and per-run logs distinguish dependency functions,
 wrappers that include dependency code, and standalone fixtures.
+Pass `--no-mir-hints` to the benchmark to rerun the same target selection
+with MIR candidates disabled.
+Use `--llvm-hints` to compare LLVM candidate generation, or
+`--entry-contracts DIR` to supply reviewed `<run>.json` signatures for every
+run. The benchmark records the settings in `coverage.json`.
 
 `proved` means the linked machine code meets its generated entry contract.
 A generated collection invariant is visible in the per-run report and

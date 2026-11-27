@@ -140,7 +140,31 @@ theorem ofInt_const_eq {ι : Val} {w : Word} {e : IExpr} (h : HasInt ι w e)
   have e2 : e.const % ((2 ^ 64 : Nat) : Int) = e.const % 2 ^ 64 := by norm_cast
   rw [e2, ← h, e1]; simp
 
-/-- I21: `jalr ra, off(rs)` with `rs` a known constant. -/
+/-- A word satisfying the case disjunction is one of the enumerated words. -/
+theorem regCallCases_mem {ι : Val} {w : Word} {e : IExpr} {xs : List Word}
+    (ht : HasInt ι w e) (h : (Fn.regCallCases e xs).holds ι) : w ∈ xs := by
+  induction xs with
+  | nil => simp [Fn.regCallCases, Constr.holds, Constr.eval, IExpr.eval_lit] at h
+  | cons base rest ih =>
+    simp only [Fn.regCallCases, List.foldr_cons, Constr.holds, Constr.eval,
+      Bool.or_eq_true] at h
+    rcases h with he | he
+    · have hm : (e.eval ι - (IExpr.lit base.toNat).eval ι) % 2 ^ 64 = 0 := by
+        simp only [Constr.eqMod, Constr.eval, decide_eq_true_eq, IExpr.eval_sub] at he
+        exact_mod_cast he
+      have hx := ofInt_const_eq (ht.congr hm) (by rfl : (IExpr.lit base.toNat).terms.isEmpty = true)
+      have hbase : BitVec.ofInt 64 (base.toNat : Int) = base := by
+        apply BitVec.eq_of_toNat_eq
+        have hrange : (base.toNat : Int) < 2 ^ 64 := by exact_mod_cast base.isLt
+        have ht := toNat_ofInt_of (a := (base.toNat : Int)) (by omega) hrange
+        exact_mod_cast ht
+      rw [IExpr.lit] at hx
+      simp only at hx
+      have heq : w = base := hx.symm.trans hbase
+      exact heq.symm ▸ List.Mem.head _
+    · exact .tail _ (ih he)
+
+/-- I21: `jalr ra, off(rs)` with a proved set of possible targets. -/
 theorem Fn.callReg_step (hst : f.StructSpec) {c : Code} {D : Dom} {Q : State → Prop} (rn : Runner c P D Q)
     {S : STy} {s : State} {ι : Val} {Ft : TokFp} {k : Nat} {rs : Reg} {off : BitVec 12}
     (hI : Inv f T P s0 ι0 S s ι Ft) (hd : D.mem s.pc) (hpc : s.pc = f.pcOf k)
@@ -158,13 +182,19 @@ theorem Fn.callReg_step (hst : f.StructSpec) {c : Code} {D : Dom} {Q : State →
   cases hr : S.reg rs with
   | none => rw [hr] at hk; cases hk
   | some e =>
-  rw [hr] at hk
-  simp only [Bool.and_eq_true] at hk
-  obtain ⟨hnil, hk⟩ := hk
-  have hv : BitVec.ofInt 64 e.const = s.reg rs :=
-    ofInt_const_eq (STy.reg_hasInt hI.regs hr) hnil
-  rw [hv] at hk
+  simp only [hr] at hk
+  have ht := STy.reg_hasInt hI.regs hr
+  have htarget : f.callAt k S (Fn.regCallTarget (s.reg rs) off) = true := by
+    by_cases hn : e.terms.isEmpty = true
+    · simp only [hn, if_true] at hk
+      rwa [ofInt_const_eq ht hn] at hk
+    · simp only [hn] at hk
+      have hcases := STy.ent_sound hk hI.hyps
+      have hw := regCallCases_mem ht hcases
+      exact (List.mem_filter.1 hw).2
   exact f.callAt_step hst rn hI hd hpc hi trivial
-    (fun hal => by simp only [exec, jumpTo, hal, if_true]) hk hcall hP hι0p hUF hexit cont
+    (fun hal => by
+      unfold Fn.regCallTarget at hal
+      simp only [Fn.regCallTarget, exec, jumpTo, hal, if_true]) htarget hcall hP hι0p hUF hexit cont
 
 end NoCompiler.Typed

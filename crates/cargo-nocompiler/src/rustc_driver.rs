@@ -8,6 +8,10 @@ extern crate rustc_interface;
 extern crate rustc_middle;
 extern crate rustc_target;
 
+mod capture_mir;
+#[allow(dead_code)]
+mod contract_ir;
+
 use rustc_abi::{BackendRepr, CanonAbi, Primitive};
 use rustc_driver::{Callbacks, Compilation};
 use rustc_hir::def::DefKind;
@@ -153,6 +157,7 @@ fn capture_abi<'tcx>(
     for (index, arg) in abi.args.iter().enumerate() {
         let arg_ty = arg.layout.ty;
         let arg_desc = match (&arg.mode, arg_ty.kind()) {
+            (PassMode::Direct(_), ty::Uint(ty::UintTy::U64 | ty::UintTy::Usize)) => "uword".into(),
             (PassMode::Direct(_), _) if word_integer(arg_ty) => "word".into(),
             (PassMode::Direct(_), ty::RawPtr(..)) => "ptr".into(),
             (PassMode::Direct(_), _) if arg_ty.is_box() => box_descriptor(tcx, arg_ty)
@@ -265,6 +270,7 @@ impl Callbacks for Capture {
         let mut diagnostics = String::new();
         let mut inlining = String::new();
         let mut calls = String::new();
+        let mut selected_mir = BTreeMap::new();
         for path in targets {
             let instance = match functions.get(path) {
                 Some(&Some(def)) => def,
@@ -284,6 +290,7 @@ impl Callbacks for Capture {
                     layouts.push_str(&format!("{path}\t{name}\t{layout}\n"));
                     if tcx.is_mir_available(instance.def_id()) {
                         let body = tcx.instance_mir(instance.def);
+                        selected_mir.insert(name.clone(), instance);
                         let callees: BTreeSet<_> = body
                             .source_scopes
                             .iter()
@@ -319,7 +326,12 @@ impl Callbacks for Capture {
                 }
             }
         }
+        let mut summaries = String::new();
+        for (name, summary) in capture_mir::summarize_selected(tcx, &selected_mir) {
+            summary.encode(&name, &mut summaries);
+        }
         let result = std::fs::write(format!("{destinations}/abi.tsv"), layouts)
+            .and_then(|()| std::fs::write(format!("{destinations}/mir-contracts.tsv"), summaries))
             .and_then(|()| std::fs::write(format!("{destinations}/unsupported.tsv"), diagnostics))
             .and_then(|()| std::fs::write(format!("{destinations}/inlined.tsv"), inlining))
             .and_then(|()| std::fs::write(format!("{destinations}/mir-calls.tsv"), calls))

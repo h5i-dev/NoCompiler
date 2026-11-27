@@ -505,7 +505,8 @@ pub fn to_lean_image(
 
 /// The functions a call instruction of `name` names.
 fn callees_of(prog: &Program, name: &str) -> Vec<String> {
-    prog.funcs
+    let mut direct: Vec<_> = prog
+        .funcs
         .iter()
         .find(|g| g.name == name)
         .map(|g| {
@@ -524,13 +525,18 @@ fn callees_of(prog: &Program, name: &str) -> Vec<String> {
                 })
                 .collect()
         })
-        .unwrap_or_default()
+        .unwrap_or_default();
+    if let Some(indirect) = prog.indirect_callees.get(name) {
+        direct.extend(indirect.iter().cloned());
+    }
+    direct
 }
 
 /// The functions `name` calls, deduplicated (the ledger's evidence).
 pub fn callees_in(prog: &Program, name: &str) -> Vec<String> {
     let mut v = callees_of(prog, name);
-    v.dedup();
+    let mut seen = std::collections::BTreeSet::new();
+    v.retain(|callee| seen.insert(callee.clone()));
     v
 }
 
@@ -842,30 +848,19 @@ pub fn to_lean_text(
         // signature it is called at; only callees in the same file and section have a known
         // address before linking (export.md)
         let mut callees: Vec<String> = Vec::new();
-        for pi in &func.instrs {
-            let (Instr::Jal {
-                target: Target::Symbol(s),
-                ..
-            }
-            | Instr::CallPair {
-                target: Target::Symbol(s),
-                ..
-            }) = &pi.instr
-            else {
-                continue;
-            };
-            if !ck.sigs.contains_key(s) {
+        for s in callees_of(prog, &func.name) {
+            if !ck.sigs.contains_key(&s) {
                 continue;
             }
             let local = prog
                 .funcs
                 .iter()
-                .find(|g| &g.name == s && g.section == func.section && !g.instrs.is_empty())
+                .find(|g| g.name == s && g.section == func.section && !g.instrs.is_empty())
                 .map(|g| g.instrs[0].addr);
-            let Some(a) = addr_of(s, local) else {
+            let Some(a) = addr_of(&s, local) else {
                 continue;
             };
-            let c = format!("({a:#x}, sig_{})", lean_ident(s).trim_matches(['«', '»']));
+            let c = format!("({a:#x}, sig_{})", lean_ident(&s).trim_matches(['«', '»']));
             if !callees.contains(&c) {
                 callees.push(c);
             }
