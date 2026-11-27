@@ -152,8 +152,9 @@ Without `--image` the export is as before (section offsets, same-section callees
 ### The ledger's `proved` (2026-11-23)
 
 `check FILE.s --image a.out --export-lean X.lean --prove [--lean-dir DIR] --ledger L.json`: for a
-closed program (every callee of every exported function is exported), the module also gets the
-linked `.text` (`def code`), `chk_<f> : fn_<f>.check code = true` per function and
+closed program (every callee of every exported function is exported), the module also gets the linked machine words at their original addresses
+(`def code`). For large images, this can be the contiguous span covering
+the verified function domains and any explicitly assumed external domains. The module also gets `chk_<f> : fn_<f>.check code = true` per function and
 `prog_checked : Prog.check code [] prog = true` (all by `decide +kernel`: the kernel's check,
 no extra axiom), and `prog_meets` (theorem D, `Prog.check_sound_closed`). `--prove` compiles it
 with the repository's Lean checker (`lake env lean`, in `--lean-dir`, `$NOCOMPILER_LEAN_DIR` or

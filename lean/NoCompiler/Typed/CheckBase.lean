@@ -604,7 +604,7 @@ def vars (S : STy) : List Var :=
     expression (in the source's variables, so `θ` applies to `rest` only: at a backward edge
     a loop variable is a variable of both). -/
 def solveFrom (S S' : STy) (θ : Subst) (y : Var) (known : List Var) : Option IExpr :=
-  S'.regs.findSome? fun (r, e') =>
+  let registers := S'.regs.findSome? fun (r, e') =>
     match S.reg r with
     | none => none
     | some e =>
@@ -621,6 +621,18 @@ def solveFrom (S S' : STy) (θ : Subst) (y : Var) (known : List Var) : Option IE
               some ⟨l.c / a, l.t.map fun t => (t.2 / a, t.1)⟩
             else none
         else none
+
+  registers.orElse fun _ => S'.caps.findSome? fun target =>
+    match target.cap.kind, S.caps.find? (·.id == target.id) with
+    | .bytes expected, some source =>
+      match source.cap.kind with
+      | .bytes actual =>
+        expected.fields.findSome? fun field =>
+          if field.ty.asVar == some y then
+            (actual.fields.find? (·.off == field.off)).map (·.ty)
+          else none
+      | .token _ => none
+    | _, _ => none
 
 /-- Solve `a = b` for `y` (`a` mentions `y` once after normalising, `b` does not). -/
 def solveLin (a b : IExpr) (y : Var) : Option IExpr :=

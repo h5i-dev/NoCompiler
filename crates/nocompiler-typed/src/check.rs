@@ -1544,6 +1544,76 @@ impl<'a> FnCheck<'a> {
             }
             caps.push(c);
         }
+        // Preserve a bounded entry field across a join when every incoming
+        // edge can establish the same bound for its current value.
+        let entry_fields: Vec<_> = self
+            .borrow_ids
+            .iter()
+            .zip(&self.me.borrow)
+            .filter_map(|(&id, clause)| match &clause.kind {
+                CapKind::Bytes { fields, .. } if clause.guard == Formula::True => {
+                    Some((id, fields.clone()))
+                }
+                _ => None,
+            })
+            .collect();
+        for (id, entry) in entry_fields {
+            let Some(cap) = caps.iter_mut().find(|cap| cap.id == id) else {
+                continue;
+            };
+            let CapKind::Bytes { fields, .. } = &mut cap.kind else {
+                continue;
+            };
+            for (offset, original) in entry {
+                if fields.contains_key(&offset) {
+                    continue;
+                }
+                let Some(var) = original.as_var() else {
+                    continue;
+                };
+                let bounds: Vec<_> = self
+                    .me
+                    .pre
+                    .iter()
+                    .filter(|fact| {
+                        let mut vars = BTreeSet::new();
+                        fact.vars(&mut vars);
+                        vars == BTreeSet::from([var])
+                    })
+                    .cloned()
+                    .collect();
+                if bounds.is_empty() {
+                    continue;
+                }
+                let holds = edges.iter().all(|edge| {
+                    let value = edge.caps.iter().find_map(|other| match &other.kind {
+                        CapKind::Bytes { fields, .. }
+                            if other.id == id && other.guard == Formula::True =>
+                        {
+                            fields.get(&offset).cloned()
+                        }
+                        _ => None,
+                    });
+                    let Some(value) = value else { return false };
+                    let subst = BTreeMap::from([(var, value)]);
+                    bounds.iter().all(|bound| {
+                        bound
+                            .map_lin(&mut |expr| expr.subst_all(&subst))
+                            .is_some_and(|fact| self.prove(edge, &fact, "join field bound"))
+                    })
+                });
+                if holds {
+                    let joined = Lin::var(self.fresh("joined_field"));
+                    let subst = BTreeMap::from([(var, joined.clone())]);
+                    for bound in bounds {
+                        if let Some(fact) = bound.map_lin(&mut |expr| expr.subst_all(&subst)) {
+                            self.add_fact(&mut out, fact);
+                        }
+                    }
+                    fields.insert(offset, joined);
+                }
+            }
+        }
         out.caps = caps;
         Ok(out)
     }
@@ -3588,11 +3658,28 @@ impl<'a> FnCheck<'a> {
         }
         // existential results
         let mut th: BTreeMap<Var, Lin> = me.params.iter().map(|v| (*v, Lin::var(*v))).collect();
-        let eqs: Vec<(Lin, Lin)> = me
+        let mut eqs: Vec<(Lin, Lin)> = me
             .outs
             .iter()
             .map(|(r, e)| (e.clone(), self.reg(st, *r)))
             .collect();
+        for (id, clause) in self.borrow_ids.iter().zip(&me.borrow) {
+            if let Some(CapKind::Bytes { fields, .. }) = st
+                .caps
+                .iter()
+                .find(|cap| cap.id == *id)
+                .map(|cap| &cap.kind)
+            {
+                eqs.extend(
+                    clause
+                        .exit_fields()
+                        .into_iter()
+                        .filter_map(|(offset, expected)| {
+                            fields.get(&offset).map(|actual| (expected, actual.clone()))
+                        }),
+                );
+            }
+        }
         let hint_scope: Scope = me
             .out_vars
             .iter()

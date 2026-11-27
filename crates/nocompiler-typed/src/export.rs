@@ -786,12 +786,18 @@ pub fn to_lean_text(
             .filter(|(n, _)| unused(n))
             .map(|(_, v)| *v)
             .collect();
-        let bids: Vec<u32> = ex
+        let mut bids: Vec<u32> = ex
             .borrow_ids
             .iter()
             .copied()
             .filter(|i| !drop_ids.contains(i))
             .collect();
+        // The exported signature orders its implicit static borrows before
+        // the takes. Entry-state IDs allocate explicit borrows, then takes,
+        // then statics, so append the take IDs in signature order.
+        if let Some(sig) = ck.sigs.get(&f.name) {
+            bids.extend((0..sig.take.len()).map(|index| (n_own + index + 1) as u32));
+        }
         let trim = |st: &State| -> State {
             let mut t = st.clone();
             t.caps.retain(|c| !drop_ids.contains(&c.id));
@@ -1045,13 +1051,13 @@ pub fn to_lean_text(
         let ext = externals(prog, ck, rep, img);
         if let (Some((base, words)), Some(ext)) = (code, ext) {
             // the ledger's evidence (theorem D): the linked image and the program's theorem
-            let ws: Vec<String> = words.iter().map(|w| format!("0x{w:08x}#32")).collect();
-            let _ = writeln!(o, "/-- The linked `.text`. -/");
-            let _ = writeln!(
-                o,
-                "def code : Code := ⟨0x{base:x}#64, #[{}]⟩\n",
-                ws.join(", ")
-            );
+            let (proof_base, proof_words) = if words.len() > 512 {
+                proof_code_range(prog, &order, &ext, img, sizes, *base, words)
+                    .unwrap_or((*base, words))
+            } else {
+                (*base, words.as_slice())
+            };
+            write_linked_code(&mut o, proof_base, proof_words);
             // the external callees (P9): each at its address, with its signature and its code
             // range in the image (its symbol's size, at least one word)
             let entries: Vec<String> = ext
@@ -1205,12 +1211,7 @@ pub fn to_lean_linked(
         modules.join(" ")
     );
     let (base, words) = text;
-    let ws: Vec<String> = words.iter().map(|w| format!("0x{w:08x}#32")).collect();
-    let _ = writeln!(
-        o,
-        "/-- The linked `.text`. -/\ndef code : Code := ⟨0x{base:x}#64, #[{}]⟩\n",
-        ws.join(", ")
-    );
+    write_linked_code(&mut o, *base, words);
     let names: Vec<String> = order
         .iter()
         .map(|n| format!("fn_{}", lean_ident(n).trim_matches(['«', '»'])))
@@ -1221,6 +1222,88 @@ pub fn to_lean_linked(
         names.join(", ")
     );
     Ok(o)
+}
+
+/// A program proof only fetches instructions in the exported function
+/// domains and the explicitly assumed external domains.
+/// Keep the exact linked bytes and addresses for a contiguous span covering
+/// those domains so large unrelated runtime code does not enter the kernel.
+fn proof_code_range<'a>(
+    prog: &Program,
+    order: &[String],
+    external: &[String],
+    image: &BTreeMap<String, u64>,
+    sizes: Option<&BTreeMap<String, u64>>,
+    base: u64,
+    words: &'a [u32],
+) -> Option<(u64, &'a [u32])> {
+    let mut start = words.len();
+    let mut end = 0;
+    for name in order {
+        let entry = *image.get(name)?;
+        let offset = entry.checked_sub(base)?;
+        if offset % 4 != 0 {
+            return None;
+        }
+        let first = usize::try_from(offset / 4).ok()?;
+        let function = prog.funcs.iter().find(|function| function.name == *name)?;
+        let count = function
+            .instrs
+            .iter()
+            .try_fold(0usize, |count, instruction| {
+                count.checked_add(instruction.instr.words())
+            })?;
+        start = start.min(first);
+        end = end.max(first.checked_add(count)?);
+    }
+    for name in external {
+        let offset = image.get(name)?.checked_sub(base)?;
+        if offset % 4 != 0 {
+            return None;
+        }
+        let first = usize::try_from(offset / 4).ok()?;
+        let bytes = sizes
+            .and_then(|map| map.get(name))
+            .copied()
+            .unwrap_or(0)
+            .max(4);
+        let count = usize::try_from(bytes.div_ceil(4)).ok()?;
+        start = start.min(first);
+        end = end.max(first.checked_add(count)?);
+    }
+    let kept = words.get(start..end)?;
+    Some((
+        base.checked_add(u64::try_from(start).ok()?.checked_mul(4)?)?,
+        kept,
+    ))
+}
+
+/// Split the literal into declarations so Lean elaborates each chunk within
+/// its normal resource limits, even when a linked dependency is large.
+fn write_linked_code(out: &mut String, base: u64, words: &[u32]) {
+    let mut chunks = Vec::new();
+    for (index, words) in words.chunks(512).enumerate() {
+        let name = format!("linkedCodeWords{index}");
+        let values: Vec<_> = words
+            .iter()
+            .map(|word| format!("0x{word:08x}#32"))
+            .collect();
+        let _ = writeln!(
+            out,
+            "private def {name} : Array (BitVec 32) := #[{}]",
+            values.join(", ")
+        );
+        chunks.push(name);
+    }
+    let image = if chunks.is_empty() {
+        "#[]".into()
+    } else {
+        chunks.join(" ++ ")
+    };
+    let _ = writeln!(
+        out,
+        "/-- Machine words from the linked `.text` at their original addresses. -/\ndef code : Code := ⟨0x{base:x}#64, {image}⟩\n"
+    );
 }
 
 // ---------------------------------------------------------------- JSON

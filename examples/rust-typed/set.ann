@@ -1,0 +1,5 @@
+#: fn set [base, n, i]
+#:   in a0: int(base), a1: int(n), a2: int(i), a3: int
+#:   borrow base ↦ bytes[8n] rw
+#:   where 8 ∣ base
+#:   stack 0

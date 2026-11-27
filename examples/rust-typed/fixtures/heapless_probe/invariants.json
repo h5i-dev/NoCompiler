@@ -1,0 +1,3 @@
+{
+  "heapless::vec::VecInner": {"len": "buffer.buffer"}
+}

@@ -207,7 +207,10 @@ def retOkOn (rs : List Reg) (S : STy) (θ : Subst) : Bool :=
 def retOk (S : STy) (θ : Subst) : Bool := f.retOkOn keptRegs S θ
 
 def ret (S : STy) : Bool :=
-  f.retOk S (S.instantiate { regs := f.sig.outRegs, facts := [f.sig.post] } f.sig.outVars)
+  let caps := f.sig.borrow.zipIdx.filterMap fun (borrow, index) =>
+    (S.caps.find? (·.origin == some index)).map fun source =>
+      { source with cap := borrow.exitCap }
+  f.retOk S (S.instantiate { regs := f.sig.outRegs, facts := [f.sig.post], caps } f.sig.outVars)
 
 def branchOk (k : Nat) (S : STy) (op : BrOp) (rs1 rs2 : Reg) (off : BitVec 13) : Bool :=
   match target k off.toInt with
