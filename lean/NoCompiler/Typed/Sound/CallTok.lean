@@ -7,15 +7,15 @@ namespace NoCompiler.Typed
 
 variable {f : Fn} {T : TokEnv} {P : Perm} {s0 : State} {ι0 : Val}
 
-theorem Fn.clearLent_token {ls : List (BytesCap × HCap)} {c0 : HCap} {t : String}
-    (h : c0.cap.kind = .token t) : Fn.clearLent ls c0 = c0 := by
+theorem Fn.clearLent_token {S : STy} {ls : List (BytesCap × HCap)} {c0 : HCap} {t : String}
+    (h : c0.cap.kind = .token t) : Fn.clearLent S ls c0 = c0 := by
   unfold Fn.clearLent
   split
   · simp only [h]
   · rfl
 
-theorem Fn.clearLent_kind {ls : List (BytesCap × HCap)} {c0 : HCap} {t : String}
-    (h : (Fn.clearLent ls c0).cap.kind = .token t) : c0.cap.kind = .token t := by
+theorem Fn.clearLent_kind {S : STy} {ls : List (BytesCap × HCap)} {c0 : HCap} {t : String}
+    (h : (Fn.clearLent S ls c0).cap.kind = .token t) : c0.cap.kind = .token t := by
   unfold Fn.clearLent at h
   split at h
   · cases hk : c0.cap.kind with

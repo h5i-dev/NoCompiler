@@ -65,6 +65,12 @@ python3 lean/scripts/kernelcheck.py --checker target/release/nocompiler-typed ex
 
 More: [docs/typed/rust-checker.md](docs/typed/rust-checker.md), [docs/typed/lean-checker.md](docs/typed/lean-checker.md), the musl trial in [docs/typed/musl-trial.md](docs/typed/musl-trial.md).
 
+### Experimental Rust frontend
+
+`cargo-nocompiler check` generates Typed Assembly annotations for supported
+Rust functions and verifies their linked RV64 code under explicit entry
+contracts. See the [Rust integration guide](examples/rust-typed/README.md).
+
 ## 2. Binary analysis toolkit
 
 This project originally started as a disassembler and decompiler, and it still includes a comprehensive binary analysis toolkit featuring ELF, PE/COFF, and Mach-O loaders, x86-64 and AArch64 decoders, a SLEIGH runtime with RISC-V RV64 support, an intermediate representation (IR) with lifters, function and control flow graph (CFG) recovery, a C decompiler, and a binary differ.

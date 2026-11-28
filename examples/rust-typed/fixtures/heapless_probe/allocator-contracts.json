@@ -1,0 +1,21 @@
+{
+  "test_alloc": {
+    "operation": "allocate",
+    "stack": 16,
+    "alignment": 8
+  },
+  "test_free": {
+    "operation": "deallocate",
+    "stack": 32
+  },
+  "test_resize": {
+    "operation": "reallocate_nonnull",
+    "stack": 48,
+    "alignment": 8
+  },
+  "test_try_resize": {
+    "operation": "reallocate",
+    "stack": 48,
+    "alignment": 8
+  }
+}

@@ -144,6 +144,10 @@ fn fields(fs: &[SField], scope: &Scope) -> Result<BTreeMap<i128, Lin>, String> {
 }
 
 pub fn cap(c: &SCap, scope: &Scope) -> Result<SigCap, String> {
+    resolve_cap(c, scope, true)
+}
+
+fn resolve_cap(c: &SCap, scope: &Scope, resolve_exit_fields: bool) -> Result<SigCap, String> {
     let guard = match &c.guard {
         Some(g) => formula(g, scope)?,
         None => Formula::True,
@@ -171,8 +175,8 @@ pub fn cap(c: &SCap, scope: &Scope) -> Result<SigCap, String> {
                 fields: fields(fs, scope)?,
             },
             out_fields: match out_fields {
-                Some(o) => Some(fields(o, scope)?),
-                None => None,
+                Some(o) if resolve_exit_fields => Some(fields(o, scope)?),
+                _ => None,
             },
         },
     })
@@ -256,7 +260,7 @@ pub fn resolve_with(s: &SSig, line: usize, names: &mut Names, syms: &Scope) -> R
     let borrow = s
         .borrow
         .iter()
-        .map(|c| cap(c, &scope))
+        .map(|c| resolve_cap(c, &scope, false))
         .collect::<Result<Vec<_>, _>>()
         .map_err(|m| format!("in 'borrow': {m}"))?;
     let take = s

@@ -55,10 +55,24 @@ address-taken ranges as `rw` capabilities, 8-byte save slots, the epilogue; see
 `lean/TypedTests/Frame.lean`. Calls are covered (Lemma 8): `jal ra, f` and clang's
 `call f` = `auipc t, hi` + `jalr ra, lo(t)` (I21; `auipc` gets its exact value, since the
 checked image fixes the address of each instruction), and `tail f` = `auipc t1` +
-`jalr zero, lo(t1)` at depth 0 with `ra` the entry's. The callee's `borrow` and `take` clauses are
-lent from held capabilities; the fields of capabilities lent `rw` are forgotten after the call;
-a capability a `take` clause was lent from (it must be exclusive) is gone after the call, and
-the callee's `give` capabilities (bytes, no fields) are added. In a function's own signature,
+`jalr zero, lo(t1)` at depth 0 with `ra` the entry's. The same register-call
+rules accept other decoded `jalr` instructions when the base register has a
+constant type and the computed address names a callee in the proof table.
+For a non-tail register call with a symbolic base, the checker proves that
+the source word belongs to a finite set derived from the callee table.
+Only base words whose computed target passes `Fn.callAt` enter that set.
+`Fn.callReg_step` uses the disjunction to select the valid call rule for the
+actual machine value.
+The callee's `borrow` and `take` clauses are
+lent from held capabilities. A capability lent to a `take` clause leaves the caller's state.
+An existing eight-byte field survives if the checker proves it disjoint from every write
+loan from its holder (`Fn.fieldOutsideLoans`, `Fn.kept_cap`). `Fn.restoreBorrow` installs each nonempty field map from an unconditional borrow postcondition whose instantiated base has a nonnegative constant offset `d` from the held base and
+whose length plus `d` fits in the held length with a nonnegative constant difference.
+`Fn.restoreBorrow` adds `d` to each returned field offset. Earlier clauses take precedence
+if multiple clauses supply a field at the same offset. The identity, origin, guard, mode,
+and heap mark remain those of the held capability. `give` adds the returned capabilities
+with their substituted fields. `Cap.subst_valid`, `Cap.restoreFields_valid`, and
+`Fn.afterCall_inv` justify these updates in the callee's return memory. In a function's own signature,
 `take` capabilities are held from the entry and each `give` must be covered at the return (depth
 0) by a distinct held exclusive capability not returned for a borrow; the Pool condition follows
 from the invariant (such a capability lies in the entry permission, misses the stack and the

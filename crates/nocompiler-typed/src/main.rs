@@ -3,6 +3,8 @@
 //! Checks every safe function of a typed assembly file. Exit status 0 when all pass, 1 when
 //! one is rejected, 2 on a usage or parse error.
 
+mod indirect;
+
 use nocompiler_typed::{asm, check, ledger};
 use std::process::ExitCode;
 
@@ -206,8 +208,36 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
+    let image_bytes = match &image_file {
+        None => None,
+        Some(p) => match std::fs::read(p) {
+            Ok(b) => Some(b),
+            Err(e) => {
+                eprintln!("{p}: {e}");
+                return ExitCode::from(2);
+            }
+        },
+    };
+    let image = match &image_bytes {
+        None => None,
+        Some(b) => match nocompiler_typed::object::symbol_addresses(b) {
+            Ok(m) => Some(m),
+            Err(e) => {
+                eprintln!("{}: {e}", image_file.as_deref().unwrap_or(""));
+                return ExitCode::from(2);
+            }
+        },
+    };
+    let mut resolved;
+    let proof_program = if prove && let Some(image) = &image {
+        resolved = prog.clone();
+        indirect::resolve_register_calls(&mut resolved, image);
+        &resolved
+    } else {
+        &prog
+    };
     let (ck, mut rep) = check::check_program_opts(
-        &prog,
+        proof_program,
         check::Options {
             record: ledger_out.is_some()
                 || states
@@ -257,26 +287,6 @@ fn main() -> ExitCode {
             }
         }
     }
-    let image_bytes = match &image_file {
-        None => None,
-        Some(p) => match std::fs::read(p) {
-            Ok(b) => Some(b),
-            Err(e) => {
-                eprintln!("{p}: {e}");
-                return ExitCode::from(2);
-            }
-        },
-    };
-    let image = match &image_bytes {
-        None => None,
-        Some(b) => match nocompiler_typed::object::symbol_addresses(b) {
-            Ok(m) => Some(m),
-            Err(e) => {
-                eprintln!("{}: {e}", image_file.as_deref().unwrap_or(""));
-                return ExitCode::from(2);
-            }
-        },
-    };
     // the linked .text, for the program's theorem (--prove)
     // the linked .text: for local data symbols' addresses, and the program's theorem (--prove)
     // the linked image's symbol sizes: an external callee's code range (P9)
@@ -308,9 +318,13 @@ fn main() -> ExitCode {
         .collect();
     let module = format!("NoCompiler.Typed.Export.{module_id}");
     let mut proof = None;
+    let mut proof_attempt = None;
+    let mut record_proof = |status: &str, reason: Option<String>| {
+        proof_attempt = Some(serde_json::json!({"status": status, "reason": reason}));
+    };
     if let Some(out) = &export_lean {
         let text = nocompiler_typed::export::to_lean_text(
-            &prog,
+            proof_program,
             &ck,
             &rep,
             &module,
@@ -324,24 +338,36 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
         if prove {
-            let partial_fns: Vec<&str> = nocompiler_typed::export::callee_first(&prog, &rep)
-                .into_iter()
-                .filter(|n| ck.sigs.get(n).is_some_and(|g| g.partial))
-                .map(|n| {
-                    ck.sigs
-                        .get_key_value(&n)
-                        .map(|(k, _)| k.as_str())
-                        .unwrap_or("")
-                })
-                .collect();
+            let partial_fns: Vec<&str> =
+                nocompiler_typed::export::callee_first(proof_program, &rep)
+                    .into_iter()
+                    .filter(|n| ck.sigs.get(n).is_some_and(|g| g.partial))
+                    .map(|n| {
+                        ck.sigs
+                            .get_key_value(&n)
+                            .map(|(k, _)| k.as_str())
+                            .unwrap_or("")
+                    })
+                    .collect();
             let ext = image
                 .as_ref()
-                .and_then(|img| nocompiler_typed::export::externals(&prog, &ck, &rep, img));
+                .and_then(|img| nocompiler_typed::export::externals(proof_program, &ck, &rep, img));
             if ext.is_none() {
+                record_proof(
+                    "blocked",
+                    Some("a callee has no verified or declared linked contract".into()),
+                );
                 println!(
                     "prove: not attempted (a callee is neither checked here nor declared with a signature and an address)"
                 );
             } else if !partial_fns.is_empty() {
+                record_proof(
+                    "blocked",
+                    Some(format!(
+                        "total-program theorem does not cover partial functions: {}",
+                        partial_fns.join(", ")
+                    )),
+                );
                 println!(
                     "prove: not attempted (partial functions {}: theorem D covers total programs; I19)",
                     partial_fns.join(", ")
@@ -381,8 +407,9 @@ fn main() -> ExitCode {
                 }
                 match attempt {
                     Ok(ax) if nocompiler_typed::prove::standard(&ax) => {
+                        record_proof("proved", None);
                         println!("prove: {theorem} (axioms: {})", ax.join(", "));
-                        let order = nocompiler_typed::export::callee_first(&prog, &rep);
+                        let order = nocompiler_typed::export::callee_first(proof_program, &rep);
                         proof = Some(nocompiler_typed::ledger::Proof {
                             module: if certs {
                                 format!("{out}.certs.lean")
@@ -395,19 +422,32 @@ fn main() -> ExitCode {
                             functions: order
                                 .iter()
                                 .map(|n| {
-                                    (n.clone(), nocompiler_typed::export::callees_in(&prog, n))
+                                    (
+                                        n.clone(),
+                                        nocompiler_typed::export::callees_in(proof_program, n),
+                                    )
                                 })
                                 .collect(),
                         });
                     }
-                    Ok(ax) => println!("prove: not proved: nonstandard axioms {}", ax.join(", ")),
-                    Err(e) => println!("prove: not proved: {e}"),
+                    Ok(ax) => {
+                        let reason = format!("nonstandard axioms {}", ax.join(", "));
+                        println!("prove: not proved: {reason}");
+                        record_proof("failed", Some(reason));
+                    }
+                    Err(e) => {
+                        println!("prove: not proved: {e}");
+                        record_proof("failed", Some(e));
+                    }
                 }
             }
         }
     }
     if let Some(out) = ledger_out {
-        let j = ledger::to_json_proof(file, &prog, &ck, &rep, proof.as_ref());
+        let mut j = ledger::to_json_proof(file, &prog, &ck, &rep, proof.as_ref());
+        if let Some(attempt) = proof_attempt {
+            j["proof_attempt"] = attempt;
+        }
         if let Err(e) = std::fs::write(&out, serde_json::to_string_pretty(&j).unwrap()) {
             eprintln!("{out}: {e}");
             return ExitCode::from(2);
@@ -420,7 +460,7 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     }
-    if rep.ok() {
+    if rep.ok() && (!prove || proof.is_some()) {
         ExitCode::SUCCESS
     } else {
         ExitCode::from(1)

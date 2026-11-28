@@ -1,60 +1,64 @@
 ---
 name: nocompiler
-description: Analyze binaries with nocompiler, nocompiler's JSON toolkit CLI, and coordinate reverse engineering projects, evidence, and human/agent handoffs in its shared project workspace.
+description: Write, check, and prove NoCompiler Typed Assembly for RV64. Use for function contracts, memory capabilities, loop invariants, Rust-generated annotations, and Lean 4 verification of linked ELF code.
 ---
 
-# Driving nocompiler
+# NoCompiler Typed Assembly
 
-Use `nocompiler COMMAND --help` before guessing flags. In this checkout the executable
-is `./target/release/nocompiler`; build with `cargo build --release`.
+NoCompiler checks machine-level memory safety for RV64 assembly under explicit
+contracts. Use the Rust checker for fast diagnostics and the Lean 4 checker for
+formal verification. The ELF used for the linked proof must match the intended
+deployment artifact.
+
+## Check an assembly function
 
 ```sh
-nocompiler project new ./binary --name investigation
-nocompiler project list --json
-nocompiler project task investigation list --json
-nocompiler funcs ./binary --json
-nocompiler decompile ./binary main --json
-nocompiler xrefs ./binary main --json
-nocompiler ui                              # human view of all global projects
+cargo build --locked --release -p nocompiler-typed
+target/release/nocompiler-typed check examples/typed/sum.s
 ```
 
-Projects default to `~/.local/share/nocompiler/projects`; `NOCOMPILER_PROJECT_HOME` overrides
-that root. `project import FILE --name NAME` brings in an existing manifest and
-task history. `--out FILE` retains local projects.
+Read the [annotation grammar](../../docs/typed/syntax.md) before writing or
+changing contracts. Describe the function's entry registers, accessible regions
+and permissions, and stack use. Add invariants at loop entries and a decreases
+measure when the proof requires termination. Check call-site obligations
+against the callee's contract. For a failed check, inspect the first outstanding
+obligation before revising an annotation. Preserve the API's valid inputs
+when choosing entry conditions.
 
-Claim tasks through `project task NAME update ID --revision N --input task.json
---author AGENT`. The input is the complete previous `content` object with your
-changes. On a conflict, read the current revision and reconcile; never overwrite
-another writer blindly. Active work requires an owner; blocked work requires a
-reason. Record a concrete `next` action and supporting `evidence` before handing
-off. `function:0xADDRESS` links a task to the decompiler pane.
+## Prove the linked code
 
-Keep proven, inferred and asserted facts distinct. Incomplete control flow and
-unmodelled operations limit what pseudocode establishes. Prefer a single
-function and bounded `--limit` / `--budget` requests for large binaries. Exit
-codes: 0 success, 1 no match, 2 usage, 3 bad input.
+```sh
+(cd lean && lake build NoCompiler)
+target/release/nocompiler-typed check annotated.s --image program.elf \
+  --export-lean Proof.lean --prove --certs --ledger ledger.json
+```
 
-For details, read [the manual](../../docs/toolkit/MANUAL.md) and
-[project/task formats](../../docs/toolkit/dashboard.md). For repository development,
-read [the roadmap](../../docs/toolkit/ROADMAP-toolkit.md) first.
+Use `nocompiler-typed link` to check across assembly files. Read the
+[proof export and linking guide](../../docs/typed/export.md) for whole-program
+proofs and [the Lean checker guide](../../docs/typed/lean-checker.md) for the
+machine model and theorems. Report Rust checker acceptance (`checked`), Lean
+proof (`proved`), and Lean proof with external callee contracts
+(`proved_assuming`) explicitly. All three are conditional on the function's
+entry contract.
 
-## Names and investigation records
+## Generate annotations for Rust
 
-The UI is read-only. Make requested edits through the CLI, including tasks and
-project registration. When a function's purpose is supported by evidence, give
-it a descriptive name with `nocompiler notes BINARY name ADDRESS NAME --db LOG`.
-Use the project's recorded annotation log, then check `funcs` and `decompile`
-with the same `--db LOG`. Record the rationale and uncertainty in a comment.
-Restart the UI server to reload annotations. Do not invent meanings from a
-single call site. Per-variable name annotations are not currently supported;
-record proposed variable names and their storage in a note instead.
+Use `cargo-nocompiler check` for the supported Rust-to-RV64 pipeline. It
+generates annotations from compiler and machine-code information and checks
+them against the final linked ELF. Follow the
+[Rust integration guide](../../examples/rust-typed/README.md) for the pinned
+toolchain, function selectors, and proof artifacts. Treat MIR and LLVM facts as
+annotation candidates. Check public entry conditions and any external
+assumptions before using a generated proof. Source-level Rust soundness,
+including aliasing and provenance, requires separate reasoning. Use the
+[Rust-100 benchmark](../../benchmarks/rust/README.md) to measure coverage and
+timing on the recorded cohort.
 
-Save investigation output with `nocompiler project record PROJECT KIND add TITLE
---description BODY --evidence function:0xADDRESS --author AGENT`, where KIND is
-`finding`, `note` or `report`. Findings describe a claim and its supporting
-evidence; notes retain observations and open questions; reports explain the
-investigation and conclusions. These records reuse task content, revision,
-history and update semantics in separate stores per kind; record IDs are local
-to each kind. Use `record PROJECT KIND list --json` and `update ID --revision N
---input FILE` to read and revise them. Put the full text in `description` (or a
-complete JSON input document); evidence is one reference per array entry.
+## Optional development toolkit
+
+Use the disassembler, decompiler, and binary-inspection commands under the
+separate `nocompiler` CLI when debugging code generation or inspecting a binary.
+Use the [toolkit manual](../../docs/toolkit/MANUAL.md) for commands and the
+[project workspace guide](../../docs/toolkit/dashboard.md) for shared
+investigation records. Pseudocode and recovered control flow are development
+aids. Use the typed checker and proof ledger as verification evidence.

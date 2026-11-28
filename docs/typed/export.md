@@ -100,6 +100,25 @@ The kernel check `decide +kernel` of `fn_<f>.check code` used to run the whole c
 * Soundness: `decideQ_sound`. Every mode ends in `Query.check_sound`, and false is always sound, so `Fn.check_sound` covers a record with tables unchanged. A table only decides how much the kernel has to do.
 * Producer: `lean/scripts/certgen.py` takes a generated module (record, `def code`). It evaluates each function's check point by point in `log` mode (compiled, `lake lean`), and writes a module whose `fnc_<f>` is `fn_<f>` with each point's table, plus the kernel theorems.
 
+For an edge with no target type, Lean independently checks that the source
+facts entail false. A source fact that folds to the literal false closes the
+obligation directly. The proof uses the semantic preservation theorem for
+constraint folding. Candidate generators can use an external reachability
+solver to infer a smaller footprint, and the linked-image certificate still
+replays this contradiction using the checker facts.
+
+Normal returns and tail calls both instantiate output variables from return
+registers, postconditions, and the field maps of returned borrows. This
+allows a tail callee to establish an initialized field in a subrange while
+the enclosing function also returns a previously initialized disjoint field.
+The existing return soundness theorem covers the instantiated witnesses.
+
+A register call can obtain its candidate target set from ELF symbol
+addresses and the AUIPC/ADDI relocation pair that materializes an address.
+The candidate record retains finite register values at CFG merges before
+the call. The Lean checker replays the original decoded instructions and
+checks the target and call contract of each feasible branch.
+
 ### Xor facts (2026-11-24)
 
 `FnExport.xor_defs` lists `x = a xor b` for each xor result, which is true in every state. `xorBits` lists the widths `k` of the function's masks `2^k − 1` (`andi` immediates, `li` constants). Each exported point where x, a and b are live gets `2^k ∣ x ⇔ 2^k ∣ a − b` for each k. The Lean checker's xor rule adds the same facts, and its mask rules turn them into the zero test `x = 0 ⇔ 2^k ∣ a − b`.
@@ -152,8 +171,9 @@ Without `--image` the export is as before (section offsets, same-section callees
 ### The ledger's `proved` (2026-11-23)
 
 `check FILE.s --image a.out --export-lean X.lean --prove [--lean-dir DIR] --ledger L.json`: for a
-closed program (every callee of every exported function is exported), the module also gets the
-linked `.text` (`def code`), `chk_<f> : fn_<f>.check code = true` per function and
+closed program (every callee of every exported function is exported), the module also gets the linked machine words at their original addresses
+(`def code`). For large images, this can be the contiguous span covering
+the verified function domains and any explicitly assumed external domains. The module also gets `chk_<f> : fn_<f>.check code = true` per function and
 `prog_checked : Prog.check code [] prog = true` (all by `decide +kernel`: the kernel's check,
 no extra axiom), and `prog_meets` (theorem D, `Prog.check_sound_closed`). `--prove` compiles it
 with the repository's Lean checker (`lake env lean`, in `--lean-dir`, `$NOCOMPILER_LEAN_DIR` or
@@ -165,7 +185,7 @@ bit counts of the masks the xor-then-mask rule used (a hint for the Lean xor rul
 signature is exported with `isPartial := true` (I19); theorem D covers total programs only, so
 `--prove` is not attempted when an exported function is partial.
 
-With `--prove --certs` (2026-11-24) the kernel checks recorded certificates instead of running the search ("Certificates" above). The module, cut before its search-mode theorems, goes through `lean/scripts/certgen.py --split --prog`. That records the certificates by compiled evaluation, gives every function `fnc_<f>` with one kernel theorem per point, and states theorem D for `progc := [fnc_…]`: `prog_checked`, then `prog_meets` from `Prog.check_sound_closed`. The `fnc_` functions have the same signatures and code, so `prog_meets` has the same meaning. The ledger records the proof's module as `X.lean.certs.lean`, written next to the export, and reads the axioms of `prog_meets` itself (`run_lean` looks for the named theorem's line, since the module also prints each `chk_<f>`'s).
+With `--prove --certs` (2026-11-24) the kernel checks recorded certificates instead of running the search ("Certificates" above). The module, cut before its search-mode theorems, goes through the Rust certificate producer in `nocompiler-typed`. It records the certificates by compiled evaluation, gives every function `fnc_<f>` with one kernel theorem per point, and states theorem D for `progc := [fnc_…]`: `prog_checked`, then `prog_meets` from `Prog.check_sound_closed`. The `fnc_` functions have the same signatures and code, so `prog_meets` has the same meaning. The ledger records the proof's module as `X.lean.certs.lean`, written next to the export, and reads the axioms of `prog_meets` itself (`run_lean` looks for the named theorem's line, since the module also prints each `chk_<f>`'s).
 
 Relative theorem D (P9, 2026-11-24; the default until the user decides). A program whose functions call one it only declares (a signature, no body) gets `def ext : Env` with each such callee's address, signature and code range in the image (its symbol's size, at least one word). `prog_checked : Prog.check code ext prog`, and `prog_meets_rel (T) (hE : ∀ e ∈ ext, Meets code e.2.2 e.1 T e.2.1) : ∀ e ∈ Prog.env ext prog, Meets …` comes from `Prog.check_sound`, with no new Lean proof. The ledger records such functions as `proved_assuming`, with the assumed callees in their evidence (`"assumes"`): weaker than `proved`, and saying so. On musl's linked images: bzero (assumes memset), bcmp (memcmp), strncpy (__stpncpy) and strnlen (memchr), each a few seconds, standard axioms.
 
@@ -174,7 +194,7 @@ Relative theorem D (P9, 2026-11-24; the default until the user decides). A progr
 `nocompiler-typed link A.s B.s … --image L.elf --prove [--export-lean X.lean] [--lean-dir D]` builds one module for the program linked into `L.elf` (`export::to_lean_linked`):
 * each file's record in its own namespace (no `code`, `ext` or per-file `prog`), with one import for the whole module;
 * the namespaces opened, `def code` from the linked `.text`, and `def prog` listing every exported function callee-first across the files;
-* then `certgen.py --split --prog` (certificates, one kernel theorem per point, `prog_checked`, `prog_meets`).
+* then the Rust certificate producer (certificates, one kernel theorem per point, `prog_checked`, `prog_meets`).
 
 A callee declared in one file and defined in another is the same entry of `Prog.check`'s environment, and `Prog.callsOk` compares the caller's copy of its signature with the callee's own by `=`. The canonical form (P7 steps 1 and 2: numbering, and only the data symbols a signature uses) makes the two copies equal. It refuses when a file is rejected, a callee is defined in no file, or the calls form a cycle. On musl, bzero.s and memset.s linked together: `prog_meets` with standard axioms, 60 s, 1.2 GB. bzero's call to memset is checked against memset's own record, so bzero no longer needs P9's assumption.
 

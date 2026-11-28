@@ -52,7 +52,8 @@ structure CalleeSpec (g : Sig) : Prop where
   outNodup : g.outVars.Nodup
   outApart : ∀ y ∈ g.outVars, y ∉ g.params
   takeScoped : ∀ c ∈ g.take, ∀ y ∈ c.vars, y ∈ g.params
-  giveKind : ∀ c ∈ g.give, (∃ x, c.kind = .bytes x ∧ x.fields = [] ∧ (x.heap = true → heapTok ∈ g.tokNames)) ∨
+  borrowExitScoped : ∀ b ∈ g.borrow, ∀ y ∈ b.exitCap.vars, y ∈ g.params ∨ y ∈ g.outVars
+  giveKind : ∀ c ∈ g.give, (∃ x, c.kind = .bytes x ∧ (x.heap = true → heapTok ∈ g.tokNames)) ∨
     ∃ t, c.kind = .token t
   giveScoped : ∀ c ∈ g.give, ∀ y ∈ c.vars, y ∈ g.params ∨ y ∈ g.outVars
 
@@ -61,18 +62,33 @@ theorem Fn.calleeOk_spec {g : Sig} (h : Fn.calleeOk g = true) : CalleeSpec g := 
   simp only [Bool.and_eq_true, List.all_eq_true, List.isEmpty_iff, beq_iff_eq, decide_eq_true_eq,
     Bool.or_eq_true, List.contains_iff_mem, Bool.not_eq_true', bne_iff_ne, ne_eq] at h
   simp only [and_assoc] at h
-  obtain ⟨hin, hpre, -, hout, hpost, hond, hoap, hpnd, hcl, htn, hir, hor, htk, hgv⟩ := h
+  obtain ⟨hin, hpre, hborrow, hout, hpost, hond, hoap, hpnd, hcl, htn, hir, hor, htk, hgv⟩ := h
   refine ⟨hpnd, hcl, htn, hir, fun p hp => by simpa using hor p hp, hin, hpre, hout, hpost,
-    hond, fun y hy => by simpa using hoap y hy, fun c hc y hy => by simpa using htk c hc y hy, ?_,
+    hond, fun y hy => by simpa using hoap y hy, fun c hc y hy => by simpa using htk c hc y hy, ?_, ?_,
     fun c hc y hy => by simpa using (hgv c hc).2 y hy⟩
+  · intro b hb x hx
+    obtain ⟨hg, hkind⟩ := hborrow b hb
+    cases hk : b.cap.kind with
+    | bytes bytes =>
+      simp only [hk, Bool.and_eq_true, List.all_eq_true, List.contains_iff_mem,
+        Bool.or_eq_true, List.mem_append] at hkind
+      simp only [Borrow.exitCap, Cap.vars, hk, List.mem_append] at hx
+      rcases hx with hx | (hx | hx) | hx
+      · exact .inl (hg x hx)
+      · exact .inl (hkind.1 x (by simp [hx]))
+      · exact .inl (hkind.1 x (by simp [hx]))
+      · exact hkind.2 x hx
+    | token t =>
+      simp only [Borrow.exitCap, Cap.vars, hk, List.append_nil] at hx
+      exact .inl (hg x hx)
   · intro c hc
     obtain ⟨hk, -⟩ := hgv c hc
     split at hk
     · rename_i x hx
       simp only [Bool.and_eq_true, Bool.or_eq_true, Bool.not_eq_true', List.isEmpty_iff,
         List.contains_iff_mem] at hk
-      refine .inl ⟨x, hx, hk.1, fun hh => ?_⟩
-      rcases hk.2 with h | h
+      refine .inl ⟨x, hx, fun hh => ?_⟩
+      rcases hk with h | h
       · rw [hh] at h; cases h
       · exact h
     · rename_i t ht; exact .inr ⟨t, ht⟩

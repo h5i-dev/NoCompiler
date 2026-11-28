@@ -547,7 +547,8 @@ def coversS : Nat → Constr → Constr → Bool
     target type are), or by the decision procedure. -/
 -- also a conjunct of a fact up to normal form (an invariant's `1 ≤ m ∧ m ≤ n` gives `0 ≤ m`)
 def ent0 (S : STy) (ψ : Constr) : Bool :=
-  S.facts.contains ψ || S.facts.any (fun p => p.conjuncts.any (coversS 8 · ψ)) || S.entQ ψ
+  S.facts.contains ψ || S.facts.any (fun p => p.conjuncts.any (coversS 8 · ψ)) ||
+    (ψ == .ff && S.facts.any (fun p => p.fold == .ff)) || S.entQ ψ
 
 /-- `Ψ ⊢ ψ`; a disjunctive goal also one disjunct at a time (a case table whose live row is
     entailed conjunct by conjunct, while the whole table's negation is too large to refute). -/
@@ -575,11 +576,15 @@ def ent (S : STy) (ψ : Constr) : Bool :=
 def entEqMod (S : STy) (a b : IExpr) : Bool := a.same b || S.ent (Constr.eqMod a b)
 end STy
 
-/-- A byte capability without fields, renamed by `θ` (a callee's `give`, at the caller). -/
+/-- A capability and its field values, renamed by `θ` (a callee's `give`, at the caller). -/
 def Cap.subst (θ : Subst) (c : Cap) : Cap :=
   { guard := c.guard.subst θ
     kind := match c.kind with
-      | .bytes b => .bytes { b with base := b.base.subst θ, len := b.len.subst θ, fields := [] }
+      | .bytes b =>
+        .bytes { b with
+          base := b.base.subst θ
+          len := b.len.subst θ
+          fields := b.fields.map fun field => { field with ty := field.ty.subst θ } }
       | .token t => .token t }
 
 /-- The variables a capability mentions. -/
@@ -604,7 +609,7 @@ def vars (S : STy) : List Var :=
     expression (in the source's variables, so `θ` applies to `rest` only: at a backward edge
     a loop variable is a variable of both). -/
 def solveFrom (S S' : STy) (θ : Subst) (y : Var) (known : List Var) : Option IExpr :=
-  S'.regs.findSome? fun (r, e') =>
+  let registers := S'.regs.findSome? fun (r, e') =>
     match S.reg r with
     | none => none
     | some e =>
@@ -621,6 +626,18 @@ def solveFrom (S S' : STy) (θ : Subst) (y : Var) (known : List Var) : Option IE
               some ⟨l.c / a, l.t.map fun t => (t.2 / a, t.1)⟩
             else none
         else none
+
+  registers.orElse fun _ => S'.caps.findSome? fun target =>
+    match target.cap.kind, S.caps.find? (·.id == target.id) with
+    | .bytes expected, some source =>
+      match source.cap.kind with
+      | .bytes actual =>
+        expected.fields.findSome? fun field =>
+          if field.ty.asVar == some y then
+            (actual.fields.find? (·.off == field.off)).map (·.ty)
+          else none
+      | .token _ => none
+    | _, _ => none
 
 /-- Solve `a = b` for `y` (`a` mentions `y` once after normalising, `b` does not). -/
 def solveLin (a b : IExpr) (y : Var) : Option IExpr :=

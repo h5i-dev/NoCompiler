@@ -11,6 +11,7 @@ implemented and what came out.
 | [rust-checker.md](rust-checker.md) | the Rust checker: pass, rules → the proof's lemmas, tests, speed |
 | [lean-checker.md](lean-checker.md) | the Lean checker and its soundness theorem |
 | [export.md](export.md) | what the Rust checker exports for the Lean checker |
+| [rust-frontend-soundness-audit.md](rust-frontend-soundness-audit.md) | comparison of the Rust frontend branch with main, including its linked ELF proof path |
 | [disagreements.md](disagreements.md) | corpus cases where the two checkers differ |
 | [note-trial.md](note-trial.md) | the note's trial functions (sum, cobs_decode, write_all, hello): predictions, then results |
 | [musl-trial.md](musl-trial.md) | musl 1.2.5 functions as compiled: predictions, then results |

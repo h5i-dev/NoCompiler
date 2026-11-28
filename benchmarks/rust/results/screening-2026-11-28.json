@@ -1,0 +1,4432 @@
+{
+  "candidates": [
+    {
+      "archive_sha256": "d3fb67a6e08acf24fdeccbac2cb6ac4305825bd1f117462e0e6f2f193345ad56",
+      "candidate": {
+        "category": "array_vector",
+        "name": "arrayvec",
+        "priority": true
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "ff8d279aafac1639bb149c0adf23e28ab340fb437d782b56dfb26c9e39f5cd76",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "ff8d279aafac1639bb149c0adf23e28ab340fb437d782b56dfb26c9e39f5cd76",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/array_string.rs",
+          "src/arrayvec.rs",
+          "src/arrayvec_impl.rs",
+          "src/char.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 7,
+        "status": "scanned",
+        "unsafe_blocks": 39,
+        "unsafe_functions_with_bodies": 10,
+        "unsafe_impls": 2,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.7.8"
+    },
+    {
+      "archive_sha256": "25ba4bd83f9415b58b4ed8dc5714c76e626a105be4646c02630ad730ad3b5aa4",
+      "candidate": {
+        "category": "array_vector",
+        "name": "heapless",
+        "priority": true
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "5c778694b3068757088cab3f7ea8fa68e249b47a0971b0eff2e01f9b83f9c654",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "5c778694b3068757088cab3f7ea8fa68e249b47a0971b0eff2e01f9b83f9c654",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/binary_heap.rs",
+          "src/bytes.rs",
+          "src/c_string.rs",
+          "src/deque.rs",
+          "src/history_buf.rs",
+          "src/index_map.rs",
+          "src/len_type.rs",
+          "src/linear_map.rs",
+          "src/mpmc.rs",
+          "src/pool/arc.rs",
+          "src/pool/boxed.rs",
+          "src/pool/object.rs",
+          "src/pool/treiber/cas.rs",
+          "src/pool/treiber/llsc.rs",
+          "src/pool/treiber.rs",
+          "src/sorted_linked_list.rs",
+          "src/spsc.rs",
+          "src/string/drain.rs",
+          "src/string/mod.rs",
+          "src/vec/drain.rs",
+          "src/vec/mod.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 32,
+        "status": "scanned",
+        "unsafe_blocks": 200,
+        "unsafe_functions_with_bodies": 53,
+        "unsafe_impls": 19,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.9.3"
+    },
+    {
+      "archive_sha256": "3244542535d5de959d90ec55d1b5ff0fd2bb7b1310223907d5f11932847f7b59",
+      "candidate": {
+        "category": "array_vector",
+        "name": "smallvec",
+        "priority": true
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "48ab945db85c2af96df0916f5c03a06b706e1ddf0a579039b5db1d663ab53107",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "48ab945db85c2af96df0916f5c03a06b706e1ddf0a579039b5db1d663ab53107",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/lib.rs",
+          "src/tests.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 4,
+        "status": "scanned",
+        "unsafe_blocks": 56,
+        "unsafe_functions_with_bodies": 15,
+        "unsafe_impls": 7,
+        "unsafe_traits": 1
+      },
+      "status": "screened",
+      "version": "1.16.6"
+    },
+    {
+      "archive_sha256": "3d62b7694a562cdf5a74227903507c56ab2cc8bdd1f781ed5cb4cf9c9f810bfc",
+      "candidate": {
+        "category": "array_vector",
+        "name": "array-init",
+        "priority": true
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "53beb4c9676edb299eb5117ef133e1642c7819cd5268ef0b08e4eb123645aaa2",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "53beb4c9676edb299eb5117ef133e1642c7819cd5268ef0b08e4eb123645aaa2",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/lib.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 1,
+        "status": "scanned",
+        "unsafe_blocks": 4,
+        "unsafe_functions_with_bodies": 0,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "2.1.0"
+    },
+    {
+      "archive_sha256": "ed51fe0f224d1d4ea768be38c51f9f831dee9d05c163c11fba0b8c44387b1fc3",
+      "candidate": {
+        "category": "array_vector",
+        "name": "array-init-cursor",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "82b14b53e878bf33cc9374f40870ad7e0bf6b7ff80d6f11b9f4897cf59144eeb",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "82b14b53e878bf33cc9374f40870ad7e0bf6b7ff80d6f11b9f4897cf59144eeb",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/lib.rs",
+          "src/util.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 2,
+        "status": "scanned",
+        "unsafe_blocks": 5,
+        "unsafe_functions_with_bodies": 0,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.2.1"
+    },
+    {
+      "archive_sha256": "337d46834ee672ab3e48caca2cb0c78cc174fb12b3a68d0d88f99a0519a5e36e",
+      "candidate": {
+        "category": "array_vector",
+        "name": "generic-array",
+        "priority": true
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "f511c781349dd7e21cc32542665173be33aed98db82918974adfc8c181623d11",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "f511c781349dd7e21cc32542665173be33aed98db82918974adfc8c181623d11",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/arr.rs",
+          "src/compat/generic_array_0_14.rs",
+          "src/compat/hybrid_array_0_4.rs",
+          "src/ext_impls/impl_alloc.rs",
+          "src/ext_impls/impl_bitvec.rs",
+          "src/ext_impls/impl_bytecheck_0_8.rs",
+          "src/ext_impls/impl_rkyv_0_8.rs",
+          "src/ext_impls/impl_serde.rs",
+          "src/hex.rs",
+          "src/impls.rs",
+          "src/internal.rs",
+          "src/iter.rs",
+          "src/lib.rs",
+          "src/sequence.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 23,
+        "status": "scanned",
+        "unsafe_blocks": 105,
+        "unsafe_functions_with_bodies": 21,
+        "unsafe_impls": 31,
+        "unsafe_traits": 9
+      },
+      "status": "screened",
+      "version": "1.4.5"
+    },
+    {
+      "archive_sha256": "e6183943e8c03d78596895561edba95bfc9f1e4547a46f720439d714c4c3d08b",
+      "candidate": {
+        "category": "array_vector",
+        "name": "staticvec",
+        "priority": true
+      },
+      "default": {
+        "diagnostic": "error: expected a trait, found type",
+        "exit_code": 101,
+        "lock_sha256": "d0e4d6ecb4f0176d38a9f05f9488ce98116502fc2fd8f87b04e5d24c051d499d",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "error: expected a trait, found type",
+        "exit_code": 101,
+        "lock_sha256": "d0e4d6ecb4f0176d38a9f05f9488ce98116502fc2fd8f87b04e5d24c051d499d",
+        "status": "build_failed"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/heap/heap_helpers.rs",
+          "src/heap/mod.rs",
+          "src/iterators.rs",
+          "src/string/mod.rs",
+          "src/string/string_trait_impls.rs",
+          "src/string/string_utils.rs",
+          "src/trait_impls.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [
+          "src/lib.rs",
+          "src/utils.rs"
+        ],
+        "parsed_files": 12,
+        "status": "scanned",
+        "unsafe_blocks": 95,
+        "unsafe_functions_with_bodies": 20,
+        "unsafe_impls": 25,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.11.9"
+    },
+    {
+      "archive_sha256": "9b0e903ee191d8f7a8fbf0d712c3a1699d19e04ceba5ad1eb673053c7d938a09",
+      "candidate": {
+        "category": "array_vector",
+        "name": "smallbitvec",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "929cc5bc8d3389aad564354b466e382455404e53454ca31cf5aa79b43c39e37f",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "929cc5bc8d3389aad564354b466e382455404e53454ca31cf5aa79b43c39e37f",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/lib.rs",
+          "src/tests.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 2,
+        "status": "scanned",
+        "unsafe_blocks": 29,
+        "unsafe_functions_with_bodies": 4,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "2.6.1"
+    },
+    {
+      "archive_sha256": "ddcec3d12c579d40898fe0a9a358a803c23e9c52ca3c425707f81c9436211837",
+      "candidate": {
+        "category": "array_vector",
+        "name": "bitvec",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "debdf33b65c2cd67abb9af00257062228fcb3e60478121165cf645dab4853508",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "debdf33b65c2cd67abb9af00257062228fcb3e60478121165cf645dab4853508",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/access.rs",
+          "src/array/iter.rs",
+          "src/array/traits.rs",
+          "src/boxed/api.rs",
+          "src/boxed/iter.rs",
+          "src/boxed/ops.rs",
+          "src/boxed/tests.rs",
+          "src/boxed/traits.rs",
+          "src/boxed.rs",
+          "src/domain.rs",
+          "src/field/io.rs",
+          "src/field.rs",
+          "src/index.rs",
+          "src/macros/tests.rs",
+          "src/order.rs",
+          "src/ptr/proxy.rs",
+          "src/ptr/range.rs",
+          "src/ptr/single.rs",
+          "src/ptr/span.rs",
+          "src/ptr/tests.rs",
+          "src/serdes/slice.rs",
+          "src/serdes/utils.rs",
+          "src/slice/api.rs",
+          "src/slice/iter.rs",
+          "src/slice/ops.rs",
+          "src/slice/specialization/lsb0.rs",
+          "src/slice/specialization/msb0.rs",
+          "src/slice/specialization.rs",
+          "src/slice/tests.rs",
+          "src/slice/traits.rs",
+          "src/slice.rs",
+          "src/vec/api.rs",
+          "src/vec/iter.rs",
+          "src/vec/ops.rs",
+          "src/vec/tests.rs",
+          "src/vec.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 53,
+        "status": "scanned",
+        "unsafe_blocks": 217,
+        "unsafe_functions_with_bodies": 88,
+        "unsafe_impls": 19,
+        "unsafe_traits": 1
+      },
+      "status": "screened",
+      "version": "1.1.1"
+    },
+    {
+      "archive_sha256": "5905ec755cc8386d7928353e4d356d2be3e89e81e5ca01fe630a1ca4d08dc175",
+      "candidate": {
+        "category": "array_vector",
+        "name": "fixedbitset",
+        "priority": true
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "f793458bb4675e9bb5c43fc8b2f22198b826f51553a7d8fd9b40dc579b579d7d",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "f793458bb4675e9bb5c43fc8b2f22198b826f51553a7d8fd9b40dc579b579d7d",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/block/avx.rs",
+          "src/block/avx2.rs",
+          "src/block/mod.rs",
+          "src/block/sse2.rs",
+          "src/lib.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 9,
+        "status": "scanned",
+        "unsafe_blocks": 65,
+        "unsafe_functions_with_bodies": 10,
+        "unsafe_impls": 2,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.5.9"
+    },
+    {
+      "archive_sha256": "56d87354e4229f54a44f7bf2435906a4656dba36026ab6eaca629a2c436a691c",
+      "candidate": {
+        "category": "array_vector",
+        "name": "bit-set",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "6eaa3bcb4e112c5ae8058b7487778c6242fd8ec39e71e3d87b333813cdf42247",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "d1e6b331406bf9eea2914aea96fd4f287c0f940b756b509a0023838bd77a6e5d",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/set.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 4,
+        "status": "scanned",
+        "unsafe_blocks": 2,
+        "unsafe_functions_with_bodies": 0,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.11.1"
+    },
+    {
+      "archive_sha256": "72503af1e72be411d74ca45cd6b309878fcb35354e252fc2a3a8bda3a97082a0",
+      "candidate": {
+        "category": "array_vector",
+        "name": "bit-vec",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "11ec4d952b72c6804286a250e46f6fc7b5f0c113ffa09b96e02fe242060b9d6a",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "227321b8eb99ace3397c1485e18701fadabf5b33ec523343aff92459a3ea4cad",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 2,
+        "status": "scanned",
+        "unsafe_blocks": 0,
+        "unsafe_functions_with_bodies": 4,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.10.2"
+    },
+    {
+      "archive_sha256": "95832e849adfb21180ccb6826a99da14e5d266ae5c2e668e1602cf234f153797",
+      "candidate": {
+        "category": "raw_memory",
+        "name": "bytemuck",
+        "priority": true
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "09d3b65ca5706f659869606f4d8c315af5a8ed593dc782edb09c71fa13aaa19c",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "09d3b65ca5706f659869606f4d8c315af5a8ed593dc782edb09c71fa13aaa19c",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/allocation.rs",
+          "src/checked.rs",
+          "src/contiguous.rs",
+          "src/internal.rs",
+          "src/lib.rs",
+          "src/must.rs",
+          "src/transparent.rs",
+          "src/zeroable.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 15,
+        "status": "scanned",
+        "unsafe_blocks": 100,
+        "unsafe_functions_with_bodies": 19,
+        "unsafe_impls": 155,
+        "unsafe_traits": 9
+      },
+      "status": "screened",
+      "version": "1.25.2"
+    },
+    {
+      "archive_sha256": "cba8a86aee14fc8cc6c208af60854b3d4ab7185a9a369a12c648faa2716ff42a",
+      "candidate": {
+        "category": "raw_memory",
+        "name": "zerocopy",
+        "priority": true
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "91171e04303e952fc8547cca5fc757ddbe63793341c06129bf45c504fa619d8f",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "91171e04303e952fc8547cca5fc757ddbe63793341c06129bf45c504fa619d8f",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/byte_slice.rs",
+          "src/error.rs",
+          "src/impls.rs",
+          "src/layout.rs",
+          "src/lib.rs",
+          "src/pointer/inner.rs",
+          "src/pointer/ptr.rs",
+          "src/pointer/transmute.rs",
+          "src/ref.rs",
+          "src/split_at.rs",
+          "src/util/macro_util.rs",
+          "src/util/mod.rs",
+          "src/wrappers.rs"
+        ],
+        "foreign_blocks": 1,
+        "parse_failures": [],
+        "parsed_files": 20,
+        "status": "scanned",
+        "unsafe_blocks": 286,
+        "unsafe_functions_with_bodies": 61,
+        "unsafe_impls": 79,
+        "unsafe_traits": 30
+      },
+      "status": "screened",
+      "version": "0.8.66"
+    },
+    {
+      "archive_sha256": "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6",
+      "candidate": {
+        "category": "raw_memory",
+        "name": "plain",
+        "priority": true
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "88639fd604b21bde762b419e2102f0035099401b6c8ed5f9c89e3ab195068289",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "88639fd604b21bde762b419e2102f0035099401b6c8ed5f9c89e3ab195068289",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/methods.rs",
+          "src/tests.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 5,
+        "status": "scanned",
+        "unsafe_blocks": 7,
+        "unsafe_functions_with_bodies": 2,
+        "unsafe_impls": 13,
+        "unsafe_traits": 1
+      },
+      "status": "screened",
+      "version": "0.2.3"
+    },
+    {
+      "candidate": {
+        "category": "raw_memory",
+        "name": "bytecast",
+        "priority": false
+      },
+      "diagnostic": "registry index: curl: (22) The requested URL returned error: 404",
+      "status": "registry_unresolved"
+    },
+    {
+      "archive_sha256": "3944826ff8fa8093089aba3acb4ef44b9446a99a16f3bf4e74af3f77d340ab7d",
+      "candidate": {
+        "category": "raw_memory",
+        "name": "safe-transmute",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "abfc55e07cf87d206f055cf5a22c66fbb471edbb4c665a6f636332060bd40533",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "abfc55e07cf87d206f055cf5a22c66fbb471edbb4c665a6f636332060bd40533",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/bool.rs",
+          "src/error.rs",
+          "src/full.rs",
+          "src/to_bytes.rs",
+          "src/trivial.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 12,
+        "status": "scanned",
+        "unsafe_blocks": 17,
+        "unsafe_functions_with_bodies": 21,
+        "unsafe_impls": 47,
+        "unsafe_traits": 1
+      },
+      "status": "screened",
+      "version": "0.11.3"
+    },
+    {
+      "archive_sha256": "743da816b98c921cdbe8628ef7381b76f25ecf4da599fc80aca90eae7ef70cc0",
+      "candidate": {
+        "category": "raw_memory",
+        "name": "ptr_meta",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "8fb826519fc3700effcc6b7c8e7ab9ae9ae21113258fd647910d81294e63f5b2",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "fda53da43c7f986b273ccb7a6c52449026f70ec24543f748b8958392e9211d50",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/lib.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 2,
+        "status": "scanned",
+        "unsafe_blocks": 8,
+        "unsafe_functions_with_bodies": 0,
+        "unsafe_impls": 15,
+        "unsafe_traits": 1
+      },
+      "status": "screened",
+      "version": "0.3.2"
+    },
+    {
+      "archive_sha256": "3b9b39299b249ad65f3b7e96443bad61c02ca5cd3589f46cb6d610a0fd6c0d6a",
+      "candidate": {
+        "category": "raw_memory",
+        "name": "sptr",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "197629bc77d18c520cfe067443be545e71bb81033ad0a1435b62ffca67cc73fc",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "197629bc77d18c520cfe067443be545e71bb81033ad0a1435b62ffca67cc73fc",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/lib.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 3,
+        "status": "scanned",
+        "unsafe_blocks": 5,
+        "unsafe_functions_with_bodies": 2,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.3.2"
+    },
+    {
+      "archive_sha256": "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49",
+      "candidate": {
+        "category": "raw_memory",
+        "name": "scopeguard",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "0ba1c15ee9b6841ed3a508963f9ea63762d9618e01322c665e7ff047fca07834",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "0ba1c15ee9b6841ed3a508963f9ea63762d9618e01322c665e7ff047fca07834",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/lib.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 1,
+        "status": "scanned",
+        "unsafe_blocks": 2,
+        "unsafe_functions_with_bodies": 0,
+        "unsafe_impls": 1,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "1.2.0"
+    },
+    {
+      "archive_sha256": "60302e4db3a61da70c0cb7991976248362f30319e88850c487b9b95bbf059e00",
+      "candidate": {
+        "category": "raw_memory",
+        "name": "maybe-uninit",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "42fdff360bd28e9cba9aac2bc857a98cc5349fd9db178da46ec9b6690d3abce1",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "42fdff360bd28e9cba9aac2bc857a98cc5349fd9db178da46ec9b6690d3abce1",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/maybe_uninit.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 2,
+        "status": "scanned",
+        "unsafe_blocks": 2,
+        "unsafe_functions_with_bodies": 1,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "2.0.0"
+    },
+    {
+      "archive_sha256": "6ff55baddef9e4ad00f88b6c743a2a8062d4c6ade126c2a528644b8e444d52ce",
+      "candidate": {
+        "category": "raw_memory",
+        "name": "owning_ref",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "9e803cdf1c4980f72d911549e3d2e05af8e1533d3d6f83a4b473259759535686",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "9e803cdf1c4980f72d911549e3d2e05af8e1533d3d6f83a4b473259759535686",
+        "status": "build_failed"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/lib.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 1,
+        "status": "scanned",
+        "unsafe_blocks": 17,
+        "unsafe_functions_with_bodies": 6,
+        "unsafe_impls": 11,
+        "unsafe_traits": 1
+      },
+      "status": "screened",
+      "version": "0.4.1"
+    },
+    {
+      "archive_sha256": "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596",
+      "candidate": {
+        "category": "raw_memory",
+        "name": "stable_deref_trait",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "cb16bba09b99f6d01eb6a0ed45dacceab79cdd3d363542fd4bfe177ab30bc6fb",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "cb16bba09b99f6d01eb6a0ed45dacceab79cdd3d363542fd4bfe177ab30bc6fb",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 1,
+        "status": "scanned",
+        "unsafe_blocks": 0,
+        "unsafe_functions_with_bodies": 0,
+        "unsafe_impls": 23,
+        "unsafe_traits": 2
+      },
+      "status": "screened",
+      "version": "1.2.1"
+    },
+    {
+      "archive_sha256": "488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a",
+      "candidate": {
+        "category": "raw_memory",
+        "name": "memoffset",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "3ea080083009c58e47300df15726e6c63a2f0894388f8db6918fc5df70ca72f2",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "3ea080083009c58e47300df15726e6c63a2f0894388f8db6918fc5df70ca72f2",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 4,
+        "status": "scanned",
+        "unsafe_blocks": 0,
+        "unsafe_functions_with_bodies": 0,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.9.1"
+    },
+    {
+      "archive_sha256": "776dfebd015e2d8732c684a2c71003674ccb49457b539b9e82151ba38e96dd7c",
+      "candidate": {
+        "category": "buffer_queue",
+        "name": "bytes",
+        "priority": true
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "1737635b0fb1e8074e5d417be3480f70f129e09f22630465684a868db9a6469f",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "1737635b0fb1e8074e5d417be3480f70f129e09f22630465684a868db9a6469f",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/buf/buf_mut.rs",
+          "src/buf/take.rs",
+          "src/buf/uninit_slice.rs",
+          "src/bytes.rs",
+          "src/bytes_mut.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 19,
+        "status": "scanned",
+        "unsafe_blocks": 63,
+        "unsafe_functions_with_bodies": 57,
+        "unsafe_impls": 12,
+        "unsafe_traits": 1
+      },
+      "status": "screened",
+      "version": "1.12.2"
+    },
+    {
+      "archive_sha256": "7dafe3a8757b027e2be6e4e5601ed563c55989fcf1546e933c66c8eb3a058d35",
+      "candidate": {
+        "category": "buffer_queue",
+        "name": "bytes-utils",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "287ed769eaae8b686f8d4c62500d0d4b9a8a765554c011ee3ed2abaeed3ee3e0",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "287ed769eaae8b686f8d4c62500d0d4b9a8a765554c011ee3ed2abaeed3ee3e0",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/string/mod.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 4,
+        "status": "scanned",
+        "unsafe_blocks": 7,
+        "unsafe_functions_with_bodies": 2,
+        "unsafe_impls": 3,
+        "unsafe_traits": 2
+      },
+      "status": "screened",
+      "version": "0.1.4"
+    },
+    {
+      "archive_sha256": "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b",
+      "candidate": {
+        "category": "buffer_queue",
+        "name": "byteorder",
+        "priority": true
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "4619ab8fbc459f84f37a4700f684603e419089a2448778a03da1756cf9862506",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "4619ab8fbc459f84f37a4700f684603e419089a2448778a03da1756cf9862506",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/io.rs",
+          "src/lib.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 2,
+        "status": "scanned",
+        "unsafe_blocks": 36,
+        "unsafe_functions_with_bodies": 1,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "1.5.0"
+    },
+    {
+      "archive_sha256": "8f1fe948ff07f4bd06c30984e69f5b4899c516a3ef74f34df92a2df2ab535495",
+      "candidate": {
+        "category": "buffer_queue",
+        "name": "byteorder-lite",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "13ff9d8c3c57c4d1275e92147d5ef9f8f14a7edb5f5808bb717572ac3c48f5f1",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "13ff9d8c3c57c4d1275e92147d5ef9f8f14a7edb5f5808bb717572ac3c48f5f1",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 2,
+        "status": "scanned",
+        "unsafe_blocks": 0,
+        "unsafe_functions_with_bodies": 0,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.1.0"
+    },
+    {
+      "archive_sha256": "33d5f59e4145df5f29e84b6389394a8a3fedf7bd8c12570560ae67a917e6eae3",
+      "candidate": {
+        "category": "buffer_queue",
+        "name": "ringbuf",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "bf5fa6719d2c11c11d59e648820f8427e2ed2a79c9950dae4726420a46728a53",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "0b13009f7a898d05946eeb4e2684f9b9cd2b60da678792665c1e13e975d02754",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/benchmarks/iter.rs",
+          "src/benchmarks/parts.rs",
+          "src/rb/exclusive.rs",
+          "src/rb/local.rs",
+          "src/rb/shared.rs",
+          "src/storage.rs",
+          "src/traits/consumer.rs",
+          "src/traits/producer.rs",
+          "src/traits/raw.rs",
+          "src/traits/ring_buffer.rs",
+          "src/transfer.rs",
+          "src/utils.rs",
+          "src/wrap/caching.rs",
+          "src/wrap/direct.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 32,
+        "status": "scanned",
+        "unsafe_blocks": 108,
+        "unsafe_functions_with_bodies": 53,
+        "unsafe_impls": 22,
+        "unsafe_traits": 4
+      },
+      "status": "screened",
+      "version": "0.6.0"
+    },
+    {
+      "archive_sha256": "662f6b21c6e889ee4e3f449e197c40f03603472fcd40c709093d386e3dca07cf",
+      "candidate": {
+        "category": "buffer_queue",
+        "name": "circular-buffer",
+        "priority": true
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "b941fc019aa56db9177b922a206b678a3088eedfde3fb54c204e6bbe13227ab6",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "b941fc019aa56db9177b922a206b678a3088eedfde3fb54c204e6bbe13227ab6",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/drain.rs",
+          "src/fixed.rs",
+          "src/heap.rs",
+          "src/lib.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 11,
+        "status": "scanned",
+        "unsafe_blocks": 52,
+        "unsafe_functions_with_bodies": 2,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "2.0.1"
+    },
+    {
+      "archive_sha256": "7d902e3d592a523def97af8f317b08ce16b7ab854c1985a0c671e6f15cebc236",
+      "candidate": {
+        "category": "buffer_queue",
+        "name": "arraydeque",
+        "priority": true
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "8707cf61e9d9e224bbe120a868ce97384464b3e2997d4f6390a85c452fc55924",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "8707cf61e9d9e224bbe120a868ce97384464b3e2997d4f6390a85c452fc55924",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/lib.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 4,
+        "status": "scanned",
+        "unsafe_blocks": 57,
+        "unsafe_functions_with_bodies": 15,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.5.1"
+    },
+    {
+      "archive_sha256": "68917624e17aad88607cb5a5936f6da9b607c48c711e4e9ed101e7189aed28c2",
+      "candidate": {
+        "category": "buffer_queue",
+        "name": "bbqueue",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "6671ff16489fbb19dda2bad228cc5c77fd64f3c7243cf7a72d0f38fec8637738",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "84d4268d94e98cdd406198b2bfbd3a02ff6af0854d6a78f91c6321bf0296a534",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/prod_cons/framed.rs",
+          "src/prod_cons/stream.rs",
+          "src/queue.rs",
+          "src/traits/storage.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 15,
+        "status": "scanned",
+        "unsafe_blocks": 35,
+        "unsafe_functions_with_bodies": 3,
+        "unsafe_impls": 12,
+        "unsafe_traits": 2
+      },
+      "status": "screened",
+      "version": "0.7.0"
+    },
+    {
+      "archive_sha256": "5974e397833d890f2f74963408e0d4a6cd8eda2f6a445ae06750291b5d7a997e",
+      "candidate": {
+        "category": "buffer_queue",
+        "name": "rtrb",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "6e9718706872a817ffd663f4078324ed6ec622dc6997420f2ecb964d4fe765e3",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "6e9718706872a817ffd663f4078324ed6ec622dc6997420f2ecb964d4fe765e3",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/arc_ring_buffer.rs",
+          "src/chunks.rs",
+          "src/lib.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 4,
+        "status": "scanned",
+        "unsafe_blocks": 44,
+        "unsafe_functions_with_bodies": 7,
+        "unsafe_impls": 7,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.4.1"
+    },
+    {
+      "archive_sha256": "84ae312bda09b2368f79f985fdb4df4a0b5cbc75546b511303972d195f8c27d6",
+      "candidate": {
+        "category": "buffer_queue",
+        "name": "slice-ring-buffer",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "286d2b6c37a1cf1f487436201320b72776145df737b11f1d59fbd55922879a7d",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "error[E0425]: cannot find function `allocation_granularity` in this scope",
+        "exit_code": 101,
+        "lock_sha256": "286d2b6c37a1cf1f487436201320b72776145df737b11f1d59fbd55922879a7d",
+        "status": "build_failed"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/lib.rs",
+          "src/mirrored/buffer.rs",
+          "src/mirrored/linux.rs",
+          "src/mirrored/macos.rs",
+          "src/mirrored/sysv.rs",
+          "src/mirrored/winapi.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 8,
+        "status": "scanned",
+        "unsafe_blocks": 83,
+        "unsafe_functions_with_bodies": 33,
+        "unsafe_impls": 12,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.3.4"
+    },
+    {
+      "archive_sha256": "22d5698cf6842742ed64805705798f8b351fff53fa546fd45c52184bee58dc90",
+      "candidate": {
+        "category": "buffer_queue",
+        "name": "buf-min",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "cab65a73ab4567632b771ab66182df4ddfeac994af74468b29e4c94d06613eca",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "cab65a73ab4567632b771ab66182df4ddfeac994af74468b29e4c94d06613eca",
+        "status": "build_failed"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/lib.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 1,
+        "status": "scanned",
+        "unsafe_blocks": 1,
+        "unsafe_functions_with_bodies": 6,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.7.1"
+    },
+    {
+      "archive_sha256": "31ef6ee280cdefba6d2d0b4b78a84a1c1a3f3a4cec98c2d4231c8bc225de0f25",
+      "candidate": {
+        "category": "buffer_queue",
+        "name": "slice-deque",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "99d71a2a7164447495a73d605c82782720f5028737a6e95611367b99d0090fb7",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "error[E0425]: cannot find function `allocation_granularity` in this scope",
+        "exit_code": 101,
+        "lock_sha256": "99d71a2a7164447495a73d605c82782720f5028737a6e95611367b99d0090fb7",
+        "status": "build_failed"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/lib.rs",
+          "src/mirrored/buffer.rs",
+          "src/mirrored/linux.rs",
+          "src/mirrored/macos.rs",
+          "src/mirrored/sysv.rs",
+          "src/mirrored/winapi.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 9,
+        "status": "scanned",
+        "unsafe_blocks": 84,
+        "unsafe_functions_with_bodies": 33,
+        "unsafe_impls": 12,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.3.0"
+    },
+    {
+      "archive_sha256": "c880a97d28a3681c0267bd29cff89621202715b065127cd445fa0f0fe0aa2880",
+      "candidate": {
+        "category": "heap",
+        "name": "allocator-api2",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "ec3d3b9552a58c493e22d09b861cc746426c9efd9f276a806827cd80f34f3eb6",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "ec3d3b9552a58c493e22d09b861cc746426c9efd9f276a806827cd80f34f3eb6",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/alloc/global.rs",
+          "src/alloc/mod.rs",
+          "src/alloc/system.rs",
+          "src/boxed.rs",
+          "src/lib.rs",
+          "src/raw_vec.rs",
+          "src/slice.rs",
+          "src/unique.rs",
+          "src/vec/drain.rs",
+          "src/vec/into_iter.rs",
+          "src/vec/mod.rs",
+          "src/vec/splice.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 15,
+        "status": "scanned",
+        "unsafe_blocks": 167,
+        "unsafe_functions_with_bodies": 44,
+        "unsafe_impls": 14,
+        "unsafe_traits": 1
+      },
+      "status": "screened",
+      "version": "0.4.0"
+    },
+    {
+      "archive_sha256": "87a0cf66fd1eb2fb7b822cb78370d82303750809bc6ba855f3f58e517d3238db",
+      "candidate": {
+        "category": "heap",
+        "name": "bumpalo",
+        "priority": true
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "202b293825ccf11648e4261648c8a490b5f1a139accbe3f7e59cc858e717534a",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "202b293825ccf11648e4261648c8a490b5f1a139accbe3f7e59cc858e717534a",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/alloc.rs",
+          "src/boxed.rs",
+          "src/collections/raw_vec.rs",
+          "src/collections/str/lossy.rs",
+          "src/collections/string.rs",
+          "src/collections/vec.rs",
+          "src/lib.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 10,
+        "status": "scanned",
+        "unsafe_blocks": 125,
+        "unsafe_functions_with_bodies": 45,
+        "unsafe_impls": 12,
+        "unsafe_traits": 1
+      },
+      "status": "screened",
+      "version": "3.20.4"
+    },
+    {
+      "archive_sha256": "6af6ae20167a9ece4bcb41af5b80f8a1f1df981f6391189ce00fd257af04126a",
+      "candidate": {
+        "category": "heap",
+        "name": "typed-arena",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "562fd4f6cdc3f490e42ea8894293fe80e8f313d0b7bf09c0adbaea4c7bad98ac",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "562fd4f6cdc3f490e42ea8894293fe80e8f313d0b7bf09c0adbaea4c7bad98ac",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/lib.rs",
+          "src/test.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 2,
+        "status": "scanned",
+        "unsafe_blocks": 12,
+        "unsafe_functions_with_bodies": 1,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "2.0.2"
+    },
+    {
+      "archive_sha256": "7be6da1768f309582451b57d477ca411c7c7aef2a8349bcc32a0d30846df79bb",
+      "candidate": {
+        "category": "heap",
+        "name": "bump-scope",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "9e9dedcc122cf2efb9f5e4167432758286ec75a5ee1fe25dd03650684c19182a",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "a5001fced32b930c49ccdc6dc431a69135561c540a08ba038953918fb99db578",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/alloc/global.rs",
+          "src/alloc/system.rs",
+          "src/alloc.rs",
+          "src/allocator_impl.rs",
+          "src/bump.rs",
+          "src/bump_align_guard.rs",
+          "src/bump_box/raw.rs",
+          "src/bump_box/slice_initializer.rs",
+          "src/bump_box.rs",
+          "src/bump_pool.rs",
+          "src/bump_scope.rs",
+          "src/bump_scope_guard.rs",
+          "src/bump_string.rs",
+          "src/bump_vec/drain.rs",
+          "src/bump_vec/into_iter.rs",
+          "src/bump_vec/splice.rs",
+          "src/bump_vec.rs",
+          "src/features/allocator_api2_02.rs",
+          "src/features/allocator_api2_03.rs",
+          "src/features/allocator_api2_04.rs",
+          "src/features/nightly_allocator_api.rs",
+          "src/fixed_bump_string/raw.rs",
+          "src/fixed_bump_string.rs",
+          "src/fixed_bump_vec/raw.rs",
+          "src/fixed_bump_vec.rs",
+          "src/lib.rs",
+          "src/mut_bump_string.rs",
+          "src/mut_bump_vec/into_iter.rs",
+          "src/mut_bump_vec.rs",
+          "src/mut_bump_vec_rev.rs",
+          "src/owned_slice/drain.rs",
+          "src/owned_slice/extract_if.rs",
+          "src/owned_slice/into_iter.rs",
+          "src/owned_slice.rs",
+          "src/owned_str/drain.rs",
+          "src/polyfill/layout.rs",
+          "src/polyfill/mod.rs",
+          "src/polyfill/non_null.rs",
+          "src/polyfill/pointer.rs",
+          "src/raw_bump.rs",
+          "src/stats/any.rs",
+          "src/tests.rs",
+          "src/traits/bump_allocator.rs",
+          "src/traits/bump_allocator_core.rs",
+          "src/traits/bump_allocator_scope.rs",
+          "src/traits/bump_allocator_typed.rs",
+          "src/traits/bump_allocator_typed_scope.rs",
+          "src/without_dealloc.rs"
+        ],
+        "foreign_blocks": 1,
+        "parse_failures": [],
+        "parsed_files": 80,
+        "status": "scanned",
+        "unsafe_blocks": 655,
+        "unsafe_functions_with_bodies": 225,
+        "unsafe_impls": 68,
+        "unsafe_traits": 6
+      },
+      "status": "screened",
+      "version": "2.4.1"
+    },
+    {
+      "archive_sha256": "2b23ac50abb8261cb38c6e2a7192d3302e0836dac1628f6a93b82b4fad185897",
+      "candidate": {
+        "category": "heap",
+        "name": "linked_list_allocator",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "c0a9659f9077b9ec5855cdbcfbaa2832d43a565b28c8ceb3912791c38c0a0bd7",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "1cd1735506edf2e1453edc5bc6c614255b3b9556624829daf8abaec66a05379f",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/hole.rs",
+          "src/lib.rs",
+          "src/test.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 3,
+        "status": "scanned",
+        "unsafe_blocks": 68,
+        "unsafe_functions_with_bodies": 13,
+        "unsafe_impls": 3,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.10.6"
+    },
+    {
+      "archive_sha256": "c1af5a01adeeade54c9f5060300227a8ee64c05b6376f28e9b8ee3b72dd2056f",
+      "candidate": {
+        "category": "heap",
+        "name": "buddy_system_allocator",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "8b8b3d7b5758d6eaa8cfb8e54d7a86d83d9c7f9762a229130b090d2683edc410",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "c5af06c5f7aa083f016a9b3cc1edeab9e2e7be3e864f1fb87f0250f120de5990",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/lib.rs",
+          "src/linked_list.rs",
+          "src/test.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 4,
+        "status": "scanned",
+        "unsafe_blocks": 26,
+        "unsafe_functions_with_bodies": 8,
+        "unsafe_impls": 3,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.13.0"
+    },
+    {
+      "archive_sha256": "ad5208a115eaba24916f7456929832e310a81518c641f93fee4f89aa93aa3675",
+      "candidate": {
+        "category": "heap",
+        "name": "dlmalloc",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "2a52948b15e323f71443b9ccb548c3a77792a07f185d6fd495fecebf5d6c6371",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "2a52948b15e323f71443b9ccb548c3a77792a07f185d6fd495fecebf5d6c6371",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/dlmalloc.rs",
+          "src/unix.rs",
+          "src/wasm.rs",
+          "src/windows.rs",
+          "src/xous.rs"
+        ],
+        "foreign_blocks": 1,
+        "parse_failures": [],
+        "parsed_files": 8,
+        "status": "scanned",
+        "unsafe_blocks": 22,
+        "unsafe_functions_with_bodies": 101,
+        "unsafe_impls": 7,
+        "unsafe_traits": 1
+      },
+      "status": "screened",
+      "version": "0.2.14"
+    },
+    {
+      "archive_sha256": "dbb3b5a6b2bb17cb6ad44a2e68a43e8d2722c997da10e928665c72ec6c0a0b8e",
+      "candidate": {
+        "category": "heap",
+        "name": "wee_alloc",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error: There is no `wee_alloc` implementation for this target; want to send a pull request? :)",
+        "exit_code": 101,
+        "lock_sha256": "85250b2f4c814cfcdbe286c6d33dc724b4e1fdf88be23fd2baf48b2e4738a365",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "error: There is no `wee_alloc` implementation for this target; want to send a pull request? :)",
+        "exit_code": 101,
+        "lock_sha256": "85250b2f4c814cfcdbe286c6d33dc724b4e1fdf88be23fd2baf48b2e4738a365",
+        "status": "build_failed"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/imp_unix.rs",
+          "src/imp_windows.rs",
+          "src/lib.rs",
+          "src/neighbors.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [
+          "src/size_classes_init.rs"
+        ],
+        "parsed_files": 9,
+        "status": "scanned",
+        "unsafe_blocks": 14,
+        "unsafe_functions_with_bodies": 30,
+        "unsafe_impls": 4,
+        "unsafe_traits": 1
+      },
+      "status": "screened",
+      "version": "0.4.5"
+    },
+    {
+      "archive_sha256": "53f8ad14fa1c1b8635114abf9721076fe1e869572a5f26a52690f407292c80dc",
+      "candidate": {
+        "category": "heap",
+        "name": "talc",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "e2b55181d0265e3ebc11617c42d0b00487be6db4630b336f4dfa18a1dd1d8800",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "e2b55181d0265e3ebc11617c42d0b00487be6db4630b336f4dfa18a1dd1d8800",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/base/bitfield.rs",
+          "src/base/counters.rs",
+          "src/base/mod.rs",
+          "src/cell.rs",
+          "src/lib.rs",
+          "src/node.rs",
+          "src/ptr_utils.rs",
+          "src/source/allocator.rs",
+          "src/source/claim.rs",
+          "src/source/global_alloc.rs",
+          "src/source/vheaps/unix.rs",
+          "src/source/vheaps/win.rs",
+          "src/source/vheaps.rs",
+          "src/sync/mod.rs",
+          "src/wasm.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 24,
+        "status": "scanned",
+        "unsafe_blocks": 80,
+        "unsafe_functions_with_bodies": 79,
+        "unsafe_impls": 22,
+        "unsafe_traits": 2
+      },
+      "status": "screened",
+      "version": "5.1.1"
+    },
+    {
+      "archive_sha256": "07393724337be2ee43a9d86164df4505746874a3fa65913374bc6d6a92314362",
+      "candidate": {
+        "category": "heap",
+        "name": "rlsf",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "42c575944f00d19e3d79322f42782540030bb3119650fcd77b5118c2a36a8639",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "42c575944f00d19e3d79322f42782540030bb3119650fcd77b5118c2a36a8639",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/flex/tests.rs",
+          "src/flex.rs",
+          "src/global/unix.rs",
+          "src/global.rs",
+          "src/tests.rs",
+          "src/tlsf.rs",
+          "src/utils.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 12,
+        "status": "scanned",
+        "unsafe_blocks": 28,
+        "unsafe_functions_with_bodies": 51,
+        "unsafe_impls": 14,
+        "unsafe_traits": 2
+      },
+      "status": "screened",
+      "version": "0.2.3"
+    },
+    {
+      "archive_sha256": "2db634e07f552215f7a3572dc0a4d29760c637fcea5a8c18d2cc291f782c216c",
+      "candidate": {
+        "category": "heap",
+        "name": "embedded-alloc",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "5d54c067e3ed6583ee9168287b772a8283d85ff2bd64c105ff0d7b3ba772cc39",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "4a9b674a83653360eb80c67f5e74e116adebd124f96fb7354b2c3db2bb24a7e4",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/tlsf.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 3,
+        "status": "scanned",
+        "unsafe_blocks": 1,
+        "unsafe_functions_with_bodies": 10,
+        "unsafe_impls": 6,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.7.0"
+    },
+    {
+      "archive_sha256": "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5",
+      "candidate": {
+        "category": "heap",
+        "name": "slab",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "df042ac28d346f5824e93e9306086a2a12273a9ccbd1bce04b938e0fe1adffe1",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "df042ac28d346f5824e93e9306086a2a12273a9ccbd1bce04b938e0fe1adffe1",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/lib.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 3,
+        "status": "scanned",
+        "unsafe_blocks": 3,
+        "unsafe_functions_with_bodies": 3,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.4.12"
+    },
+    {
+      "archive_sha256": "735eaa21a6a5ffb2e84362faaeb90c05ba8e19797ca30428478cb6ea3a4921bc",
+      "candidate": {
+        "category": "data_structures",
+        "name": "hashbrown",
+        "priority": true
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "c920fd279c9ff12b41fcef15c8a1f690c8cfdcd386f50cffc85f876f5364a4ef",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "c9c83ee6160066e6ed292a51b296d2379af7bf7da5a1c6f090e161f8c25715fe",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/alloc.rs",
+          "src/control/bitmask.rs",
+          "src/control/group/generic.rs",
+          "src/control/group/lsx.rs",
+          "src/control/group/neon.rs",
+          "src/control/group/sse2.rs",
+          "src/control/tag.rs",
+          "src/external_trait_impls/rayon/map.rs",
+          "src/external_trait_impls/rayon/raw.rs",
+          "src/external_trait_impls/rayon/table.rs",
+          "src/map.rs",
+          "src/raw.rs",
+          "src/raw_entry.rs",
+          "src/rustc_entry.rs",
+          "src/scopeguard.rs",
+          "src/set.rs",
+          "src/table.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 28,
+        "status": "scanned",
+        "unsafe_blocks": 313,
+        "unsafe_functions_with_bodies": 102,
+        "unsafe_impls": 25,
+        "unsafe_traits": 1
+      },
+      "status": "screened",
+      "version": "0.17.2"
+    },
+    {
+      "archive_sha256": "cc4e190f5d26ca7051642629da2c52fc03bde85a03197c99408dcd291734c855",
+      "candidate": {
+        "category": "data_structures",
+        "name": "indexmap",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "337b6a8068c9935014ecb232fb74dc8795c4c07cb4e0e078f16e6f5598f17bb8",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "337b6a8068c9935014ecb232fb74dc8795c4c07cb4e0e078f16e6f5598f17bb8",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/inner/extract.rs",
+          "src/map/disjoint.rs",
+          "src/map/slice.rs",
+          "src/set/slice.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 27,
+        "status": "scanned",
+        "unsafe_blocks": 12,
+        "unsafe_functions_with_bodies": 0,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "2.14.2"
+    },
+    {
+      "archive_sha256": "bdd58c3c93c3d278ca835519292445cb4b0d4dc59ccfdf7ceadaab3f8aeb4038",
+      "candidate": {
+        "category": "data_structures",
+        "name": "slotmap",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "c4e0ee6be300bfc9c664110c306d64d7e09b69be6c62400012c72164458284b9",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "c4e0ee6be300bfc9c664110c306d64d7e09b69be6c62400012c72164458284b9",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/basic.rs",
+          "src/dense.rs",
+          "src/hop.rs",
+          "src/lib.rs",
+          "src/secondary.rs",
+          "src/sparse_secondary.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 7,
+        "status": "scanned",
+        "unsafe_blocks": 67,
+        "unsafe_functions_with_bodies": 20,
+        "unsafe_impls": 0,
+        "unsafe_traits": 1
+      },
+      "status": "screened",
+      "version": "1.1.1"
+    },
+    {
+      "archive_sha256": "877e94aff08e743b651baaea359664321055749b398adff8740a7399af7796e7",
+      "candidate": {
+        "category": "data_structures",
+        "name": "generational-arena",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "76bf9db070abffa3eaea2784657c7e3c5deb2def80b85f2f14080cb9828837df",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "76bf9db070abffa3eaea2784657c7e3c5deb2def80b85f2f14080cb9828837df",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 2,
+        "status": "scanned",
+        "unsafe_blocks": 0,
+        "unsafe_functions_with_bodies": 0,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.2.9"
+    },
+    {
+      "archive_sha256": "4275b20e6057cd7733fd8df8a5a31701e4fe44497dad0f3fa0e1c4fb971506be",
+      "candidate": {
+        "category": "data_structures",
+        "name": "intrusive-collections",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "32df8ba7e9a8dceba6d038878d2e7c15e80ad0285e940fa449ac859a1f4c0240",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "32df8ba7e9a8dceba6d038878d2e7c15e80ad0285e940fa449ac859a1f4c0240",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/linked_list.rs",
+          "src/pointer_ops.rs",
+          "src/rbtree.rs",
+          "src/singly_linked_list.rs",
+          "src/unsafe_ref.rs",
+          "src/xor_linked_list.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 10,
+        "status": "scanned",
+        "unsafe_blocks": 152,
+        "unsafe_functions_with_bodies": 160,
+        "unsafe_impls": 66,
+        "unsafe_traits": 7
+      },
+      "status": "screened",
+      "version": "0.10.3"
+    },
+    {
+      "archive_sha256": "014d09f9f4dbb178240d78610a8ddbc18c57120b62f182fa859e0dd02b03708c",
+      "candidate": {
+        "category": "data_structures",
+        "name": "rbtree",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "09685db967fd9aa824384051d5f8024d58e126a6f1c5077bc52fa8f48a0e453a",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "09685db967fd9aa824384051d5f8024d58e126a6f1c5077bc52fa8f48a0e453a",
+        "status": "build_failed"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/lib.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 1,
+        "status": "scanned",
+        "unsafe_blocks": 34,
+        "unsafe_functions_with_bodies": 6,
+        "unsafe_impls": 2,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.2.0"
+    },
+    {
+      "archive_sha256": "718af0c70466d1901d87da3fa23e38a955cd0dec64af16bc49cf2d901ec0e5e7",
+      "candidate": {
+        "category": "data_structures",
+        "name": "sized-chunks",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "dac9b2937f4b8c02a886cdf0ce803328f64f655eaaeab006720b36dacce3938c",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "dac9b2937f4b8c02a886cdf0ce803328f64f655eaaeab006720b36dacce3938c",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/inline_array/mod.rs",
+          "src/ring_buffer/iter.rs",
+          "src/ring_buffer/mod.rs",
+          "src/ring_buffer/slice.rs",
+          "src/sized_chunk/mod.rs",
+          "src/sparse_chunk/iter.rs",
+          "src/sparse_chunk/mod.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 16,
+        "status": "scanned",
+        "unsafe_blocks": 95,
+        "unsafe_functions_with_bodies": 40,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.7.0"
+    },
+    {
+      "archive_sha256": "d0acd33ff0285af998aaf9b57342af478078f53492322fafc47450e09397e0e9",
+      "candidate": {
+        "category": "data_structures",
+        "name": "im",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "9bb2425cc3a3755f11d9cbea5dee6255595c55734839eb3e15caf98885fb2e9a",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "9bb2425cc3a3755f11d9cbea5dee6255595c55734839eb3e15caf98885fb2e9a",
+        "status": "build_failed"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/nodes/hamt.rs",
+          "src/util.rs",
+          "src/vector/focus.rs",
+          "src/vector/mod.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 26,
+        "status": "scanned",
+        "unsafe_blocks": 16,
+        "unsafe_functions_with_bodies": 5,
+        "unsafe_impls": 2,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "15.1.0"
+    },
+    {
+      "archive_sha256": "af1955a75fa080c677d3972822ec4bad316169ab1cfc6c257a942c2265dbe5fe",
+      "candidate": {
+        "category": "data_structures",
+        "name": "im-rc",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "9de9eb0054a8398cf6513790deca559466cb832482740574998bf7a11843848b",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "9de9eb0054a8398cf6513790deca559466cb832482740574998bf7a11843848b",
+        "status": "build_failed"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/nodes/hamt.rs",
+          "src/util.rs",
+          "src/vector/focus.rs",
+          "src/vector/mod.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 26,
+        "status": "scanned",
+        "unsafe_blocks": 16,
+        "unsafe_functions_with_bodies": 5,
+        "unsafe_impls": 2,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "15.1.0"
+    },
+    {
+      "archive_sha256": "047720fbc1c4cc7daa75c925adba9ce3fa8e1f7b039337c281b142d4ecc6d86b",
+      "candidate": {
+        "category": "data_structures",
+        "name": "stable-vec",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "f25a20e6a53f1c04a67a481a74ec4089eee6ffb61cc1cd9f0da9ae5ec4143413",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "f25a20e6a53f1c04a67a481a74ec4089eee6ffb61cc1cd9f0da9ae5ec4143413",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/core/bitvec.rs",
+          "src/core/option.rs",
+          "src/iter.rs",
+          "src/lib.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 6,
+        "status": "scanned",
+        "unsafe_blocks": 46,
+        "unsafe_functions_with_bodies": 25,
+        "unsafe_impls": 2,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.4.3"
+    },
+    {
+      "archive_sha256": "d6a4b9ba8738cb4a4f399d37e266becfd475e75eb73425b87a05a2f2039ba63e",
+      "candidate": {
+        "category": "data_structures",
+        "name": "thin-vec",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "dfc4cd90bf2b7c2c03741ac41e60d11cf678f1ded78d98a899cc2a55a7100579",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "dfc4cd90bf2b7c2c03741ac41e60d11cf678f1ded78d98a899cc2a55a7100579",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/lib.rs"
+        ],
+        "foreign_blocks": 2,
+        "parse_failures": [],
+        "parsed_files": 1,
+        "status": "scanned",
+        "unsafe_blocks": 83,
+        "unsafe_functions_with_bodies": 15,
+        "unsafe_impls": 5,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.2.21"
+    },
+    {
+      "archive_sha256": "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191",
+      "candidate": {
+        "category": "data_structures",
+        "name": "vec_map",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "89837e997a582e86373a1dd39f46973a103b3d56611a255c0c9b93414ec8f363",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "89837e997a582e86373a1dd39f46973a103b3d56611a255c0c9b93414ec8f363",
+        "status": "build_failed"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 1,
+        "status": "scanned",
+        "unsafe_blocks": 0,
+        "unsafe_functions_with_bodies": 0,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.8.2"
+    },
+    {
+      "archive_sha256": "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98",
+      "candidate": {
+        "category": "parsing",
+        "name": "memchr",
+        "priority": true
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "979b5661a1414c66476e0003a13f655324f4c88163555eee4dac77d626b8bef0",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "979b5661a1414c66476e0003a13f655324f4c88163555eee4dac77d626b8bef0",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/arch/aarch64/neon/memchr.rs",
+          "src/arch/aarch64/neon/packedpair.rs",
+          "src/arch/all/memchr.rs",
+          "src/arch/all/mod.rs",
+          "src/arch/all/rabinkarp.rs",
+          "src/arch/wasm32/simd128/memchr.rs",
+          "src/arch/wasm32/simd128/packedpair.rs",
+          "src/arch/x86_64/avx2/memchr.rs",
+          "src/arch/x86_64/avx2/packedpair.rs",
+          "src/arch/x86_64/sse2/memchr.rs",
+          "src/arch/x86_64/sse2/packedpair.rs",
+          "src/memchr.rs",
+          "src/memmem/searcher.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 37,
+        "status": "scanned",
+        "unsafe_blocks": 112,
+        "unsafe_functions_with_bodies": 197,
+        "unsafe_impls": 2,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "2.8.3"
+    },
+    {
+      "archive_sha256": "e3a9fe34e3e7a50316060351f37187a3f546bce95496156754b601a5fa71b76e",
+      "candidate": {
+        "category": "parsing",
+        "name": "simdutf8",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "4a972d52b32e0906ff821855e039343551ef60f2e97224aa306730daf0103970",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "4a972d52b32e0906ff821855e039343551ef60f2e97224aa306730daf0103970",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/basic.rs",
+          "src/compat.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 13,
+        "status": "scanned",
+        "unsafe_blocks": 4,
+        "unsafe_functions_with_bodies": 100,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.1.5"
+    },
+    {
+      "archive_sha256": "a680398c10c7bc0488067c4612226ea905a85f607134b69f3068d505d58c4214",
+      "candidate": {
+        "category": "parsing",
+        "name": "bstr",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "992f6f2e6c7767b8c49e76acdff3cb069b7fb68f7b1e1e02600a09485b988535",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "4624a013f8c6d34ddbde133f339b8117dd6f35f8ab73e6149877b1bcd89611f5",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/ascii.rs",
+          "src/bstr.rs",
+          "src/bstring.rs",
+          "src/byteset/scalar.rs",
+          "src/ext_slice.rs",
+          "src/ext_vec.rs",
+          "src/unicode/grapheme.rs",
+          "src/unicode/sentence.rs",
+          "src/unicode/word.rs",
+          "src/utf8.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 27,
+        "status": "scanned",
+        "unsafe_blocks": 29,
+        "unsafe_functions_with_bodies": 10,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "1.14.0"
+    },
+    {
+      "archive_sha256": "79fcda08c33bb58b97008b2cdada6622500e949e060f5913361763121abd2416",
+      "candidate": {
+        "category": "parsing",
+        "name": "compact_str",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "1aac6ac506dfed01a23cb1e11487769105717a237b5dd8f21083661359166d0b",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "1aac6ac506dfed01a23cb1e11487769105717a237b5dd8f21083661359166d0b",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/features/diesel.rs",
+          "src/lib.rs",
+          "src/repr/bytes.rs",
+          "src/repr/capacity.rs",
+          "src/repr/heap.rs",
+          "src/repr/inline.rs",
+          "src/repr/iter.rs",
+          "src/repr/mod.rs",
+          "src/repr/proofs.rs",
+          "src/repr/smallvec.rs",
+          "src/repr/static_str.rs",
+          "src/repr/traits.rs",
+          "src/tests.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 37,
+        "status": "scanned",
+        "unsafe_blocks": 126,
+        "unsafe_functions_with_bodies": 32,
+        "unsafe_impls": 6,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.10.0"
+    },
+    {
+      "archive_sha256": "a155190f9c039a1e9b6e92efbfa50ae68daad98a0fd6d5521a5a09ef782383e8",
+      "candidate": {
+        "category": "parsing",
+        "name": "smartstring",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "b77e389e94c394fede43ddd4f1a3a0734999530cf2198db63f019c9efc45e7d7",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "b77e389e94c394fede43ddd4f1a3a0734999530cf2198db63f019c9efc45e7d7",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/boxed.rs",
+          "src/inline.rs",
+          "src/iter.rs",
+          "src/lib.rs",
+          "src/test.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 12,
+        "status": "scanned",
+        "unsafe_blocks": 25,
+        "unsafe_functions_with_bodies": 0,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "2.0.0"
+    },
+    {
+      "archive_sha256": "eeb7109d23f319619d4cc0de5464613c8b7b1a09db2774a58101459cf6be2f10",
+      "candidate": {
+        "category": "parsing",
+        "name": "smol_str",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "9f3da7e29f85f767858b0c5befdfb95c6ad31b8189b6af914ab42dfa5a068c67",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "efa2cfcada172c65272dcc5846165365d39fef83162fcad914d9fbe827eff2a1",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/borsh.rs",
+          "src/lib.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 3,
+        "status": "scanned",
+        "unsafe_blocks": 33,
+        "unsafe_functions_with_bodies": 4,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.3.7"
+    },
+    {
+      "archive_sha256": "7d8d125a277f807e55a77304455eb7b1cb52f2b18c143b60e766c120bd64a594",
+      "candidate": {
+        "category": "parsing",
+        "name": "lexical-core",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "26239ace61920c91bb54f3c7267253f9cee1f22da5bd822a3c3eb249044aa84b",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "0f77c8d363ee919120ab97b07f7ed5b4d8cb92c7d0e24852fb83db7108d256eb",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 1,
+        "status": "scanned",
+        "unsafe_blocks": 0,
+        "unsafe_functions_with_bodies": 0,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "1.0.6"
+    },
+    {
+      "archive_sha256": "d12c37257553c19e9aee6cba77814fdc9e07844abfc8b3a2c377cd920ee5a993",
+      "candidate": {
+        "category": "parsing",
+        "name": "atoi",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "b1b5d6c49423be69812d3ec02860d26108cc57b28b6eaa17087bac4af8b1d377",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "b1b5d6c49423be69812d3ec02860d26108cc57b28b6eaa17087bac4af8b1d377",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 3,
+        "status": "scanned",
+        "unsafe_blocks": 0,
+        "unsafe_functions_with_bodies": 0,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "3.1.1"
+    },
+    {
+      "archive_sha256": "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682",
+      "candidate": {
+        "category": "parsing",
+        "name": "itoa",
+        "priority": true
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "9a8c5377dbdf717bba0357b2adeced8320f1f34c42eb6f0ae8d2ff7ba72dc935",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "9a8c5377dbdf717bba0357b2adeced8320f1f34c42eb6f0ae8d2ff7ba72dc935",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/lib.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 2,
+        "status": "scanned",
+        "unsafe_blocks": 8,
+        "unsafe_functions_with_bodies": 1,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "1.0.18"
+    },
+    {
+      "archive_sha256": "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f",
+      "candidate": {
+        "category": "parsing",
+        "name": "ryu",
+        "priority": true
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "9b02b2d3f7bc1f660aeb3f4e2be361513a8e449b2aedfb832c381ea84168b43f",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "9b02b2d3f7bc1f660aeb3f4e2be361513a8e449b2aedfb832c381ea84168b43f",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/buffer/mod.rs",
+          "src/d2s.rs",
+          "src/f2s_intrinsics.rs",
+          "src/s2d.rs",
+          "src/s2f.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 17,
+        "status": "scanned",
+        "unsafe_blocks": 15,
+        "unsafe_functions_with_bodies": 11,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "1.0.23"
+    },
+    {
+      "archive_sha256": "6dbf3de79e51f3d586ab4cb9d5c3e2c14aa28ed23d180cf89b4df0454a69cc87",
+      "candidate": {
+        "category": "parsing",
+        "name": "httparse",
+        "priority": true
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "539870473fd15018c971df282b8f83db0553221c35bec8ec70631df7c7c0795a",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "539870473fd15018c971df282b8f83db0553221c35bec8ec70631df7c7c0795a",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/iter.rs",
+          "src/lib.rs",
+          "src/simd/avx2.rs",
+          "src/simd/mod.rs",
+          "src/simd/neon.rs",
+          "src/simd/runtime.rs",
+          "src/simd/sse42.rs",
+          "src/simd/swar.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 9,
+        "status": "scanned",
+        "unsafe_blocks": 50,
+        "unsafe_functions_with_bodies": 25,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "1.10.1"
+    },
+    {
+      "archive_sha256": "e8f2e4d523646f7da6dde3983bd18ede0babc21c258ab708b3dd93ea0259719d",
+      "candidate": {
+        "category": "parsing",
+        "name": "simd-json",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "a0e057558d78d060cf1222e061f167967d6673a0628ea8005a4a9939cfb9fabb",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "b2d2e5b93d725c9a311d169a4bca3d0a52774afffb07394bb7866508d1f98e96",
+        "status": "build_failed"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/charutils.rs",
+          "src/impls/avx2/deser.rs",
+          "src/impls/avx2/stage1.rs",
+          "src/impls/native/deser.rs",
+          "src/impls/native/stage1.rs",
+          "src/impls/neon/deser.rs",
+          "src/impls/neon/stage1.rs",
+          "src/impls/simd128/deser.rs",
+          "src/impls/sse42/deser.rs",
+          "src/impls/sse42/stage1.rs",
+          "src/lib.rs",
+          "src/numberparse/approx.rs",
+          "src/numberparse/correct.rs",
+          "src/numberparse.rs",
+          "src/portability.rs",
+          "src/safer_unchecked.rs",
+          "src/serde/de/tests.rs",
+          "src/serde/se/pp.rs",
+          "src/serde/se.rs",
+          "src/serde/value/borrowed/de.rs",
+          "src/serde/value/borrowed/se.rs",
+          "src/serde/value/owned/de.rs",
+          "src/serde/value/owned/se.rs",
+          "src/serde.rs",
+          "src/stage2.rs",
+          "src/stringparse.rs",
+          "src/tests.rs",
+          "src/value/borrowed.rs",
+          "src/value/lazy.rs",
+          "src/value/owned.rs",
+          "src/value/tape.rs",
+          "src/value.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 68,
+        "status": "scanned",
+        "unsafe_blocks": 287,
+        "unsafe_functions_with_bodies": 84,
+        "unsafe_impls": 2,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.19.0"
+    },
+    {
+      "archive_sha256": "e7e9cc8b1b85264074fbcc02a88680c4096b1e47df8f739dceb03bf482f04bd6",
+      "candidate": {
+        "category": "parsing",
+        "name": "serde_json",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "85322e64ba06da25a60d6af0709254fa5d8c1b73ba0ae72c4b0a4ca97e47335d",
+        "status": "build_failed"
+      },
+      "explicit_features": [
+        "alloc"
+      ],
+      "feature_build": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "85322e64ba06da25a60d6af0709254fa5d8c1b73ba0ae72c4b0a4ca97e47335d",
+        "status": "built"
+      },
+      "no-default": {
+        "diagnostic": "error: serde_json requires that either `std` (default) or `alloc` feature is enabled",
+        "exit_code": 101,
+        "lock_sha256": "85322e64ba06da25a60d6af0709254fa5d8c1b73ba0ae72c4b0a4ca97e47335d",
+        "status": "build_failed"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/raw.rs",
+          "src/read.rs",
+          "src/ser.rs",
+          "src/value/mod.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 37,
+        "status": "scanned",
+        "unsafe_blocks": 12,
+        "unsafe_functions_with_bodies": 1,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "1.0.154"
+    },
+    {
+      "archive_sha256": "d9776093b7ca170454ab1406954f7b7d97a57c51dc6c0642957fb2ef25c2d399",
+      "candidate": {
+        "category": "parsing",
+        "name": "rkyv",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "5b038679e397a559a4e86a04ca65aa4e189bb6825e339a759f5f681282d237e7",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "b57796c6fc5ffd94b1d88d9c1e3564e638d800163516504900f19f5a750e5849",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/api/checked.rs",
+          "src/api/high/checked.rs",
+          "src/api/high/mod.rs",
+          "src/api/low/checked.rs",
+          "src/api/low/mod.rs",
+          "src/api/mod.rs",
+          "src/boxed.rs",
+          "src/collections/btree/map/iter.rs",
+          "src/collections/btree/map/mod.rs",
+          "src/collections/swiss_table/index_map.rs",
+          "src/collections/swiss_table/map.rs",
+          "src/collections/swiss_table/table.rs",
+          "src/de/pooling/alloc.rs",
+          "src/de/pooling/mod.rs",
+          "src/erased.rs",
+          "src/ffi.rs",
+          "src/hash.rs",
+          "src/impls/alloc/boxed.rs",
+          "src/impls/alloc/collections/vec_deque.rs",
+          "src/impls/alloc/ffi.rs",
+          "src/impls/alloc/rc/atomic.rs",
+          "src/impls/alloc/rc/mod.rs",
+          "src/impls/alloc/vec.rs",
+          "src/impls/core/ffi.rs",
+          "src/impls/core/mod.rs",
+          "src/impls/core/net.rs",
+          "src/impls/core/ops.rs",
+          "src/impls/core/option.rs",
+          "src/impls/core/primitive.rs",
+          "src/impls/core/result.rs",
+          "src/impls/core/time.rs",
+          "src/impls/core/with/mod.rs",
+          "src/impls/core/with/niching.rs",
+          "src/impls/ext/triomphe_0_1.rs",
+          "src/impls/ext/uuid_1.rs",
+          "src/impls/mod.rs",
+          "src/net.rs",
+          "src/niche/niched_option.rs",
+          "src/niche/option_box.rs",
+          "src/ops.rs",
+          "src/option.rs",
+          "src/place.rs",
+          "src/polyfill.rs",
+          "src/rc.rs",
+          "src/rel_ptr.rs",
+          "src/result.rs",
+          "src/seal.rs",
+          "src/ser/allocator/alloc.rs",
+          "src/ser/allocator/core.rs",
+          "src/ser/allocator/mod.rs",
+          "src/ser/mod.rs",
+          "src/ser/writer/core.rs",
+          "src/ser/writer/mod.rs",
+          "src/simd/generic.rs",
+          "src/simd/neon.rs",
+          "src/simd/sse2.rs",
+          "src/string/mod.rs",
+          "src/string/repr.rs",
+          "src/time.rs",
+          "src/util/alloc/aligned_vec.rs",
+          "src/util/alloc/arena.rs",
+          "src/util/inline_vec.rs",
+          "src/util/ser_vec.rs",
+          "src/validation/archive/mod.rs",
+          "src/validation/mod.rs",
+          "src/validation/shared/validator.rs",
+          "src/vec.rs",
+          "src/with.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 124,
+        "status": "scanned",
+        "unsafe_blocks": 556,
+        "unsafe_functions_with_bodies": 106,
+        "unsafe_impls": 58,
+        "unsafe_traits": 6
+      },
+      "status": "screened",
+      "version": "0.8.18"
+    },
+    {
+      "archive_sha256": "35f6839d7b3b98adde531effaf34f0c2badc6f4735d26fe74709d8e513a96ef3",
+      "candidate": {
+        "category": "parsing",
+        "name": "flatbuffers",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "633d2430e9977fe1576e78bb58db08079502076b52b2a53f26b0034a66fb203e",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "633d2430e9977fe1576e78bb58db08079502076b52b2a53f26b0034a66fb203e",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/array.rs",
+          "src/builder.rs",
+          "src/get_root.rs",
+          "src/table.rs",
+          "src/vector.rs",
+          "src/verifier.rs",
+          "src/vtable.rs",
+          "src/vtable_writer.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 13,
+        "status": "scanned",
+        "unsafe_blocks": 28,
+        "unsafe_functions_with_bodies": 34,
+        "unsafe_impls": 2,
+        "unsafe_traits": 1
+      },
+      "status": "screened",
+      "version": "25.12.19"
+    },
+    {
+      "archive_sha256": "520080814a7a6b4a6e9070823bb24b4531daac8c4627e08ba5de8c5ef2f2752d",
+      "candidate": {
+        "category": "numerical",
+        "name": "ndarray",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "c95ac0b94546d22f998a4c068d605e6dd38b48fda4bc401703c51db3a4fd0da8",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "c95ac0b94546d22f998a4c068d605e6dd38b48fda4bc401703c51db3a4fd0da8",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/arraytraits.rs",
+          "src/data_repr.rs",
+          "src/data_traits.rs",
+          "src/dimension/dynindeximpl.rs",
+          "src/extension/nonnull.rs",
+          "src/free_functions.rs",
+          "src/impl_1d.rs",
+          "src/impl_clone.rs",
+          "src/impl_constructors.rs",
+          "src/impl_cow.rs",
+          "src/impl_methods.rs",
+          "src/impl_owned_array.rs",
+          "src/impl_raw_views.rs",
+          "src/impl_ref_types.rs",
+          "src/impl_views/constructors.rs",
+          "src/impl_views/conversions.rs",
+          "src/impl_views/indexing.rs",
+          "src/impl_views/splitting.rs",
+          "src/iterators/into_iter.rs",
+          "src/iterators/mod.rs",
+          "src/lib.rs",
+          "src/linalg/impl_linalg.rs",
+          "src/partial.rs",
+          "src/slice.rs",
+          "src/stacking.rs",
+          "src/zip/mod.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 95,
+        "status": "scanned",
+        "unsafe_blocks": 191,
+        "unsafe_functions_with_bodies": 80,
+        "unsafe_impls": 69,
+        "unsafe_traits": 10
+      },
+      "status": "screened",
+      "version": "0.17.2"
+    },
+    {
+      "archive_sha256": "adc43a60c217b0c6ff46e47f26911015ad8d2e5a8be1af668c67e370d99a4346",
+      "candidate": {
+        "category": "numerical",
+        "name": "nalgebra",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "0db943f7b92f9e75e2e040da228417872ddc8e026343ec7a06a170c49376679e",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "1d97da2bfe483d30a853f021590638ec99a186bda6c9e39c2340f30f8a769591",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/base/allocator.rs",
+          "src/base/array_storage.rs",
+          "src/base/blas.rs",
+          "src/base/blas_uninit.rs",
+          "src/base/cg.rs",
+          "src/base/construction.rs",
+          "src/base/construction_view.rs",
+          "src/base/conversion.rs",
+          "src/base/default_allocator.rs",
+          "src/base/edition.rs",
+          "src/base/indexing.rs",
+          "src/base/iter.rs",
+          "src/base/matrix.rs",
+          "src/base/matrix_simba.rs",
+          "src/base/matrix_view.rs",
+          "src/base/min_max.rs",
+          "src/base/ops.rs",
+          "src/base/properties.rs",
+          "src/base/statistics.rs",
+          "src/base/storage.rs",
+          "src/base/uninit.rs",
+          "src/base/unit.rs",
+          "src/base/vec_storage.rs",
+          "src/geometry/dual_quaternion_ops.rs",
+          "src/geometry/isometry_simba.rs",
+          "src/geometry/orthographic.rs",
+          "src/geometry/perspective.rs",
+          "src/geometry/point.rs",
+          "src/geometry/point_simba.rs",
+          "src/geometry/quaternion_coordinates.rs",
+          "src/geometry/quaternion_simba.rs",
+          "src/geometry/rotation_simba.rs",
+          "src/geometry/scale_simba.rs",
+          "src/geometry/similarity_simba.rs",
+          "src/geometry/transform_simba.rs",
+          "src/geometry/translation_simba.rs",
+          "src/geometry/unit_complex_simba.rs",
+          "src/linalg/bidiagonal.rs",
+          "src/linalg/cholesky.rs",
+          "src/linalg/col_piv_qr.rs",
+          "src/linalg/determinant.rs",
+          "src/linalg/full_piv_lu.rs",
+          "src/linalg/givens.rs",
+          "src/linalg/hessenberg.rs",
+          "src/linalg/householder.rs",
+          "src/linalg/inverse.rs",
+          "src/linalg/lu.rs",
+          "src/linalg/qr.rs",
+          "src/linalg/schur.rs",
+          "src/linalg/solve.rs",
+          "src/linalg/svd.rs",
+          "src/linalg/symmetric_tridiagonal.rs",
+          "src/sparse/cs_matrix.rs",
+          "src/sparse/cs_matrix_cholesky.rs",
+          "src/sparse/cs_matrix_ops.rs",
+          "src/third_party/alga/alga_dual_quaternion.rs",
+          "src/third_party/alga/alga_matrix.rs",
+          "src/third_party/alga/alga_quaternion.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 182,
+        "status": "scanned",
+        "unsafe_blocks": 322,
+        "unsafe_functions_with_bodies": 88,
+        "unsafe_impls": 54,
+        "unsafe_traits": 7
+      },
+      "status": "screened",
+      "version": "0.35.0"
+    },
+    {
+      "archive_sha256": "3f607c237553f086e7043417a51df26b2eb899d3caff94e6a67592ff992fedc7",
+      "candidate": {
+        "category": "numerical",
+        "name": "matrixmultiply",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "6cc73908d52bd5d4002cb7168ec3e8c09dfd6bf906e9966bcd2aeff4bda2c0f1",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "6cc73908d52bd5d4002cb7168ec3e8c09dfd6bf906e9966bcd2aeff4bda2c0f1",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/aligned_alloc.rs",
+          "src/gemm.rs",
+          "src/kernel.rs",
+          "src/packing.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 26,
+        "status": "scanned",
+        "unsafe_blocks": 10,
+        "unsafe_functions_with_bodies": 74,
+        "unsafe_impls": 4,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.3.11"
+    },
+    {
+      "archive_sha256": "627003914c6057c9c8f0832ee4f870b5a4f599d0cfa83f4072675114860cd0ff",
+      "candidate": {
+        "category": "numerical",
+        "name": "glam",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "b08c2428eae884fca51893c21e76977c1c4439b399874d23b30165854604ae89",
+        "status": "build_failed"
+      },
+      "explicit_features": [
+        "nostd-libm"
+      ],
+      "feature_build": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "ea1693ee0535cbcfd526eca8fe2afde8f37e460ff2945be199159fd79e94488f",
+        "status": "built"
+      },
+      "no-default": {
+        "diagnostic": "error: You must specify a math backend. Consider enabling either `std`, `libm`, or `nostd-libm`.",
+        "exit_code": 101,
+        "lock_sha256": "b08c2428eae884fca51893c21e76977c1c4439b399874d23b30165854604ae89",
+        "status": "build_failed"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/align16.rs",
+          "src/bool/coresimd/bvec3a.rs",
+          "src/bool/coresimd/bvec4a.rs",
+          "src/bool/neon/bvec3a.rs",
+          "src/bool/neon/bvec4a.rs",
+          "src/bool/sse2/bvec3a.rs",
+          "src/bool/sse2/bvec4a.rs",
+          "src/f32/affine2.rs",
+          "src/f32/affine3.rs",
+          "src/f32/affine3a.rs",
+          "src/f32/coresimd/mat2.rs",
+          "src/f32/coresimd/mat4.rs",
+          "src/f32/coresimd/quat.rs",
+          "src/f32/coresimd/vec3a.rs",
+          "src/f32/coresimd/vec4.rs",
+          "src/f32/mat3.rs",
+          "src/f32/neon/mat2.rs",
+          "src/f32/neon/mat3a.rs",
+          "src/f32/neon/mat4.rs",
+          "src/f32/neon/quat.rs",
+          "src/f32/neon/vec3a.rs",
+          "src/f32/neon/vec4.rs",
+          "src/f32/scalar/mat2.rs",
+          "src/f32/scalar/mat4.rs",
+          "src/f32/scalar/quat.rs",
+          "src/f32/scalar/vec3a.rs",
+          "src/f32/scalar/vec4.rs",
+          "src/f32/sse2/mat2.rs",
+          "src/f32/sse2/mat3a.rs",
+          "src/f32/sse2/mat4.rs",
+          "src/f32/sse2/quat.rs",
+          "src/f32/sse2/vec3a.rs",
+          "src/f32/sse2/vec4.rs",
+          "src/f32/vec2.rs",
+          "src/f32/vec3.rs",
+          "src/f32/wasm/mat2.rs",
+          "src/f32/wasm/mat4.rs",
+          "src/f32/wasm/quat.rs",
+          "src/f32/wasm/vec3a.rs",
+          "src/f32/wasm/vec4.rs",
+          "src/f64/daffine2.rs",
+          "src/f64/daffine3.rs",
+          "src/f64/dmat2.rs",
+          "src/f64/dmat3.rs",
+          "src/f64/dmat4.rs",
+          "src/f64/dquat.rs",
+          "src/f64/dvec2.rs",
+          "src/f64/dvec3.rs",
+          "src/f64/dvec4.rs",
+          "src/features/impl_rkyv_08.rs",
+          "src/i16/i16vec2.rs",
+          "src/i16/i16vec3.rs",
+          "src/i16/i16vec4.rs",
+          "src/i32/ivec2.rs",
+          "src/i32/ivec3.rs",
+          "src/i32/ivec4.rs",
+          "src/i64/i64vec2.rs",
+          "src/i64/i64vec3.rs",
+          "src/i64/i64vec4.rs",
+          "src/i8/i8vec2.rs",
+          "src/i8/i8vec3.rs",
+          "src/i8/i8vec4.rs",
+          "src/isize/isizevec2.rs",
+          "src/isize/isizevec3.rs",
+          "src/isize/isizevec4.rs",
+          "src/neon.rs",
+          "src/sse2.rs",
+          "src/swizzles/sse2/vec3a_impl.rs",
+          "src/swizzles/sse2/vec4_impl.rs",
+          "src/u16/u16vec2.rs",
+          "src/u16/u16vec3.rs",
+          "src/u16/u16vec4.rs",
+          "src/u32/uvec2.rs",
+          "src/u32/uvec3.rs",
+          "src/u32/uvec4.rs",
+          "src/u64/u64vec2.rs",
+          "src/u64/u64vec3.rs",
+          "src/u64/u64vec4.rs",
+          "src/u8/u8vec2.rs",
+          "src/u8/u8vec3.rs",
+          "src/u8/u8vec4.rs",
+          "src/usize/usizevec2.rs",
+          "src/usize/usizevec3.rs",
+          "src/usize/usizevec4.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 205,
+        "status": "scanned",
+        "unsafe_blocks": 887,
+        "unsafe_functions_with_bodies": 22,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.34.3"
+    },
+    {
+      "archive_sha256": "f56455fff36934a9500d69062aec1c77037179b6f0669e4d5d6b72b84722d6a3",
+      "candidate": {
+        "category": "numerical",
+        "name": "lz4_flex",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "066219b56934d14b4704c76b408e4ce658f607bff634869b6d2eba71f38d9baa",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "d324e36676b4b64003e76f088a439df303e6325713f22cad678d8f1d0dfc10b9",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/block/compress.rs",
+          "src/block/decompress.rs",
+          "src/fastcpy_unsafe.rs",
+          "src/sink.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 13,
+        "status": "scanned",
+        "unsafe_blocks": 59,
+        "unsafe_functions_with_bodies": 9,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.14.2"
+    },
+    {
+      "archive_sha256": "b63fbc4a50860e98e7b2aa7804ded1db5cbc3aff9193adaff57a6931bf7c4b4c",
+      "candidate": {
+        "category": "numerical",
+        "name": "miniz_oxide",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "485faf21d4178e0ac33723a2583801056e23bd6424461263780351c1edf0b0dd",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "485faf21d4178e0ac33723a2583801056e23bd6424461263780351c1edf0b0dd",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 14,
+        "status": "scanned",
+        "unsafe_blocks": 0,
+        "unsafe_functions_with_bodies": 0,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.9.1"
+    },
+    {
+      "archive_sha256": "fd9ae8fcb3ea71b0b26338b4ffb13006bb175de8fd07921089a906ce7e5e6945",
+      "candidate": {
+        "category": "numerical",
+        "name": "crc32fast",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "6f2b258f32f7a08d95931bbf35b8b4aca23c101e56d6866395587eb0eab22b95",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "6f2b258f32f7a08d95931bbf35b8b4aca23c101e56d6866395587eb0eab22b95",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/specialized/aarch64.rs",
+          "src/specialized/pclmulqdq.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 7,
+        "status": "scanned",
+        "unsafe_blocks": 3,
+        "unsafe_functions_with_bodies": 18,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "1.5.6"
+    },
+    {
+      "archive_sha256": "64c0e36294adc8db531500e3f2b8ec75c4af9177271e9c6d33f93609d56e57cd",
+      "candidate": {
+        "category": "numerical",
+        "name": "blake3",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "598530984161bcff43b5e32eef638c79c794f44f1b84fcba5db1fa123a0afdf5",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "598530984161bcff43b5e32eef638c79c794f44f1b84fcba5db1fa123a0afdf5",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/ffi_avx2.rs",
+          "src/ffi_avx512.rs",
+          "src/ffi_neon.rs",
+          "src/ffi_sse2.rs",
+          "src/ffi_sse41.rs",
+          "src/io.rs",
+          "src/platform.rs",
+          "src/rust_avx2.rs",
+          "src/rust_sse2.rs",
+          "src/rust_sse41.rs",
+          "src/test.rs",
+          "src/wasm32_simd.rs"
+        ],
+        "foreign_blocks": 5,
+        "parse_failures": [],
+        "parsed_files": 19,
+        "status": "scanned",
+        "unsafe_blocks": 134,
+        "unsafe_functions_with_bodies": 87,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "1.8.8"
+    },
+    {
+      "archive_sha256": "fc0fc36d7440d015b45468ba08a21e80e056ebbd014c611c6298bb7503e04bd1",
+      "candidate": {
+        "category": "numerical",
+        "name": "aes",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "266aa3498a46ac519daf1fb416e2b2c4f7d81a5c2c04b0e8133637b43f7e1bf5",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "266aa3498a46ac519daf1fb416e2b2c4f7d81a5c2c04b0e8133637b43f7e1bf5",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/backends/aarch64_aes/expand.rs",
+          "src/backends/aarch64_aes/utils.rs",
+          "src/backends/aarch64_aes.rs",
+          "src/backends/x86_aes/utils.rs",
+          "src/backends/x86_aes.rs",
+          "src/backends/x86_vaes256/encdec.rs",
+          "src/backends/x86_vaes256.rs",
+          "src/backends/x86_vaes512/encdec.rs",
+          "src/backends/x86_vaes512.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 27,
+        "status": "scanned",
+        "unsafe_blocks": 33,
+        "unsafe_functions_with_bodies": 0,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.9.4"
+    },
+    {
+      "archive_sha256": "5b0e5c7d67bc53f435386b2130fdc900488c5703770f6d8a4633060e34288a27",
+      "candidate": {
+        "category": "numerical",
+        "name": "sha2",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "94ff0612da55c5e7b27a29cc46cc174d27618ec8073351f0a97791690046e806",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "a539e10e32a842aaa6131fc4dd7423201610fc4dc0d22f9a4132d09d66156893",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/sha256/aarch64_sha2.rs",
+          "src/sha256/loongarch64_asm.rs",
+          "src/sha256/riscv_zknh/unroll.rs",
+          "src/sha256/soft/unroll.rs",
+          "src/sha256/wasm32_simd128.rs",
+          "src/sha256/x86_sha.rs",
+          "src/sha512/aarch64_sha3.rs",
+          "src/sha512/loongarch64_asm.rs",
+          "src/sha512/riscv_zknh/unroll.rs",
+          "src/sha512/soft/unroll.rs",
+          "src/sha512/wasm32_simd128.rs",
+          "src/sha512/x86_avx2.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 25,
+        "status": "scanned",
+        "unsafe_blocks": 23,
+        "unsafe_functions_with_bodies": 0,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.11.2"
+    },
+    {
+      "archive_sha256": "dc74980687109a3b14c72fd458107bf0baa1da1a1a805e178d15501ba9b86d9d",
+      "candidate": {
+        "category": "concurrency",
+        "name": "crossbeam-epoch",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "e0929fb3e31eef117068e0cf07c5a05ab4c6a798fb3e85d9d7d632057b6d0d6b",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "e0929fb3e31eef117068e0cf07c5a05ab4c6a798fb3e85d9d7d632057b6d0d6b",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/atomic.rs",
+          "src/collector.rs",
+          "src/deferred.rs",
+          "src/guard.rs",
+          "src/internal.rs",
+          "src/sync/list.rs",
+          "src/sync/once_lock.rs",
+          "src/sync/queue.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 12,
+        "status": "scanned",
+        "unsafe_blocks": 77,
+        "unsafe_functions_with_bodies": 32,
+        "unsafe_impls": 11,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.9.21"
+    },
+    {
+      "archive_sha256": "03e8bd762f7479489c70ed6c768ddca99d7296857de437a68dcb2a94365b3fae",
+      "candidate": {
+        "category": "concurrency",
+        "name": "crossbeam-queue",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "8f68a7baa9d8cfd8a1c08af1254901d23b8c2f7a19582aa7c58e51d25fc5e93a",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "8f68a7baa9d8cfd8a1c08af1254901d23b8c2f7a19582aa7c58e51d25fc5e93a",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/array_queue.rs",
+          "src/seg_queue.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 3,
+        "status": "scanned",
+        "unsafe_blocks": 22,
+        "unsafe_functions_with_bodies": 2,
+        "unsafe_impls": 4,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.3.14"
+    },
+    {
+      "archive_sha256": "98b0cc327b5bc766e7fda9c9260cc0fa81b43a8e240440422dff70788e3f9ef1",
+      "candidate": {
+        "category": "concurrency",
+        "name": "crossbeam-channel",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "b7986f7682e4f9d5fea71abe774c032a88500ab11eb94b0e51fdfaa5cc80a71d",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "b7986f7682e4f9d5fea71abe774c032a88500ab11eb94b0e51fdfaa5cc80a71d",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/channel.rs",
+          "src/counter.rs",
+          "src/flavors/array.rs",
+          "src/flavors/list.rs",
+          "src/flavors/zero.rs",
+          "src/select.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 16,
+        "status": "scanned",
+        "unsafe_blocks": 38,
+        "unsafe_functions_with_bodies": 14,
+        "unsafe_impls": 6,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.5.17"
+    },
+    {
+      "archive_sha256": "84a22b5d51209f6de83d37a0b33d320acb8da88823e42a94c075140708f032a5",
+      "candidate": {
+        "category": "concurrency",
+        "name": "arc-swap",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "c2d3300812654b442b97ca631738edd76c1241ab786a73bd60f0b69779fe838b",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "c2d3300812654b442b97ca631738edd76c1241ab786a73bd60f0b69779fe838b",
+        "status": "build_failed"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/debt/helping.rs",
+          "src/debt/list.rs",
+          "src/debt/mod.rs",
+          "src/lib.rs",
+          "src/ref_cnt.rs",
+          "src/strategy/hybrid.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 21,
+        "status": "scanned",
+        "unsafe_blocks": 37,
+        "unsafe_functions_with_bodies": 16,
+        "unsafe_impls": 8,
+        "unsafe_traits": 1
+      },
+      "status": "screened",
+      "version": "1.9.5"
+    },
+    {
+      "archive_sha256": "a9cf937ca4e1d0b7578784559063422fc39ae7c5a00f02471f2614d5486fd226",
+      "candidate": {
+        "category": "concurrency",
+        "name": "parking_lot",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "3904bd50923f37feac0be7d75a6847a430ff3303ae442019c39e7b8bb599e7ba",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "3904bd50923f37feac0be7d75a6847a430ff3303ae442019c39e7b8bb599e7ba",
+        "status": "build_failed"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/deadlock.rs",
+          "src/once.rs",
+          "src/raw_condvar.rs",
+          "src/raw_fair_mutex.rs",
+          "src/raw_mutex.rs",
+          "src/raw_rwlock.rs",
+          "src/recursive_rwlock.rs",
+          "src/rwlock.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 14,
+        "status": "scanned",
+        "unsafe_blocks": 58,
+        "unsafe_functions_with_bodies": 30,
+        "unsafe_impls": 17,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.13.0"
+    },
+    {
+      "archive_sha256": "65d91b22da179613dcf4d6ec8349563f52a363f6849e03b00dd0a185ec4a59af",
+      "candidate": {
+        "category": "concurrency",
+        "name": "lock_api",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "f0654cd3d4728b0055406e23f9978dd1e06c3cb00841a88f84bbafdabf246fca",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "f0654cd3d4728b0055406e23f9978dd1e06c3cb00841a88f84bbafdabf246fca",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/condvar.rs",
+          "src/guard.rs",
+          "src/mutex.rs",
+          "src/remutex.rs",
+          "src/rwlock.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 6,
+        "status": "scanned",
+        "unsafe_blocks": 278,
+        "unsafe_functions_with_bodies": 32,
+        "unsafe_impls": 19,
+        "unsafe_traits": 14
+      },
+      "status": "screened",
+      "version": "0.5.0"
+    },
+    {
+      "archive_sha256": "0134f9043ed38b087ac4f7d4af44c79e2c9e5094421fe3164f435ce585953b10",
+      "candidate": {
+        "category": "concurrency",
+        "name": "spin",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "0d36ee64e73c496e5b63e2f7f7ed4ce440b66a9217a74d9b8168e8344c43033d",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "72c4e8bbf6e4a746eadc2b0e0579cb91b6be5b90874d954ef08f82afb9b0bbe4",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/mutex/fair.rs",
+          "src/mutex/spin.rs",
+          "src/mutex/ticket.rs",
+          "src/once.rs",
+          "src/rwlock.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 10,
+        "status": "scanned",
+        "unsafe_blocks": 44,
+        "unsafe_functions_with_bodies": 26,
+        "unsafe_impls": 35,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.12.3"
+    },
+    {
+      "archive_sha256": "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50",
+      "candidate": {
+        "category": "concurrency",
+        "name": "once_cell",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "error[E0463]: can't find crate for `std`",
+        "exit_code": 101,
+        "lock_sha256": "c303ced16891f0bd950f48784b152f0ee6ecc6c8c3d69ad19b7e76e287c5660c",
+        "status": "build_failed"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "c303ced16891f0bd950f48784b152f0ee6ecc6c8c3d69ad19b7e76e287c5660c",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/imp_pl.rs",
+          "src/imp_std.rs",
+          "src/lib.rs",
+          "src/race.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 5,
+        "status": "scanned",
+        "unsafe_blocks": 33,
+        "unsafe_functions_with_bodies": 5,
+        "unsafe_impls": 9,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "1.21.4"
+    },
+    {
+      "archive_sha256": "05c8b63e8d9609db387f0324918f81d68fe27748f084ef092fb35954d0539a85",
+      "candidate": {
+        "category": "concurrency",
+        "name": "portable-atomic",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "657164fee34abd38073d732834e6c4adcd9a0046d798ad06905ed0d0600544aa",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "657164fee34abd38073d732834e6c4adcd9a0046d798ad06905ed0d0600544aa",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/imp/arm_linux.rs",
+          "src/imp/atomic128/aarch64.rs",
+          "src/imp/atomic128/intrinsics.rs",
+          "src/imp/atomic128/powerpc64.rs",
+          "src/imp/atomic128/riscv64.rs",
+          "src/imp/atomic128/s390x.rs",
+          "src/imp/atomic128/x86_64.rs",
+          "src/imp/atomic64/arm_linux.rs",
+          "src/imp/atomic64/riscv32.rs",
+          "src/imp/detect/aarch64_aa64reg.rs",
+          "src/imp/detect/aarch64_apple.rs",
+          "src/imp/detect/aarch64_fuchsia.rs",
+          "src/imp/detect/aarch64_illumos.rs",
+          "src/imp/detect/auxv.rs",
+          "src/imp/detect/powerpc64_aix.rs",
+          "src/imp/detect/riscv_linux.rs",
+          "src/imp/detect/x86_64.rs",
+          "src/imp/fallback/outline_atomics.rs",
+          "src/imp/fallback/seq_lock_common.rs",
+          "src/imp/interrupt/armv4t.rs",
+          "src/imp/interrupt/armv6m.rs",
+          "src/imp/interrupt/avr.rs",
+          "src/imp/interrupt/msp430.rs",
+          "src/imp/interrupt/riscv.rs",
+          "src/imp/interrupt/xtensa.rs",
+          "src/imp/msp430.rs",
+          "src/imp/x86.rs",
+          "src/utils.rs"
+        ],
+        "foreign_blocks": 1,
+        "parse_failures": [],
+        "parsed_files": 50,
+        "status": "scanned",
+        "unsafe_blocks": 145,
+        "unsafe_functions_with_bodies": 89,
+        "unsafe_impls": 1,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "1.15.0"
+    },
+    {
+      "archive_sha256": "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0",
+      "candidate": {
+        "category": "concurrency",
+        "name": "atomic-waker",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "41770cceeae9092eaa666d367212f27f0b585fdc1194ff63fb1f8a05b2482827",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "41770cceeae9092eaa666d367212f27f0b585fdc1194ff63fb1f8a05b2482827",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/lib.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 1,
+        "status": "scanned",
+        "unsafe_blocks": 2,
+        "unsafe_functions_with_bodies": 0,
+        "unsafe_impls": 2,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "1.1.2"
+    },
+    {
+      "archive_sha256": "e42cdafa0aa3f0f956b7993cace26de5dafff7bb4f2c5b1dcb2c3723f4267a4f",
+      "candidate": {
+        "category": "embedded",
+        "name": "riscv",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "fda12f48b3f17b18b382a1068e5d5c9c647ebc102c71ed6a1beacdef0b7ebf00",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "bf0776073ccaa79ca9d9d2cdee0e3c3f4937fd9aa93fe84ec8f9663e4ec73bed",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/asm.rs",
+          "src/interrupt/machine.rs",
+          "src/interrupt/supervisor.rs",
+          "src/register/mie.rs",
+          "src/register/sie.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 74,
+        "status": "scanned",
+        "unsafe_blocks": 10,
+        "unsafe_functions_with_bodies": 46,
+        "unsafe_impls": 9,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.16.1"
+    },
+    {
+      "archive_sha256": "af8ca9a5d4debca0633e697c88269395493cebf2e10db21ca2dbde37c1356452",
+      "candidate": {
+        "category": "embedded",
+        "name": "volatile",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "e32c6542d1ee47a8eac0285c493c17a00f09755e2a43e969d4c4acecf8460c7a",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "e32c6542d1ee47a8eac0285c493c17a00f09755e2a43e969d4c4acecf8460c7a",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/volatile_ptr/operations.rs",
+          "src/volatile_ptr/tests.rs",
+          "src/volatile_ptr/unstable.rs",
+          "src/volatile_ptr/very_unstable.rs",
+          "src/volatile_ref.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 9,
+        "status": "scanned",
+        "unsafe_blocks": 49,
+        "unsafe_functions_with_bodies": 12,
+        "unsafe_impls": 2,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.6.1"
+    },
+    {
+      "archive_sha256": "77439c1b53d2303b20d9459b1ade71a83c716e3f9c34f3228c00e6f185d6c002",
+      "candidate": {
+        "category": "embedded",
+        "name": "vcell",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "ea40d91566d6f45f6a7d42891da681e2051bde6067714843d1138dbbcd282efb",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "ea40d91566d6f45f6a7d42891da681e2051bde6067714843d1138dbbcd282efb",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/lib.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 1,
+        "status": "scanned",
+        "unsafe_blocks": 2,
+        "unsafe_functions_with_bodies": 0,
+        "unsafe_impls": 0,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.1.3"
+    },
+    {
+      "archive_sha256": "0530892bb4fa575ee0da4b86f86c667132a94b74bb72160f58ee5a4afec74c23",
+      "candidate": {
+        "category": "embedded",
+        "name": "static_cell",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "2722aafc4e6269eaf5e147ae47ca724ae7cb4df468b8b6fcd8877c1a6bca8a16",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "2722aafc4e6269eaf5e147ae47ca724ae7cb4df468b8b6fcd8877c1a6bca8a16",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/lib.rs"
+        ],
+        "foreign_blocks": 0,
+        "parse_failures": [],
+        "parsed_files": 1,
+        "status": "scanned",
+        "unsafe_blocks": 2,
+        "unsafe_functions_with_bodies": 0,
+        "unsafe_impls": 4,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "2.1.1"
+    },
+    {
+      "archive_sha256": "5d0d3b15c9d7dc4fec1d8cb77112472fb008b3b28c51ad23838d83587a6d2f1e",
+      "candidate": {
+        "category": "embedded",
+        "name": "embassy-executor",
+        "priority": false
+      },
+      "default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "47c3dee404020365f954f94b9615195fad75e0383fdfd63ca22837fd4fe5c639",
+        "status": "built"
+      },
+      "explicit_features": null,
+      "feature_build": null,
+      "no-default": {
+        "diagnostic": "",
+        "exit_code": 0,
+        "lock_sha256": "47c3dee404020365f954f94b9615195fad75e0383fdfd63ca22837fd4fe5c639",
+        "status": "built"
+      },
+      "source": {
+        "files_with_unsafe_blocks": [
+          "src/platform/avr.rs",
+          "src/platform/cortex_ar.rs",
+          "src/platform/cortex_m.rs",
+          "src/platform/riscv32.rs",
+          "src/platform/spin.rs",
+          "src/platform/std.rs",
+          "src/platform/wasm.rs",
+          "src/raw/mod.rs",
+          "src/raw/run_queue.rs",
+          "src/raw/state_atomics_arm.rs",
+          "src/raw/trace.rs",
+          "src/raw/waker.rs",
+          "src/raw/waker_turbo.rs",
+          "src/spawner.rs"
+        ],
+        "foreign_blocks": 2,
+        "parse_failures": [],
+        "parsed_files": 22,
+        "status": "scanned",
+        "unsafe_blocks": 48,
+        "unsafe_functions_with_bodies": 30,
+        "unsafe_impls": 12,
+        "unsafe_traits": 0
+      },
+      "status": "screened",
+      "version": "0.10.0"
+    }
+  ],
+  "counts": {
+    "default": {
+      "build_failed": 61,
+      "built": 38,
+      "not_run": 1
+    },
+    "feature_build": {
+      "built": 2,
+      "not_run": 98
+    },
+    "no-default": {
+      "build_failed": 15,
+      "built": 84,
+      "not_run": 1
+    },
+    "registry": {
+      "registry_unresolved": 1,
+      "screened": 99
+    }
+  },
+  "jobs": 8,
+  "own_source_unsafe_blocks": 90,
+  "schema_version": 1,
+  "target": "riscv64imac-unknown-none-elf",
+  "timeout_secs": 150,
+  "toolchain": "+nightly-2026-09-17",
+  "unsafe_block_and_rv64_build": 78
+}

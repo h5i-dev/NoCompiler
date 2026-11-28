@@ -1,0 +1,665 @@
+{
+  "frontend_source_commit": "608c1939690860eba5b20415ae4037256c487115",
+  "typed_checker_sha256": "84ce85b6119a0eb5d7d18ecdb1048ba4505d58a3cb826f078f4f2355ad25d3d8",
+  "manifest_sha256": "f7e062cf4b78d1138de15fe66b154b6cd9ed6ebe40fc0e464d505e104aee8fc2",
+  "baseline": {
+    "built_runs": 12,
+    "candidate_crates": 100,
+    "counts": {
+      "all": {
+        "proved": 12,
+        "proved_assuming": 2,
+        "rejected": 9,
+        "unsupported": 3
+      },
+      "category/array_vector": {
+        "proved": 6,
+        "rejected": 5,
+        "unsupported": 1
+      },
+      "category/buffer_queue": {
+        "proved": 1
+      },
+      "category/fixture": {
+        "proved": 4,
+        "proved_assuming": 2
+      },
+      "category/parsing": {
+        "proved": 1,
+        "rejected": 3,
+        "unsupported": 2
+      },
+      "category/raw_memory": {
+        "rejected": 1
+      },
+      "kind/fixture": {
+        "proved": 4,
+        "proved_assuming": 2
+      },
+      "kind/upstream": {
+        "proved": 3,
+        "rejected": 1,
+        "unsupported": 3
+      },
+      "kind/wrapper": {
+        "proved": 5,
+        "rejected": 8
+      },
+      "run/array-init": {
+        "rejected": 1
+      },
+      "run/arrayvec": {
+        "proved": 1,
+        "rejected": 1
+      },
+      "run/box-transfer": {
+        "proved": 1
+      },
+      "run/buffers": {
+        "proved": 3
+      },
+      "run/bytemuck": {
+        "rejected": 1
+      },
+      "run/byteorder": {
+        "proved": 1
+      },
+      "run/heapless": {
+        "proved": 5,
+        "rejected": 3,
+        "unsupported": 1
+      },
+      "run/httparse": {
+        "rejected": 1
+      },
+      "run/itoa": {
+        "rejected": 1
+      },
+      "run/memchr-forward": {
+        "proved": 1,
+        "unsupported": 1
+      },
+      "run/memchr-reverse": {
+        "rejected": 1,
+        "unsupported": 1
+      },
+      "run/rust-alloc": {
+        "proved_assuming": 2
+      },
+      "track/alloc": {
+        "proved": 1,
+        "proved_assuming": 2
+      },
+      "track/core": {
+        "proved": 11,
+        "rejected": 9,
+        "unsupported": 3
+      }
+    },
+    "lean_proved": 12,
+    "lean_proved_assuming": 2,
+    "measured_crates": [
+      "array-init",
+      "arrayvec",
+      "bytemuck",
+      "byteorder",
+      "heapless",
+      "httparse",
+      "itoa",
+      "memchr"
+    ],
+    "priority_candidates": 20,
+    "requested_targets": 26,
+    "requested_targets_in_linked_builds": 26,
+    "rust_checker_passed": 14,
+    "schema_version": 1,
+    "settings": {
+      "chc_solver_enabled": false,
+      "frontend_sha256": "53806874fde9cd9fccd2ed2746398b17e13e5d29155cb35e3289f95fad8cad8b",
+      "jobs": 3,
+      "llvm_hints": false,
+      "locked": true,
+      "mir_hints": true,
+      "profile": "release",
+      "timeout_secs": 600
+    },
+    "target": "riscv64imac-unknown-none-elf",
+    "unique_source_entries": 24,
+    "unique_symbols_in_images": 23,
+    "runs": [
+      {
+        "built": true,
+        "cargo_lock_sha256": "7d862e352d5791e96ab7b8f5b1ea393c9776ceaad33d94cd3f2c8c9ca1277c6d",
+        "crate": "heapless",
+        "elapsed_ms": 18238,
+        "elf_sha256": "b7137aef3a715f5f60f693365e637f3d2125e2a54dbc75302e6128e6e37da384",
+        "exit_code": 1,
+        "run": "heapless",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "track": "core",
+        "version": "0.9.3",
+        "targets": [
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 4]>>::as_slice",
+            "kind": "upstream",
+            "source": "heapless::VecInner::as_slice",
+            "status": "proved"
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::as_slice",
+            "kind": "upstream",
+            "source": "heapless::VecInner::as_slice",
+            "status": "proved"
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::push",
+            "kind": "upstream",
+            "source": "heapless::VecInner::push",
+            "status": "proved"
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::push_unchecked",
+            "kind": "upstream",
+            "source": "heapless::VecInner::push_unchecked",
+            "status": "rejected",
+            "rule": "mem-bounds"
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::len",
+            "kind": "upstream",
+            "source": "heapless::VecInner::len",
+            "status": "unsupported"
+          },
+          {
+            "function": "heapless_probe::read::<4>",
+            "kind": "wrapper",
+            "source": "heapless_probe::read",
+            "status": "rejected",
+            "rule": "mem-bounds"
+          },
+          {
+            "function": "heapless_probe::read::<8>",
+            "kind": "wrapper",
+            "source": "heapless_probe::read",
+            "status": "rejected",
+            "rule": "mem-bounds"
+          },
+          {
+            "function": "heapless_probe::append",
+            "kind": "wrapper",
+            "source": "heapless_probe::append",
+            "status": "proved"
+          },
+          {
+            "function": "heapless_probe::copy_first",
+            "kind": "wrapper",
+            "source": "heapless_probe::copy_first",
+            "status": "proved"
+          }
+        ]
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "c62438e103f27ece3f2e51aa85b3b41854c8a9b593455cc43ef7c481d0dd4ff9",
+        "crate": "memchr",
+        "elapsed_ms": 148339,
+        "elf_sha256": "4a174c42016f678a303757004996a02345573d71e7c20c5e34c713888d71e043",
+        "exit_code": 1,
+        "run": "memchr-forward",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "track": "core",
+        "version": "2.8.3",
+        "targets": [
+          {
+            "function": "memchr::memchr",
+            "kind": "upstream",
+            "source": "memchr::memchr",
+            "status": "unsupported"
+          },
+          {
+            "function": "memchr_probe::find",
+            "kind": "wrapper",
+            "source": "memchr_probe::find",
+            "status": "proved"
+          }
+        ]
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "c62438e103f27ece3f2e51aa85b3b41854c8a9b593455cc43ef7c481d0dd4ff9",
+        "crate": "memchr",
+        "elapsed_ms": 2934,
+        "elf_sha256": "4a174c42016f678a303757004996a02345573d71e7c20c5e34c713888d71e043",
+        "exit_code": 1,
+        "run": "memchr-reverse",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "track": "core",
+        "version": "2.8.3",
+        "targets": [
+          {
+            "function": "memchr::memrchr",
+            "kind": "upstream",
+            "source": "memchr::memrchr",
+            "status": "unsupported"
+          },
+          {
+            "function": "memchr_probe::find_last",
+            "kind": "wrapper",
+            "source": "memchr_probe::find_last",
+            "status": "rejected",
+            "rule": "cfg"
+          }
+        ]
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "54f8492295143979ee0cc35af181e44992cf3434a8822920d1f54dc65e8ac265",
+        "crate": "byteorder",
+        "elapsed_ms": 6931,
+        "elf_sha256": "22f7a1a639b28f0c5ce7dcdd1f0c2b431c2bc763152af47d5cf54d5e647b6466",
+        "exit_code": 0,
+        "run": "byteorder",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "track": "core",
+        "version": "1.5.0",
+        "targets": [
+          {
+            "function": "rust100_probe::read_u32",
+            "kind": "wrapper",
+            "source": "byteorder::LittleEndian::read_u32",
+            "status": "proved"
+          }
+        ]
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "54f8492295143979ee0cc35af181e44992cf3434a8822920d1f54dc65e8ac265",
+        "crate": "itoa",
+        "elapsed_ms": 2641,
+        "elf_sha256": "22f7a1a639b28f0c5ce7dcdd1f0c2b431c2bc763152af47d5cf54d5e647b6466",
+        "exit_code": 1,
+        "run": "itoa",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "track": "core",
+        "version": "1.0.18",
+        "targets": [
+          {
+            "function": "rust100_probe::decimal_length",
+            "kind": "wrapper",
+            "source": "itoa::Buffer::format",
+            "status": "rejected",
+            "rule": "call-sig"
+          }
+        ]
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "54f8492295143979ee0cc35af181e44992cf3434a8822920d1f54dc65e8ac265",
+        "crate": "httparse",
+        "elapsed_ms": 2667,
+        "elf_sha256": "22f7a1a639b28f0c5ce7dcdd1f0c2b431c2bc763152af47d5cf54d5e647b6466",
+        "exit_code": 1,
+        "run": "httparse",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "track": "core",
+        "version": "1.10.1",
+        "targets": [
+          {
+            "function": "rust100_probe::request_header_count",
+            "kind": "wrapper",
+            "source": "httparse::Request::parse",
+            "status": "rejected",
+            "rule": "call-sig"
+          }
+        ]
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "10a64cad58bdfa0a91ed92239cdfbd4c031d17e5014940d89d98f856799a45a6",
+        "crate": null,
+        "elapsed_ms": 17664,
+        "elf_sha256": "13e13c03175d6aeabeaa9a8c1c9bc34497957d428156cb89bb6faaec76922e71",
+        "exit_code": 0,
+        "run": "rust-alloc",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "track": "alloc",
+        "version": null,
+        "targets": [
+          {
+            "function": "global_alloc_probe::rust_alloc_round_trip",
+            "kind": "fixture",
+            "source": "global_alloc_probe::rust_alloc_round_trip",
+            "status": "proved_assuming"
+          },
+          {
+            "function": "global_alloc_probe::boxed_release",
+            "kind": "fixture",
+            "source": "global_alloc_probe::boxed_release",
+            "status": "proved_assuming"
+          }
+        ]
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "10a64cad58bdfa0a91ed92239cdfbd4c031d17e5014940d89d98f856799a45a6",
+        "crate": null,
+        "elapsed_ms": 4023,
+        "elf_sha256": "13e13c03175d6aeabeaa9a8c1c9bc34497957d428156cb89bb6faaec76922e71",
+        "exit_code": 0,
+        "run": "box-transfer",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "track": "alloc",
+        "version": null,
+        "targets": [
+          {
+            "function": "global_alloc_probe::boxed_transfer",
+            "kind": "fixture",
+            "source": "global_alloc_probe::boxed_transfer",
+            "status": "proved"
+          }
+        ]
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "5f125e674145c45d7550d366e63f14a81b6db0dc42f17da6b952d563dbccd474",
+        "crate": null,
+        "elapsed_ms": 20194,
+        "elf_sha256": "b40ab6472cdede3d7df2e23dd3de3ca0d8dcbf57f411f4df3edb4acb0a8e2159",
+        "exit_code": 0,
+        "run": "buffers",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "track": "core",
+        "version": null,
+        "targets": [
+          {
+            "function": "buffer_ops::sum_after_prefix",
+            "kind": "fixture",
+            "source": "buffer_ops::sum_after_prefix",
+            "status": "proved"
+          },
+          {
+            "function": "buffer_ops::scan_records",
+            "kind": "fixture",
+            "source": "buffer_ops::scan_records",
+            "status": "proved"
+          },
+          {
+            "function": "buffer_ops::read_spilled",
+            "kind": "fixture",
+            "source": "buffer_ops::read_spilled",
+            "status": "proved"
+          }
+        ]
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "54f8492295143979ee0cc35af181e44992cf3434a8822920d1f54dc65e8ac265",
+        "crate": "arrayvec",
+        "elapsed_ms": 7017,
+        "elf_sha256": "22f7a1a639b28f0c5ce7dcdd1f0c2b431c2bc763152af47d5cf54d5e647b6466",
+        "exit_code": 1,
+        "run": "arrayvec",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "track": "core",
+        "version": "0.7.8",
+        "targets": [
+          {
+            "function": "rust100_probe::arrayvec_push",
+            "kind": "wrapper",
+            "source": "arrayvec::ArrayVec::try_push",
+            "status": "proved"
+          },
+          {
+            "function": "rust100_probe::arrayvec_last",
+            "kind": "wrapper",
+            "source": "arrayvec::ArrayVec::as_slice",
+            "status": "rejected",
+            "rule": "mem-bounds"
+          }
+        ]
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "54f8492295143979ee0cc35af181e44992cf3434a8822920d1f54dc65e8ac265",
+        "crate": "bytemuck",
+        "elapsed_ms": 2633,
+        "elf_sha256": "22f7a1a639b28f0c5ce7dcdd1f0c2b431c2bc763152af47d5cf54d5e647b6466",
+        "exit_code": 1,
+        "run": "bytemuck",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "track": "core",
+        "version": "1.25.2",
+        "targets": [
+          {
+            "function": "rust100_probe::cast_u64",
+            "kind": "wrapper",
+            "source": "bytemuck::try_cast_slice",
+            "status": "rejected",
+            "rule": "mem-bounds"
+          }
+        ]
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "54f8492295143979ee0cc35af181e44992cf3434a8822920d1f54dc65e8ac265",
+        "crate": "array-init",
+        "elapsed_ms": 2641,
+        "elf_sha256": "22f7a1a639b28f0c5ce7dcdd1f0c2b431c2bc763152af47d5cf54d5e647b6466",
+        "exit_code": 1,
+        "run": "array-init",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "track": "core",
+        "version": "2.1.0",
+        "targets": [
+          {
+            "function": "rust100_probe::initialize_then_index",
+            "kind": "wrapper",
+            "source": "array-init::array_init",
+            "status": "rejected",
+            "rule": "mem-bounds"
+          }
+        ]
+      }
+    ]
+  },
+  "ablation_no_mir": {
+    "built_runs": 3,
+    "candidate_crates": 100,
+    "counts": {
+      "all": {
+        "proved": 6,
+        "rejected": 5,
+        "unsupported": 1
+      },
+      "category/array_vector": {
+        "proved": 6,
+        "rejected": 4,
+        "unsupported": 1
+      },
+      "category/raw_memory": {
+        "rejected": 1
+      },
+      "kind/upstream": {
+        "proved": 3,
+        "rejected": 1,
+        "unsupported": 1
+      },
+      "kind/wrapper": {
+        "proved": 3,
+        "rejected": 4
+      },
+      "run/arrayvec": {
+        "proved": 1,
+        "rejected": 1
+      },
+      "run/bytemuck": {
+        "rejected": 1
+      },
+      "run/heapless": {
+        "proved": 5,
+        "rejected": 3,
+        "unsupported": 1
+      },
+      "track/core": {
+        "proved": 6,
+        "rejected": 5,
+        "unsupported": 1
+      }
+    },
+    "lean_proved": 6,
+    "lean_proved_assuming": 0,
+    "measured_crates": [
+      "arrayvec",
+      "bytemuck",
+      "heapless"
+    ],
+    "priority_candidates": 20,
+    "requested_targets": 12,
+    "requested_targets_in_linked_builds": 12,
+    "rust_checker_passed": 6,
+    "schema_version": 1,
+    "settings": {
+      "chc_solver_enabled": false,
+      "frontend_sha256": "53806874fde9cd9fccd2ed2746398b17e13e5d29155cb35e3289f95fad8cad8b",
+      "jobs": 3,
+      "llvm_hints": false,
+      "locked": true,
+      "mir_hints": false,
+      "profile": "release",
+      "timeout_secs": 600
+    },
+    "target": "riscv64imac-unknown-none-elf",
+    "unique_source_entries": 10,
+    "unique_symbols_in_images": 11,
+    "runs": [
+      {
+        "built": true,
+        "cargo_lock_sha256": "7d862e352d5791e96ab7b8f5b1ea393c9776ceaad33d94cd3f2c8c9ca1277c6d",
+        "crate": "heapless",
+        "elapsed_ms": 17630,
+        "elf_sha256": "b7137aef3a715f5f60f693365e637f3d2125e2a54dbc75302e6128e6e37da384",
+        "exit_code": 1,
+        "run": "heapless",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "track": "core",
+        "version": "0.9.3",
+        "targets": [
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 4]>>::as_slice",
+            "kind": "upstream",
+            "source": "heapless::VecInner::as_slice",
+            "status": "proved"
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::as_slice",
+            "kind": "upstream",
+            "source": "heapless::VecInner::as_slice",
+            "status": "proved"
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::push",
+            "kind": "upstream",
+            "source": "heapless::VecInner::push",
+            "status": "proved"
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::push_unchecked",
+            "kind": "upstream",
+            "source": "heapless::VecInner::push_unchecked",
+            "status": "rejected",
+            "rule": "mem-bounds"
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::len",
+            "kind": "upstream",
+            "source": "heapless::VecInner::len",
+            "status": "unsupported"
+          },
+          {
+            "function": "heapless_probe::read::<4>",
+            "kind": "wrapper",
+            "source": "heapless_probe::read",
+            "status": "rejected",
+            "rule": "mem-bounds"
+          },
+          {
+            "function": "heapless_probe::read::<8>",
+            "kind": "wrapper",
+            "source": "heapless_probe::read",
+            "status": "rejected",
+            "rule": "mem-bounds"
+          },
+          {
+            "function": "heapless_probe::append",
+            "kind": "wrapper",
+            "source": "heapless_probe::append",
+            "status": "proved"
+          },
+          {
+            "function": "heapless_probe::copy_first",
+            "kind": "wrapper",
+            "source": "heapless_probe::copy_first",
+            "status": "proved"
+          }
+        ]
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "54f8492295143979ee0cc35af181e44992cf3434a8822920d1f54dc65e8ac265",
+        "crate": "arrayvec",
+        "elapsed_ms": 7186,
+        "elf_sha256": "22f7a1a639b28f0c5ce7dcdd1f0c2b431c2bc763152af47d5cf54d5e647b6466",
+        "exit_code": 1,
+        "run": "arrayvec",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "track": "core",
+        "version": "0.7.8",
+        "targets": [
+          {
+            "function": "rust100_probe::arrayvec_push",
+            "kind": "wrapper",
+            "source": "arrayvec::ArrayVec::try_push",
+            "status": "proved"
+          },
+          {
+            "function": "rust100_probe::arrayvec_last",
+            "kind": "wrapper",
+            "source": "arrayvec::ArrayVec::as_slice",
+            "status": "rejected",
+            "rule": "mem-bounds"
+          }
+        ]
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "54f8492295143979ee0cc35af181e44992cf3434a8822920d1f54dc65e8ac265",
+        "crate": "bytemuck",
+        "elapsed_ms": 2920,
+        "elf_sha256": "22f7a1a639b28f0c5ce7dcdd1f0c2b431c2bc763152af47d5cf54d5e647b6466",
+        "exit_code": 1,
+        "run": "bytemuck",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "track": "core",
+        "version": "1.25.2",
+        "targets": [
+          {
+            "function": "rust100_probe::cast_u64",
+            "kind": "wrapper",
+            "source": "bytemuck::try_cast_slice",
+            "status": "rejected",
+            "rule": "mem-bounds"
+          }
+        ]
+      }
+    ]
+  },
+  "ablation_comparison": {
+    "runs": [
+      "heapless",
+      "arrayvec",
+      "bytemuck"
+    ],
+    "requested_targets": 12,
+    "changed_statuses": 0
+  }
+}
