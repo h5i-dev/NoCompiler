@@ -26,7 +26,6 @@ jq -e '
 rg -q '#: inv .*remaining <= x1 decreases remaining' "$artifacts/hints/annotated.s"
 rg -q '#: inv .*remaining <= x2 decreases remaining' "$artifacts/hints/annotated.s"
 rg -q '#: inv .*remaining1 <= x3 decreases remaining1' "$artifacts/hints/annotated.s"
-status=0
-"${check[@]}" --function buffer_ops::repeat_store --artifacts "$artifacts/baseline" || status=$?
-test "$status" -eq 1
-jq -e '.functions["buffer_ops::repeat_store"].status == "rejected"' "$artifacts/baseline/report.json"
+"${check[@]}" --function buffer_ops::repeat_store --artifacts "$artifacts/rv64-only"
+jq -e '.functions["buffer_ops::repeat_store"].status == "proved"' "$artifacts/rv64-only/report.json"
+rg -q '#: inv .*remaining <= x1 decreases remaining' "$artifacts/rv64-only/annotated.s"

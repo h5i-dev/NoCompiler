@@ -45,3 +45,36 @@ status=0
     --ledger "$artifacts/missing-write.json" || status=$?
 test "$status" -eq 1
 jq -e 'any(.functions[]; .name == "write_owned" and .error.rule == "ret-give")' "$artifacts/missing-write.json"
+
+# Both finite JALR targets return the consumed region with the initialized word.
+awk '
+    NR == 1 { alternate = $0; sub(/write_owned/, "write_alternate", alternate); print alternate }
+    /^    call write_owned$/ {
+        print "    beq a1, zero, .Lother"
+        print ".Lfirst_hi:"
+        print "    auipc t0, %pcrel_hi(write_owned)"
+        print "    addi t0, t0, %pcrel_lo(.Lfirst_hi)"
+        print "    j .Lowned_join"
+        print ".Lother:"
+        print ".Lother_hi:"
+        print "    auipc t0, %pcrel_hi(write_alternate)"
+        print "    addi t0, t0, %pcrel_lo(.Lother_hi)"
+        print ".Lowned_join:"
+        print "    jalr ra, 0(t0)"
+        next
+    }
+    { print }
+    END {
+        print ".globl write_alternate"
+        print ".type write_alternate,@function"
+        print "write_alternate:"
+        print "    sd a1, 0(a0)"
+        print "    ret"
+        print ".size write_alternate, .-write_alternate"
+    }
+' "$artifacts/owned.s" > "$artifacts/indirect-owned.s"
+link "$artifacts/indirect-owned"
+"$checker" check "$artifacts/indirect-owned.s" --image "$artifacts/indirect-owned.elf"     --export-lean "$artifacts/IndirectOwned.lean" --prove --certs --ledger "$artifacts/indirect-owned.json"
+jq -e '.proof_attempt.status == "proved" and
+    any(.functions[]; .name == "read_owned" and .status == "proved" and
+        (.evidence.callees | sort) == ["write_alternate", "write_owned"])'     "$artifacts/indirect-owned.json"

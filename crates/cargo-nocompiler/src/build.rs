@@ -167,7 +167,7 @@ pub fn compile(args: &Args, dir: &Path) -> Result<Build> {
     fs::copy(path, &image)?;
     let llvm_bin = sysroot.join("lib/rustlib").join(host).join("bin");
     let llvm_hints = if args.llvm_hints {
-        crate::llvm::capture(&llvm_bin, &llvm_ir, dir)?
+        crate::llvm::capture(sysroot, &llvm_bin, &llvm_ir, dir)?
     } else {
         crate::llvm::Hints::default()
     };

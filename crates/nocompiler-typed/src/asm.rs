@@ -49,6 +49,8 @@ pub enum Reloc {
     PcrelHi(String),
     /// `%pcrel_lo(label)`: the low part for the `auipc` at `label`.
     PcrelLo(String),
+    /// Absolute AUIPC result derived from linked symbol addresses for proof candidate generation.
+    LinkedAuipc(u64),
     /// Any other operator (`%hi`, `%lo`, `%got_pcrel_hi`, …): not supported.
     Other(String),
 }

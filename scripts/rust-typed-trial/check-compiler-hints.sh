@@ -26,9 +26,27 @@ status=0
 "${check[@]}" --no-mir-hints --artifacts "$artifacts/baseline" || status=$?
 test "$status" -eq 1
 jq -e '.functions["buffer_ops::bounded_read"].status == "rejected" and
-    .functions["buffer_ops::fixed_store"].status == "rejected" and
-    .functions["buffer_ops::stack_via_register"].status == "rejected"' "$artifacts/baseline/report.json"
-if rg -q 'view_ptr|llvm_result|#: inv' "$artifacts/baseline/annotated.s"; then
+    .functions["buffer_ops::fixed_store"].status == "proved" and
+    .functions["buffer_ops::stack_via_register"].status == "proved"' "$artifacts/baseline/report.json"
+rg -q '#: inv .*remaining <= 1024 decreases remaining' "$artifacts/baseline/annotated.s"
+if rg -q 'view_ptr|llvm_result' "$artifacts/baseline/annotated.s"; then
     echo "Compiler-only annotations unexpectedly present in baseline" >&2
     exit 1
 fi
+
+target/release/cargo-nocompiler check \
+    --manifest-path examples/rust-typed/fixtures/buffer_ops/Cargo.toml --bin buffer_ops \
+    --no-mir-hints --function buffer_ops::stack_after_register_setup \
+    --artifacts "$artifacts/delayed-frame"
+jq -e '.functions["buffer_ops::stack_after_register_setup"].status == "proved"' \
+    "$artifacts/delayed-frame/report.json"
+rg -q 'stack_after_register_setup.*frame 16 addr \[8, 16\)' "$artifacts/delayed-frame/contracts.s"
+awk '
+    /stack_after_register_setup:$/ { inside = 1; next }
+    inside && /^[[:space:]]+[[:alpha:]]/ {
+        seen = 1
+        if ($1 != "addi" || $2 == "sp,") exit 1
+        exit
+    }
+    END { if (!seen) exit 1 }
+' "$artifacts/delayed-frame/annotated.s"

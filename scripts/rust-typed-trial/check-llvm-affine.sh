@@ -29,3 +29,18 @@ status=0
 test "$status" -eq 1
 jq -e '.functions["buffer_ops::read_affine_result"].error.rule == "mem-bounds"' \
     "$artifacts/baseline/report.json"
+
+jq -e '.functions | any(to_entries[];
+    (.key | endswith("affine_spilled_result")) and
+    any(.value.llvm_affine_locations[]; .entry_sp_offset == -8 and (.values | length) > 0))'     "$artifacts/hints/contracts.json"
+
+target/release/cargo-nocompiler check \
+    --manifest-path examples/rust-typed/fixtures/buffer_ops/Cargo.toml --bin buffer_ops \
+    --llvm-hints --no-mir-hints --function buffer_ops::spill_into_output \
+    --artifacts "$artifacts/void-pointer"
+jq -e '.functions["buffer_ops::spill_into_output"].status == "proved"' \
+    "$artifacts/void-pointer/report.json"
+jq -e '.functions | any(to_entries[];
+    (.key | endswith("spill_into_output")) and
+    any(.value.llvm_affine_locations[]; has("entry_sp_offset")) and
+    (.value | has("llvm_affine_result") | not))' "$artifacts/void-pointer/contracts.json"

@@ -1,11 +1,76 @@
 //! Candidate callees for register calls in an ELF proof.
 use nocompiler_typed::{
-    asm::{Func, Program},
+    asm::{Func, Program, Reloc},
+    cfg::ControlFlow,
     isa::{IOp, Instr, RA, Reg, ShOp, Target, ZERO},
     lin::TWO64,
     syntax::{SFormula, SInv, SLin, SRegTy},
 };
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
+
+/// Resolve function addresses materialized by a linked AUIPC/ADDI pair.
+fn resolve_function_addresses(
+    body: &mut Func,
+    symbols: &BTreeMap<String, u64>,
+    functions: &BTreeMap<u64, Option<&str>>,
+) {
+    let Some(&entry) = symbols.get(&body.name) else {
+        return;
+    };
+    let Some(first) = body.instrs.first() else {
+        return;
+    };
+    let start = first.addr;
+    let mut pairs = BTreeMap::<usize, Vec<usize>>::new();
+    for (index, point) in body.instrs.iter().enumerate() {
+        if let Some(Reloc::PcrelLo(label)) = &point.reloc
+            && let Some(&high) = body.labels.get(label)
+        {
+            pairs.entry(high).or_default().push(index);
+        }
+    }
+    for (high, lows) in pairs {
+        let Some(point) = body.instrs.get(high) else {
+            continue;
+        };
+        let (Instr::Auipc { .. }, Some(Reloc::PcrelHi(name))) = (&point.instr, &point.reloc) else {
+            continue;
+        };
+        let Some(&address) = symbols.get(name) else {
+            continue;
+        };
+        if functions.get(&address).and_then(|n| *n) != Some(name.as_str()) {
+            continue;
+        }
+        if lows
+            .iter()
+            .any(|&i| !matches!(body.instrs[i].instr, Instr::IOp { op: IOp::Addi, .. }))
+        {
+            continue;
+        }
+        let Some(pc) = point
+            .addr
+            .checked_sub(start)
+            .and_then(|offset| entry.checked_add(offset))
+        else {
+            continue;
+        };
+        let displacement = i128::from(address) - i128::from(pc);
+        let low = (displacement + 2048).rem_euclid(4096) - 2048;
+        let upper = displacement - low;
+        if i32::try_from(upper).is_err() {
+            continue;
+        }
+        body.instrs[high].reloc = Some(Reloc::LinkedAuipc(pc.wrapping_add_signed(upper as i64)));
+        for low_index in lows {
+            let point = &mut body.instrs[low_index];
+            if let Instr::IOp { imm, .. } = &mut point.instr {
+                *imm = low as i64;
+                point.reloc = None;
+            }
+        }
+    }
+}
 
 /// Give the Rust checker and exporter a direct-call view of constant register
 /// calls. The Lean checker still sees the actual decoded JALR in the linked image.
@@ -21,7 +86,58 @@ pub fn resolve_register_calls(program: &mut Program, symbols: &BTreeMap<String, 
     }
 
     for body in &mut program.funcs {
+        resolve_function_addresses(body, symbols, &targets);
+        let cfg = ControlFlow::new(body);
         let states = constants_at_entries(body);
+        let mut target_registers = BTreeSet::new();
+        for (point, state) in body.instrs.iter().zip(&states) {
+            if let (Instr::Jalr { rd: RA, rs1, off }, Some(registers)) = (&point.instr, state)
+                && known(registers, *rs1).is_some_and(|values| {
+                    values.len() > 1
+                        && values.iter().all(|value| {
+                            targets
+                                .get(&(value.wrapping_add_signed(*off) & !1))
+                                .is_some_and(Option::is_some)
+                        })
+                })
+            {
+                target_registers.insert(*rs1);
+            }
+        }
+        for (index, state) in states.iter().enumerate() {
+            if target_registers.is_empty()
+                || cfg.predecessors[index].len() < 2
+                || body.invs.contains_key(&index)
+            {
+                continue;
+            }
+            let Some(registers) = state else { continue };
+            let mut joined = None::<SInv>;
+            // Preserve constants at the merge, before any copies or arithmetic
+            // in the shared continuation leading to the register call.
+            for reg in Reg::all() {
+                let Some(values) = known(registers, reg).filter(|values| values.len() > 1) else {
+                    continue;
+                };
+                if !target_registers.contains(&reg)
+                    && !values.iter().all(|value| targets.contains_key(value))
+                {
+                    continue;
+                }
+                let part = target_join(index, reg, &values);
+                if let Some(join) = &mut joined {
+                    join.vars.extend(part.vars);
+                    join.regs.extend(part.regs);
+                    join.wher.extend(part.wher);
+                } else {
+                    joined = Some(part);
+                }
+            }
+            if let Some(annotation) = joined {
+                body.invs
+                    .insert(index, (annotation, body.instrs[index].line));
+            }
+        }
         for (index, (point, state)) in body.instrs.iter_mut().zip(states).enumerate() {
             let (Some(registers), Instr::Jalr { rd, rs1, off }) = (state, &point.instr) else {
                 continue;
@@ -68,7 +184,7 @@ pub fn resolve_register_calls(program: &mut Program, symbols: &BTreeMap<String, 
 }
 
 fn target_join(index: usize, register: Reg, bases: &BTreeSet<u64>) -> SInv {
-    let name = format!("__noco_jalr_{index}");
+    let name = format!("__noco_jalr_{index}_{}", register.0);
     let value = SLin {
         terms: BTreeMap::from([(name.clone(), 1)]),
         konst: 0,
@@ -142,7 +258,9 @@ fn constants_at_entries(body: &Func) -> Vec<Option<Registers>> {
                 if let Some(rd) = point.instr.rd()
                     && rd != ZERO
                 {
-                    let value = if point.reloc.is_some() {
+                    let value = if let Some(Reloc::LinkedAuipc(address)) = point.reloc {
+                        Some(BTreeSet::from([address]))
+                    } else if point.reloc.is_some() {
                         None
                     } else {
                         match point.instr {

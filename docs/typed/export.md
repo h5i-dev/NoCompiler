@@ -100,6 +100,25 @@ The kernel check `decide +kernel` of `fn_<f>.check code` used to run the whole c
 * Soundness: `decideQ_sound`. Every mode ends in `Query.check_sound`, and false is always sound, so `Fn.check_sound` covers a record with tables unchanged. A table only decides how much the kernel has to do.
 * Producer: `lean/scripts/certgen.py` takes a generated module (record, `def code`). It evaluates each function's check point by point in `log` mode (compiled, `lake lean`), and writes a module whose `fnc_<f>` is `fn_<f>` with each point's table, plus the kernel theorems.
 
+For an edge with no target type, Lean independently checks that the source
+facts entail false. A source fact that folds to the literal false closes the
+obligation directly. The proof uses the semantic preservation theorem for
+constraint folding. Candidate generators can use an external reachability
+solver to infer a smaller footprint, and the linked-image certificate still
+replays this contradiction using the checker facts.
+
+Normal returns and tail calls both instantiate output variables from return
+registers, postconditions, and the field maps of returned borrows. This
+allows a tail callee to establish an initialized field in a subrange while
+the enclosing function also returns a previously initialized disjoint field.
+The existing return soundness theorem covers the instantiated witnesses.
+
+A register call can obtain its candidate target set from ELF symbol
+addresses and the AUIPC/ADDI relocation pair that materializes an address.
+The candidate record retains finite register values at CFG merges before
+the call. The Lean checker replays the original decoded instructions and
+checks the target and call contract of each feasible branch.
+
 ### Xor facts (2026-11-24)
 
 `FnExport.xor_defs` lists `x = a xor b` for each xor result, which is true in every state. `xorBits` lists the widths `k` of the function's masks `2^k − 1` (`andi` immediates, `li` constants). Each exported point where x, a and b are live gets `2^k ∣ x ⇔ 2^k ∣ a − b` for each k. The Lean checker's xor rule adds the same facts, and its mask rules turn them into the zero test `x = 0 ⇔ 2^k ∣ a − b`.

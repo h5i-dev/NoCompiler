@@ -486,10 +486,16 @@ theorem ent0_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.ent0 ψ = true)
   unfold ent0 at h
   rcases Bool.or_eq_true _ _ ▸ h with h | h
   · rcases Bool.or_eq_true _ _ ▸ h with h | h
-    · exact hh' ψ (List.mem_append_left _ (List.contains_iff_mem.1 h))
-    · obtain ⟨p, hp, hc⟩ := List.any_eq_true.1 h
-      obtain ⟨c, hcm, hc⟩ := List.any_eq_true.1 hc
-      exact coversS_sound _ hc (Constr.eval_of_conjunct hcm (hh' p (List.mem_append_left _ hp)))
+    · rcases Bool.or_eq_true _ _ ▸ h with h | h
+      · exact hh' ψ (List.mem_append_left _ (List.contains_iff_mem.1 h))
+      · obtain ⟨p, hp, hc⟩ := List.any_eq_true.1 h
+        obtain ⟨c, hcm, hc⟩ := List.any_eq_true.1 hc
+        exact coversS_sound _ hc (Constr.eval_of_conjunct hcm (hh' p (List.mem_append_left _ hp)))
+    · obtain ⟨p, hp, hc⟩ := List.any_eq_true.1 (Bool.and_eq_true _ _ ▸ h).2
+      have hf : p.fold.holds ι := by
+        simpa only [Constr.holds, Constr.eval_fold] using hh' p (List.mem_append_left _ hp)
+      rw [beq_iff_eq.1 hc] at hf
+      cases hf
   · exact entQ_sound h hh'
 
 theorem entFull_sound {ι : Val} {S : STy} {ψ : Constr} (h : S.entFull ψ = true)

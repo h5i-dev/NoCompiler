@@ -3,8 +3,12 @@ use crate::{
     Result,
     build::output,
     contract_ir::{Expr, Input},
+    llvm_ir::{self, Function, Instruction, Operand, Type},
 };
-use nocompiler_typed::isa::Reg;
+use nocompiler_typed::{asm::Func, isa::Reg, lin::Lin};
+use serde::Deserialize;
+use serde_json::{Value as Json, json};
+use serde_yaml_ng::Value;
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
@@ -35,11 +39,12 @@ pub struct Frame {
 pub struct Hints {
     pub ranges: BTreeMap<String, WordRange>,
     pub affine_results: BTreeMap<String, Expr>,
+    pub affine_values: BTreeMap<String, BTreeMap<String, Expr>>,
     pub trips: BTreeMap<String, Vec<LoopTrip>>,
     pub frames: BTreeMap<String, Frame>,
 }
 
-pub fn capture(bin: &Path, ir: &Path, dir: &Path) -> Result<Hints> {
+pub fn capture(sysroot: &Path, bin: &Path, ir: &Path, dir: &Path) -> Result<Hints> {
     let machine = dir.join("llvm-machine.mir");
     output(
         Command::new(bin.join("llc"))
@@ -47,7 +52,7 @@ pub fn capture(bin: &Path, ir: &Path, dir: &Path) -> Result<Hints> {
             .arg(&machine)
             .arg(ir),
     )?;
-    let machine = fs::read_to_string(machine)?;
+    let machine = machine_functions(&fs::read_to_string(machine)?)?;
     let evolution = Command::new(bin.join("opt"))
         .args(["-passes=print<scalar-evolution>", "-disable-output"])
         .arg(ir)
@@ -62,58 +67,97 @@ pub fn capture(bin: &Path, ir: &Path, dir: &Path) -> Result<Hints> {
     fs::write(dir.join("llvm-scev.txt"), &evolution.stderr)?;
     let ir = fs::read_to_string(ir)?;
     let scalar_returns = scalar_return_registers(&machine);
+    let functions = llvm_ir::capture(sysroot, &ir)?;
+    let mut affine_results = BTreeMap::new();
+    let mut affine_values = BTreeMap::new();
+    for (name, function) in &functions {
+        if let Some((result, values)) = affine_analysis(function) {
+            if scalar_returns.contains(name.as_str())
+                && let Some(result) = result
+            {
+                affine_results.insert(name.clone(), result);
+            }
+            let matched: BTreeMap<_, _> = values
+                .into_iter()
+                .filter_map(|(id, expr)| Some((function.value_names.get(&id)?.clone(), expr)))
+                .collect();
+            if !matched.is_empty() {
+                affine_values.insert(name.clone(), matched);
+            }
+        }
+    }
     Ok(Hints {
         ranges: ranges(&ir, &scalar_returns),
-        affine_results: affine_results(&ir, &scalar_returns),
-        trips: loop_trips(&String::from_utf8(evolution.stderr)?, &machine, &ir),
+        affine_results,
+        affine_values,
+        trips: loop_trips(&String::from_utf8(evolution.stderr)?, &machine, &functions),
         frames: frames(&machine),
     })
 }
 
-fn machine_functions(machine: &str) -> impl Iterator<Item = (&str, &str, &str)> {
-    machine.split("\n---\n").filter_map(|record| {
-        let (header, body) = record.split_once("\nbody:")?;
-        let name = header.lines().find_map(|line| line.strip_prefix("name:"))?;
-        Some((name.trim().trim_matches('\''), header, body))
-    })
+struct MachineFunction {
+    name: String,
+    body: String,
+    stack_size: Option<i128>,
+    stack_objects: Vec<(i128, i128)>,
 }
 
-fn frames(machine: &str) -> BTreeMap<String, Frame> {
-    machine_functions(machine)
-        .filter_map(|(name, header, _)| {
-            let size = header
-                .lines()
-                .find_map(|line| line.trim().strip_prefix("stackSize:"))?
-                .trim()
-                .parse::<i128>()
-                .ok()?;
+fn machine_functions(document: &str) -> Result<Vec<MachineFunction>> {
+    let mut functions = Vec::new();
+    for item in serde_yaml_ng::Deserializer::from_str(document) {
+        let document = Value::deserialize(item)?;
+        let Some(name) = document.get("name").and_then(Value::as_str) else {
+            // The initial YAML document contains the embedded LLVM module.
+            continue;
+        };
+        let Some(body) = document.get("body").and_then(Value::as_str) else {
+            continue;
+        };
+        let stack_size = document
+            .get("frameInfo")
+            .and_then(|frame| frame.get("stackSize"))
+            .and_then(Value::as_i64)
+            .map(i128::from);
+        let stack_objects = document
+            .get("stack")
+            .and_then(Value::as_sequence)
+            .into_iter()
+            .flatten()
+            .filter_map(|object| {
+                Some((
+                    i128::from(object.get("offset")?.as_i64()?),
+                    i128::from(object.get("size")?.as_i64()?),
+                ))
+            })
+            .collect();
+        functions.push(MachineFunction {
+            name: name.to_owned(),
+            body: body.to_owned(),
+            stack_size,
+            stack_objects,
+        });
+    }
+    Ok(functions)
+}
+
+fn frames(machine: &[MachineFunction]) -> BTreeMap<String, Frame> {
+    machine
+        .iter()
+        .filter_map(|function| {
+            let size = function.stack_size?;
             if size <= 0 || size % 16 != 0 {
                 return None;
             }
-            let (_, objects) = header.split_once("\nstack:\n")?;
-            let slots: BTreeSet<_> = objects
-                .lines()
-                .take_while(|line| line.starts_with(' '))
-                .filter_map(|line| {
-                    let object = line.trim().strip_prefix("- { id:")?;
-                    let property = |name| {
-                        object
-                            .split_once(name)?
-                            .1
-                            .split(',')
-                            .next()?
-                            .trim()
-                            .parse::<i128>()
-                            .ok()
-                    };
-                    let offset = property(", offset:")?;
-                    let length = property(", size:")?;
+            let slots: BTreeSet<_> = function
+                .stack_objects
+                .iter()
+                .filter_map(|&(offset, length)| {
                     let start = size.checked_add(offset)?;
                     let end = start.checked_add(length)?;
                     (start >= 0 && start < end && end <= size).then_some((start, end))
                 })
                 .collect();
-            (!slots.is_empty()).then_some((name.to_string(), Frame { size, slots }))
+            (!slots.is_empty()).then_some((function.name.clone(), Frame { size, slots }))
         })
         .collect()
 }
@@ -126,53 +170,19 @@ fn number(text: &str) -> Option<usize> {
 }
 
 // Only signatures whose lowered arguments each occupy one integer register.
-fn count_register(ir: &str, symbol: &str, variable: &str) -> Option<Reg> {
-    let (_, args) = ir.lines().find_map(|line| {
-        let (head, function) = line.strip_prefix("define ")?.split_once('@')?;
-        let (name, args) = function.split_once('(')?;
-        (name == symbol && !head.contains("cc ")).then_some((name, args))
-    })?;
-    let mut found = None;
-    let args = llvm_arguments(args)?;
-    for (index, arg) in args.enumerate() {
-        let mut words = arg.split_whitespace();
-        let ty = words.next()?;
-        if !matches!(ty, "ptr" | "i64") || index >= 8 {
-            return None;
-        }
-        if words.last()? == variable && ty == "i64" {
-            found = Some(Reg(10 + index as u8));
-        }
+fn count_register(ir: &BTreeMap<String, Function>, symbol: &str, variable: &str) -> Option<Reg> {
+    let parameters = &ir.get(symbol)?.parameters;
+    if parameters
+        .iter()
+        .any(|p| !matches!(p.ty, Type::Word | Type::Pointer))
+    {
+        return None;
     }
-    found
-}
-
-fn llvm_arguments(args: &str) -> Option<impl Iterator<Item = &str>> {
-    let mut depth = 0;
-    let end = args.char_indices().find_map(|(index, c)| match c {
-        '(' => {
-            depth += 1;
-            None
-        }
-        ')' if depth != 0 => {
-            depth -= 1;
-            None
-        }
-        ')' => Some(index),
-        _ => None,
-    })?;
-    Some(args[..end].split(move |c| match c {
-        '(' => {
-            depth += 1;
-            false
-        }
-        ')' => {
-            depth -= 1;
-            false
-        }
-        ',' => depth == 0,
-        _ => false,
-    }))
+    let name = variable.strip_prefix('%')?;
+    let index = parameters
+        .iter()
+        .position(|p| p.name == name && p.ty == Type::Word)?;
+    Some(Reg(10 + u8::try_from(index).ok()?))
 }
 
 fn latch_registers(body: &[&str], head: usize) -> Option<(Reg, Reg)> {
@@ -203,7 +213,11 @@ fn latch_registers(body: &[&str], head: usize) -> Option<(Reg, Reg)> {
     (jump == Some(head)).then_some(fallthrough).flatten()
 }
 
-fn loop_trips(evolution: &str, machine: &str, ir: &str) -> BTreeMap<String, Vec<LoopTrip>> {
+fn loop_trips(
+    evolution: &str,
+    machine: &[MachineFunction],
+    ir: &BTreeMap<String, Function>,
+) -> BTreeMap<String, Vec<LoopTrip>> {
     let counts: BTreeMap<_, _> = evolution
         .split("Classifying expressions for: @")
         .skip(1)
@@ -242,8 +256,11 @@ fn loop_trips(evolution: &str, machine: &str, ir: &str) -> BTreeMap<String, Vec<
         })
         .collect();
 
-    machine_functions(machine)
-        .filter_map(|(name, _, body)| {
+    machine
+        .iter()
+        .filter_map(|function| {
+            let name = function.name.as_str();
+            let body = &function.body;
             let counts = counts.get(name)?;
             let mut block = None;
             let mut edges = Vec::new();
@@ -312,10 +329,11 @@ fn loop_trips(evolution: &str, machine: &str, ir: &str) -> BTreeMap<String, Vec<
         .collect()
 }
 
-fn scalar_return_registers(machine: &str) -> BTreeSet<&str> {
+fn scalar_return_registers(machine: &[MachineFunction]) -> BTreeSet<&str> {
     let mut returns = BTreeSet::new();
-    for (name, _, body) in machine_functions(machine) {
-        let mut sites = body
+    for function in machine {
+        let mut sites = function
+            .body
             .lines()
             .filter(|line| line.split_whitespace().next() == Some("PseudoRET"))
             .peekable();
@@ -326,227 +344,194 @@ fn scalar_return_registers(machine: &str) -> BTreeSet<&str> {
                 })
             })
         {
-            returns.insert(name);
+            returns.insert(function.name.as_str());
         }
     }
     returns
 }
 
-struct AffineBlock<'a> {
-    lines: Vec<&'a str>,
-    predecessors: Vec<usize>,
-}
-
-fn affine_blocks(body: &str) -> Option<Vec<AffineBlock<'_>>> {
-    let mut blocks: Vec<Vec<&str>> = Vec::new();
-    let mut labels = BTreeMap::new();
-    for line in body.lines().map(str::trim).take_while(|line| *line != "}") {
-        if line.is_empty() || line.starts_with(';') {
-            continue;
-        }
-        if let Some(label) = line.split_whitespace().next()?.strip_suffix(':') {
-            labels.insert(label, blocks.len());
-            blocks.push(Vec::new());
-        } else {
-            if blocks.is_empty() {
-                blocks.push(Vec::new());
-            }
-            blocks.last_mut()?.push(line);
+fn affine_analysis(function: &Function) -> Option<(Option<Expr>, BTreeMap<usize, Expr>)> {
+    let size = function.blocks.len();
+    let mut dependencies = vec![BTreeSet::new(); size];
+    let block_index: BTreeMap<_, _> = function
+        .blocks
+        .iter()
+        .enumerate()
+        .map(|(ix, block)| (block.id, ix))
+        .collect();
+    for (index, block) in function.blocks.iter().enumerate() {
+        for to in &block.successors {
+            dependencies[*block_index.get(to)?].insert(index);
         }
     }
-
-    let mut predecessors = vec![BTreeSet::new(); blocks.len()];
-    for (index, block) in blocks.iter_mut().enumerate() {
-        let terminator = *block.last()?;
-        if terminator.starts_with("br ") {
-            for destination in terminator.split("label %").skip(1) {
-                let destination = destination.split([',', ' ']).next()?;
-                predecessors[*labels.get(destination)?].insert(index);
-            }
-            block.pop();
-        } else if !terminator.starts_with("ret i64 ") && terminator != "unreachable" {
-            return None;
-        }
-    }
-
-    // Cyclic or unsupported control flow uses the block-local fallback.
-    let mut successors = vec![Vec::new(); blocks.len()];
-    let mut pending = BTreeSet::new();
-    let mut indegree: Vec<_> = predecessors.iter().map(BTreeSet::len).collect();
-    for (index, inputs) in predecessors.iter().enumerate() {
-        if inputs.is_empty() {
-            pending.insert(index);
-        }
-        for &predecessor in inputs {
-            successors[predecessor].push(index);
-        }
-    }
-    let mut order = Vec::with_capacity(blocks.len());
-    let mut position = vec![0; blocks.len()];
+    let mut remaining: Vec<_> = dependencies.iter().map(BTreeSet::len).collect();
+    let mut pending: BTreeSet<_> = (0..size).filter(|&index| remaining[index] == 0).collect();
+    let mut returned = None;
+    let mut common_return = true;
+    let mut values: BTreeMap<_, _> = function
+        .parameters
+        .iter()
+        .enumerate()
+        .filter(|(_, parameter)| matches!(parameter.ty, Type::Word | Type::Pointer))
+        .map(|(index, parameter)| (parameter.id, Expr::input(Input::Value(index))))
+        .collect();
+    let mut slots = BTreeSet::new();
+    let mut exits = vec![BTreeMap::new(); size];
     while let Some(index) = pending.pop_first() {
-        let incoming = predecessors[index].iter().map(|&p| position[p]).collect();
-        position[index] = order.len();
-        order.push(AffineBlock {
-            lines: std::mem::take(&mut blocks[index]),
-            predecessors: incoming,
-        });
-        for &next in &successors[index] {
-            indegree[next] -= 1;
-            if indegree[next] == 0 {
+        let mut incoming = dependencies[index].iter().map(|&index| &exits[index]);
+        let mut stored = incoming.next().cloned().unwrap_or_default();
+        for other in incoming {
+            stored.retain(|slot, value| other.get(slot) == Some(value));
+        }
+        let block = &function.blocks[index];
+        for instruction in &block.instructions {
+            let resolve = |operand| match operand {
+                Operand::Constant(value) => Some(Expr::constant(value)),
+                Operand::Value(id) => values.get(&id).cloned(),
+            };
+            let binary = |a, b| resolve(a).zip(resolve(b));
+            let output = match *instruction {
+                Instruction::Return(value) => {
+                    if let Some(value) = resolve(value) {
+                        common_return &= returned.as_ref().is_none_or(|prior| prior == &value);
+                        returned = Some(value);
+                    } else {
+                        common_return = false;
+                    }
+                    None
+                }
+                Instruction::Alloca(slot) => {
+                    slots.insert(slot);
+                    None
+                }
+                Instruction::Store(value, slot) => {
+                    if slots.contains(&slot) {
+                        if let Some(value) = resolve(value) {
+                            stored.insert(slot, value);
+                        } else {
+                            stored.remove(&slot);
+                        }
+                    } else {
+                        stored.clear();
+                    }
+                    None
+                }
+                Instruction::Clobber => {
+                    stored.clear();
+                    None
+                }
+                Instruction::Load(id, slot) => Some((id, stored.get(&slot).cloned())),
+                Instruction::Phi(id, ref args) => {
+                    let mut incoming = args.iter().copied().map(resolve);
+                    Some((
+                        id,
+                        incoming
+                            .next()
+                            .flatten()
+                            .filter(|first| incoming.all(|value| value.as_ref() == Some(first))),
+                    ))
+                }
+                Instruction::Add(id, a, b) => {
+                    Some((id, binary(a, b).and_then(|(a, b)| a.add(&b, 1))))
+                }
+                Instruction::Sub(id, a, b) => {
+                    Some((id, binary(a, b).and_then(|(a, b)| a.add(&b, -1))))
+                }
+                Instruction::Mul(id, a, b) => Some((
+                    id,
+                    binary(a, b).and_then(|(a, b)| {
+                        if a.terms.is_empty() {
+                            b.scale(a.constant)
+                        } else if b.terms.is_empty() {
+                            a.scale(b.constant)
+                        } else {
+                            None
+                        }
+                    }),
+                )),
+                Instruction::Shift(id, a, b) => Some((
+                    id,
+                    binary(a, b).and_then(|(a, b)| {
+                        if b.terms.is_empty() && (0..64).contains(&b.constant) {
+                            a.scale(1i128 << b.constant)
+                        } else {
+                            None
+                        }
+                    }),
+                )),
+            };
+            if let Some((id, Some(value))) = output {
+                values.insert(id, value);
+            }
+        }
+        exits[index] = stored;
+        for to in block.successors.iter().collect::<BTreeSet<_>>() {
+            let next = *block_index.get(to)?;
+            remaining[next] -= 1;
+            if remaining[next] == 0 {
                 pending.insert(next);
             }
         }
     }
-    if order.len() != blocks.len() {
-        return None;
-    }
-    Some(order)
+    let complete = remaining.iter().all(|&count| count == 0);
+    let scalar_return =
+        function.result == Type::Word && function.parameters.iter().all(|p| p.ty == Type::Word);
+    Some((
+        returned.filter(|_| complete && common_return && scalar_return),
+        values,
+    ))
 }
 
-fn affine_results(ir: &str, returns: &BTreeSet<&str>) -> BTreeMap<String, Expr> {
-    ir.split("\ndefine ")
-        .skip(1)
-        .filter_map(|definition| {
-            let (header, body) = definition.split_once('{')?;
-            let (result, symbol) = header.split_once('@')?;
-            if !result.trim().ends_with("i64") || result.contains("cc ") {
-                return None;
-            }
-            let (symbol, args) = symbol.split_once('(')?;
-            let name = symbol.trim_matches('"');
-            if !returns.contains(name) {
-                return None;
-            }
-            let mut values = BTreeMap::<&str, Expr>::new();
-            for (index, arg) in llvm_arguments(args)?
-                .filter(|arg| !arg.trim().is_empty())
-                .enumerate()
-            {
-                let mut words = arg.split_whitespace();
-                if words.next()? != "i64" || index >= 8 {
-                    return None;
-                }
-                let var = words.last()?;
-                if !var.starts_with('%') {
-                    return None;
-                }
-                values.insert(var, Expr::input(Input::Value(index)));
-            }
-            let mut returned = None;
-            let mut local_slots = BTreeSet::new();
-            let blocks = affine_blocks(body).unwrap_or_else(|| {
-                vec![AffineBlock {
-                    lines: body
-                        .lines()
-                        .map(str::trim)
-                        .take_while(|line| *line != "}")
-                        .collect(),
-                    predecessors: Vec::new(),
-                }]
-            });
-            let mut exits = Vec::<BTreeMap<&str, Expr>>::new();
-            for block in blocks {
-                let mut incoming = block.predecessors.iter().map(|&index| &exits[index]);
-                let mut stored = incoming.next().cloned().unwrap_or_default();
-                for other in incoming {
-                    stored.retain(|slot, value| other.get(slot) == Some(value));
-                }
-                for line in block.lines {
-                    let resolve = |name: &str| {
-                        let name = name.trim();
-                        if name.starts_with('%') {
-                            values.get(name).cloned()
-                        } else {
-                            name.parse().ok().map(Expr::constant)
-                        }
+/// Match definitions by the affine expression computed in both IRs. Results
+/// are candidates and identify every matching live location before each point.
+pub fn affine_locations(
+    func: &Func,
+    entry: &crate::flow::State,
+    values: &BTreeMap<String, Expr>,
+) -> Vec<Json> {
+    let mut by_expression = BTreeMap::<Lin, Vec<&str>>::new();
+    for (name, expr) in values {
+        let lowered =
+            expr.terms
+                .iter()
+                .try_fold(Lin::konst(expr.constant), |sum, (&input, &coef)| {
+                    let Input::Value(index) = input else {
+                        return None;
                     };
-                    if let Some(ret) = line.strip_prefix("ret i64 ") {
-                        let value = resolve(ret.split(',').next()?)?;
-                        if returned.as_ref().is_some_and(|prior| prior != &value) {
-                            return None;
-                        }
-                        returned = Some(value);
-                    } else if let Some(store) = line.strip_prefix("store ") {
-                        let store = store.strip_prefix("volatile ").unwrap_or(store);
-                        let write = store.strip_prefix("i64 ").and_then(|operands| {
-                            let (value, destination) = operands.split_once(',')?;
-                            let slot = destination.trim().strip_prefix("ptr ")?;
-                            let slot = slot.split(',').next()?.trim();
-                            local_slots.contains(slot).then_some((slot, resolve(value)))
-                        });
-                        match write {
-                            Some((slot, Some(value))) => {
-                                stored.insert(slot, value);
-                            }
-                            Some((slot, None)) => {
-                                stored.remove(slot);
-                            }
-                            None => stored.clear(),
-                        }
-                    } else if let Some((name, decl)) = line.split_once(" = ") {
-                        if decl.split_whitespace().take(3).any(|op| {
-                            matches!(op, "call" | "invoke" | "callbr" | "atomicrmw" | "cmpxchg")
-                        }) {
-                            stored.clear();
-                        }
-                        if decl
-                            .strip_prefix("alloca i64, align ")
-                            .is_some_and(|align| {
-                                align
-                                    .split(',')
-                                    .next()
-                                    .is_some_and(|n| n.parse::<u64>().is_ok())
-                            })
-                        {
-                            local_slots.insert(name);
-                            continue;
-                        }
-                        let expr = if let Some(load) = decl.strip_prefix("load ") {
-                            let load = load.strip_prefix("volatile ").unwrap_or(load);
-                            load.strip_prefix("i64, ptr ")
-                                .and_then(|arg| stored.get(arg.split(',').next()?.trim()))
-                                .cloned()
-                        } else if let Some(phi) = decl.strip_prefix("phi i64 ") {
-                            let mut incoming = phi.split('[').skip(1).map(|pair| {
-                                let (pair, _) = pair.split_once(']')?;
-                                resolve(pair.split_once(',')?.0)
-                            });
-                            incoming
-                                .next()
-                                .flatten()
-                                .filter(|first| incoming.all(|value| value.as_ref() == Some(first)))
-                        } else {
-                            (|| {
-                                let (op, operands) = decl.split_once(" i64 ")?;
-                                let (left, right) = operands.split_once(',')?;
-                                let a = resolve(left)?;
-                                let b = resolve(right.split(',').next()?)?;
-                                match op.split_whitespace().next()? {
-                                    "add" => a.add(&b, 1),
-                                    "sub" => a.add(&b, -1),
-                                    "mul" if b.terms.is_empty() => a.scale(b.constant),
-                                    "shl"
-                                        if b.terms.is_empty() && (0..64).contains(&b.constant) =>
-                                    {
-                                        a.scale(1i128 << b.constant)
-                                    }
-                                    _ => None,
-                                }
-                            })()
-                        };
-                        if let Some(expr) = expr {
-                            values.insert(name, expr);
-                        }
-                    } else if !line.is_empty() && !line.starts_with(';') && !line.starts_with('#') {
-                        // Block boundaries, calls without results, and unknown memory effects.
-                        stored.clear();
-                    }
-                }
-                exits.push(stored);
+                    sum.add(
+                        &entry
+                            .reg(Reg(10 + u8::try_from(index).ok()?))?
+                            .scale(coef)?,
+                    )
+                });
+        if let Some(lowered) = lowered {
+            by_expression.entry(lowered).or_default().push(name);
+        }
+    }
+    let mut result = Vec::new();
+    for (index, state) in crate::flow::analyze(func, entry.clone())
+        .into_iter()
+        .enumerate()
+    {
+        let Some(state) = state else { continue };
+        for (reg, expr) in &state.regs {
+            if let Some(values) = by_expression.get(expr) {
+                result
+                    .push(json!({"instruction": index, "register": reg.name(), "values": values}));
             }
-            Some((name.to_owned(), returned?))
-        })
-        .collect()
+        }
+        for (&(base, offset), expr) in &state.words {
+            if base == crate::flow::ENTRY_SP
+                && let Some(values) = by_expression.get(expr)
+                && let Ok(offset) = i64::try_from(offset)
+            {
+                result.push(
+                    json!({"instruction": index, "entry_sp_offset": offset, "values": values}),
+                );
+            }
+        }
+    }
+    result
 }
 
 fn ranges(ir: &str, returns: &BTreeSet<&str>) -> BTreeMap<String, WordRange> {

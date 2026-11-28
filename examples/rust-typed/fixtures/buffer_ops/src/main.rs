@@ -482,3 +482,226 @@ pub fn differing_stack_writes(value: u64, flag: u64) -> u64 {
         slot.as_ptr().read_volatile()
     }
 }
+
+#[inline(never)]
+pub unsafe fn repeat_store_raw(output: *mut u64, count: usize, value: u64) {
+    for _ in 0..count {
+        unsafe { output.write_volatile(value) };
+    }
+}
+
+#[inline(never)]
+pub fn safe_signature_without_bounds(input: &[u64], index: usize) -> u64 {
+    unsafe { input.as_ptr().add(index).read() }.wrapping_add(1)
+}
+
+#[inline(never)]
+pub fn safe_raw_without_permission(input: *const u64) -> u64 {
+    unsafe { input.read() }.wrapping_add(3)
+}
+
+#[inline(never)]
+pub unsafe fn read_masked_raw(input: *const u8, offset: usize) -> u64 {
+    u64::from(unsafe { input.add(offset & 7).read() })
+}
+
+#[inline(never)]
+pub unsafe fn read_masked_word_raw(input: *const u64, offset: usize) -> u64 {
+    unsafe { input.add(offset & 7).read() }
+}
+
+#[inline(never)]
+pub unsafe fn horn_branch_read(input: *const u8, value: u64) -> u64 {
+    let restored: u64;
+    unsafe {
+        core::arch::asm!(
+            "addi {restored}, {value}, 7",
+            "addi {restored}, {restored}, -7",
+            restored = lateout(reg) restored,
+            value = in(reg) value,
+            options(nomem, nostack, pure),
+        );
+        if restored != value {
+            u64::from(input.add(64).read_volatile())
+        } else {
+            u64::from(input.read_volatile())
+        }
+    }
+}
+
+#[repr(C)]
+pub struct InitWords {
+    left: u64,
+    right: u64,
+}
+
+#[inline(never)]
+pub fn update_initialized_word(word: &mut u64, value: u64) {
+    let adjusted: u64;
+    unsafe {
+        core::arch::asm!(
+            "addi {out}, {value}, 3",
+            out = lateout(reg) adjusted,
+            value = in(reg) value,
+            options(nomem, nostack, pure),
+        );
+    }
+    *word = adjusted;
+}
+
+#[inline(never)]
+pub fn initialize_disjoint_words(words: &mut InitWords, value: u64) {
+    let adjusted: u64;
+    unsafe {
+        core::arch::asm!(
+            "addi {out}, {value}, 5",
+            out = lateout(reg) adjusted,
+            value = in(reg) value,
+            options(nomem, nostack, pure),
+        );
+    }
+    words.left = adjusted;
+    update_initialized_word(&mut words.right, value);
+}
+
+#[inline(never)]
+pub unsafe fn read_prefix_and_index(input: *const u64, index: usize) -> u64 {
+    let first = unsafe { input.read() };
+    first.wrapping_add(unsafe { input.add(index).read() })
+}
+
+#[inline(never)]
+pub fn initialize_word_alternate(word: &mut u64, value: u64) {
+    let adjusted: u64;
+    unsafe {
+        core::arch::asm!(
+            "addi {out}, {value}, 9",
+            out = lateout(reg) adjusted,
+            value = in(reg) value,
+            options(nomem, nostack, pure),
+        );
+    }
+    *word = adjusted;
+}
+
+#[inline(never)]
+pub fn initialize_via_pointer(words: &mut InitWords, value: u64) {
+    let initialize: fn(&mut u64, u64) = if value & 1 == 0 {
+        update_initialized_word
+    } else {
+        initialize_word_alternate
+    };
+    initialize(&mut words.right, value);
+    words.left = value;
+}
+
+#[inline(never)]
+pub unsafe fn read_guarded_index(input: *const u64, len: usize, index: usize) -> u64 {
+    if index < len {
+        unsafe { input.add(index).read() }
+    } else {
+        0
+    }
+}
+
+#[inline(never)]
+pub unsafe fn read_guarded_relay(input: *const u64, len: usize, index: usize) -> u64 {
+    unsafe { read_guarded_index(input.add(1), len, index) }
+}
+
+#[inline(never)]
+pub unsafe fn read_two_guarded_offsets(
+    input: *const u64,
+    limit: usize,
+    left: usize,
+    right: usize,
+) -> u64 {
+    if left < limit && right < limit {
+        unsafe { input.add(left + right + 1).read() }
+    } else {
+        0
+    }
+}
+
+#[inline(never)]
+pub fn spill_into_output(output: &mut u64, value: u64) {
+    let mut slot = core::mem::MaybeUninit::<u64>::uninit();
+    unsafe {
+        slot.as_mut_ptr().write_volatile(value.wrapping_add(7));
+        *output = slot.as_ptr().read_volatile();
+    }
+}
+
+#[inline(never)]
+#[allow(named_asm_labels)]
+pub fn read_through_join_copy(words: &[u64; 2], selector: usize) -> u64 {
+    let result: u64;
+    unsafe {
+        core::arch::asm!(
+            "beqz {selector}, .Lnoco_read_second",
+            "j .Lnoco_read_join",
+            ".Lnoco_read_second:",
+            "addi {cursor}, {cursor}, 8",
+            ".Lnoco_read_join:",
+            "mv {address}, {cursor}",
+            "ld {result}, 0({address})",
+            cursor = inout(reg) words.as_ptr() => _,
+            selector = in(reg) selector,
+            address = out(reg) _,
+            result = lateout(reg) result,
+            options(readonly, nostack),
+        );
+    }
+    result
+}
+
+#[inline(never)]
+pub fn stack_after_register_setup(value: u64) -> u64 {
+    let result: u64;
+    unsafe {
+        core::arch::asm!(
+            "addi {result}, {value}, 1",
+            "addi sp, sp, -16",
+            "addi {address}, sp, 8",
+            "sd {result}, 0({address})",
+            "ld {result}, 0({address})",
+            "addi sp, sp, 16",
+            result = out(reg) result,
+            value = in(reg) value,
+            address = out(reg) _,
+        );
+    }
+    result
+}
+
+#[inline(never)]
+#[allow(named_asm_labels)]
+pub fn advance_by_one_or_two(limit: u64, selector: u64) -> u64 {
+    if limit > 1000 {
+        return 0;
+    }
+    let cursor: u64;
+    unsafe {
+        core::arch::asm!(
+            "li {cursor}, 0",
+            "li {scratch}, 0",
+            "beqz {limit}, .Lnoco_steps_done",
+            ".Lnoco_steps_loop:",
+            "beqz {selector}, .Lnoco_steps_slow",
+            "addi {cursor}, {cursor}, 2",
+            "addi {scratch}, {scratch}, 2",
+            "bltu {cursor}, {limit}, .Lnoco_steps_loop",
+            "j .Lnoco_steps_done",
+            ".Lnoco_steps_slow:",
+            "addi {cursor}, {cursor}, 1",
+            "bltu {cursor}, {limit}, .Lnoco_steps_loop",
+            ".Lnoco_steps_done:",
+            cursor = out(reg) cursor,
+            scratch = out(reg) _,
+            limit = in(reg) limit,
+            selector = in(reg) selector,
+            options(nomem, nostack),
+        );
+    }
+    cursor
+}

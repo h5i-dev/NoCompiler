@@ -1,8 +1,9 @@
 use crate::contract_ir::{Access, Expr, Input, Pointer, Summary, ViewEnd};
+use rustc_ast::InlineAsmOptions;
 use rustc_middle::{
     mir::{
         self, AggregateKind, BinOp, Body, CastKind, Local, Operand, Place, ProjectionElem, Rvalue,
-        StatementKind, TerminatorKind, UnOp,
+        StatementKind, TerminatorKind, UnOp, visit::Visitor,
     },
     ty::{self, Instance, Ty, TyCtxt, TypingEnv},
 };
@@ -13,12 +14,25 @@ enum Value {
     Scalar(Expr),
     Address(Pointer),
     End(ViewEnd),
+    Functions(BTreeSet<String>),
 }
 #[derive(Clone, Default, PartialEq, Eq)]
 struct State {
     locals: BTreeMap<Local, Value>,
     fields: BTreeMap<(usize, u64), Expr>,
+    initialized: BTreeSet<(usize, u64)>,
 }
+#[derive(Default)]
+struct Moves<'tcx>(Vec<Place<'tcx>>);
+
+impl<'tcx> Visitor<'tcx> for Moves<'tcx> {
+    fn visit_operand(&mut self, operand: &Operand<'tcx>, _location: mir::Location) {
+        if let Operand::Move(place) = operand {
+            self.0.push(*place);
+        }
+    }
+}
+
 impl Value {
     fn view_end(&self, stride: u64) -> Option<ViewEnd> {
         match self {
@@ -34,11 +48,26 @@ impl Value {
 }
 
 impl State {
+    fn forget_fields(&mut self) {
+        self.fields.clear();
+        self.initialized.clear();
+    }
+}
+
+impl State {
     fn meet(&mut self, other: &Self, stride: impl Fn(Local) -> Option<u64>) -> bool {
         let mut changed = false;
         self.locals.retain(|local, value| {
             if other.locals.get(local) == Some(value) {
                 return true;
+            }
+            if let (Value::Functions(targets), Some(Value::Functions(other))) =
+                (&mut *value, other.locals.get(local))
+            {
+                let before = targets.len();
+                targets.extend(other.iter().cloned());
+                changed |= targets.len() != before;
+                return targets.len() <= 8;
             }
             let shared = stride(*local).and_then(|stride| {
                 let end = value.view_end(stride)?;
@@ -56,7 +85,9 @@ impl State {
         let before = self.fields.len();
         self.fields
             .retain(|key, value| other.fields.get(key) == Some(value));
-        changed || before != self.fields.len()
+        let initialized = self.initialized.len();
+        self.initialized.retain(|key| other.initialized.contains(key));
+        changed || before != self.fields.len() || initialized != self.initialized.len()
     }
 }
 // Preserve a small number of correlated paths. Widen once at a busy merge
@@ -255,6 +286,11 @@ impl<'tcx> Analyzer<'_, 'tcx> {
                     self.env,
                     ty::EarlyBinder::bind(self.tcx, c.const_),
                 );
+                if let Some(instance) = self.direct_callee(operand) {
+                    return Some(Value::Functions(BTreeSet::from([
+                        self.tcx.symbol_name(instance).name.to_owned()
+                    ])));
+                }
                 if !matches!(constant.ty().kind(), ty::Int(_) | ty::Uint(_) | ty::Bool) {
                     return None;
                 }
@@ -296,7 +332,7 @@ impl<'tcx> Analyzer<'_, 'tcx> {
             Rvalue::CopyForDeref(place) => self.operand(&Operand::Copy(*place), state, out),
             Rvalue::Cast(CastKind::PtrToPtr | CastKind::PointerCoercion(..), operand, _) => {
                 match self.operand(operand, state, out)? {
-                    Value::Address(pointer) => Some(Value::Address(pointer)),
+                    value @ (Value::Address(_) | Value::Functions(_)) => Some(value),
                     _ => None,
                 }
             }
@@ -383,8 +419,44 @@ impl<'tcx> Analyzer<'_, 'tcx> {
         state.locals.retain(|_, value| match value {
             Value::Address(pointer) => pointer.argument != argument,
             Value::End(view) => view.argument != argument,
-            Value::Scalar(_) => true,
+            Value::Scalar(_) | Value::Functions(_) => true,
         });
+    }
+
+    fn invalidate_place(&self, state: &mut State, place: Place<'tcx>) {
+        if place.projection.is_empty() {
+            state.locals.remove(&place.local);
+        } else if place.projection.iter().any(|p| matches!(p, ProjectionElem::Deref)) {
+            if let Some(address) = self.address(place, state)
+                && let Some(layout) = self.layout(self.place_ty(place)).filter(|layout| layout.is_sized())
+            {
+                Self::kill_write(state, address.argument, &address.offset,
+                    &Expr::constant(layout.size.bytes().into()));
+            } else {
+                state.forget_fields();
+            }
+        }
+    }
+
+    fn kill_write(state: &mut State, argument: usize, offset: &Expr, size: &Expr) {
+        let span = || {
+            if !offset.terms.is_empty() || !size.terms.is_empty() {
+                return None;
+            }
+            let start = u64::try_from(offset.constant).ok()?;
+            let bytes = u64::try_from(size.constant).ok()?;
+            Some((start, start.checked_add(bytes)?))
+        };
+        if let Some((start, end)) = span() {
+            let separate = |base, word: u64| {
+                start == end || (base == argument
+                    && (word >= end || word.checked_add(8).is_some_and(|limit| limit <= start)))
+            };
+            state.fields.retain(|&(base, word), _| separate(base, word));
+            state.initialized.retain(|&(base, word)| separate(base, word));
+        } else {
+            state.forget_fields();
+        }
     }
 
     fn apply_summary(
@@ -421,6 +493,9 @@ impl<'tcx> Analyzer<'_, 'tcx> {
             if let Some((argument, offset)) = resolve(access.argument, &access.offset)
                 && let Some(bytes) = eval(&access.bytes)
             {
+                if access.write {
+                    Self::kill_write(state, argument, &offset, &bytes);
+                }
                 out.accesses.insert(Access {
                     argument,
                     offset,
@@ -428,6 +503,9 @@ impl<'tcx> Analyzer<'_, 'tcx> {
                     ..access.clone()
                 });
             } else {
+                if access.write {
+                    state.forget_fields();
+                }
                 out.unresolved_access = true;
             }
         }
@@ -437,8 +515,17 @@ impl<'tcx> Analyzer<'_, 'tcx> {
             }
         }
         if summary.unresolved_access || !summary.drops.is_empty() {
+            state.forget_fields();
             out.unresolved_access = true;
             return None;
+        }
+        for &(parameter, offset) in &summary.initialized_words {
+            if let Some((root, offset)) = resolve(parameter, &Expr::constant(offset.into()))
+                && offset.terms.is_empty()
+                && let Ok(offset) = offset.constant.try_into()
+            {
+                state.initialized.insert((root, offset));
+            }
         }
         for (&(parameter, offset), value) in &summary.field_writes {
             if let Some((root, offset)) = resolve(parameter, &Expr::constant(offset.into()))
@@ -457,17 +544,25 @@ impl<'tcx> Analyzer<'_, 'tcx> {
         Some(Value::Address(Pointer {
             argument,
             offset,
-            length: Some(eval(view.length.as_ref()?)?),
+            length: match &view.length {
+                Some(length) => Some(eval(length)?),
+                None => None,
+            },
         }))
     }
 
     fn transfer(&self, index: mir::BasicBlock, mut state: State, out: &mut Summary) -> State {
         let block = &self.body.basic_blocks[index];
-        for statement in &block.statements {
+        for (statement_index, statement) in block.statements.iter().enumerate() {
             match &statement.kind {
                 StatementKind::Assign(assign) => {
                     let (place, rvalue) = &**assign;
                     let value = self.value(rvalue, &state, out);
+                    let mut moves = Moves::default();
+                    moves.visit_rvalue(rvalue, mir::Location { block: index, statement_index });
+                    for source in moves.0 {
+                        self.invalidate_place(&mut state, source);
+                    }
                     if place.projection.is_empty() {
                         state.locals.remove(&place.local);
                         if let Some(value) = value {
@@ -490,25 +585,21 @@ impl<'tcx> Analyzer<'_, 'tcx> {
                             .layout(self.place_ty(*place))
                             .filter(|layout| layout.is_sized())
                             .map(|layout| layout.size.bytes());
-                        if let (Some((argument, offset)), Some(size)) = (location, size)
-                            && let Some(end) = offset.checked_add(size)
-                        {
-                            // Other argument roots may alias. Within this root, disjoint
-                            // word writes remain available for the return contract.
-                            state.fields.retain(|&(base, start), _| {
-                                base == argument
-                                    && (start >= end
-                                        || start
-                                            .checked_add(8)
-                                            .is_some_and(|limit| limit <= offset))
-                            });
-                            if size == 8
-                                && let Some(Value::Scalar(expr)) = value
-                            {
-                                state.fields.insert((argument, offset), expr);
+                        if let (Some((argument, offset)), Some(size)) = (location, size) {
+                            Self::kill_write(
+                                &mut state,
+                                argument,
+                                &Expr::constant(offset.into()),
+                                &Expr::constant(size.into()),
+                            );
+                            if size == 8 && crate::word_integer(self.place_ty(*place)) {
+                                state.initialized.insert((argument, offset));
+                                if let Some(Value::Scalar(expr)) = value {
+                                    state.fields.insert((argument, offset), expr);
+                                }
                             }
                         } else {
-                            state.fields.clear();
+                            state.forget_fields();
                         }
                     }
                 }
@@ -538,7 +629,7 @@ impl<'tcx> Analyzer<'_, 'tcx> {
                             out.unresolved_access = true;
                         }
                     }
-                    state.fields.clear();
+                    state.forget_fields();
                 }
                 _ => {}
             }
@@ -554,17 +645,56 @@ impl<'tcx> Analyzer<'_, 'tcx> {
                     .iter()
                     .map(|arg| self.operand(&arg.node, &state, out))
                     .collect();
-                state.locals.remove(&destination.local);
-                state.fields.clear();
-                if destination.projection.is_empty()
-                    && block.terminator().successors().count() == 1
-                    && let Some(instance) = self.direct_callee(func)
-                    && let Some(summary) = self.summaries.get(self.tcx.symbol_name(instance).name)
-                {
-                    if let Some(value) = self.apply_summary(summary, &values, &mut state, out) {
-                        state.locals.insert(destination.local, value);
+                for arg in args {
+                    if let Operand::Move(place) = arg.node {
+                        self.invalidate_place(&mut state, place);
                     }
-                } else {
+                }
+                let targets = match self.operand(func, &state, out) {
+                    Some(Value::Functions(targets)) => targets,
+                    _ => BTreeSet::new(),
+                };
+                out.callees.extend(targets.iter().cloned());
+                state.locals.remove(&destination.local);
+                if !destination.projection.is_empty()
+                    || block.terminator().successors().count() != 1
+                    || targets.is_empty()
+                    || targets.iter().any(|name| !self.summaries.contains_key(name))
+                {
+                    state.forget_fields();
+                    out.unresolved_access = true;
+                    return state;
+                }
+                let mut alternatives = targets.iter().map(|name| {
+                    let mut next = state.clone();
+                    let summary = &self.summaries[name];
+                    if let Some(value) = self.apply_summary(summary, &values, &mut next, out) {
+                        next.locals.insert(destination.local, value);
+                    }
+                    next
+                });
+                let stride = |local: Local| self.view_stride(self.ty(self.body.local_decls[local].ty));
+                if let Some(mut merged) = alternatives.next() {
+                    for alternative in alternatives {
+                        merged.meet(&alternative, stride);
+                    }
+                    state = merged;
+                }
+            }
+            TerminatorKind::InlineAsm { options, operands, .. } => {
+                for operand in operands {
+                    let output = match operand {
+                        mir::InlineAsmOperand::Out { place, .. } => *place,
+                        mir::InlineAsmOperand::InOut { out_place, .. } => *out_place,
+                        _ => None,
+                    };
+                    if let Some(place) = output {
+                        self.invalidate_place(&mut state, place);
+                        self.memory(place, &state, true, out);
+                    }
+                }
+                if !options.contains(InlineAsmOptions::NOMEM) {
+                    state.forget_fields();
                     out.unresolved_access = true;
                 }
             }
@@ -572,7 +702,7 @@ impl<'tcx> Analyzer<'_, 'tcx> {
                 if let Some(Value::Address(p)) = state.locals.remove(&place.local) {
                     Self::forget_root(&mut state, out, p.argument);
                 }
-                state.fields.clear();
+                state.forget_fields();
                 out.unresolved_access = true;
             }
             _ => {}
@@ -665,13 +795,14 @@ fn summarize<'tcx>(
         let result = state.locals.get(&mir::RETURN_PLACE);
         summary.view_end = stride(mir::RETURN_PLACE).and_then(|stride| result?.view_end(stride));
         match result {
-            Some(Value::Address(pointer)) if pointer.length.is_some() => {
+            Some(Value::Address(pointer)) => {
                 summary.returned_view = Some(pointer.clone())
             }
             Some(Value::Scalar(value)) => summary.returned_scalar = Some(value.clone()),
             _ => {}
         }
         summary.field_writes = state.fields;
+        summary.initialized_words = state.initialized;
     }
     summary
 }
@@ -680,48 +811,74 @@ pub fn summarize_selected<'tcx>(
     tcx: TyCtxt<'tcx>,
     selected: &BTreeMap<String, Instance<'tcx>>,
 ) -> BTreeMap<String, Summary> {
-    fn visit<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        name: &str,
-        selected: &BTreeMap<String, Instance<'tcx>>,
-        active: &mut BTreeSet<String>,
-        summaries: &mut BTreeMap<String, Summary>,
-    ) {
-        if summaries.contains_key(name) || !active.insert(name.to_owned()) {
-            return;
-        }
-        let instance = selected[name];
+    let mut summaries = BTreeMap::new();
+    let mut callers = BTreeMap::<&str, BTreeSet<&str>>::new();
+    let mut waits: BTreeMap<_, usize> = selected.keys().map(|name| (name.as_str(), 0)).collect();
+    for (name, &instance) in selected {
         let body = tcx.instance_mir(instance.def);
         let analyzer = Analyzer {
             tcx,
             instance,
             body,
             env: TypingEnv::fully_monomorphized(),
-            summaries,
+            summaries: &summaries,
         };
-        let callees: BTreeSet<_> = body
-            .basic_blocks
-            .iter()
-            .filter_map(|block| {
-                let TerminatorKind::Call { func, .. } = &block.terminator().kind else {
-                    return None;
-                };
-                let callee = analyzer.direct_callee(func)?;
-                let symbol = tcx.symbol_name(callee).name;
-                selected.contains_key(symbol).then_some(symbol)
-            })
-            .collect();
-        for callee in callees {
-            visit(tcx, callee, selected, active, summaries);
+        for block in body.basic_blocks.iter() {
+            if let TerminatorKind::Call { func, .. } = &block.terminator().kind
+                && let Some(callee) = analyzer.direct_callee(func)
+                && let Some((symbol, _)) = selected.get_key_value(tcx.symbol_name(callee).name)
+            {
+                if callers.entry(symbol).or_default().insert(name) {
+                    *waits.get_mut(name.as_str()).expect("selected function") += 1;
+                }
+            }
         }
-        let summary = summarize(tcx, instance, body, summaries);
-        summaries.insert(name.to_owned(), summary);
-        active.remove(name);
     }
-    let mut summaries = BTreeMap::new();
-    let mut active = BTreeSet::new();
-    for name in selected.keys() {
-        visit(tcx, name, selected, &mut active, &mut summaries);
+    let mut ready: BTreeSet<_> = waits.iter().filter_map(|(&name, &count)| (count == 0).then_some(name)).collect();
+    let mut pending = VecDeque::new();
+    while let Some(callee) = ready.pop_first() {
+        pending.push_back(callee);
+        for caller in callers.get(callee).into_iter().flatten() {
+            let count = waits.get_mut(caller).expect("selected caller");
+            *count -= 1;
+            if *count == 0 {
+                ready.insert(caller);
+            }
+        }
+    }
+    pending.extend(waits.iter().filter_map(|(&name, &count)| (count != 0).then_some(name)));
+    let mut queued: BTreeSet<_> = pending.iter().copied().collect();
+    let mut updates = BTreeMap::<&str, usize>::new();
+    // A recursive access can increase an offset indefinitely. Once a
+    // function exceeds the refinement budget, use an unknown-effects summary.
+    const MAX_UPDATES: usize = 8;
+    while let Some(name) = pending.pop_front() {
+        queued.remove(name);
+        let count = updates.entry(name).or_default();
+        if *count > MAX_UPDATES {
+            continue;
+        }
+        let instance = selected[name];
+        let summary = if *count == MAX_UPDATES {
+            Summary { unresolved_access: true, ..Summary::default() }
+        } else {
+            summarize(tcx, instance, tcx.instance_mir(instance.def), &summaries)
+        };
+        for callee in &summary.callees {
+            if let Some((key, _)) = selected.get_key_value(callee) {
+                callers.entry(key).or_default().insert(name);
+            }
+        }
+        if summaries.get(name) == Some(&summary) {
+            continue;
+        }
+        *count += 1;
+        summaries.insert(name.to_owned(), summary);
+        for &caller in callers.get(name).into_iter().flatten() {
+            if queued.insert(caller) {
+                pending.push_back(caller);
+            }
+        }
     }
     summaries
 }

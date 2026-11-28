@@ -77,3 +77,9 @@ memchr_assembly = (artifacts / "memchr/annotated.s").read_text()
 assert memchr_assembly.count("#: inv [") == 5
 assert "#: join [tail" in memchr_assembly
 PY
+
+cargo nocompiler check "${buffer[@]}" --no-mir-hints \
+    --function buffer_ops::advance_by_one_or_two --artifacts "$artifacts/multi-latch"
+jq -e '.functions["buffer_ops::advance_by_one_or_two"].status == "proved"' \
+    "$artifacts/multi-latch/report.json"
+rg -q '#: inv .*decreases remaining' "$artifacts/multi-latch/annotated.s"

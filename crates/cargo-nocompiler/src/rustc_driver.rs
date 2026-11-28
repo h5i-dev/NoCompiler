@@ -2,6 +2,7 @@
 #![feature(rustc_private)]
 
 extern crate rustc_abi;
+extern crate rustc_ast;
 extern crate rustc_driver;
 extern crate rustc_hir;
 extern crate rustc_interface;
@@ -210,7 +211,13 @@ fn capture_abi<'tcx>(
         }
         arguments.push(arg_desc);
     }
-    Ok((name.into(), format!("{output}\t{}", arguments.join(","))))
+    let safety = tcx
+        .fn_sig(instance.def_id())
+        .instantiate(tcx, instance.args)
+        .skip_binder()
+        .safety();
+    let safety = if safety.is_unsafe() { "unsafe" } else { "safe" };
+    Ok((name.into(), format!("{output}\t{}\t{safety}", arguments.join(","))))
 }
 
 fn qualified_path<'tcx>(

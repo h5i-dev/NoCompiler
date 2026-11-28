@@ -138,10 +138,18 @@ analysis covers the declared machine-level field values.
 
 For a resolved, selected direct MIR callee, the analyzer substitutes the
 actual arguments into the callee's effects, field writes, scalar result, and
-returned slice. It analyzes these callees before their callers. Unknown calls
-or calls with an unwind successor invalidate the caller's field facts. Known
-drop effects invalidate aliases derived from the dropped argument in the
-candidate analysis. The linked-image proof still checks the resulting contracts.
+returned slice. A call-graph worklist stabilizes these summaries. With a known write span,
+disjoint tracked fields in the same input region survive a call. Unknown
+effects or calls with an unwind successor invalidate the caller's field
+facts. MIR moves consume the source binding and invalidate overlapping
+projected field values. Complete scalar stores also record initialization
+when the stored value has no affine expression. At a successful return the
+generated contract gives such an initialized word a fresh output variable.
+Known drop effects invalidate aliases derived from the dropped argument. A finite set of function-pointer targets contributes
+the union of possible effects and the intersection of guaranteed field
+values and initialization. Linked AUIPC/ADDI materialization of known
+function addresses and finite register merges supply candidates for JALR.
+The Lean checker validates every possible callee against the linked image. The linked-image proof still checks the resulting contracts.
 
 For ownership transfer with `take` and `give`, the Lean call rule carries
 the fields promised on the returned capability into the caller's state.
@@ -152,24 +160,18 @@ initialized by the callee and read by the caller on a linked RV64 image.
 
 Pass `--llvm-hints` to also emit the optimized LLVM IR and run pinned LLVM
 `opt` and `llc`. This produces `rustc.ll`, `llvm-scev.txt`, and
-`llvm-machine.mir`. A scalar `i64` result range can refine a contract when
-all Machine IR return sites use `a0`. For each supported loop the tool matches the
-physical latch operands against the RV64 branch. It checks an exact constant
-ScalarEvolution trip count against the RV64 affine recurrence. If
-ScalarEvolution reports a symbolic count, the tool can instead derive the
-count from a supported affine RV64 recurrence before emitting an invariant.
-For a count of the form `(-1 + %argument)` in a supported LLVM signature,
-it also resolves the SSA argument to its integer ABI register and checks
-that the RV64 recurrence yields that same entry value.
-Distinct LLVM loop headers can supply candidates for separate or nested RV64
-loops when Machine IR preserves their association.
-Machine stack object ranges can
-also supply an addressable frame annotation for a constant register-relative
-stack access when the RV64 frame size and computed address agree with Machine
-IR. The linked ELF is still the input
-to the proof. Machine IR is generated in a separate backend run and serves
-as a candidate source. General mapping of LLVM SSA values to registers or
-spills, and non-affine recurrence inference, are outside the supported subset.
+`llvm-machine.mir`. The tool reads LLVM functions, SSA operands, and block
+successors through the pinned LLVM C API. It reads Machine IR function and
+frame records as YAML. ScalarEvolution's text report still supplies trip
+count candidates for the diagnostics. Symbolic counts naming an argument
+are associated with the integer ABI register using the structured LLVM
+signature. Loop annotations use RV64 branch predicates and register
+transitions, including with LLVM hints disabled.
+Machine stack object ranges are reported alongside CFG-derived frame
+annotations. The linked ELF supplies the instructions for the proof.
+Machine IR is generated in a separate backend run. General mapping of
+LLVM SSA values and non-affine recurrence inference are outside the
+supported subset.
 
 For scalar functions with word arguments, the tool can also reconstruct a
 common affine result across LLVM returns from `add`, `sub`, and constant
@@ -177,37 +179,88 @@ common affine result across LLVM returns from `add`, `sub`, and constant
 follow stores and reloads through a recognized local word-sized stack slot.
 For acyclic control flow a slot value survives a join only if every incoming
 path has the same affine value. Unknown stores and calls invalidate those
-slot facts, and cyclic or unsupported control flow uses block-local facts.
-Machine IR checks the `a0` return location, and
-the linked-image proof checks the resulting postcondition.
+slot facts. Cyclic LLVM functions leave the affine return candidate unset.
+Machine IR checks the `a0` return location, and the linked-image proof
+checks the resulting postcondition. The `llvm_affine_locations` report
+records RV64 registers and entry-SP-relative stack slots that compute the
+same affine value as an LLVM SSA definition, including after a spill or
+reload. The location analysis also runs for void functions and functions
+with pointer parameters. Equal expressions may have multiple SSA names.
 `scripts/rust-typed-trial/check-llvm-affine.sh` verifies a caller that needs
 that equality to prove a buffer access, with MIR hints disabled.
 
 `scripts/rust-typed-trial/check-compiler-hints.sh` compares an LLVM-derived
-return bound used by a caller, a fixed-trip loop, a register-relative stack
-access, and a MIR-derived slice-end relation with a run that disables the compiler-derived candidates.
+return bound used by a caller, a register-relative stack access, and a
+MIR-derived slice-end relation with a run that disables the compiler-derived
+candidates. The same test checks a fixed-trip loop with and without hints.
 
 Run `scripts/rust-typed-trial/check-auto.sh` to exercise both fixture crates.
 The fixtures use Rust ABI functions with mangled symbols, including a
 two-buffer copy and a deliberately unchecked read.
 
+## RV64 dataflow analysis
+
+The annotation generator evaluates the reachable RV64 control-flow graph with
+a worklist. The state combines exact affine register and word-memory facts,
+unsigned intervals, upper bounds on register differences, power-of-two
+congruences, and intervals for offsets from an input address. Equality and
+unsigned branches refine the state on each edge, as do signed branches when
+operand signs are known. A join retains bounds implied on every incoming edge.
+Widening drops growing bounds at repeatedly updated targets of retreating
+edges in reverse postorder, including in irreducible CFGs. Two narrowing
+sweeps recover bounds by recomputing all incoming edges after widening. When
+an add may wrap, the interval transfer drops the ordinary integer bound and
+the congruence continues to hold modulo 2^64.
+
+Memory and frame inference consume stabilized pre-instruction facts, including
+in cyclic CFGs. Loop annotation generation also uses stabilized facts to retain
+affine expressions at headers. Termination measures and the `inv` parameters
+continue to use the recurrence analysis described below. The linked-image
+checker validates the generated annotations.
+
+With the release binary built, run
+`scripts/rust-typed-trial/check-flow-fixedpoint.sh` to check that an access in
+a cyclic CFG yields a raw-pointer requirement and a Lean proof, and that an
+unchecked read behind a safe Rust signature is rejected as a bounds error,
+for both a slice and a raw-pointer argument. It also checks that a bounded
+register-derived offset yields the required byte range and alignment for
+byte and word accesses without MIR hints.
+
+### Horn reachability refinement
+
+Pass `--chc-solver /path/to/z3` to refine raw-pointer requirements with bounded
+Horn queries over the numerical RV64 CFG. Supported arithmetic is modeled as
+64-bit bitvectors. Unknown register writes yield unconstrained values.
+The generator excludes a conditional edge only when its query returns
+`unsat`. It uses the ordinary CFG when the solver times out or its output
+cannot be read. Reports include `chc_pruned_edges`, keyed by linker symbol.
+Both checkers still verify the annotations against the original executable.
+Run `scripts/rust-typed-trial/check-chc.sh /path/to/z3` to compare the verified
+contracts with refinement, with the default analysis, and with an unavailable
+solver.
+
 ## Loop evaluation
 
 The analyzer builds a control-flow graph from optimized RV64 assembly and
-finds natural loops using dominance. It tracks affine register updates along
-paths to each back edge. It proposes an invariant when the initial distance to
-the exit equals the stride times a slice length and all back edges agree on
-the recurrence. For nested loops it forgets registers modified by inner loops
+finds natural loops using dominance. It projects the continuing branch
+predicate through the entry and latch register states, including predicates
+computed in temporary registers and guards before an unconditional back edge.
+Fixed affine progress can yield a measure without LLVM hints. For a loop
+with several back edges, the analyzer substitutes each candidate's register
+equations into every latch transition and checks that the equations hold
+after the transition and the measure decreases by a positive constant.
+Different latches can have different positive decrements. For nested loops it forgets registers modified by inner loops
 when inferring an outer recurrence. When incoming branches establish a common
 nonzero slice length, it can preserve that fact with a `join` annotation.
 The checker validates every proposed annotation against the machine code.
 
-The stack analyzer recognizes a fixed `addi sp, sp, -F` prologue and derives
-8-byte slots or byte ranges from direct `offset(sp)` loads and stores. It
-computes the stack budget transitively for direct calls to selected functions.
-Dynamic frames and accesses through derived stack pointers are outside these
-rules. A proved stack budget is conditional on the caller having that amount of
-space available.
+The stack analyzer tracks `sp` relative to its entry value on the CFG.
+It recognizes one fixed nonzero allocation depth and translates both
+direct and derived stack addresses into offsets in that frame. Direct
+aligned word accesses can use slots. Aliased accesses and ranges lent to
+direct callees use addressable byte ranges. The stack budget includes
+selected direct callees. A proved stack budget is conditional on the
+caller having that amount of space available.
 
 Run the evaluation with `scripts/rust-typed-trial/check-loops.sh`. The
 `--no-infer-loops` flag runs the signature-only baseline.
@@ -239,16 +292,31 @@ At a merge of paths that consume different prefixes of a slice, the tool can
 retain a common symbolic prefix instead of forgetting the cursor and length
 independently. The resulting join keeps the cursor's stride alignment and
 the relationship to the end of the slice. A later loop can express its
-invariant using that endpoint and its own remaining count.
+invariant using that endpoint and its own remaining count. Backward
+dataflow identifies incoming registers used in addresses, including through
+copies and affine computations between the join and the access. At a labeled
+join the generator can retain a varying address, along with a relation to
+another register when all incoming value pairs lie on the same integer line.
 
-For acyclic functions, direct loads, stores, and already inferred direct
+Direct loads, stores, and already inferred direct
 callees can generate fixed-size `ro` or `rw` raw-pointer requirements. The
 checker validates the callee body and checks that callers can lend each
 required range. The stack analyzer can make a fixed local range available
 to such a call. Standalone raw-pointer entry points still require callers
-to satisfy the inferred conditions. The report lists these conditions by
-symbol and input register. Variable-length raw-pointer footprints and
-indirect calls are outside these inference rules.
+to satisfy the inferred conditions. These conditions are emitted for Rust
+`unsafe fn` entry points. A safe function taking a raw pointer receives an
+address without a borrowed region. The report lists candidate requirements
+by symbol and input register. Both the MIR adapter and the RV64 analysis can propose an affine footprint
+with a runtime length. The RV64 analysis preserves branch bounds on entry
+values when the registers holding them are overwritten, and substitutes
+actual arguments when propagating demands through known direct calls.
+An affine address can use several bounded inputs. The analysis keeps
+unsigned comparison facts through boolean conjunctions and uses a
+symbolic upper bound only when the CFG facts order the alternatives.
+If one observed access endpoint covers the other endpoints for all
+nonnegative inputs, the generator uses that endpoint. The checker still
+validates every access and call. Incomparable symbolic endpoints and
+indirect-call effects are outside these inference rules.
 
 Run `scripts/rust-typed-trial/check-relations.sh` for the prefix join, calls
 using a sub-slice or a local stack buffer, and a too-short buffer that the
@@ -275,11 +343,12 @@ backing array fields. For example:
 {"heapless::vec::VecInner": {"len": "buffer.buffer"}}
 ```
 
-The mapping is an override. The default inference looks for a word-sized
-length field, a unique backing array, and an emitted mutator that compares
-the length with capacity before increasing it. The report names the inferred
-candidate and the method that suggested it. The numeric capacity and length
-offset come from rustc's concrete layout. For a mutable borrow, the checker
+Discovery uses rustc's concrete field offsets and array capacities. For each
+candidate word field it looks for a reachable store that increments the
+original field value and whose CFG facts bound the stored value by the array
+capacity. Field names carry no semantic meaning. The report records the
+candidate and its witness method. Only mappings supplied with `--invariants`
+produce entry and return conditions. For a mutable borrow, the checker
 verifies the bound on return, including when paths update the field
 differently. The entry bound is a semantic requirement on incoming
 collection values. It remains an assumption for constructors and methods

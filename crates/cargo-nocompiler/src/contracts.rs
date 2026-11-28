@@ -1,12 +1,12 @@
 use crate::{
     contract_ir::{Expr, Input, Pointer, Summary, ViewEnd},
-    flow::{State, entry},
+    flow::{State, address, analyze_detailed, entry},
     loops::Slice,
     memory::Regions,
 };
 use nocompiler_typed::{
     asm::Func,
-    isa::{BrOp, IOp, Instr, LdOp, Reg, StOp},
+    isa::{Instr, Reg, StOp},
     lin::{Lin, Names, Var},
 };
 use serde_json::{Value, json};
@@ -18,6 +18,7 @@ pub type Rules = BTreeMap<String, BTreeMap<String, String>>;
 pub struct Layout {
     pub output: String,
     pub args: Vec<String>,
+    pub is_unsafe: bool,
 }
 
 fn fields(description: &str) -> (&str, BTreeMap<&str, (i128, &str)>) {
@@ -44,7 +45,7 @@ pub fn pointers(layout: &Layout) -> BTreeMap<Reg, Var> {
     result
 }
 
-pub fn discover(funcs: &[Func], layouts: &BTreeMap<String, Layout>) -> (Rules, Value) {
+pub fn discover(funcs: &[Func], layouts: &BTreeMap<String, Layout>) -> Value {
     let mut candidates = Rules::new();
     let mut witnesses = BTreeMap::<String, Vec<String>>::new();
     let mut conflicting = BTreeSet::new();
@@ -56,22 +57,19 @@ pub fn discover(funcs: &[Func], layouts: &BTreeMap<String, Layout>) -> (Rules, V
                 && align.parse::<i128>().unwrap_or(0) >= 8
             {
                 let (name, fields) = fields(descr);
-                let lengths: Vec<_> = fields
-                    .iter()
-                    .filter_map(|(&k, &(offset, d))| {
-                        (matches!(k, "len" | "length") && d == "word").then_some((k, offset))
+                let (words, arrays): (Vec<_>, Vec<_>) = fields
+                    .into_iter()
+                    .partition(|(_, (_, kind))| *kind == "word");
+                let mut pairs = words.iter().flat_map(|&(field, (offset, _))| {
+                    let bound = field_growth_bound(f, Reg(register), offset);
+                    arrays.iter().filter_map(move |&(array, (_, kind))| {
+                        let capacity: u64 = kind.parse().ok()?;
+                        (capacity > 0 && bound.is_some_and(|max| max <= capacity))
+                            .then_some((field, array))
                     })
-                    .collect();
-                let arrays: Vec<_> = fields
-                    .iter()
-                    .filter_map(|(&k, (_, d))| Some((k, d.parse::<i128>().ok()?)))
-                    .collect();
-                if let ([(field, offset)], [(array, capacity)]) =
-                    (lengths.as_slice(), arrays.as_slice())
-                    && *capacity > 0
-                    && checked_growth(f, Reg(register), *offset, *capacity)
-                {
-                    let pair = BTreeMap::from([((*field).to_owned(), (*array).to_owned())]);
+                });
+                if let (Some((field, array)), None) = (pairs.next(), pairs.next()) {
+                    let pair = BTreeMap::from([(field.to_owned(), array.to_owned())]);
                     if candidates
                         .get(name)
                         .is_some_and(|previous| *previous != pair)
@@ -89,69 +87,42 @@ pub fn discover(funcs: &[Func], layouts: &BTreeMap<String, Layout>) -> (Rules, V
         }
     }
     candidates.retain(|name, _| !conflicting.contains(name));
-    let report = Value::Object(
+    Value::Object(
         candidates
             .iter()
             .map(|(n, p)| (n.clone(), json!({"fields":p,"witnesses":witnesses[n]})))
             .collect(),
-    );
-    (candidates, report)
+    )
 }
 
-fn checked_growth(func: &Func, base: Reg, offset: i128, capacity: i128) -> bool {
-    let mut length = BTreeSet::new();
-    let mut increment = BTreeSet::new();
-    let mut comparison = false;
-    let mut state = State::default();
-    for p in &func.instrs {
-        match p.instr {
-            Instr::Load {
-                op: LdOp::Ld,
-                rd,
-                rs1,
-                off,
-            } if rs1 == base && i128::from(off) == offset => {
-                length.insert(rd);
-            }
-            Instr::Store {
-                op: StOp::Sd,
-                rs1,
-                rs2,
-                off,
-            } if rs1 == base
-                && i128::from(off) == offset
-                && comparison
-                && increment.contains(&rs2) =>
-            {
-                return true;
-            }
-            Instr::Branch {
-                op: BrOp::Bgeu | BrOp::Bltu,
-                rs1,
-                rs2,
-                ..
-            } => {
-                comparison |= [(rs1, rs2), (rs2, rs1)].into_iter().any(|(a, b)| {
-                    length.contains(&a)
-                        && state
-                            .reg(b)
-                            .and_then(|v| v.as_const())
-                            .is_some_and(|k| k == capacity || k == capacity - 1)
-                });
-            }
-            Instr::IOp {
-                op: IOp::Addi,
-                rd,
-                rs1,
-                imm: 1,
-            } if length.contains(&rs1) => {
-                increment.insert(rd);
-            }
-            _ => {}
-        }
-        state.step(&p.instr, None);
-    }
-    false
+fn field_growth_bound(func: &Func, base: Reg, offset: i128) -> Option<u64> {
+    let object = Var(0);
+    let field = Var(1);
+    let mut start = entry();
+    start.regs.insert(base, Lin::var(object));
+    start.words.insert((object, offset), Lin::var(field));
+    let target = Lin::var(object).add_const(offset);
+    let updated = Lin::var(field).add_const(1);
+    func.instrs
+        .iter()
+        .zip(analyze_detailed(func, start))
+        .filter_map(|(point, state)| {
+            let (
+                Instr::Store {
+                    op: StOp::Sd,
+                    rs1,
+                    rs2,
+                    off,
+                },
+                Some(state),
+            ) = (&point.instr, state)
+            else {
+                return None;
+            };
+            (address(&state.exact, *rs1, *off) == target && state.exact.reg(*rs2) == updated)
+                .then(|| state.unsigned_max(*rs2))
+        })
+        .max()
 }
 
 /// A source contract independent of the register assignment.
@@ -162,6 +133,21 @@ pub struct SourceContract {
     view_end: Option<ViewEnd>,
     result: Option<Expr>,
     fields: BTreeMap<(usize, u64), Expr>,
+    initialized: BTreeSet<(usize, u64)>,
+}
+
+impl SourceContract {
+    pub fn with_machine_raw(mut self, machine: Self, use_source: bool) -> Self {
+        if !use_source {
+            self = Self::default();
+        }
+        for (argument, (extent, align, mode)) in machine.raw {
+            if !extent.terms.is_empty() {
+                self.raw.entry(argument).or_insert((extent, align, mode));
+            }
+        }
+        self
+    }
 }
 
 pub(crate) fn input_name(input: Input) -> String {
@@ -181,13 +167,35 @@ fn supported_expression(layout: &Layout, expression: &Expr) -> bool {
     })
 }
 
+fn tracked_borrow(layout: &Layout, argument: usize) -> bool {
+    layout.args.get(argument).is_some_and(|arg| {
+        let mut parts = arg.split(':');
+        matches!(parts.next(), Some("struct" | "ref")) && parts.nth(2) == Some("rw")
+    })
+}
+
+fn extent_covers(layout: &Layout, extent: &Expr, end: &Expr) -> bool {
+    extent.add(end, -1).is_some_and(|difference| {
+        difference.constant >= 0
+            && difference.terms.iter().all(|(&input, &coefficient)| {
+                coefficient >= 0
+                    && match input {
+                        Input::Length(_) => true,
+                        Input::Value(index) => layout.args[index] == "uword",
+                    }
+            })
+    })
+}
+
 pub fn infer_source(layout: &Layout, summary: &Summary) -> SourceContract {
     let mut contract = SourceContract::default();
     for (i, arg) in layout.args.iter().enumerate() {
         if arg != "ptr" {
             continue;
         }
-        let mut region = None::<(Expr, u64, bool)>;
+        let mut ends = Vec::new();
+        let mut align = 1;
+        let mut write = false;
         let mut compatible = true;
         for access in summary.accesses.iter().filter(|a| a.argument == i) {
             let Some(end) = access.offset.add(&access.bytes, 1) else {
@@ -206,24 +214,18 @@ pub fn infer_source(layout: &Layout, summary: &Summary) -> SourceContract {
                 compatible = false;
                 break;
             }
-            if let Some((extent, align, write)) = &mut region {
-                if extent.terms != end.terms {
-                    compatible = false;
-                    break;
-                }
-                extent.constant = extent.constant.max(end.constant);
-                *align = (*align).max(access.alignment);
-                *write |= access.write;
-            } else {
-                region = Some((end, access.alignment, access.write));
-            }
+            align = align.max(access.alignment);
+            write |= access.write;
+            ends.push(end);
         }
         if compatible
-            && let Some((end, align, write)) = region
-            && (end.constant > 0 || (end.constant == 0 && !end.terms.is_empty()))
-            && end.terms.values().all(|&c| c > 0)
+            && let Some(end) = ends.iter().find(|extent| {
+                (extent.constant > 0 || (extent.constant == 0 && !extent.terms.is_empty()))
+                    && extent.terms.values().all(|&c| c > 0)
+                    && ends.iter().all(|end| extent_covers(layout, extent, end))
+            })
         {
-            contract.raw.insert(i, (end, align, write));
+            contract.raw.insert(i, (end.clone(), align, write));
         }
     }
     if layout.output == "pair"
@@ -255,14 +257,13 @@ pub fn infer_source(layout: &Layout, summary: &Summary) -> SourceContract {
     {
         contract.result = Some(value.clone());
     }
+    for &(i, offset) in &summary.initialized_words {
+        if tracked_borrow(layout, i) && offset % 8 == 0 {
+            contract.initialized.insert((i, offset));
+        }
+    }
     for (&(i, offset), value) in &summary.field_writes {
-        if layout
-            .args
-            .get(i)
-            .is_some_and(|a| a.starts_with("struct:") && a.split(':').nth(3) == Some("rw"))
-            && offset % 8 == 0
-            && supported_expression(layout, value)
-        {
+        if tracked_borrow(layout, i) && offset % 8 == 0 && supported_expression(layout, value) {
             contract.fields.insert((i, offset), value.clone());
         }
     }
@@ -344,6 +345,7 @@ pub fn source_report(
 
         "scalar_result": contract.result.as_ref().map(|e| e.render(input_name)),
         "field_writes": updated,
+        "initialized_words": contract.initialized,
         "drop_arguments": summary.map(|s| &s.drops),
         "unresolved_mir_access": summary.is_some_and(|s| s.unresolved_access),
     })
@@ -361,10 +363,8 @@ pub fn build(
     layout: &Layout,
     requirements: Option<&Regions>,
     source: Option<&SourceContract>,
-    llvm_range: Option<crate::llvm::WordRange>,
-    llvm_result: Option<&Expr>,
+    (llvm_range, llvm_result): (Option<crate::llvm::WordRange>, Option<&Expr>),
     declared: &Rules,
-    inferred: &Rules,
     heap: bool,
 ) -> Result<Contract, String> {
     let mut names = Names::default();
@@ -401,6 +401,10 @@ pub fn build(
         }
         let base = format!("p{index}");
         if arg == "ptr" {
+            if !layout.is_unsafe {
+                inputs.push(format!("{reg}: int"));
+                continue;
+            }
             let machine_region = requirements.and_then(|r| r.get(&reg));
             if let Some((bytes, alignment, write)) = source.and_then(|s| s.raw.get(&index)) {
                 let var = param(base.clone());
@@ -487,11 +491,11 @@ pub fn build(
             region = format!("{size}*{length}");
         }
         let mut cap = format!("{base} |-> bytes[{region}] {permission}");
-        if *kind == "struct" {
-            let (ty, fields) = fields(parts[4]);
+        if matches!(*kind, "struct" | "ref") {
+            let (ty, fields) = fields(parts.get(4).copied().unwrap_or_default());
             let mut entry_fields = vec![];
             let mut exit_fields = vec![];
-            if let Some(rules) = declared.get(ty).or_else(|| inferred.get(ty)) {
+            if let Some(rules) = declared.get(ty) {
                 for (field, array) in rules {
                     let info = fields
                         .get(field.as_str())
@@ -537,6 +541,19 @@ pub fn build(
                             .is_some_and(|end| size.parse::<u64>().is_ok_and(|len| end <= len))
                     {
                         exit_fields.push(format!("{offset}: int({})", value.render(input_name)));
+                    }
+                }
+                for &(argument, offset) in &source.initialized {
+                    if argument == index
+                        && !exit_fields
+                            .iter()
+                            .any(|f| f.starts_with(&format!("{offset}:")))
+                        && align.parse::<u64>().unwrap_or(0) >= 8
+                        && offset
+                            .checked_add(8)
+                            .is_some_and(|end| size.parse::<u64>().is_ok_and(|len| end <= len))
+                    {
+                        exit_fields.push(format!("{offset}: int(init{index}_{offset})"));
                     }
                 }
             }
@@ -634,4 +651,62 @@ pub fn build(
 
 pub fn owned(layout: &Layout) -> bool {
     layout.output.starts_with("box:") || layout.args.iter().any(|a| a.starts_with("box:"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dynamic_extent_covers_fixed_prefix_with_an_unsigned_index() {
+        let mut layout = Layout {
+            output: "word".into(),
+            args: vec!["ptr".into(), "uword".into()],
+            is_unsafe: true,
+        };
+        let last = Expr::input(Input::Value(1))
+            .scale(8)
+            .unwrap()
+            .add(&Expr::constant(8), 1)
+            .unwrap();
+        assert!(extent_covers(&layout, &last, &Expr::constant(8)));
+        assert!(!extent_covers(&layout, &Expr::constant(8), &last));
+        layout.args[1] = "word".into();
+        assert!(!extent_covers(&layout, &last, &Expr::constant(8)));
+    }
+
+    #[test]
+    fn field_growth_uses_layout_and_reachable_register_facts() {
+        let source = r#"
+.type update, @function
+update:
+    ld a1, 0(a0)
+    li a2, 4
+    bgeu a1, a2, .Ldone
+.Lupdate:
+    addi a1, a1, 1
+    sd a1, 0(a0)
+.Ldone:
+    ret
+.size update, .-update
+"#;
+        let layout = Layout {
+            output: "unit".into(),
+            is_unsafe: false,
+            args: vec!["struct:40:8:rw:Vector;count@0@word;elements@8@4".into()],
+        };
+        let layouts = BTreeMap::from([("update".into(), layout)]);
+        let program = nocompiler_typed::asm::parse(source).unwrap();
+        assert_eq!(
+            discover(&program.funcs, &layouts)["Vector"]["fields"],
+            json!({"count": "elements"})
+        );
+
+        let unguarded = source.replace(
+            "    ld a1, 0(a0)",
+            "    bnez a3, .Lupdate\n    ld a1, 0(a0)",
+        );
+        let program = nocompiler_typed::asm::parse(&unguarded).unwrap();
+        assert_eq!(discover(&program.funcs, &layouts), json!({}));
+    }
 }

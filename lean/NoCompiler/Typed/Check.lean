@@ -206,11 +206,14 @@ def retOkOn (rs : List Reg) (S : STy) (θ : Subst) : Bool :=
 /-- The return check. -/
 def retOk (S : STy) (θ : Subst) : Bool := f.retOkOn keptRegs S θ
 
-def ret (S : STy) : Bool :=
+def retWitness (S : STy) : Subst :=
   let caps := f.sig.borrow.zipIdx.filterMap fun (borrow, index) =>
     (S.caps.find? (·.origin == some index)).map fun source =>
       { source with cap := borrow.exitCap }
-  f.retOk S (S.instantiate { regs := f.sig.outRegs, facts := [f.sig.post], caps } f.sig.outVars)
+  S.instantiate { regs := f.sig.outRegs, facts := [f.sig.post], caps } f.sig.outVars
+
+def ret (S : STy) : Bool :=
+  f.retOk S (f.retWitness S)
 
 def branchOk (k : Nat) (S : STy) (op : BrOp) (rs1 rs2 : Reg) (off : BitVec 13) : Bool :=
   match target k off.toInt with
@@ -556,8 +559,7 @@ def tailAt (S : STy) (t : Word) : Bool :=
         lendsApart S ls && (ls.drop g.borrow.length).all (·.2.cap.exclusive) &&
         f.callHeldOk S g ls &&
         decide ((S'.caps.map (·.id)).Nodup) &&
-        f.retOkOn preservedRegs S'
-          (S'.instantiate { regs := f.sig.outRegs, facts := [f.sig.post] } f.sig.outVars)
+        f.retOkOn preservedRegs S' (f.retWitness S')
 
 /-- `jalr zero, off(rs)` with `rs` a known constant: clang's `tail f`. -/
 def tailRegOk (S : STy) (rs : Reg) (off : BitVec 12) : Bool :=

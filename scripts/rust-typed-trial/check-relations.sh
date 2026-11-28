@@ -45,3 +45,10 @@ negative = json.loads((directory / "negative/report.json").read_text())["functio
 assert negative["buffer_ops::read_pair_raw"]["status"] == "proved"
 assert negative["buffer_ops::read_pair_short"]["error"]["rule"] == "call-cap"
 PY
+
+cargo nocompiler check "${buffer[@]}" --function buffer_ops::read_through_join_copy \
+    --artifacts "$artifacts/copy-join"
+jq -e '.functions["buffer_ops::read_through_join_copy"].status == "proved"' \
+    "$artifacts/copy-join/report.json"
+rg -A1 '#: join \[offset[0-9]+_[0-9]+\].*8\*offset' "$artifacts/copy-join/annotated.s" |
+    rg -q '^\s+mv\s'

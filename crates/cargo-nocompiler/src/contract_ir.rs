@@ -97,7 +97,9 @@ pub struct Summary {
     pub widened_view_joins: usize,
     pub returned_scalar: Option<Expr>,
     pub field_writes: BTreeMap<(usize, u64), Expr>,
+    pub initialized_words: BTreeSet<(usize, u64)>,
     pub drops: BTreeSet<usize>,
+    pub callees: BTreeSet<String>,
     pub unresolved_access: bool,
 }
 
@@ -145,16 +147,23 @@ impl Summary {
                 access.write
             );
         }
-        if let Some(pointer) = &self.returned_view
-            && let Some(length) = &pointer.length
-        {
-            let _ = writeln!(
-                out,
-                "{symbol}\tview\t{}\t{}\t{}",
-                pointer.argument,
-                pointer.offset.encode(),
-                length.encode()
-            );
+        if let Some(pointer) = &self.returned_view {
+            if let Some(length) = &pointer.length {
+                let _ = writeln!(
+                    out,
+                    "{symbol}\tview\t{}\t{}\t{}",
+                    pointer.argument,
+                    pointer.offset.encode(),
+                    length.encode()
+                );
+            } else {
+                let _ = writeln!(
+                    out,
+                    "{symbol}\taddress\t{}\t{}",
+                    pointer.argument,
+                    pointer.offset.encode()
+                );
+            }
         }
         if self.widened_view_joins != 0 {
             let _ = writeln!(
@@ -182,6 +191,12 @@ impl Summary {
                 value.encode()
             );
         }
+        for (argument, offset) in &self.initialized_words {
+            let _ = writeln!(out, "{symbol}\tinitialized\t{argument}\t{offset}");
+        }
+        for callee in &self.callees {
+            let _ = writeln!(out, "{symbol}\tcallee\t{callee}");
+        }
         for argument in &self.drops {
             let _ = writeln!(out, "{symbol}\tdrop\t{argument}");
         }
@@ -206,11 +221,15 @@ impl Summary {
                         write: fields.next()?.parse().ok()?,
                     });
                 }
-                "view" => {
+                tag @ ("view" | "address") => {
                     summary.returned_view = Some(Pointer {
                         argument: fields.next()?.parse().ok()?,
                         offset: Expr::decode(fields.next()?)?,
-                        length: Some(Expr::decode(fields.next()?)?),
+                        length: if tag == "view" {
+                            Some(Expr::decode(fields.next()?)?)
+                        } else {
+                            None
+                        },
                     })
                 }
                 "widened_view_joins" => summary.widened_view_joins = fields.next()?.parse().ok()?,
@@ -227,6 +246,14 @@ impl Summary {
                         (fields.next()?.parse().ok()?, fields.next()?.parse().ok()?),
                         Expr::decode(fields.next()?)?,
                     );
+                }
+                "initialized" => {
+                    summary
+                        .initialized_words
+                        .insert((fields.next()?.parse().ok()?, fields.next()?.parse().ok()?));
+                }
+                "callee" => {
+                    summary.callees.insert(fields.next()?.to_owned());
                 }
                 "drop" => {
                     summary.drops.insert(fields.next()?.parse().ok()?);

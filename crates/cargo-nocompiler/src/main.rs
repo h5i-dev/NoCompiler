@@ -1,10 +1,12 @@
 mod build;
+mod chc;
 #[allow(dead_code)] // This module also supplies the encoder used by the embedded rustc driver.
 mod contract_ir;
 mod contracts;
 mod flow;
 mod heap;
 mod llvm;
+mod llvm_ir;
 mod loops;
 mod memory;
 mod scope;
@@ -75,6 +77,9 @@ struct Args {
     /// Report MIR candidates without using them to generate annotations.
     #[arg(long)]
     no_mir_hints: bool,
+    /// Use a Z3-compatible executable for bounded Horn reachability refinement.
+    #[arg(long)]
+    chc_solver: Option<PathBuf>,
     /// Generate additional candidates from optimized LLVM IR and post-allocation Machine IR.
     #[arg(long)]
     llvm_hints: bool,
@@ -95,8 +100,13 @@ fn metadata(dir: &Path) -> Result<(TextMap, BTreeMap<String, contracts::Layout>)
     let mut layouts = BTreeMap::new();
     for line in fs::read_to_string(dir.join("abi.tsv"))?.lines() {
         let row: Vec<_> = line.split('\t').collect();
-        let [name, symbol, output, args] = row.as_slice() else {
+        let [name, symbol, output, args, safety] = row.as_slice() else {
             return Err("malformed ABI record".into());
+        };
+        let is_unsafe = match *safety {
+            "safe" => false,
+            "unsafe" => true,
+            _ => return Err("invalid function safety in ABI record".into()),
         };
         targets.insert((*name).into(), (*symbol).into());
         let args = if args.is_empty() {
@@ -110,6 +120,7 @@ fn metadata(dir: &Path) -> Result<(TextMap, BTreeMap<String, contracts::Layout>)
                 contracts::Layout {
                     output: (*output).into(),
                     args,
+                    is_unsafe,
                 },
             )
             .is_some()
@@ -268,7 +279,8 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
         .iter()
         .map(|name| (name.clone(), contracts::pointers(&layouts[name])))
         .collect();
-    let requirements = memory::requirements(&funcs, &raw);
+    let (requirements, chc_refinement) =
+        memory::requirements(&funcs, &raw, args.chc_solver.as_deref());
     let shims: BTreeSet<_> = image
         .symbols
         .keys()
@@ -329,8 +341,9 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
     } else {
         BTreeMap::new()
     };
-    let (inferred, inferred_report) = contracts::discover(&funcs, &layouts);
-    let stack = memory::stack(&funcs, &requirements, budgets, &image.llvm_hints.frames);
+    let inferred_report = contracts::discover(&funcs, &layouts);
+    let symbolic = memory::symbolic_requirements(&funcs, &layouts);
+    let stack = memory::stack(&funcs, &requirements, budgets);
     let mut all = String::new();
     let mut selected_text = String::new();
     let mut annotations = BTreeMap::new();
@@ -344,7 +357,10 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
         let layout = &layouts[name];
         let summary = mir.get(name);
         let empty = contract_ir::Summary::default();
-        let ir = contracts::infer_source(layout, summary.unwrap_or(&empty));
+        let candidate = contracts::infer_source(layout, summary.unwrap_or(&empty));
+        let mut source = contracts::source_report(layout, summary, &candidate);
+        let machine_ir = contracts::infer_source(layout, symbolic.get(name).unwrap_or(&empty));
+        let ir = candidate.with_machine_raw(machine_ir, !args.no_mir_hints);
         let llvm_trips = image
             .llvm_hints
             .trips
@@ -362,11 +378,9 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
             name,
             layout,
             requirements.get(name),
-            (!args.no_mir_hints).then_some(&ir),
-            llvm_range,
-            llvm_result,
+            Some(&ir),
+            (llvm_range, llvm_result),
             &declared,
-            &inferred,
             heap_users.contains(name) || contracts::owned(layout),
         )?;
         let prefix = format!("#: fn {name} ");
@@ -378,7 +392,7 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
         let frame = stack.get(name).map(String::as_str).unwrap_or("stack 0");
         contract.text.push_str(&format!(" {frame}\n"));
         all.push_str(&contract.text);
-        let mut source = contracts::source_report(layout, summary, &ir);
+
         if let Some(value) = llvm_result {
             source["llvm_affine_result"] =
                 json!({"register": "a0", "expression": value.render(contracts::input_name)});
@@ -405,6 +419,15 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
             source["llvm_stack"] = json!({"frame_size": frame.size as u64, "slots":
                 frame.slots.iter().map(|&(a, b)| [a as u64, b as u64]).collect::<Vec<_>>()});
         }
+        if let Some(values) = image.llvm_hints.affine_values.get(name)
+            && let Some(func) = funcs.iter().find(|f| f.name == *name)
+        {
+            source["llvm_affine_locations"] =
+                json!(llvm::affine_locations(func, &contract.state, values));
+        }
+        if let Some(summary) = summary {
+            source["mir_resolved_callees"] = json!(summary.callees);
+        }
         source_contracts.insert(name.clone(), source);
         if selected.contains(name) {
             selected_text.push_str(&contract.text);
@@ -416,7 +439,6 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
                     &contract.state,
                     &mut contract.names,
                     &contract.slices,
-                    llvm_trips,
                 ));
             }
         }
@@ -554,6 +576,7 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
             "proof_attempt":report["proof_attempt"],
             "checker_exit_code": (changed.is_empty() && !selected.is_empty()).then_some(status),
             "contract_file":"contracts.s","contract_ir_file":"contracts.json","mir_hints":!args.no_mir_hints,"llvm_hints":args.llvm_hints,"infer_loops":!args.no_infer_loops,"functions":results,
+            "chc_solver_enabled":args.chc_solver.is_some(),"chc_pruned_edges":chc_refinement,
             "declared_type_invariants":declared,"inferred_type_invariants":inferred_report,"allocator_assumptions":specs,
             "mir_inlined_callees":callees(&dir.join("inlined.tsv"))?,"mir_direct_callees":callees(&dir.join("mir-calls.tsv"))?,
             "static_call_scope":scope::report(&targets, &funcs, &image.symbols, &external),

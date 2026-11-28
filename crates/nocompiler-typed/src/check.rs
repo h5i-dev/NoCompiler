@@ -953,6 +953,7 @@ impl<'a> FnCheck<'a> {
                 }
                 Instr::Auipc { .. } => {
                     match &pi.reloc {
+                        Some(Reloc::LinkedAuipc(_)) => {}
                         Some(Reloc::PcrelHi(sym)) if self.ck.sym_vars.contains_key(sym) => {}
                         Some(Reloc::PcrelHi(sym)) if self.ck.unusable_data.contains_key(sym) => {
                             let why = self.ck.unusable_data[sym].clone();
@@ -2133,6 +2134,10 @@ impl<'a> FnCheck<'a> {
             }
             _ => None,
         };
+        if let (Instr::Auipc { rd, .. }, Some(Reloc::LinkedAuipc(value))) = (&ins, &pi.reloc) {
+            self.set(&mut st, *rd, Lin::konst(i128::from(*value)))?;
+            return Ok(vec![(next, st)]);
+        }
         if let (Instr::Auipc { rd, .. }, Some(Reloc::PcrelHi(sym))) = (&ins, &pi.reloc) {
             // auipc rd, %pcrel_hi(sym) = ℓ_sym − lo, where lo is the paired %pcrel_lo value
             let l = self.ck.sym_vars[sym];
