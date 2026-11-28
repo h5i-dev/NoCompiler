@@ -211,7 +211,7 @@ jobs:
       - name: Install Rust frontend and integration-test dependencies
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y --no-install-recommends jq lld llvm z3
+          sudo apt-get install -y --no-install-recommends clang jq lld llvm python3 ripgrep z3
           rustup toolchain install nightly-2026-09-17 --component rustc-dev,llvm-tools --target riscv64imac-unknown-none-elf
           curl -sSfL https://raw.githubusercontent.com/leanprover/elan/v4.1.2/elan-init.sh -o "$RUNNER_TEMP/elan-init.sh"
           sh "$RUNNER_TEMP/elan-init.sh" -y --default-toolchain none
@@ -222,6 +222,12 @@ jobs:
           (cd lean && lake build NoCompiler)
       - name: Run the Rust-to-ELF verification regressions
         run: |
+          for tool in cargo clang jq lake ld.lld llvm-symbolizer python3 rg rustc z3; do
+            if ! command -v "$tool"; then
+              echo "::error::Missing Rust-to-ELF regression dependency: $tool"
+              exit 127
+            fi
+          done
           for script in scripts/rust-typed-trial/check*.sh; do
             echo "::group::$script"
             bash "$script"
