@@ -15,6 +15,7 @@ NoCompiler is a typed RISC-V assembly language with a formally verified type che
 - **Static memory safety:** Verifies memory accesses using arithmetic constraints and memory capabilities.
 - **Composable verification:** Checked, manually proved, and trusted functions share a unified contract system.
 - **Standard toolchain compatibility:** Supports standard RISC-V assemblers and the LP64 calling convention.
+- **Verifiable compilation target**: Supports compiling Rust, including unsafe code, into typed RISC-V assembly with automatically generated type annotations. Support for C/C++ is planned.
 
 The grammar is in [docs/typed/syntax.md](docs/typed/syntax.md).
 
