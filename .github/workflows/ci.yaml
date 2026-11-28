@@ -198,3 +198,32 @@ jobs:
       - name: The installer agrees with the release layout
         run: ./scripts/toolkit/check-installer.sh
 
+
+  rust-typed:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: riscv64imac-unknown-none-elf
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Rust frontend and integration-test dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends jq lld llvm z3
+          rustup toolchain install nightly-2026-09-17 --component rustc-dev,llvm-tools --target riscv64imac-unknown-none-elf
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/v4.1.2/elan-init.sh -o "$RUNNER_TEMP/elan-init.sh"
+          sh "$RUNNER_TEMP/elan-init.sh" -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Build the Rust frontend and checkers
+        run: |
+          cargo build --locked --release -p cargo-nocompiler -p nocompiler-typed
+          (cd lean && lake build NoCompiler)
+      - name: Run the Rust-to-ELF verification regressions
+        run: |
+          for script in scripts/rust-typed-trial/check*.sh; do
+            echo "::group::$script"
+            bash "$script"
+            echo "::endgroup::"
+          done

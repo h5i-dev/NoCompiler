@@ -1,5 +1,8 @@
 # Verify a Rust buffer write on RV64
 
+The Rust frontend is experimental. Its proofs cover the linked RV64 code
+under the recorded entry contracts and any listed external assumptions.
+
 `set.rs` is a `no_std` Rust function with an explicit C ABI. It takes a
 buffer pointer and length in `a0` and `a1`, and an index and value in `a2`
 and `a3`. The handwritten contract in `set.ann` grants write access to
@@ -84,12 +87,18 @@ build or tool invocation errors. Generated contracts describe assumptions at
 function entry, including the caller's buffer permissions.
 
 For a public entry, review the exact generated signature in
-`entry-contracts.json` and pass that JSON map, or a subset of its entries, as
-`--entry-contracts FILE` on subsequent runs. The map uses Rust function paths
-as keys. The comparison includes requirements and guarantees and excludes the
-linker symbol and inferred frame. A difference prevents verification and is
+`entry-contracts.json` and pass that JSON map as `--entry-contracts FILE`
+on subsequent runs. The map must cover exactly the requested Rust function
+paths. The comparison includes requirements and guarantees and excludes
+the linker symbol and inferred frame. A difference prevents verification and is
 reported as `entry_contract_mismatch`. An exact match checks contract stability.
 The review establishes whether the contract describes the public API.
+The report records review status per requested entry. Internal calls are
+checked against callee contracts by the typed checker. The frontend rejects
+a proven contradiction among the resolved arithmetic entry conditions.
+The arithmetic check includes ABI register ranges and can report an unknown
+result. Its satisfiable result concerns arithmetic constraints and leaves
+the existence of required memory capabilities to the caller.
 
 Use `--deployment-elf FILE` to require the existing deployment ELF to match
 the checker input by SHA-256. The proof report includes the digest. A mismatch

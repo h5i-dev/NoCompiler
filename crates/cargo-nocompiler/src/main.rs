@@ -12,7 +12,7 @@ mod memory;
 mod scope;
 
 use clap::{Parser, Subcommand};
-use nocompiler_typed::asm;
+use nocompiler_typed::{asm, formula::Formula, lin::Names, presburger, sig};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{
@@ -66,7 +66,7 @@ struct Args {
     global_allocator_stack: u64,
     #[arg(long)]
     allow_assumptions: bool,
-    /// Require the generated contracts for these public entries to match a reviewed JSON file.
+    /// Require a matching reviewed contract for every requested function.
     #[arg(long)]
     entry_contracts: Option<PathBuf>,
     /// Require an existing deployment ELF to match the bytes given to the checker.
@@ -201,16 +201,37 @@ fn elf_digest(path: &Path) -> Result<String> {
     Ok(format!("{:x}", digest.finalize()))
 }
 
+fn arithmetic_entry_status(
+    surface: &nocompiler_typed::syntax::SSig,
+    line: usize,
+) -> Result<&'static str> {
+    let signature = sig::resolve(surface, line, &mut Names::default())?;
+    Ok(match presburger::prove(&signature.pre, &Formula::False) {
+        presburger::Verdict::Proved => "contradictory",
+        presburger::Verdict::Refuted => "satisfiable",
+        presburger::Verdict::Unknown => "unknown",
+    })
+}
+
 fn run(args: &Args, dir: &Path) -> Result<u8> {
     let reviewed: Option<TextMap> = args
         .entry_contracts
         .as_ref()
         .map(|path| -> Result<_> { Ok(serde_json::from_slice(&fs::read(path)?)?) })
         .transpose()?;
-    if let Some(reviewed) = &reviewed
-        && (reviewed.is_empty() || reviewed.keys().any(|name| !args.function.contains(name)))
-    {
-        return Err("reviewed entry contracts must name at least one selected function".into());
+    if let Some(reviewed) = &reviewed {
+        let missing: Vec<_> = args
+            .function
+            .iter()
+            .filter(|name| !reviewed.contains_key(*name))
+            .collect();
+        let unexpected: Vec<_> = reviewed
+            .keys()
+            .filter(|name| !args.function.contains(name))
+            .collect();
+        if !missing.is_empty() || !unexpected.is_empty() {
+            return Err(format!("reviewed entry contracts must cover exactly the requested functions (missing: {missing:?}; unexpected: {unexpected:?})").into());
+        }
     }
     let build_started = std::time::Instant::now();
     let image = build::compile(args, dir)?;
@@ -350,6 +371,7 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
     let mut llvm_fallbacks = TextMap::new();
     let mut llvm_result_fallbacks = BTreeMap::new();
     let mut annotations = BTreeMap::new();
+    let mut baseline_annotations = BTreeMap::new();
     let mut source_contracts = BTreeMap::new();
     for name in args.function.iter().filter_map(|path| targets.get(path)) {
         let layout = &layouts[name];
@@ -385,7 +407,7 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
         };
         let mut contract = build_contract((llvm_range, llvm_result))?;
         if (llvm_range.is_some() || llvm_result.is_some()) && selected.contains(name) {
-            let baseline = build_contract((None, None))?;
+            let mut baseline = build_contract((None, None))?;
             if baseline.text != contract.text {
                 let mut reviews = reviewed
                     .iter()
@@ -394,6 +416,19 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
                     .map(|(_, signature)| signature.as_str())
                     .peekable();
                 if reviews.peek().is_none() {
+                    if !args.no_infer_loops
+                        && let Some(func) = funcs.iter().find(|f| f.name == *name)
+                    {
+                        baseline_annotations.insert(
+                            name.clone(),
+                            loops::annotate(
+                                func,
+                                &baseline.state,
+                                &mut baseline.names,
+                                &baseline.slices,
+                            ),
+                        );
+                    }
                     llvm_fallbacks.insert(name.clone(), baseline.text);
                 } else if reviews.all(|signature| {
                     baseline.text.strip_prefix(&format!("#: fn {name} ")) == Some(signature)
@@ -444,12 +479,10 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
             && !args.no_infer_loops
             && let Some(func) = funcs.iter().find(|f| f.name == *name)
         {
-            annotations.extend(loops::annotate(
-                func,
-                &contract.state,
-                &mut contract.names,
-                &contract.slices,
-            ));
+            annotations.insert(
+                name.clone(),
+                loops::annotate(func, &contract.state, &mut contract.names, &contract.slices),
+            );
         }
     }
     let render_contracts = |selected_only: bool, signatures: &TextMap| -> String {
@@ -481,18 +514,22 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
         .filter(|(name, signature)| entry_contracts.get(*name) != Some(*signature))
         .map(|(name, _)| name.as_str())
         .collect();
+    // Test arithmetic entry conditions, including the resolved ABI register ranges.
+    // The test does not establish that the required runtime memory exists.
+    let mut arithmetic = BTreeMap::new();
+    for (surface, line) in parse(&render_contracts(true, &signatures))?.sigs {
+        if selected.contains(&surface.name) {
+            let result = arithmetic_entry_status(&surface, line)?;
+            arithmetic.insert(surface.name, result);
+        }
+    }
+    let contradictory = arithmetic.values().any(|value| *value == "contradictory");
+    let should_check = changed.is_empty() && !contradictory && !selected.is_empty();
     let ledger = dir.join("ledger.json");
     let mut report = json!({"checker":null,"functions":[],"global_errors":[]});
     let mut status = 0;
     let mut checker_attempts_ms = Vec::new();
-    if changed.is_empty() && !selected.is_empty() {
-        let mut annotated_body = String::new();
-        for (index, line) in body.split_inclusive('\n').enumerate() {
-            if let Some(annotation) = annotations.get(&(index + 1)) {
-                annotated_body.push_str(annotation);
-            }
-            annotated_body.push_str(line);
-        }
+    if should_check {
         let annotated = dir.join("annotated.s");
         let checker = args
             .checker
@@ -506,7 +543,16 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
             .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../lean"));
         loop {
             let mut text = render_contracts(true, &signatures);
-            text.push_str(&annotated_body);
+            let points: BTreeMap<_, _> = annotations
+                .values()
+                .flat_map(|items| items.iter())
+                .collect();
+            for (index, line) in body.split_inclusive('\n').enumerate() {
+                if let Some(annotation) = points.get(&(index + 1)) {
+                    text.push_str(annotation);
+                }
+                text.push_str(line);
+            }
             fs::write(&annotated, text)?;
             let checker_started = std::time::Instant::now();
             status = Command::new(&checker)
@@ -557,6 +603,9 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
                 };
                 if let Some(baseline) = llvm_fallbacks.remove(name) {
                     signatures.insert(name.to_owned(), baseline);
+                    if let Some(points) = baseline_annotations.remove(name) {
+                        annotations.insert(name.to_owned(), points);
+                    }
                     llvm_result_fallbacks.insert(name.to_owned(), reason);
                     retry = true;
                 }
@@ -612,10 +661,18 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
             .as_array()
             .is_some_and(|e| !e.is_empty());
     for name in &args.function {
-        let entry = if changed.contains(name.as_str()) {
+        let arithmetic_status = targets
+            .get(name)
+            .and_then(|symbol| arithmetic.get(symbol))
+            .copied();
+        let mut entry = if changed.contains(name.as_str()) {
             json!({"status":"entry_contract_mismatch","reason":"generated contract differs from reviewed contract or is unavailable"})
         } else if !changed.is_empty() {
             json!({"status":"not_checked","reason":"a reviewed entry contract did not match"})
+        } else if arithmetic_status == Some("contradictory") {
+            json!({"status":"contradictory_entry_contract","reason":"entry arithmetic constraints cannot hold"})
+        } else if contradictory {
+            json!({"status":"not_checked","reason":"a requested entry contract is contradictory"})
         } else if let Some(reason) = unsupported.get(name) {
             json!({"status":"unsupported","reason":reason})
         } else {
@@ -632,6 +689,13 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
                     .unwrap_or_else(|| json!({"name":symbol,"status":"checker_error"}))
             }
         };
+        entry["entry_contract"] = json!({
+            "role": "requested_entry",
+            "review": if changed.contains(name.as_str()) { "mismatch" }
+                else if !entry_contracts.contains_key(name) { "unavailable" }
+                else if reviewed.is_some() { "reviewed" } else { "generated" },
+            "arithmetic": arithmetic_status,
+        });
         let verdict = entry["status"].as_str().unwrap_or("checker_error");
         failed |= verdict != "proved" && !(args.allow_assumptions && verdict == "proved_assuming");
         let detail = entry["reason"]
@@ -659,7 +723,7 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
             "proof_attempt":report["proof_attempt"],
             "timing_ms":{"build_and_capture":build_ms,"checker_attempts":checker_attempts_ms},
             "llvm_result_fallbacks":llvm_result_fallbacks,
-            "checker_exit_code": (changed.is_empty() && !selected.is_empty()).then_some(status),
+            "checker_exit_code": should_check.then_some(status),
             "contract_file":"contracts.s","contract_ir_file":"contracts.json","mir_hints":!args.no_mir_hints,"llvm_hints":args.llvm_hints,"infer_loops":!args.no_infer_loops,"functions":results,
             "chc_solver_enabled":args.chc_solver.is_some(),"chc_pruned_edges":chc_refinement,
             "declared_type_invariants":declared,"inferred_type_invariants":inferred_report,"allocator_assumptions":specs,
@@ -669,9 +733,7 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
         }),
     )?;
     Ok(
-        if !matches!(status, 0 | 1)
-            || (changed.is_empty() && !selected.is_empty() && !ledger.exists())
-        {
+        if !matches!(status, 0 | 1) || (should_check && !ledger.exists()) {
             2
         } else {
             u8::from(failed)
@@ -713,6 +775,29 @@ fn main() -> ExitCode {
         Err(error) => {
             eprintln!("NoCompiler: {error}");
             ExitCode::from(2)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn entry_contradiction_uses_register_range_and_ignores_output_constraints() {
+        for (text, expected) in [
+            (
+                "#: fn test [x] in a0: u64(x) where x < 0 out a0: int stack 0",
+                "contradictory",
+            ),
+            (
+                "#: fn test [x] in a0: u64(x) out a0: int(y) where y < 0, y >= 0 stack 0",
+                "satisfiable",
+            ),
+        ] {
+            let program = parse(text).unwrap();
+            let (signature, line) = &program.sigs[0];
+            assert_eq!(arithmetic_entry_status(signature, *line).unwrap(), expected);
         }
     }
 }

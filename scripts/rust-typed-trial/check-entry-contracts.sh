@@ -31,3 +31,15 @@ status=0
 test "$status" -eq 1
 jq -e '.proof_attempt.status == "failed" and
     .functions["buffer_ops::bounded_word"].status == "checked"' "$artifacts/no-lean/report.json"
+
+status=0
+"${check[@]}" --function buffer_ops::fixed_store --entry-contracts "$artifacts/reviewed.json" \
+    --artifacts "$artifacts/missing-entry" > "$artifacts/missing-entry.log" 2>&1 || status=$?
+test "$status" -eq 2
+grep -F 'missing: ["buffer_ops::fixed_store"]' "$artifacts/missing-entry.log"
+test ! -e "$artifacts/missing-entry/Proof.lean"
+jq -e '.functions["buffer_ops::bounded_word"].entry_contract ==
+    {"role":"requested_entry","review":"reviewed","arithmetic":"satisfiable"}' \
+    "$artifacts/positive/report.json"
+jq -e '.functions["buffer_ops::bounded_word"].entry_contract.review == "generated"' \
+    "$artifacts/no-lean/report.json"
