@@ -1,0 +1,20 @@
+[package]
+name = "rust100_probe"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+byteorder = { version = "=1.5.0", default-features = false }
+itoa = { version = "=1.0.18", default-features = false }
+httparse = { version = "=1.10.1", default-features = false }
+arrayvec = { version = "=0.7.8", default-features = false }
+bytemuck = { version = "=1.25.2", default-features = false }
+array-init = { version = "=2.1.0", default-features = false }
+arraydeque = { version = "=0.5.1", default-features = false }
+circular-buffer = { version = "=2.0.1", default-features = false }
+generic-array = { version = "=1.4.5", default-features = false }
+plain = { version = "=0.2.3", default-features = false }
+ryu = { version = "=1.0.23", default-features = false }
+zerocopy = { version = "=0.8.66", default-features = false }
+
+[workspace]

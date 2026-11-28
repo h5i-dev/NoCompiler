@@ -212,7 +212,9 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
     {
         return Err("reviewed entry contracts must name at least one selected function".into());
     }
+    let build_started = std::time::Instant::now();
     let image = build::compile(args, dir)?;
+    let build_ms = build_started.elapsed().as_millis();
     let elf_sha256 = elf_digest(&image.image)?;
     if let Some(path) = &args.deployment_elf
         && elf_digest(path)? != elf_sha256
@@ -344,16 +346,12 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
     let inferred_report = contracts::discover(&funcs, &layouts);
     let symbolic = memory::symbolic_requirements(&funcs, &layouts);
     let stack = memory::stack(&funcs, &requirements, budgets);
-    let mut all = String::new();
-    let mut selected_text = String::new();
+    let mut signatures = TextMap::new();
+    let mut llvm_fallbacks = TextMap::new();
+    let mut llvm_result_fallbacks = BTreeMap::new();
     let mut annotations = BTreeMap::new();
     let mut source_contracts = BTreeMap::new();
-    let mut entry_contracts = TextMap::new();
-    for (path, name) in args
-        .function
-        .iter()
-        .filter_map(|path| targets.get(path).map(|name| (path, name)))
-    {
+    for name in args.function.iter().filter_map(|path| targets.get(path)) {
         let layout = &layouts[name];
         let summary = mir.get(name);
         let empty = contract_ir::Summary::default();
@@ -374,24 +372,37 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
                 .iter()
                 .all(|arg| matches!(arg.as_str(), "word" | "uword"))
         });
-        let mut contract = contracts::build(
-            name,
-            layout,
-            requirements.get(name),
-            Some(&ir),
-            (llvm_range, llvm_result),
-            &declared,
-            heap_users.contains(name) || contracts::owned(layout),
-        )?;
-        let prefix = format!("#: fn {name} ");
-        let signature = contract
-            .text
-            .strip_prefix(&prefix)
-            .ok_or("generated contract has an unexpected signature")?;
-        entry_contracts.insert(path.clone(), signature.trim().to_owned());
-        let frame = stack.get(name).map(String::as_str).unwrap_or("stack 0");
-        contract.text.push_str(&format!(" {frame}\n"));
-        all.push_str(&contract.text);
+        let build_contract = |llvm| {
+            contracts::build(
+                name,
+                layout,
+                requirements.get(name),
+                Some(&ir),
+                llvm,
+                &declared,
+                heap_users.contains(name) || contracts::owned(layout),
+            )
+        };
+        let mut contract = build_contract((llvm_range, llvm_result))?;
+        if (llvm_range.is_some() || llvm_result.is_some()) && selected.contains(name) {
+            let baseline = build_contract((None, None))?;
+            if baseline.text != contract.text {
+                let mut reviews = reviewed
+                    .iter()
+                    .flat_map(|entries| entries.iter())
+                    .filter(|(path, _)| targets.get(*path) == Some(name))
+                    .map(|(_, signature)| signature.as_str())
+                    .peekable();
+                if reviews.peek().is_none() {
+                    llvm_fallbacks.insert(name.clone(), baseline.text);
+                } else if reviews.all(|signature| {
+                    baseline.text.strip_prefix(&format!("#: fn {name} ")) == Some(signature)
+                }) {
+                    contract = baseline;
+                }
+            }
+        }
+        signatures.insert(name.clone(), contract.text.clone());
 
         if let Some(value) = llvm_result {
             source["llvm_affine_result"] =
@@ -429,34 +440,41 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
             source["mir_resolved_callees"] = json!(summary.callees);
         }
         source_contracts.insert(name.clone(), source);
-        if selected.contains(name) {
-            selected_text.push_str(&contract.text);
-            if !args.no_infer_loops
-                && let Some(func) = funcs.iter().find(|f| f.name == *name)
-            {
-                annotations.extend(loops::annotate(
-                    func,
-                    &contract.state,
-                    &mut contract.names,
-                    &contract.slices,
-                ));
-            }
+        if selected.contains(name)
+            && !args.no_infer_loops
+            && let Some(func) = funcs.iter().find(|f| f.name == *name)
+        {
+            annotations.extend(loops::annotate(
+                func,
+                &contract.state,
+                &mut contract.names,
+                &contract.slices,
+            ));
         }
     }
-    for contract in external.values() {
-        all.push_str(contract);
-        selected_text.push_str(contract);
-    }
-    fs::write(dir.join("contracts.s"), all)?;
-    write_json(
-        &dir.join("contracts.json"),
-        &json!({
-            "schema_version": 1,
-            "mir_hints_enabled": !args.no_mir_hints,
-            "functions": source_contracts,
-        }),
-    )?;
-    write_json(&dir.join("entry-contracts.json"), &json!(entry_contracts))?;
+    let render_contracts = |selected_only: bool, signatures: &TextMap| -> String {
+        let mut text = String::new();
+        for name in args.function.iter().filter_map(|path| targets.get(path)) {
+            if !selected_only || selected.contains(name) {
+                let frame = stack.get(name).map(String::as_str).unwrap_or("stack 0");
+                text.push_str(&format!("{} {frame}\n", signatures[name]));
+            }
+        }
+        text.extend(external.values().map(String::as_str));
+        text
+    };
+    let get_entries = |signatures: &TextMap| -> Result<TextMap> {
+        targets
+            .iter()
+            .map(|(path, name)| {
+                let signature = signatures[name]
+                    .strip_prefix(&format!("#: fn {name} "))
+                    .ok_or("generated contract has an unexpected signature")?;
+                Ok((path.clone(), signature.trim().to_owned()))
+            })
+            .collect()
+    };
+    let entry_contracts = get_entries(&signatures)?;
     let changed: BTreeSet<_> = reviewed
         .iter()
         .flat_map(|entries| entries.iter())
@@ -466,15 +484,16 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
     let ledger = dir.join("ledger.json");
     let mut report = json!({"checker":null,"functions":[],"global_errors":[]});
     let mut status = 0;
+    let mut checker_attempts_ms = Vec::new();
     if changed.is_empty() && !selected.is_empty() {
+        let mut annotated_body = String::new();
         for (index, line) in body.split_inclusive('\n').enumerate() {
             if let Some(annotation) = annotations.get(&(index + 1)) {
-                selected_text.push_str(annotation);
+                annotated_body.push_str(annotation);
             }
-            selected_text.push_str(line);
+            annotated_body.push_str(line);
         }
         let annotated = dir.join("annotated.s");
-        fs::write(&annotated, selected_text)?;
         let checker = args
             .checker
             .clone()
@@ -485,29 +504,93 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
             .clone()
             .or_else(|| std::env::var_os("NOCOMPILER_LEAN_DIR").map(PathBuf::from))
             .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../lean"));
-        status = Command::new(checker)
-            .arg("check")
-            .arg(&annotated)
-            .arg("--image")
-            .arg(&image.image)
-            .arg("--export-lean")
-            .arg(dir.join("Proof.lean"))
-            .args(["--prove", "--certs"])
-            .arg("--lean-dir")
-            .arg(lean)
-            .arg("--ledger")
-            .arg(&ledger)
-            .status()?
-            .code()
-            .unwrap_or(2);
-        if ledger.exists() {
+        loop {
+            let mut text = render_contracts(true, &signatures);
+            text.push_str(&annotated_body);
+            fs::write(&annotated, text)?;
+            let checker_started = std::time::Instant::now();
+            status = Command::new(&checker)
+                .arg("check")
+                .arg(&annotated)
+                .arg("--image")
+                .arg(&image.image)
+                .arg("--export-lean")
+                .arg(dir.join("Proof.lean"))
+                .args(["--prove", "--certs"])
+                .arg("--lean-dir")
+                .arg(&lean)
+                .arg("--ledger")
+                .arg(&ledger)
+                .status()?
+                .code()
+                .unwrap_or(2);
+            checker_attempts_ms.push(checker_started.elapsed().as_millis());
+            if !ledger.exists() {
+                report = json!({"checker":null,"functions":[],"global_errors":[format!(
+                    "checker exited with status {status} without a ledger"
+                )]});
+                break;
+            }
             report = serde_json::from_str(&fs::read_to_string(&ledger)?)?;
-        } else {
-            report["global_errors"] = json!([format!(
-                "checker exited with status {status} without a ledger"
-            )]);
+            if llvm_fallbacks.is_empty()
+                || !matches!(status, 0 | 1)
+                || report["global_errors"]
+                    .as_array()
+                    .is_none_or(|errors| !errors.is_empty())
+            {
+                break;
+            }
+            let functions = report["functions"]
+                .as_array()
+                .ok_or("invalid checker ledger")?;
+            let mut retry = false;
+            for item in functions {
+                let Some(name) = item["name"].as_str() else {
+                    continue;
+                };
+                let reason = match item["status"].as_str() {
+                    Some("rejected") if item["error"]["rule"] == "ret-out" => "ret-out",
+                    Some("checked") if report["proof_attempt"]["status"] == "failed" => {
+                        "lean_unproved"
+                    }
+                    _ => continue,
+                };
+                if let Some(baseline) = llvm_fallbacks.remove(name) {
+                    signatures.insert(name.to_owned(), baseline);
+                    llvm_result_fallbacks.insert(name.to_owned(), reason);
+                    retry = true;
+                }
+            }
+            if !retry {
+                break;
+            }
+            // The retry must produce its own ledger and Lean input.
+            fs::remove_file(&ledger)?;
+            for filename in ["Proof.lean", "Proof.lean.certs.lean"] {
+                match fs::remove_file(dir.join(filename)) {
+                    Ok(()) => {}
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(error) => return Err(error.into()),
+                }
+            }
         }
     }
+    fs::write(
+        dir.join("contracts.s"),
+        render_contracts(false, &signatures),
+    )?;
+    write_json(
+        &dir.join("contracts.json"),
+        &json!({
+            "schema_version": 1,
+            "mir_hints_enabled": !args.no_mir_hints,
+            "functions": source_contracts,
+        }),
+    )?;
+    write_json(
+        &dir.join("entry-contracts.json"),
+        &json!(get_entries(&signatures)?),
+    )?;
     if elf_digest(&image.image)? != elf_sha256 {
         return Err("proof input ELF changed during verification".into());
     }
@@ -574,6 +657,8 @@ fn run(args: &Args, dir: &Path) -> Result<u8> {
                      "default_features":!args.no_default_features,"all_features":args.all_features,"locked":args.locked},
             "rust_toolchain":build::TOOLCHAIN,"rustc_version":image.version,"checker":report["checker"],
             "proof_attempt":report["proof_attempt"],
+            "timing_ms":{"build_and_capture":build_ms,"checker_attempts":checker_attempts_ms},
+            "llvm_result_fallbacks":llvm_result_fallbacks,
             "checker_exit_code": (changed.is_empty() && !selected.is_empty()).then_some(status),
             "contract_file":"contracts.s","contract_ir_file":"contracts.json","mir_hints":!args.no_mir_hints,"llvm_hints":args.llvm_hints,"infer_loops":!args.no_infer_loops,"functions":results,
             "chc_solver_enabled":args.chc_solver.is_some(),"chc_pruned_edges":chc_refinement,

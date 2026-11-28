@@ -167,6 +167,15 @@ count candidates for the diagnostics. Symbolic counts naming an argument
 are associated with the integer ABI register using the structured LLVM
 signature. Loop annotations use RV64 branch predicates and register
 transitions, including with LLVM hints disabled.
+
+LLVM-derived return expressions and ranges are tried as output contract
+candidates. If a return obligation is rejected or Lean cannot prove the
+candidate, the tool can restore the original output contract and rerun both
+checkers on the same linked ELF. Reviewed contracts are matched exactly and
+are used directly when they match the original contract. The final artifacts
+record the contract actually checked. The report's `llvm_result_fallbacks`
+map identifies retried symbols and their initial failure reason.
+
 Machine stack object ranges are reported alongside CFG-derived frame
 annotations. The linked ELF supplies the instructions for the proof.
 Machine IR is generated in a separate backend run. General mapping of
@@ -395,6 +404,9 @@ outside these rules.
 
 ## Automatic proof coverage
 
+See [NoCompiler Rust-100](../../benchmarks/rust/README.md) for the
+manifest-driven Rust benchmark and its pinned runnable selection.
+
 Run `scripts/rust-typed-trial/measure.py` to reproduce the fixed selection.
 It uses `heapless` 0.9.3 and `memchr` 2.8.3, plus local fixtures for Rust's
 allocator/Box ABI and buffer analysis. It supplies no manual annotation or
@@ -414,7 +426,7 @@ remains an entry requirement. `proved_assuming` additionally requires the
 listed external allocator contracts. This is a fixed capability benchmark;
 its rates describe these targets.
 
-The measured selection had 19 targets:
+The earlier fixed selection had 19 targets:
 
 | Group | Proved | Proved with external assumptions | Rejected | Unsupported |
 | --- | ---: | ---: | ---: | ---: |

@@ -50,3 +50,18 @@ awk '
     }
     END { if (!seen) exit 1 }
 ' "$artifacts/delayed-frame/annotated.s"
+
+# LLVM infers the word range, but the checker currently loses it through OR.
+byteorder=(target/release/cargo-nocompiler check --locked
+    --manifest-path benchmarks/rust/probes/Cargo.toml --bin rust100_probe
+    --function rust100_probe::read_u32 --llvm-hints)
+"${byteorder[@]}" --artifacts "$artifacts/llvm-result-fallback"
+fallback="$artifacts/llvm-result-fallback"
+jq -e '.functions["rust100_probe::read_u32"].status == "proved" and
+    (.llvm_result_fallbacks | [.[]] == ["ret-out"])' "$fallback/report.json"
+jq -e '.["rust100_probe::read_u32"] == "[p0] in a0: int(p0) borrow p0 |-> bytes[4] ro out a0: int"'     "$fallback/entry-contracts.json"
+
+# A previously reviewed baseline remains usable with LLVM hints enabled.
+"${byteorder[@]}" --entry-contracts "$fallback/entry-contracts.json"     --artifacts "$artifacts/llvm-result-reviewed"
+jq -e '.functions["rust100_probe::read_u32"].status == "proved" and
+    .llvm_result_fallbacks == {}' "$artifacts/llvm-result-reviewed/report.json"

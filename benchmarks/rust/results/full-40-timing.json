@@ -1,0 +1,3984 @@
+{
+  "system": {
+    "cpu": "AMD EPYC 9R14",
+    "logical_cpus": 16
+  },
+  "manifest_sha256": "5dbb5837a97a7e881912d45ddb8090adaa531117a29bce14074fa0bbbf521579",
+  "typed_checker_sha256": "84ce85b6119a0eb5d7d18ecdb1048ba4505d58a3cb826f078f4f2355ad25d3d8",
+  "summary": {
+    "mir": {
+      "suite_elapsed_ms": 156666,
+      "requested_targets": 40,
+      "built_runs": 18,
+      "lean_proved": 17,
+      "lean_proved_assuming": 2,
+      "rust_checker_passed": 19,
+      "verdicts": {
+        "proved": 17,
+        "proved_assuming": 2,
+        "rejected": 15,
+        "unsupported": 6
+      },
+      "run_wall_ms": {
+        "n": 18,
+        "sum": 332677,
+        "min": 3548,
+        "median": 7301.5,
+        "max": 156660
+      },
+      "build_and_capture_ms": {
+        "n": 18,
+        "sum": 86471,
+        "min": 2443,
+        "median": 5563.5,
+        "max": 5908
+      },
+      "checker_wall_ms": {
+        "n": 18,
+        "sum": 245638,
+        "min": 1,
+        "median": 2407,
+        "max": 153095
+      },
+      "rust_function_micros": {
+        "n": 34,
+        "sum": 55745,
+        "min": 1,
+        "median": 641,
+        "max": 19508
+      },
+      "rust_proved_function_micros": {
+        "n": 17,
+        "sum": 33613,
+        "min": 87,
+        "median": 916,
+        "max": 19508
+      },
+      "checker_attempts": 18,
+      "slowest": [
+        {
+          "run": "memchr-forward",
+          "elapsed_ms": 156660,
+          "timing_ms": {
+            "build_and_capture": 3521,
+            "checker_attempts": [
+              153095
+            ]
+          }
+        },
+        {
+          "run": "buffers",
+          "elapsed_ms": 20855,
+          "timing_ms": {
+            "build_and_capture": 2443,
+            "checker_attempts": [
+              18382
+            ]
+          }
+        },
+        {
+          "run": "heapless",
+          "elapsed_ms": 19756,
+          "timing_ms": {
+            "build_and_capture": 3703,
+            "checker_attempts": [
+              16030
+            ]
+          }
+        }
+      ]
+    },
+    "mir_and_llvm": {
+      "suite_elapsed_ms": 157027,
+      "requested_targets": 40,
+      "built_runs": 18,
+      "lean_proved": 17,
+      "lean_proved_assuming": 2,
+      "rust_checker_passed": 19,
+      "verdicts": {
+        "proved": 17,
+        "proved_assuming": 2,
+        "rejected": 15,
+        "unsupported": 6
+      },
+      "run_wall_ms": {
+        "n": 18,
+        "sum": 335130,
+        "min": 3445,
+        "median": 7585,
+        "max": 157023
+      },
+      "build_and_capture_ms": {
+        "n": 18,
+        "sum": 89338,
+        "min": 2425,
+        "median": 5802.5,
+        "max": 6150
+      },
+      "checker_wall_ms": {
+        "n": 18,
+        "sum": 245207,
+        "min": 1,
+        "median": 2396,
+        "max": 153743
+      },
+      "rust_function_micros": {
+        "n": 34,
+        "sum": 57453,
+        "min": 1,
+        "median": 626.5,
+        "max": 18764
+      },
+      "rust_proved_function_micros": {
+        "n": 17,
+        "sum": 35325,
+        "min": 87,
+        "median": 894,
+        "max": 18764
+      },
+      "checker_attempts": 19,
+      "slowest": [
+        {
+          "run": "memchr-forward",
+          "elapsed_ms": 157023,
+          "timing_ms": {
+            "build_and_capture": 3240,
+            "checker_attempts": [
+              153743
+            ]
+          }
+        },
+        {
+          "run": "buffers",
+          "elapsed_ms": 21137,
+          "timing_ms": {
+            "build_and_capture": 2621,
+            "checker_attempts": [
+              18483
+            ]
+          }
+        },
+        {
+          "run": "zerocopy",
+          "elapsed_ms": 19770,
+          "timing_ms": {
+            "build_and_capture": 6037,
+            "checker_attempts": [
+              13695
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "mir": {
+    "built_runs": 18,
+    "candidate_crates": 100,
+    "counts": {
+      "all": {
+        "proved": 17,
+        "proved_assuming": 2,
+        "rejected": 15,
+        "unsupported": 6
+      },
+      "category/array_vector": {
+        "proved": 8,
+        "rejected": 5,
+        "unsupported": 2
+      },
+      "category/buffer_queue": {
+        "proved": 1,
+        "rejected": 4,
+        "unsupported": 2
+      },
+      "category/fixture": {
+        "proved": 4,
+        "proved_assuming": 2
+      },
+      "category/parsing": {
+        "proved": 1,
+        "rejected": 4,
+        "unsupported": 2
+      },
+      "category/raw_memory": {
+        "proved": 3,
+        "rejected": 2
+      },
+      "kind/fixture": {
+        "proved": 4,
+        "proved_assuming": 2
+      },
+      "kind/upstream": {
+        "proved": 3,
+        "rejected": 1,
+        "unsupported": 3
+      },
+      "kind/wrapper": {
+        "proved": 10,
+        "rejected": 14,
+        "unsupported": 3
+      },
+      "run/array-init": {
+        "rejected": 1
+      },
+      "run/arraydeque": {
+        "rejected": 2,
+        "unsupported": 1
+      },
+      "run/arrayvec": {
+        "proved": 2,
+        "rejected": 1,
+        "unsupported": 1
+      },
+      "run/box-transfer": {
+        "proved": 1
+      },
+      "run/buffers": {
+        "proved": 3
+      },
+      "run/bytemuck": {
+        "rejected": 2
+      },
+      "run/byteorder": {
+        "proved": 1
+      },
+      "run/circular-buffer": {
+        "rejected": 2,
+        "unsupported": 1
+      },
+      "run/generic-array": {
+        "proved": 1
+      },
+      "run/heapless": {
+        "proved": 5,
+        "rejected": 3,
+        "unsupported": 1
+      },
+      "run/httparse": {
+        "rejected": 1
+      },
+      "run/itoa": {
+        "rejected": 1
+      },
+      "run/memchr-forward": {
+        "proved": 1,
+        "unsupported": 1
+      },
+      "run/memchr-reverse": {
+        "rejected": 1,
+        "unsupported": 1
+      },
+      "run/plain": {
+        "proved": 2
+      },
+      "run/rust-alloc": {
+        "proved_assuming": 2
+      },
+      "run/ryu": {
+        "rejected": 1
+      },
+      "run/zerocopy": {
+        "proved": 1
+      },
+      "track/alloc": {
+        "proved": 1,
+        "proved_assuming": 2
+      },
+      "track/core": {
+        "proved": 16,
+        "rejected": 15,
+        "unsupported": 6
+      }
+    },
+    "lean_proved": 17,
+    "lean_proved_assuming": 2,
+    "measured_crates": [
+      "array-init",
+      "arraydeque",
+      "arrayvec",
+      "bytemuck",
+      "byteorder",
+      "circular-buffer",
+      "generic-array",
+      "heapless",
+      "httparse",
+      "itoa",
+      "memchr",
+      "plain",
+      "ryu",
+      "zerocopy"
+    ],
+    "priority_candidates": 20,
+    "requested_targets": 40,
+    "requested_targets_in_linked_builds": 40,
+    "runs": [
+      {
+        "built": true,
+        "cargo_lock_sha256": "7d862e352d5791e96ab7b8f5b1ea393c9776ceaad33d94cd3f2c8c9ca1277c6d",
+        "crate": "heapless",
+        "elapsed_ms": 19756,
+        "elf_sha256": "b7137aef3a715f5f60f693365e637f3d2125e2a54dbc75302e6128e6e37da384",
+        "exit_code": 1,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "heapless",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 4]>>::as_slice",
+            "kind": "upstream",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/mir/heapless/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 87,
+              "name": "_RNvMs_NtCsg4XVHMIcmR2_8heapless3vecINtB4_8VecInneryjINtNtB4_7storage15VecStorageInnerAINtNtNtCs80YCMH89giB_4core3mem12maybe_uninit11MaybeUninityEj4_EE8as_sliceCsb2GjGVXwcwx_14heapless_probe",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "heapless::VecInner::as_slice",
+            "variant": null
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::as_slice",
+            "kind": "upstream",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/mir/heapless/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 124,
+              "name": "_RNvMs_NtCsg4XVHMIcmR2_8heapless3vecINtB4_8VecInneryjINtNtB4_7storage15VecStorageInnerAINtNtNtCs80YCMH89giB_4core3mem12maybe_uninit11MaybeUninityEj8_EE8as_sliceCsb2GjGVXwcwx_14heapless_probe",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "heapless::VecInner::as_slice",
+            "variant": null
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::push",
+            "kind": "upstream",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/mir/heapless/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 412,
+              "name": "_RNvMs_NtCsg4XVHMIcmR2_8heapless3vecINtB4_8VecInneryjINtNtB4_7storage15VecStorageInnerAINtNtNtCs80YCMH89giB_4core3mem12maybe_uninit11MaybeUninityEj8_EE4pushCsb2GjGVXwcwx_14heapless_probe",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "heapless::VecInner::push",
+            "variant": null
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::push_unchecked",
+            "kind": "upstream",
+            "result": {
+              "error": {
+                "line": 266,
+                "message": "no capability provably covers the 8-byte access at p03 + 8*x8 + 8",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 271,
+              "name": "_RNvMs_NtCsg4XVHMIcmR2_8heapless3vecINtB4_8VecInneryjINtNtB4_7storage15VecStorageInnerAINtNtNtCs80YCMH89giB_4core3mem12maybe_uninit11MaybeUninityEj8_EE14push_uncheckedCsb2GjGVXwcwx_14heapless_probe",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "heapless::VecInner::push_unchecked",
+            "variant": null
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::len",
+            "kind": "upstream",
+            "result": {
+              "reason": "function was not found in the selected Cargo binary",
+              "status": "unsupported",
+              "error": {
+                "message": null
+              }
+            },
+            "source": "heapless::VecInner::len",
+            "variant": null
+          },
+          {
+            "function": "heapless_probe::read::<4>",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 37,
+                "message": "no capability provably covers the 8-byte access at p04 + 8*x12 + 8",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 378,
+              "name": "_RINvCsb2GjGVXwcwx_14heapless_probe4readKj4_EB2_",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "heapless_probe::read",
+            "variant": null
+          },
+          {
+            "function": "heapless_probe::read::<8>",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 76,
+                "message": "no capability provably covers the 8-byte access at p05 + 8*x13 + 8",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 237,
+              "name": "_RINvCsb2GjGVXwcwx_14heapless_probe4readKj8_EB2_",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "heapless_probe::read",
+            "variant": null
+          },
+          {
+            "function": "heapless_probe::append",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/mir/heapless/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 337,
+              "name": "_RNvCsb2GjGVXwcwx_14heapless_probe6append",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "heapless_probe::append",
+            "variant": null
+          },
+          {
+            "function": "heapless_probe::copy_first",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/mir/heapless/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 430,
+              "name": "_RNvCsb2GjGVXwcwx_14heapless_probe10copy_first",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "heapless_probe::copy_first",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 3703,
+          "checker_attempts": [
+            16030
+          ]
+        },
+        "track": "core",
+        "version": "0.9.3"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "c62438e103f27ece3f2e51aa85b3b41854c8a9b593455cc43ef7c481d0dd4ff9",
+        "crate": "memchr",
+        "elapsed_ms": 156660,
+        "elf_sha256": "4a174c42016f678a303757004996a02345573d71e7c20c5e34c713888d71e043",
+        "exit_code": 1,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "memchr-forward",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "memchr::memchr",
+            "kind": "upstream",
+            "result": {
+              "reason": "function was not found in the selected Cargo binary",
+              "status": "unsupported",
+              "error": {
+                "message": null
+              }
+            },
+            "source": "memchr::memchr",
+            "variant": null
+          },
+          {
+            "function": "memchr_probe::find",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/mir/memchr-forward/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [
+                {
+                  "at": "head line 98",
+                  "binding": "remaining := n0",
+                  "line": 94
+                },
+                {
+                  "at": "head line 98",
+                  "binding": "remaining := remaining - 1",
+                  "line": 109
+                },
+                {
+                  "at": "head line 190",
+                  "binding": "remaining2 := n0 + r1 - 8",
+                  "line": 186
+                },
+                {
+                  "at": "head line 190",
+                  "binding": "remaining2 := remaining2 - 1",
+                  "line": 201
+                },
+                {
+                  "at": "head line 209",
+                  "binding": "remaining1 := n0",
+                  "line": 205
+                },
+                {
+                  "at": "head line 209",
+                  "binding": "remaining1 := remaining1 - 1",
+                  "line": 220
+                },
+                {
+                  "at": "head line 235",
+                  "binding": "remaining3 := n0 + r1 - 8",
+                  "line": 231
+                },
+                {
+                  "at": "head line 235",
+                  "binding": "remaining3 := remaining3 - 16",
+                  "line": 265
+                },
+                {
+                  "at": "head line 269",
+                  "binding": "tail89 := n0 + r1 - 8",
+                  "line": 228
+                },
+                {
+                  "at": "head line 269",
+                  "binding": "tail89 := remaining3",
+                  "line": 245
+                },
+                {
+                  "at": "head line 269",
+                  "binding": "tail89 := remaining3",
+                  "line": 259
+                },
+                {
+                  "at": "head line 269",
+                  "binding": "tail89 := remaining3 - 16",
+                  "line": 265
+                },
+                {
+                  "at": "head line 274",
+                  "binding": "remaining5 := tail89",
+                  "line": 270
+                },
+                {
+                  "at": "head line 274",
+                  "binding": "remaining5 := remaining5 - 1",
+                  "line": 282
+                }
+              ],
+              "micros": 19508,
+              "name": "_RNvCs5A2ddSvV86n_12memchr_probe4find",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "memchr_probe::find",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 3521,
+          "checker_attempts": [
+            153095
+          ]
+        },
+        "track": "core",
+        "version": "2.8.3"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "c62438e103f27ece3f2e51aa85b3b41854c8a9b593455cc43ef7c481d0dd4ff9",
+        "crate": "memchr",
+        "elapsed_ms": 3548,
+        "elf_sha256": "4a174c42016f678a303757004996a02345573d71e7c20c5e34c713888d71e043",
+        "exit_code": 1,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "memchr-reverse",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "memchr::memrchr",
+            "kind": "upstream",
+            "result": {
+              "reason": "function was not found in the selected Cargo binary",
+              "status": "unsupported",
+              "error": {
+                "message": null
+              }
+            },
+            "source": "memchr::memrchr",
+            "variant": null
+          },
+          {
+            "function": "memchr_probe::find_last",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 203,
+                "message": "back edge (to a dominating label) without an 'inv' annotation (P1)",
+                "rule": "cfg"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 31,
+              "name": "_RNvCs5A2ddSvV86n_12memchr_probe9find_last",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "memchr_probe::find_last",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 3519,
+          "checker_attempts": [
+            1
+          ]
+        },
+        "track": "core",
+        "version": "2.8.3"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "byteorder",
+        "elapsed_ms": 10639,
+        "elf_sha256": "e58ff8c64f7b26010ec2d2bddd24771c81e4d9945a47fe2626eb30fd5bb57d7b",
+        "exit_code": 0,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "byteorder",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::read_u32",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/mir/byteorder/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 1312,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe8read_u32",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "byteorder::LittleEndian::read_u32",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 5792,
+          "checker_attempts": [
+            4818
+          ]
+        },
+        "track": "core",
+        "version": "1.5.0"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "itoa",
+        "elapsed_ms": 5626,
+        "elf_sha256": "e58ff8c64f7b26010ec2d2bddd24771c81e4d9945a47fe2626eb30fd5bb57d7b",
+        "exit_code": 1,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "itoa",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::decimal_length",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 186,
+                "message": "no signature for '_RNvXsu_Cs8A1a1vm2fxo_4itoayNtB5_8Unsigned3fmt'",
+                "rule": "call-sig"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 9,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe14decimal_length",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "itoa::Buffer::format",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 5591,
+          "checker_attempts": [
+            6
+          ]
+        },
+        "track": "core",
+        "version": "1.0.18"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "httparse",
+        "elapsed_ms": 5843,
+        "elf_sha256": "e58ff8c64f7b26010ec2d2bddd24771c81e4d9945a47fe2626eb30fd5bb57d7b",
+        "exit_code": 1,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "httparse",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::request_header_count",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 270,
+                "message": "no signature for '_RNvMs3_Cso63ZKPBQGX_8httparseNtB5_7Request5parse'",
+                "rule": "call-sig"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 10,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe20request_header_count",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "httparse::Request::parse",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 5802,
+          "checker_attempts": [
+            11
+          ]
+        },
+        "track": "core",
+        "version": "1.10.1"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "10a64cad58bdfa0a91ed92239cdfbd4c031d17e5014940d89d98f856799a45a6",
+        "crate": null,
+        "elapsed_ms": 19318,
+        "elf_sha256": "13e13c03175d6aeabeaa9a8c1c9bc34497957d428156cb89bb6faaec76922e71",
+        "exit_code": 0,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "rust-alloc",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "global_alloc_probe::rust_alloc_round_trip",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc",
+                  "_RNvCs2oSbTXImU10_7___rustc35___rust_no_alloc_shim_is_unstable_v2",
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc5alloc"
+                ],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [
+                  "_RNvCs2oSbTXImU10_7___rustc35___rust_no_alloc_shim_is_unstable_v2",
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc5alloc",
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc"
+                ],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/mir/rust-alloc/Proof.lean.certs.lean",
+                "theorem": "prog_meets_rel"
+              },
+              "instantiations": [
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc5alloc'",
+                  "binding": "n := 8",
+                  "line": 114
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc5alloc'",
+                  "binding": "a := 8",
+                  "line": 114
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "p := q1",
+                  "line": 129
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "n1 := 8",
+                  "line": 129
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "a1 := 8",
+                  "line": 129
+                }
+              ],
+              "micros": 4494,
+              "name": "_RNvCs9StpMgNlCYi_18global_alloc_probe21rust_alloc_round_trip",
+              "retries": 0,
+              "status": "proved_assuming"
+            },
+            "source": "global_alloc_probe::rust_alloc_round_trip",
+            "variant": null
+          },
+          {
+            "function": "global_alloc_probe::boxed_release",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc",
+                  "_RNvCs2oSbTXImU10_7___rustc35___rust_no_alloc_shim_is_unstable_v2",
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc5alloc"
+                ],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc"
+                ],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/mir/rust-alloc/Proof.lean.certs.lean",
+                "theorem": "prog_meets_rel"
+              },
+              "instantiations": [
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "p := p0",
+                  "line": 63
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "n1 := 8",
+                  "line": 63
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "a1 := 8",
+                  "line": 63
+                }
+              ],
+              "micros": 623,
+              "name": "_RNvCs9StpMgNlCYi_18global_alloc_probe13boxed_release",
+              "retries": 0,
+              "status": "proved_assuming"
+            },
+            "source": "global_alloc_probe::boxed_release",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 2443,
+          "checker_attempts": [
+            16844
+          ]
+        },
+        "track": "alloc",
+        "version": null
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "10a64cad58bdfa0a91ed92239cdfbd4c031d17e5014940d89d98f856799a45a6",
+        "crate": null,
+        "elapsed_ms": 4352,
+        "elf_sha256": "13e13c03175d6aeabeaa9a8c1c9bc34497957d428156cb89bb6faaec76922e71",
+        "exit_code": 0,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "box-transfer",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "global_alloc_probe::boxed_transfer",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/mir/box-transfer/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 120,
+              "name": "_RNvCs9StpMgNlCYi_18global_alloc_probe14boxed_transfer",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "global_alloc_probe::boxed_transfer",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 2578,
+          "checker_attempts": [
+            1743
+          ]
+        },
+        "track": "alloc",
+        "version": null
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "5f125e674145c45d7550d366e63f14a81b6db0dc42f17da6b952d563dbccd474",
+        "crate": null,
+        "elapsed_ms": 20855,
+        "elf_sha256": "b40ab6472cdede3d7df2e23dd3de3ca0d8dcbf57f411f4df3edb4acb0a8e2159",
+        "exit_code": 0,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "buffers",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "buffer_ops::sum_after_prefix",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/mir/buffers/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [
+                {
+                  "at": "head line 302",
+                  "binding": "prefix14_0 := 2",
+                  "line": 291
+                },
+                {
+                  "at": "head line 302",
+                  "binding": "prefix14_0 := 1",
+                  "line": 297
+                },
+                {
+                  "at": "head line 318",
+                  "binding": "remaining1 := n0 - prefix14_0",
+                  "line": 314
+                },
+                {
+                  "at": "head line 318",
+                  "binding": "remaining1 := remaining1 - 1",
+                  "line": 331
+                }
+              ],
+              "micros": 1186,
+              "name": "_RNvCsg00mRGP2fsS_10buffer_ops16sum_after_prefix",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "buffer_ops::sum_after_prefix",
+            "variant": null
+          },
+          {
+            "function": "buffer_ops::scan_records",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/mir/buffers/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [
+                {
+                  "at": "head line 129",
+                  "binding": "remaining := n01",
+                  "line": 125
+                },
+                {
+                  "at": "head line 129",
+                  "binding": "remaining := remaining - r - 1",
+                  "line": 150
+                }
+              ],
+              "micros": 916,
+              "name": "_RNvCsg00mRGP2fsS_10buffer_ops12scan_records",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "buffer_ops::scan_records",
+            "variant": null
+          },
+          {
+            "function": "buffer_ops::read_spilled",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/mir/buffers/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 143,
+              "name": "_RNvCsg00mRGP2fsS_10buffer_ops12read_spilled",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "buffer_ops::read_spilled",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 2443,
+          "checker_attempts": [
+            18382
+          ]
+        },
+        "track": "core",
+        "version": null
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "arrayvec",
+        "elapsed_ms": 14446,
+        "elf_sha256": "e58ff8c64f7b26010ec2d2bddd24771c81e4d9945a47fe2626eb30fd5bb57d7b",
+        "exit_code": 1,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "arrayvec",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::arrayvec_push",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/mir/arrayvec/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 1226,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe13arrayvec_push",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "arrayvec::ArrayVec::try_push",
+            "variant": "u64,N=32"
+          },
+          {
+            "function": "rust100_probe::arrayvec_last",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 165,
+                "message": "no capability provably covers the 8-byte access at p01 + 8*x",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 2752,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe13arrayvec_last",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "arrayvec::ArrayVec::as_slice",
+            "variant": null
+          },
+          {
+            "function": "rust100_probe::arrayvec_push_wide",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/mir/arrayvec/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 1308,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe18arrayvec_push_wide",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "arrayvec::ArrayVec::try_push",
+            "variant": "u64,N=128"
+          },
+          {
+            "function": "rust100_probe::arrayvec_push_byte",
+            "kind": "wrapper",
+            "result": {
+              "reason": "unsupported argument 1: u8",
+              "status": "unsupported",
+              "error": {
+                "message": null
+              }
+            },
+            "source": "arrayvec::ArrayVec::try_push",
+            "variant": "u8,N=32"
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 5611,
+          "checker_attempts": [
+            8799
+          ]
+        },
+        "track": "core",
+        "version": "0.7.8"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "bytemuck",
+        "elapsed_ms": 5874,
+        "elf_sha256": "e58ff8c64f7b26010ec2d2bddd24771c81e4d9945a47fe2626eb30fd5bb57d7b",
+        "exit_code": 1,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "bytemuck",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::cast_u64",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 273,
+                "message": "no capability provably covers the 8-byte access at p0",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 1567,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe8cast_u64",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "bytemuck::try_cast_slice",
+            "variant": "u64"
+          },
+          {
+            "function": "rust100_probe::cast_u32",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 240,
+                "message": "no capability provably covers the 4-byte access at p01",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 1750,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe8cast_u32",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "bytemuck::try_cast_slice",
+            "variant": "u32"
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 5829,
+          "checker_attempts": [
+            12
+          ]
+        },
+        "track": "core",
+        "version": "1.25.2"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "array-init",
+        "elapsed_ms": 5753,
+        "elf_sha256": "e58ff8c64f7b26010ec2d2bddd24771c81e4d9945a47fe2626eb30fd5bb57d7b",
+        "exit_code": 1,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "array-init",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::initialize_then_index",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 263,
+                "message": "no capability provably covers the 8-byte access at 8*x1 + σ0 - 64",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 2497,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe21initialize_then_index",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "array-init::array_init",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 5712,
+          "checker_attempts": [
+            10
+          ]
+        },
+        "track": "core",
+        "version": "2.1.0"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "arraydeque",
+        "elapsed_ms": 5591,
+        "elf_sha256": "e58ff8c64f7b26010ec2d2bddd24771c81e4d9945a47fe2626eb30fd5bb57d7b",
+        "exit_code": 1,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "arraydeque",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::deque_push",
+            "kind": "wrapper",
+            "result": {
+              "reason": "unsupported return type bool",
+              "status": "unsupported",
+              "error": {
+                "message": null
+              }
+            },
+            "source": "arraydeque::ArrayDeque::push_back",
+            "variant": null
+          },
+          {
+            "function": "rust100_probe::deque_pop",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 332,
+                "message": "no capability provably covers the 8-byte access at p0 + 8*x3",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 3580,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe9deque_pop",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "arraydeque::ArrayDeque::pop_front",
+            "variant": "u64,N=8"
+          },
+          {
+            "function": "rust100_probe::deque_pop_wide",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 214,
+                "message": "no capability provably covers the 8-byte access at p01 + 8*x1",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 3915,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe14deque_pop_wide",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "arraydeque::ArrayDeque::pop_front",
+            "variant": "u64,N=32"
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 5535,
+          "checker_attempts": [
+            18
+          ]
+        },
+        "track": "core",
+        "version": "0.5.1"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "circular-buffer",
+        "elapsed_ms": 5563,
+        "elf_sha256": "e58ff8c64f7b26010ec2d2bddd24771c81e4d9945a47fe2626eb30fd5bb57d7b",
+        "exit_code": 1,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "circular-buffer",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::ring_push",
+            "kind": "wrapper",
+            "result": {
+              "reason": "unsupported return type bool",
+              "status": "unsupported",
+              "error": {
+                "message": null
+              }
+            },
+            "source": "circular_buffer::CircularBuffer::try_push_back",
+            "variant": null
+          },
+          {
+            "function": "rust100_probe::ring_pop",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 373,
+                "message": "no signature for '_RNvNtCs80YCMH89giB_4core9panicking18panic_bounds_check'",
+                "rule": "call-sig"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 1,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe8ring_pop",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "circular_buffer::CircularBuffer::pop_front",
+            "variant": "u64,N=8"
+          },
+          {
+            "function": "rust100_probe::ring_pop_wide",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 223,
+                "message": "no signature for '_RNvNtCs80YCMH89giB_4core9panicking18panic_bounds_check'",
+                "rule": "call-sig"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 10,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe13ring_pop_wide",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "circular_buffer::CircularBuffer::pop_front",
+            "variant": "u64,N=32"
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 5523,
+          "checker_attempts": [
+            6
+          ]
+        },
+        "track": "core",
+        "version": "2.0.1"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "generic-array",
+        "elapsed_ms": 8729,
+        "elf_sha256": "e58ff8c64f7b26010ec2d2bddd24771c81e4d9945a47fe2626eb30fd5bb57d7b",
+        "exit_code": 0,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "generic-array",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::generic_array_read",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/mir/generic-array/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 659,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe18generic_array_read",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "generic_array::GenericArray::deref",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 5628,
+          "checker_attempts": [
+            3071
+          ]
+        },
+        "track": "core",
+        "version": "1.4.5"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "plain",
+        "elapsed_ms": 15182,
+        "elf_sha256": "e58ff8c64f7b26010ec2d2bddd24771c81e4d9945a47fe2626eb30fd5bb57d7b",
+        "exit_code": 0,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "plain",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::plain_read",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/mir/plain/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 1354,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe10plain_read",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "plain::from_bytes",
+            "variant": "u64"
+          },
+          {
+            "function": "rust100_probe::plain_read_u32",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/mir/plain/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 1217,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe14plain_read_u32",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "plain::from_bytes",
+            "variant": "u32"
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 5797,
+          "checker_attempts": [
+            9355
+          ]
+        },
+        "track": "core",
+        "version": "0.2.3"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "ryu",
+        "elapsed_ms": 5572,
+        "elf_sha256": "e58ff8c64f7b26010ec2d2bddd24771c81e4d9945a47fe2626eb30fd5bb57d7b",
+        "exit_code": 1,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "ryu",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::ryu_length",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 176,
+                "message": "no signature for '_RNvNtCs2xRbTudmceE_3ryu6pretty8format64'",
+                "rule": "call-sig"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 7,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe10ryu_length",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "ryu::Buffer::format",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 5536,
+          "checker_attempts": [
+            6
+          ]
+        },
+        "track": "core",
+        "version": "1.0.23"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "zerocopy",
+        "elapsed_ms": 19370,
+        "elf_sha256": "e58ff8c64f7b26010ec2d2bddd24771c81e4d9945a47fe2626eb30fd5bb57d7b",
+        "exit_code": 0,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "zerocopy",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::zerocopy_read",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/mir/zerocopy/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 3274,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe13zerocopy_read",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "zerocopy::Ref::from_bytes",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 5908,
+          "checker_attempts": [
+            13431
+          ]
+        },
+        "track": "core",
+        "version": "0.8.66"
+      }
+    ],
+    "rust_checker_passed": 19,
+    "schema_version": 1,
+    "settings": {
+      "chc_solver_enabled": false,
+      "frontend_sha256": "ac41f238b4ff1bc2c073bf746be88a3dd22d9854d616ff035b08577474508ef4",
+      "jobs": 3,
+      "llvm_hints": false,
+      "locked": true,
+      "mir_hints": true,
+      "profile": "release",
+      "timeout_secs": 600
+    },
+    "source_coverage": [
+      {
+        "crate": null,
+        "kind": "fixture",
+        "source": "buffer_ops::read_spilled",
+        "verdicts": {
+          "proved": 1
+        }
+      },
+      {
+        "crate": null,
+        "kind": "fixture",
+        "source": "buffer_ops::scan_records",
+        "verdicts": {
+          "proved": 1
+        }
+      },
+      {
+        "crate": null,
+        "kind": "fixture",
+        "source": "buffer_ops::sum_after_prefix",
+        "verdicts": {
+          "proved": 1
+        }
+      },
+      {
+        "crate": null,
+        "kind": "fixture",
+        "source": "global_alloc_probe::boxed_release",
+        "verdicts": {
+          "proved_assuming": 1
+        }
+      },
+      {
+        "crate": null,
+        "kind": "fixture",
+        "source": "global_alloc_probe::boxed_transfer",
+        "verdicts": {
+          "proved": 1
+        }
+      },
+      {
+        "crate": null,
+        "kind": "fixture",
+        "source": "global_alloc_probe::rust_alloc_round_trip",
+        "verdicts": {
+          "proved_assuming": 1
+        }
+      },
+      {
+        "crate": "array-init",
+        "kind": "wrapper",
+        "source": "array-init::array_init",
+        "verdicts": {
+          "rejected": 1
+        }
+      },
+      {
+        "crate": "arraydeque",
+        "kind": "wrapper",
+        "source": "arraydeque::ArrayDeque::pop_front",
+        "verdicts": {
+          "rejected": 2
+        }
+      },
+      {
+        "crate": "arraydeque",
+        "kind": "wrapper",
+        "source": "arraydeque::ArrayDeque::push_back",
+        "verdicts": {
+          "unsupported": 1
+        }
+      },
+      {
+        "crate": "arrayvec",
+        "kind": "wrapper",
+        "source": "arrayvec::ArrayVec::as_slice",
+        "verdicts": {
+          "rejected": 1
+        }
+      },
+      {
+        "crate": "arrayvec",
+        "kind": "wrapper",
+        "source": "arrayvec::ArrayVec::try_push",
+        "verdicts": {
+          "proved": 2,
+          "unsupported": 1
+        }
+      },
+      {
+        "crate": "bytemuck",
+        "kind": "wrapper",
+        "source": "bytemuck::try_cast_slice",
+        "verdicts": {
+          "rejected": 2
+        }
+      },
+      {
+        "crate": "byteorder",
+        "kind": "wrapper",
+        "source": "byteorder::LittleEndian::read_u32",
+        "verdicts": {
+          "proved": 1
+        }
+      },
+      {
+        "crate": "circular-buffer",
+        "kind": "wrapper",
+        "source": "circular_buffer::CircularBuffer::pop_front",
+        "verdicts": {
+          "rejected": 2
+        }
+      },
+      {
+        "crate": "circular-buffer",
+        "kind": "wrapper",
+        "source": "circular_buffer::CircularBuffer::try_push_back",
+        "verdicts": {
+          "unsupported": 1
+        }
+      },
+      {
+        "crate": "generic-array",
+        "kind": "wrapper",
+        "source": "generic_array::GenericArray::deref",
+        "verdicts": {
+          "proved": 1
+        }
+      },
+      {
+        "crate": "heapless",
+        "kind": "upstream",
+        "source": "heapless::VecInner::as_slice",
+        "verdicts": {
+          "proved": 2
+        }
+      },
+      {
+        "crate": "heapless",
+        "kind": "upstream",
+        "source": "heapless::VecInner::len",
+        "verdicts": {
+          "unsupported": 1
+        }
+      },
+      {
+        "crate": "heapless",
+        "kind": "upstream",
+        "source": "heapless::VecInner::push",
+        "verdicts": {
+          "proved": 1
+        }
+      },
+      {
+        "crate": "heapless",
+        "kind": "upstream",
+        "source": "heapless::VecInner::push_unchecked",
+        "verdicts": {
+          "rejected": 1
+        }
+      },
+      {
+        "crate": "heapless",
+        "kind": "wrapper",
+        "source": "heapless_probe::append",
+        "verdicts": {
+          "proved": 1
+        }
+      },
+      {
+        "crate": "heapless",
+        "kind": "wrapper",
+        "source": "heapless_probe::copy_first",
+        "verdicts": {
+          "proved": 1
+        }
+      },
+      {
+        "crate": "heapless",
+        "kind": "wrapper",
+        "source": "heapless_probe::read",
+        "verdicts": {
+          "rejected": 2
+        }
+      },
+      {
+        "crate": "httparse",
+        "kind": "wrapper",
+        "source": "httparse::Request::parse",
+        "verdicts": {
+          "rejected": 1
+        }
+      },
+      {
+        "crate": "itoa",
+        "kind": "wrapper",
+        "source": "itoa::Buffer::format",
+        "verdicts": {
+          "rejected": 1
+        }
+      },
+      {
+        "crate": "memchr",
+        "kind": "upstream",
+        "source": "memchr::memchr",
+        "verdicts": {
+          "unsupported": 1
+        }
+      },
+      {
+        "crate": "memchr",
+        "kind": "upstream",
+        "source": "memchr::memrchr",
+        "verdicts": {
+          "unsupported": 1
+        }
+      },
+      {
+        "crate": "memchr",
+        "kind": "wrapper",
+        "source": "memchr_probe::find",
+        "verdicts": {
+          "proved": 1
+        }
+      },
+      {
+        "crate": "memchr",
+        "kind": "wrapper",
+        "source": "memchr_probe::find_last",
+        "verdicts": {
+          "rejected": 1
+        }
+      },
+      {
+        "crate": "plain",
+        "kind": "wrapper",
+        "source": "plain::from_bytes",
+        "verdicts": {
+          "proved": 2
+        }
+      },
+      {
+        "crate": "ryu",
+        "kind": "wrapper",
+        "source": "ryu::Buffer::format",
+        "verdicts": {
+          "rejected": 1
+        }
+      },
+      {
+        "crate": "zerocopy",
+        "kind": "wrapper",
+        "source": "zerocopy::Ref::from_bytes",
+        "verdicts": {
+          "proved": 1
+        }
+      }
+    ],
+    "suite_elapsed_ms": 156666,
+    "target": "riscv64imac-unknown-none-elf",
+    "unique_source_entries": 32,
+    "unique_symbols_in_images": 34
+  },
+  "mir_and_llvm": {
+    "built_runs": 18,
+    "candidate_crates": 100,
+    "counts": {
+      "all": {
+        "proved": 17,
+        "proved_assuming": 2,
+        "rejected": 15,
+        "unsupported": 6
+      },
+      "category/array_vector": {
+        "proved": 8,
+        "rejected": 5,
+        "unsupported": 2
+      },
+      "category/buffer_queue": {
+        "proved": 1,
+        "rejected": 4,
+        "unsupported": 2
+      },
+      "category/fixture": {
+        "proved": 4,
+        "proved_assuming": 2
+      },
+      "category/parsing": {
+        "proved": 1,
+        "rejected": 4,
+        "unsupported": 2
+      },
+      "category/raw_memory": {
+        "proved": 3,
+        "rejected": 2
+      },
+      "kind/fixture": {
+        "proved": 4,
+        "proved_assuming": 2
+      },
+      "kind/upstream": {
+        "proved": 3,
+        "rejected": 1,
+        "unsupported": 3
+      },
+      "kind/wrapper": {
+        "proved": 10,
+        "rejected": 14,
+        "unsupported": 3
+      },
+      "run/array-init": {
+        "rejected": 1
+      },
+      "run/arraydeque": {
+        "rejected": 2,
+        "unsupported": 1
+      },
+      "run/arrayvec": {
+        "proved": 2,
+        "rejected": 1,
+        "unsupported": 1
+      },
+      "run/box-transfer": {
+        "proved": 1
+      },
+      "run/buffers": {
+        "proved": 3
+      },
+      "run/bytemuck": {
+        "rejected": 2
+      },
+      "run/byteorder": {
+        "proved": 1
+      },
+      "run/circular-buffer": {
+        "rejected": 2,
+        "unsupported": 1
+      },
+      "run/generic-array": {
+        "proved": 1
+      },
+      "run/heapless": {
+        "proved": 5,
+        "rejected": 3,
+        "unsupported": 1
+      },
+      "run/httparse": {
+        "rejected": 1
+      },
+      "run/itoa": {
+        "rejected": 1
+      },
+      "run/memchr-forward": {
+        "proved": 1,
+        "unsupported": 1
+      },
+      "run/memchr-reverse": {
+        "rejected": 1,
+        "unsupported": 1
+      },
+      "run/plain": {
+        "proved": 2
+      },
+      "run/rust-alloc": {
+        "proved_assuming": 2
+      },
+      "run/ryu": {
+        "rejected": 1
+      },
+      "run/zerocopy": {
+        "proved": 1
+      },
+      "track/alloc": {
+        "proved": 1,
+        "proved_assuming": 2
+      },
+      "track/core": {
+        "proved": 16,
+        "rejected": 15,
+        "unsupported": 6
+      }
+    },
+    "lean_proved": 17,
+    "lean_proved_assuming": 2,
+    "measured_crates": [
+      "array-init",
+      "arraydeque",
+      "arrayvec",
+      "bytemuck",
+      "byteorder",
+      "circular-buffer",
+      "generic-array",
+      "heapless",
+      "httparse",
+      "itoa",
+      "memchr",
+      "plain",
+      "ryu",
+      "zerocopy"
+    ],
+    "priority_candidates": 20,
+    "requested_targets": 40,
+    "requested_targets_in_linked_builds": 40,
+    "runs": [
+      {
+        "built": true,
+        "cargo_lock_sha256": "7d862e352d5791e96ab7b8f5b1ea393c9776ceaad33d94cd3f2c8c9ca1277c6d",
+        "crate": "heapless",
+        "elapsed_ms": 18937,
+        "elf_sha256": "b7137aef3a715f5f60f693365e637f3d2125e2a54dbc75302e6128e6e37da384",
+        "exit_code": 1,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "heapless",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 4]>>::as_slice",
+            "kind": "upstream",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/llvm/heapless/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 87,
+              "name": "_RNvMs_NtCsg4XVHMIcmR2_8heapless3vecINtB4_8VecInneryjINtNtB4_7storage15VecStorageInnerAINtNtNtCs80YCMH89giB_4core3mem12maybe_uninit11MaybeUninityEj4_EE8as_sliceCsb2GjGVXwcwx_14heapless_probe",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "heapless::VecInner::as_slice",
+            "variant": null
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::as_slice",
+            "kind": "upstream",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/llvm/heapless/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 122,
+              "name": "_RNvMs_NtCsg4XVHMIcmR2_8heapless3vecINtB4_8VecInneryjINtNtB4_7storage15VecStorageInnerAINtNtNtCs80YCMH89giB_4core3mem12maybe_uninit11MaybeUninityEj8_EE8as_sliceCsb2GjGVXwcwx_14heapless_probe",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "heapless::VecInner::as_slice",
+            "variant": null
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::push",
+            "kind": "upstream",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/llvm/heapless/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 410,
+              "name": "_RNvMs_NtCsg4XVHMIcmR2_8heapless3vecINtB4_8VecInneryjINtNtB4_7storage15VecStorageInnerAINtNtNtCs80YCMH89giB_4core3mem12maybe_uninit11MaybeUninityEj8_EE4pushCsb2GjGVXwcwx_14heapless_probe",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "heapless::VecInner::push",
+            "variant": null
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::push_unchecked",
+            "kind": "upstream",
+            "result": {
+              "error": {
+                "line": 266,
+                "message": "no capability provably covers the 8-byte access at p03 + 8*x8 + 8",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 266,
+              "name": "_RNvMs_NtCsg4XVHMIcmR2_8heapless3vecINtB4_8VecInneryjINtNtB4_7storage15VecStorageInnerAINtNtNtCs80YCMH89giB_4core3mem12maybe_uninit11MaybeUninityEj8_EE14push_uncheckedCsb2GjGVXwcwx_14heapless_probe",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "heapless::VecInner::push_unchecked",
+            "variant": null
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::len",
+            "kind": "upstream",
+            "result": {
+              "reason": "function was not found in the selected Cargo binary",
+              "status": "unsupported",
+              "error": {
+                "message": null
+              }
+            },
+            "source": "heapless::VecInner::len",
+            "variant": null
+          },
+          {
+            "function": "heapless_probe::read::<4>",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 37,
+                "message": "no capability provably covers the 8-byte access at p04 + 8*x12 + 8",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 395,
+              "name": "_RINvCsb2GjGVXwcwx_14heapless_probe4readKj4_EB2_",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "heapless_probe::read",
+            "variant": null
+          },
+          {
+            "function": "heapless_probe::read::<8>",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 76,
+                "message": "no capability provably covers the 8-byte access at p05 + 8*x13 + 8",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 224,
+              "name": "_RINvCsb2GjGVXwcwx_14heapless_probe4readKj8_EB2_",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "heapless_probe::read",
+            "variant": null
+          },
+          {
+            "function": "heapless_probe::append",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/llvm/heapless/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 363,
+              "name": "_RNvCsb2GjGVXwcwx_14heapless_probe6append",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "heapless_probe::append",
+            "variant": null
+          },
+          {
+            "function": "heapless_probe::copy_first",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/llvm/heapless/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 523,
+              "name": "_RNvCsb2GjGVXwcwx_14heapless_probe10copy_first",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "heapless_probe::copy_first",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 3641,
+          "checker_attempts": [
+            15274
+          ]
+        },
+        "track": "core",
+        "version": "0.9.3"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "c62438e103f27ece3f2e51aa85b3b41854c8a9b593455cc43ef7c481d0dd4ff9",
+        "crate": "memchr",
+        "elapsed_ms": 157023,
+        "elf_sha256": "4a174c42016f678a303757004996a02345573d71e7c20c5e34c713888d71e043",
+        "exit_code": 1,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "memchr-forward",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "memchr::memchr",
+            "kind": "upstream",
+            "result": {
+              "reason": "function was not found in the selected Cargo binary",
+              "status": "unsupported",
+              "error": {
+                "message": null
+              }
+            },
+            "source": "memchr::memchr",
+            "variant": null
+          },
+          {
+            "function": "memchr_probe::find",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/llvm/memchr-forward/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [
+                {
+                  "at": "head line 98",
+                  "binding": "remaining := n0",
+                  "line": 94
+                },
+                {
+                  "at": "head line 98",
+                  "binding": "remaining := remaining - 1",
+                  "line": 109
+                },
+                {
+                  "at": "head line 190",
+                  "binding": "remaining2 := n0 + r1 - 8",
+                  "line": 186
+                },
+                {
+                  "at": "head line 190",
+                  "binding": "remaining2 := remaining2 - 1",
+                  "line": 201
+                },
+                {
+                  "at": "head line 209",
+                  "binding": "remaining1 := n0",
+                  "line": 205
+                },
+                {
+                  "at": "head line 209",
+                  "binding": "remaining1 := remaining1 - 1",
+                  "line": 220
+                },
+                {
+                  "at": "head line 235",
+                  "binding": "remaining3 := n0 + r1 - 8",
+                  "line": 231
+                },
+                {
+                  "at": "head line 235",
+                  "binding": "remaining3 := remaining3 - 16",
+                  "line": 265
+                },
+                {
+                  "at": "head line 269",
+                  "binding": "tail89 := n0 + r1 - 8",
+                  "line": 228
+                },
+                {
+                  "at": "head line 269",
+                  "binding": "tail89 := remaining3",
+                  "line": 245
+                },
+                {
+                  "at": "head line 269",
+                  "binding": "tail89 := remaining3",
+                  "line": 259
+                },
+                {
+                  "at": "head line 269",
+                  "binding": "tail89 := remaining3 - 16",
+                  "line": 265
+                },
+                {
+                  "at": "head line 274",
+                  "binding": "remaining5 := tail89",
+                  "line": 270
+                },
+                {
+                  "at": "head line 274",
+                  "binding": "remaining5 := remaining5 - 1",
+                  "line": 282
+                }
+              ],
+              "micros": 18764,
+              "name": "_RNvCs5A2ddSvV86n_12memchr_probe4find",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "memchr_probe::find",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 3240,
+          "checker_attempts": [
+            153743
+          ]
+        },
+        "track": "core",
+        "version": "2.8.3"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "c62438e103f27ece3f2e51aa85b3b41854c8a9b593455cc43ef7c481d0dd4ff9",
+        "crate": "memchr",
+        "elapsed_ms": 3445,
+        "elf_sha256": "4a174c42016f678a303757004996a02345573d71e7c20c5e34c713888d71e043",
+        "exit_code": 1,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "memchr-reverse",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "memchr::memrchr",
+            "kind": "upstream",
+            "result": {
+              "reason": "function was not found in the selected Cargo binary",
+              "status": "unsupported",
+              "error": {
+                "message": null
+              }
+            },
+            "source": "memchr::memrchr",
+            "variant": null
+          },
+          {
+            "function": "memchr_probe::find_last",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 203,
+                "message": "back edge (to a dominating label) without an 'inv' annotation (P1)",
+                "rule": "cfg"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 30,
+              "name": "_RNvCs5A2ddSvV86n_12memchr_probe9find_last",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "memchr_probe::find_last",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 3413,
+          "checker_attempts": [
+            1
+          ]
+        },
+        "track": "core",
+        "version": "2.8.3"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "byteorder",
+        "elapsed_ms": 9945,
+        "elf_sha256": "3cf4536e1dadf9779951f945f2eee9e21d2e3f0c333b6e6d2b0bae65dc86dcf9",
+        "exit_code": 0,
+        "llvm_result_fallbacks": {
+          "_RNvCseuHG3Hgm8Cc_13rust100_probe8read_u32": "ret-out"
+        },
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "byteorder",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::read_u32",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/llvm/byteorder/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 1263,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe8read_u32",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "byteorder::LittleEndian::read_u32",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 5648,
+          "checker_attempts": [
+            8,
+            4258
+          ]
+        },
+        "track": "core",
+        "version": "1.5.0"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "itoa",
+        "elapsed_ms": 5986,
+        "elf_sha256": "3cf4536e1dadf9779951f945f2eee9e21d2e3f0c333b6e6d2b0bae65dc86dcf9",
+        "exit_code": 1,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "itoa",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::decimal_length",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 186,
+                "message": "no signature for '_RNvXsu_Cs8A1a1vm2fxo_4itoayNtB5_8Unsigned3fmt'",
+                "rule": "call-sig"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 9,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe14decimal_length",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "itoa::Buffer::format",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 5948,
+          "checker_attempts": [
+            7
+          ]
+        },
+        "track": "core",
+        "version": "1.0.18"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "httparse",
+        "elapsed_ms": 5866,
+        "elf_sha256": "3cf4536e1dadf9779951f945f2eee9e21d2e3f0c333b6e6d2b0bae65dc86dcf9",
+        "exit_code": 1,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "httparse",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::request_header_count",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 270,
+                "message": "no signature for '_RNvMs3_Cso63ZKPBQGX_8httparseNtB5_7Request5parse'",
+                "rule": "call-sig"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 10,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe20request_header_count",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "httparse::Request::parse",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 5828,
+          "checker_attempts": [
+            7
+          ]
+        },
+        "track": "core",
+        "version": "1.10.1"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "10a64cad58bdfa0a91ed92239cdfbd4c031d17e5014940d89d98f856799a45a6",
+        "crate": null,
+        "elapsed_ms": 18553,
+        "elf_sha256": "13e13c03175d6aeabeaa9a8c1c9bc34497957d428156cb89bb6faaec76922e71",
+        "exit_code": 0,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "rust-alloc",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "global_alloc_probe::rust_alloc_round_trip",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc",
+                  "_RNvCs2oSbTXImU10_7___rustc35___rust_no_alloc_shim_is_unstable_v2",
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc5alloc"
+                ],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [
+                  "_RNvCs2oSbTXImU10_7___rustc35___rust_no_alloc_shim_is_unstable_v2",
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc5alloc",
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc"
+                ],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/llvm/rust-alloc/Proof.lean.certs.lean",
+                "theorem": "prog_meets_rel"
+              },
+              "instantiations": [
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc5alloc'",
+                  "binding": "n := 8",
+                  "line": 114
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc5alloc'",
+                  "binding": "a := 8",
+                  "line": 114
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "p := q1",
+                  "line": 129
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "n1 := 8",
+                  "line": 129
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "a1 := 8",
+                  "line": 129
+                }
+              ],
+              "micros": 4487,
+              "name": "_RNvCs9StpMgNlCYi_18global_alloc_probe21rust_alloc_round_trip",
+              "retries": 0,
+              "status": "proved_assuming"
+            },
+            "source": "global_alloc_probe::rust_alloc_round_trip",
+            "variant": null
+          },
+          {
+            "function": "global_alloc_probe::boxed_release",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc",
+                  "_RNvCs2oSbTXImU10_7___rustc35___rust_no_alloc_shim_is_unstable_v2",
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc5alloc"
+                ],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc"
+                ],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/llvm/rust-alloc/Proof.lean.certs.lean",
+                "theorem": "prog_meets_rel"
+              },
+              "instantiations": [
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "p := p0",
+                  "line": 63
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "n1 := 8",
+                  "line": 63
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "a1 := 8",
+                  "line": 63
+                }
+              ],
+              "micros": 611,
+              "name": "_RNvCs9StpMgNlCYi_18global_alloc_probe13boxed_release",
+              "retries": 0,
+              "status": "proved_assuming"
+            },
+            "source": "global_alloc_probe::boxed_release",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 2425,
+          "checker_attempts": [
+            16097
+          ]
+        },
+        "track": "alloc",
+        "version": null
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "10a64cad58bdfa0a91ed92239cdfbd4c031d17e5014940d89d98f856799a45a6",
+        "crate": null,
+        "elapsed_ms": 4482,
+        "elf_sha256": "13e13c03175d6aeabeaa9a8c1c9bc34497957d428156cb89bb6faaec76922e71",
+        "exit_code": 0,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "box-transfer",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "global_alloc_probe::boxed_transfer",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/llvm/box-transfer/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 126,
+              "name": "_RNvCs9StpMgNlCYi_18global_alloc_probe14boxed_transfer",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "global_alloc_probe::boxed_transfer",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 2678,
+          "checker_attempts": [
+            1773
+          ]
+        },
+        "track": "alloc",
+        "version": null
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "5f125e674145c45d7550d366e63f14a81b6db0dc42f17da6b952d563dbccd474",
+        "crate": null,
+        "elapsed_ms": 21137,
+        "elf_sha256": "a8961542918af52a2392f9177d8f35cc6c5f7a1b378983874764b673f8098e67",
+        "exit_code": 0,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "buffers",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "buffer_ops::sum_after_prefix",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/llvm/buffers/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [
+                {
+                  "at": "head line 302",
+                  "binding": "prefix14_0 := 2",
+                  "line": 291
+                },
+                {
+                  "at": "head line 302",
+                  "binding": "prefix14_0 := 1",
+                  "line": 297
+                },
+                {
+                  "at": "head line 318",
+                  "binding": "remaining1 := n0 - prefix14_0",
+                  "line": 314
+                },
+                {
+                  "at": "head line 318",
+                  "binding": "remaining1 := remaining1 - 1",
+                  "line": 331
+                }
+              ],
+              "micros": 2850,
+              "name": "_RNvCsg00mRGP2fsS_10buffer_ops16sum_after_prefix",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "buffer_ops::sum_after_prefix",
+            "variant": null
+          },
+          {
+            "function": "buffer_ops::scan_records",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/llvm/buffers/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [
+                {
+                  "at": "head line 129",
+                  "binding": "remaining := n01",
+                  "line": 125
+                },
+                {
+                  "at": "head line 129",
+                  "binding": "remaining := remaining - r - 1",
+                  "line": 150
+                }
+              ],
+              "micros": 894,
+              "name": "_RNvCsg00mRGP2fsS_10buffer_ops12scan_records",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "buffer_ops::scan_records",
+            "variant": null
+          },
+          {
+            "function": "buffer_ops::read_spilled",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/llvm/buffers/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 142,
+              "name": "_RNvCsg00mRGP2fsS_10buffer_ops12read_spilled",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "buffer_ops::read_spilled",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 2621,
+          "checker_attempts": [
+            18483
+          ]
+        },
+        "track": "core",
+        "version": null
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "arrayvec",
+        "elapsed_ms": 15304,
+        "elf_sha256": "3cf4536e1dadf9779951f945f2eee9e21d2e3f0c333b6e6d2b0bae65dc86dcf9",
+        "exit_code": 1,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "arrayvec",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::arrayvec_push",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/llvm/arrayvec/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 1470,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe13arrayvec_push",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "arrayvec::ArrayVec::try_push",
+            "variant": "u64,N=32"
+          },
+          {
+            "function": "rust100_probe::arrayvec_last",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 165,
+                "message": "no capability provably covers the 8-byte access at p01 + 8*x",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 2778,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe13arrayvec_last",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "arrayvec::ArrayVec::as_slice",
+            "variant": null
+          },
+          {
+            "function": "rust100_probe::arrayvec_push_wide",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/llvm/arrayvec/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 1416,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe18arrayvec_push_wide",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "arrayvec::ArrayVec::try_push",
+            "variant": "u64,N=128"
+          },
+          {
+            "function": "rust100_probe::arrayvec_push_byte",
+            "kind": "wrapper",
+            "result": {
+              "reason": "unsupported argument 1: u8",
+              "status": "unsupported",
+              "error": {
+                "message": null
+              }
+            },
+            "source": "arrayvec::ArrayVec::try_push",
+            "variant": "u8,N=32"
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 6150,
+          "checker_attempts": [
+            9117
+          ]
+        },
+        "track": "core",
+        "version": "0.7.8"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "bytemuck",
+        "elapsed_ms": 6176,
+        "elf_sha256": "3cf4536e1dadf9779951f945f2eee9e21d2e3f0c333b6e6d2b0bae65dc86dcf9",
+        "exit_code": 1,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "bytemuck",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::cast_u64",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 273,
+                "message": "no capability provably covers the 8-byte access at p0",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 1541,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe8cast_u64",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "bytemuck::try_cast_slice",
+            "variant": "u64"
+          },
+          {
+            "function": "rust100_probe::cast_u32",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 240,
+                "message": "no capability provably covers the 4-byte access at p01",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 1711,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe8cast_u32",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "bytemuck::try_cast_slice",
+            "variant": "u32"
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 6132,
+          "checker_attempts": [
+            11
+          ]
+        },
+        "track": "core",
+        "version": "1.25.2"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "array-init",
+        "elapsed_ms": 6122,
+        "elf_sha256": "3cf4536e1dadf9779951f945f2eee9e21d2e3f0c333b6e6d2b0bae65dc86dcf9",
+        "exit_code": 1,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "array-init",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::initialize_then_index",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 263,
+                "message": "no capability provably covers the 8-byte access at 8*x1 + σ0 - 64",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 2472,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe21initialize_then_index",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "array-init::array_init",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 6082,
+          "checker_attempts": [
+            9
+          ]
+        },
+        "track": "core",
+        "version": "2.1.0"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "arraydeque",
+        "elapsed_ms": 5831,
+        "elf_sha256": "3cf4536e1dadf9779951f945f2eee9e21d2e3f0c333b6e6d2b0bae65dc86dcf9",
+        "exit_code": 1,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "arraydeque",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::deque_push",
+            "kind": "wrapper",
+            "result": {
+              "reason": "unsupported return type bool",
+              "status": "unsupported",
+              "error": {
+                "message": null
+              }
+            },
+            "source": "arraydeque::ArrayDeque::push_back",
+            "variant": null
+          },
+          {
+            "function": "rust100_probe::deque_pop",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 332,
+                "message": "no capability provably covers the 8-byte access at p0 + 8*x3",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 3543,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe9deque_pop",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "arraydeque::ArrayDeque::pop_front",
+            "variant": "u64,N=8"
+          },
+          {
+            "function": "rust100_probe::deque_pop_wide",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 214,
+                "message": "no capability provably covers the 8-byte access at p01 + 8*x1",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 4031,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe14deque_pop_wide",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "arraydeque::ArrayDeque::pop_front",
+            "variant": "u64,N=32"
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 5775,
+          "checker_attempts": [
+            19
+          ]
+        },
+        "track": "core",
+        "version": "0.5.1"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "circular-buffer",
+        "elapsed_ms": 5815,
+        "elf_sha256": "3cf4536e1dadf9779951f945f2eee9e21d2e3f0c333b6e6d2b0bae65dc86dcf9",
+        "exit_code": 1,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "circular-buffer",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::ring_push",
+            "kind": "wrapper",
+            "result": {
+              "reason": "unsupported return type bool",
+              "status": "unsupported",
+              "error": {
+                "message": null
+              }
+            },
+            "source": "circular_buffer::CircularBuffer::try_push_back",
+            "variant": null
+          },
+          {
+            "function": "rust100_probe::ring_pop",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 373,
+                "message": "no signature for '_RNvNtCs80YCMH89giB_4core9panicking18panic_bounds_check'",
+                "rule": "call-sig"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 1,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe8ring_pop",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "circular_buffer::CircularBuffer::pop_front",
+            "variant": "u64,N=8"
+          },
+          {
+            "function": "rust100_probe::ring_pop_wide",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 223,
+                "message": "no signature for '_RNvNtCs80YCMH89giB_4core9panicking18panic_bounds_check'",
+                "rule": "call-sig"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 10,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe13ring_pop_wide",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "circular_buffer::CircularBuffer::pop_front",
+            "variant": "u64,N=32"
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 5777,
+          "checker_attempts": [
+            7
+          ]
+        },
+        "track": "core",
+        "version": "2.0.1"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "generic-array",
+        "elapsed_ms": 8994,
+        "elf_sha256": "3cf4536e1dadf9779951f945f2eee9e21d2e3f0c333b6e6d2b0bae65dc86dcf9",
+        "exit_code": 0,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "generic-array",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::generic_array_read",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/llvm/generic-array/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 642,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe18generic_array_read",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "generic_array::GenericArray::deref",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 5944,
+          "checker_attempts": [
+            3019
+          ]
+        },
+        "track": "core",
+        "version": "1.4.5"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "plain",
+        "elapsed_ms": 15733,
+        "elf_sha256": "3cf4536e1dadf9779951f945f2eee9e21d2e3f0c333b6e6d2b0bae65dc86dcf9",
+        "exit_code": 0,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "plain",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::plain_read",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/llvm/plain/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 1371,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe10plain_read",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "plain::from_bytes",
+            "variant": "u64"
+          },
+          {
+            "function": "rust100_probe::plain_read_u32",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/llvm/plain/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 1635,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe14plain_read_u32",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "plain::from_bytes",
+            "variant": "u32"
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 6029,
+          "checker_attempts": [
+            9672
+          ]
+        },
+        "track": "core",
+        "version": "0.2.3"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "ryu",
+        "elapsed_ms": 6011,
+        "elf_sha256": "3cf4536e1dadf9779951f945f2eee9e21d2e3f0c333b6e6d2b0bae65dc86dcf9",
+        "exit_code": 1,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "ryu",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::ryu_length",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 176,
+                "message": "no signature for '_RNvNtCs2xRbTudmceE_3ryu6pretty8format64'",
+                "rule": "call-sig"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 9,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe10ryu_length",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "ryu::Buffer::format",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 5970,
+          "checker_attempts": [
+            7
+          ]
+        },
+        "track": "core",
+        "version": "1.0.23"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "zerocopy",
+        "elapsed_ms": 19770,
+        "elf_sha256": "3cf4536e1dadf9779951f945f2eee9e21d2e3f0c333b6e6d2b0bae65dc86dcf9",
+        "exit_code": 0,
+        "llvm_result_fallbacks": {},
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "zerocopy",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::zerocopy_read",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/dev/shm/noco-full.iOqgZQ8a/llvm/zerocopy/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 3247,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe13zerocopy_read",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "zerocopy::Ref::from_bytes",
+            "variant": null
+          }
+        ],
+        "timing_ms": {
+          "build_and_capture": 6037,
+          "checker_attempts": [
+            13695
+          ]
+        },
+        "track": "core",
+        "version": "0.8.66"
+      }
+    ],
+    "rust_checker_passed": 19,
+    "schema_version": 1,
+    "settings": {
+      "chc_solver_enabled": false,
+      "frontend_sha256": "ac41f238b4ff1bc2c073bf746be88a3dd22d9854d616ff035b08577474508ef4",
+      "jobs": 3,
+      "llvm_hints": true,
+      "locked": true,
+      "mir_hints": true,
+      "profile": "release",
+      "timeout_secs": 600
+    },
+    "source_coverage": [
+      {
+        "crate": null,
+        "kind": "fixture",
+        "source": "buffer_ops::read_spilled",
+        "verdicts": {
+          "proved": 1
+        }
+      },
+      {
+        "crate": null,
+        "kind": "fixture",
+        "source": "buffer_ops::scan_records",
+        "verdicts": {
+          "proved": 1
+        }
+      },
+      {
+        "crate": null,
+        "kind": "fixture",
+        "source": "buffer_ops::sum_after_prefix",
+        "verdicts": {
+          "proved": 1
+        }
+      },
+      {
+        "crate": null,
+        "kind": "fixture",
+        "source": "global_alloc_probe::boxed_release",
+        "verdicts": {
+          "proved_assuming": 1
+        }
+      },
+      {
+        "crate": null,
+        "kind": "fixture",
+        "source": "global_alloc_probe::boxed_transfer",
+        "verdicts": {
+          "proved": 1
+        }
+      },
+      {
+        "crate": null,
+        "kind": "fixture",
+        "source": "global_alloc_probe::rust_alloc_round_trip",
+        "verdicts": {
+          "proved_assuming": 1
+        }
+      },
+      {
+        "crate": "array-init",
+        "kind": "wrapper",
+        "source": "array-init::array_init",
+        "verdicts": {
+          "rejected": 1
+        }
+      },
+      {
+        "crate": "arraydeque",
+        "kind": "wrapper",
+        "source": "arraydeque::ArrayDeque::pop_front",
+        "verdicts": {
+          "rejected": 2
+        }
+      },
+      {
+        "crate": "arraydeque",
+        "kind": "wrapper",
+        "source": "arraydeque::ArrayDeque::push_back",
+        "verdicts": {
+          "unsupported": 1
+        }
+      },
+      {
+        "crate": "arrayvec",
+        "kind": "wrapper",
+        "source": "arrayvec::ArrayVec::as_slice",
+        "verdicts": {
+          "rejected": 1
+        }
+      },
+      {
+        "crate": "arrayvec",
+        "kind": "wrapper",
+        "source": "arrayvec::ArrayVec::try_push",
+        "verdicts": {
+          "proved": 2,
+          "unsupported": 1
+        }
+      },
+      {
+        "crate": "bytemuck",
+        "kind": "wrapper",
+        "source": "bytemuck::try_cast_slice",
+        "verdicts": {
+          "rejected": 2
+        }
+      },
+      {
+        "crate": "byteorder",
+        "kind": "wrapper",
+        "source": "byteorder::LittleEndian::read_u32",
+        "verdicts": {
+          "proved": 1
+        }
+      },
+      {
+        "crate": "circular-buffer",
+        "kind": "wrapper",
+        "source": "circular_buffer::CircularBuffer::pop_front",
+        "verdicts": {
+          "rejected": 2
+        }
+      },
+      {
+        "crate": "circular-buffer",
+        "kind": "wrapper",
+        "source": "circular_buffer::CircularBuffer::try_push_back",
+        "verdicts": {
+          "unsupported": 1
+        }
+      },
+      {
+        "crate": "generic-array",
+        "kind": "wrapper",
+        "source": "generic_array::GenericArray::deref",
+        "verdicts": {
+          "proved": 1
+        }
+      },
+      {
+        "crate": "heapless",
+        "kind": "upstream",
+        "source": "heapless::VecInner::as_slice",
+        "verdicts": {
+          "proved": 2
+        }
+      },
+      {
+        "crate": "heapless",
+        "kind": "upstream",
+        "source": "heapless::VecInner::len",
+        "verdicts": {
+          "unsupported": 1
+        }
+      },
+      {
+        "crate": "heapless",
+        "kind": "upstream",
+        "source": "heapless::VecInner::push",
+        "verdicts": {
+          "proved": 1
+        }
+      },
+      {
+        "crate": "heapless",
+        "kind": "upstream",
+        "source": "heapless::VecInner::push_unchecked",
+        "verdicts": {
+          "rejected": 1
+        }
+      },
+      {
+        "crate": "heapless",
+        "kind": "wrapper",
+        "source": "heapless_probe::append",
+        "verdicts": {
+          "proved": 1
+        }
+      },
+      {
+        "crate": "heapless",
+        "kind": "wrapper",
+        "source": "heapless_probe::copy_first",
+        "verdicts": {
+          "proved": 1
+        }
+      },
+      {
+        "crate": "heapless",
+        "kind": "wrapper",
+        "source": "heapless_probe::read",
+        "verdicts": {
+          "rejected": 2
+        }
+      },
+      {
+        "crate": "httparse",
+        "kind": "wrapper",
+        "source": "httparse::Request::parse",
+        "verdicts": {
+          "rejected": 1
+        }
+      },
+      {
+        "crate": "itoa",
+        "kind": "wrapper",
+        "source": "itoa::Buffer::format",
+        "verdicts": {
+          "rejected": 1
+        }
+      },
+      {
+        "crate": "memchr",
+        "kind": "upstream",
+        "source": "memchr::memchr",
+        "verdicts": {
+          "unsupported": 1
+        }
+      },
+      {
+        "crate": "memchr",
+        "kind": "upstream",
+        "source": "memchr::memrchr",
+        "verdicts": {
+          "unsupported": 1
+        }
+      },
+      {
+        "crate": "memchr",
+        "kind": "wrapper",
+        "source": "memchr_probe::find",
+        "verdicts": {
+          "proved": 1
+        }
+      },
+      {
+        "crate": "memchr",
+        "kind": "wrapper",
+        "source": "memchr_probe::find_last",
+        "verdicts": {
+          "rejected": 1
+        }
+      },
+      {
+        "crate": "plain",
+        "kind": "wrapper",
+        "source": "plain::from_bytes",
+        "verdicts": {
+          "proved": 2
+        }
+      },
+      {
+        "crate": "ryu",
+        "kind": "wrapper",
+        "source": "ryu::Buffer::format",
+        "verdicts": {
+          "rejected": 1
+        }
+      },
+      {
+        "crate": "zerocopy",
+        "kind": "wrapper",
+        "source": "zerocopy::Ref::from_bytes",
+        "verdicts": {
+          "proved": 1
+        }
+      }
+    ],
+    "suite_elapsed_ms": 157027,
+    "target": "riscv64imac-unknown-none-elf",
+    "unique_source_entries": 32,
+    "unique_symbols_in_images": 34
+  },
+  "changed_verdicts": []
+}

@@ -1,0 +1,2721 @@
+{
+  "frontend_source_commit": "608c1939690860eba5b20415ae4037256c487115",
+  "manifest_sha256": "70fae62043751865b9c7243051be3a46230385694bf4e7a0e8bb90100d6d87b8",
+  "typed_checker_sha256": "84ce85b6119a0eb5d7d18ecdb1048ba4505d58a3cb826f078f4f2355ad25d3d8",
+  "baseline": {
+    "built_runs": 18,
+    "candidate_crates": 100,
+    "counts": {
+      "all": {
+        "proved": 15,
+        "proved_assuming": 2,
+        "rejected": 12,
+        "unsupported": 5
+      },
+      "category/array_vector": {
+        "proved": 7,
+        "rejected": 5,
+        "unsupported": 1
+      },
+      "category/buffer_queue": {
+        "proved": 1,
+        "rejected": 2,
+        "unsupported": 2
+      },
+      "category/fixture": {
+        "proved": 4,
+        "proved_assuming": 2
+      },
+      "category/parsing": {
+        "proved": 1,
+        "rejected": 4,
+        "unsupported": 2
+      },
+      "category/raw_memory": {
+        "proved": 2,
+        "rejected": 1
+      },
+      "kind/fixture": {
+        "proved": 4,
+        "proved_assuming": 2
+      },
+      "kind/upstream": {
+        "proved": 3,
+        "rejected": 1,
+        "unsupported": 3
+      },
+      "kind/wrapper": {
+        "proved": 8,
+        "rejected": 11,
+        "unsupported": 2
+      },
+      "run/array-init": {
+        "rejected": 1
+      },
+      "run/arraydeque": {
+        "rejected": 1,
+        "unsupported": 1
+      },
+      "run/arrayvec": {
+        "proved": 1,
+        "rejected": 1
+      },
+      "run/box-transfer": {
+        "proved": 1
+      },
+      "run/buffers": {
+        "proved": 3
+      },
+      "run/bytemuck": {
+        "rejected": 1
+      },
+      "run/byteorder": {
+        "proved": 1
+      },
+      "run/circular-buffer": {
+        "rejected": 1,
+        "unsupported": 1
+      },
+      "run/generic-array": {
+        "proved": 1
+      },
+      "run/heapless": {
+        "proved": 5,
+        "rejected": 3,
+        "unsupported": 1
+      },
+      "run/httparse": {
+        "rejected": 1
+      },
+      "run/itoa": {
+        "rejected": 1
+      },
+      "run/memchr-forward": {
+        "proved": 1,
+        "unsupported": 1
+      },
+      "run/memchr-reverse": {
+        "rejected": 1,
+        "unsupported": 1
+      },
+      "run/plain": {
+        "proved": 1
+      },
+      "run/rust-alloc": {
+        "proved_assuming": 2
+      },
+      "run/ryu": {
+        "rejected": 1
+      },
+      "run/zerocopy": {
+        "proved": 1
+      },
+      "track/alloc": {
+        "proved": 1,
+        "proved_assuming": 2
+      },
+      "track/core": {
+        "proved": 14,
+        "rejected": 12,
+        "unsupported": 5
+      }
+    },
+    "lean_proved": 15,
+    "lean_proved_assuming": 2,
+    "measured_crates": [
+      "array-init",
+      "arraydeque",
+      "arrayvec",
+      "bytemuck",
+      "byteorder",
+      "circular-buffer",
+      "generic-array",
+      "heapless",
+      "httparse",
+      "itoa",
+      "memchr",
+      "plain",
+      "ryu",
+      "zerocopy"
+    ],
+    "priority_candidates": 20,
+    "requested_targets": 34,
+    "requested_targets_in_linked_builds": 34,
+    "runs": [
+      {
+        "built": true,
+        "cargo_lock_sha256": "7d862e352d5791e96ab7b8f5b1ea393c9776ceaad33d94cd3f2c8c9ca1277c6d",
+        "crate": "heapless",
+        "elapsed_ms": 21860,
+        "elf_sha256": "b7137aef3a715f5f60f693365e637f3d2125e2a54dbc75302e6128e6e37da384",
+        "exit_code": 1,
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "heapless",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 4]>>::as_slice",
+            "kind": "upstream",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-fixed/heapless/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 88,
+              "name": "_RNvMs_NtCsg4XVHMIcmR2_8heapless3vecINtB4_8VecInneryjINtNtB4_7storage15VecStorageInnerAINtNtNtCs80YCMH89giB_4core3mem12maybe_uninit11MaybeUninityEj4_EE8as_sliceCsb2GjGVXwcwx_14heapless_probe",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "heapless::VecInner::as_slice"
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::as_slice",
+            "kind": "upstream",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-fixed/heapless/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 123,
+              "name": "_RNvMs_NtCsg4XVHMIcmR2_8heapless3vecINtB4_8VecInneryjINtNtB4_7storage15VecStorageInnerAINtNtNtCs80YCMH89giB_4core3mem12maybe_uninit11MaybeUninityEj8_EE8as_sliceCsb2GjGVXwcwx_14heapless_probe",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "heapless::VecInner::as_slice"
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::push",
+            "kind": "upstream",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-fixed/heapless/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 407,
+              "name": "_RNvMs_NtCsg4XVHMIcmR2_8heapless3vecINtB4_8VecInneryjINtNtB4_7storage15VecStorageInnerAINtNtNtCs80YCMH89giB_4core3mem12maybe_uninit11MaybeUninityEj8_EE4pushCsb2GjGVXwcwx_14heapless_probe",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "heapless::VecInner::push"
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::push_unchecked",
+            "kind": "upstream",
+            "result": {
+              "error": {
+                "line": 266,
+                "message": "no capability provably covers the 8-byte access at p03 + 8*x8 + 8",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 270,
+              "name": "_RNvMs_NtCsg4XVHMIcmR2_8heapless3vecINtB4_8VecInneryjINtNtB4_7storage15VecStorageInnerAINtNtNtCs80YCMH89giB_4core3mem12maybe_uninit11MaybeUninityEj8_EE14push_uncheckedCsb2GjGVXwcwx_14heapless_probe",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "heapless::VecInner::push_unchecked"
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::len",
+            "kind": "upstream",
+            "result": {
+              "reason": "function was not found in the selected Cargo binary",
+              "status": "unsupported",
+              "error": {
+                "message": null
+              }
+            },
+            "source": "heapless::VecInner::len"
+          },
+          {
+            "function": "heapless_probe::read::<4>",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 37,
+                "message": "no capability provably covers the 8-byte access at p04 + 8*x12 + 8",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 380,
+              "name": "_RINvCsb2GjGVXwcwx_14heapless_probe4readKj4_EB2_",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "heapless_probe::read"
+          },
+          {
+            "function": "heapless_probe::read::<8>",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 76,
+                "message": "no capability provably covers the 8-byte access at p05 + 8*x13 + 8",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 233,
+              "name": "_RINvCsb2GjGVXwcwx_14heapless_probe4readKj8_EB2_",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "heapless_probe::read"
+          },
+          {
+            "function": "heapless_probe::append",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-fixed/heapless/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 331,
+              "name": "_RNvCsb2GjGVXwcwx_14heapless_probe6append",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "heapless_probe::append"
+          },
+          {
+            "function": "heapless_probe::copy_first",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-fixed/heapless/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 429,
+              "name": "_RNvCsb2GjGVXwcwx_14heapless_probe10copy_first",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "heapless_probe::copy_first"
+          }
+        ],
+        "track": "core",
+        "version": "0.9.3"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "c62438e103f27ece3f2e51aa85b3b41854c8a9b593455cc43ef7c481d0dd4ff9",
+        "crate": "memchr",
+        "elapsed_ms": 168905,
+        "elf_sha256": "4a174c42016f678a303757004996a02345573d71e7c20c5e34c713888d71e043",
+        "exit_code": 1,
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "memchr-forward",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "memchr::memchr",
+            "kind": "upstream",
+            "result": {
+              "reason": "function was not found in the selected Cargo binary",
+              "status": "unsupported",
+              "error": {
+                "message": null
+              }
+            },
+            "source": "memchr::memchr"
+          },
+          {
+            "function": "memchr_probe::find",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-fixed/memchr-forward/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [
+                {
+                  "at": "head line 98",
+                  "binding": "remaining := n0",
+                  "line": 94
+                },
+                {
+                  "at": "head line 98",
+                  "binding": "remaining := remaining - 1",
+                  "line": 109
+                },
+                {
+                  "at": "head line 190",
+                  "binding": "remaining2 := n0 + r1 - 8",
+                  "line": 186
+                },
+                {
+                  "at": "head line 190",
+                  "binding": "remaining2 := remaining2 - 1",
+                  "line": 201
+                },
+                {
+                  "at": "head line 209",
+                  "binding": "remaining1 := n0",
+                  "line": 205
+                },
+                {
+                  "at": "head line 209",
+                  "binding": "remaining1 := remaining1 - 1",
+                  "line": 220
+                },
+                {
+                  "at": "head line 235",
+                  "binding": "remaining3 := n0 + r1 - 8",
+                  "line": 231
+                },
+                {
+                  "at": "head line 235",
+                  "binding": "remaining3 := remaining3 - 16",
+                  "line": 265
+                },
+                {
+                  "at": "head line 269",
+                  "binding": "tail89 := n0 + r1 - 8",
+                  "line": 228
+                },
+                {
+                  "at": "head line 269",
+                  "binding": "tail89 := remaining3",
+                  "line": 245
+                },
+                {
+                  "at": "head line 269",
+                  "binding": "tail89 := remaining3",
+                  "line": 259
+                },
+                {
+                  "at": "head line 269",
+                  "binding": "tail89 := remaining3 - 16",
+                  "line": 265
+                },
+                {
+                  "at": "head line 274",
+                  "binding": "remaining5 := tail89",
+                  "line": 270
+                },
+                {
+                  "at": "head line 274",
+                  "binding": "remaining5 := remaining5 - 1",
+                  "line": 282
+                }
+              ],
+              "micros": 19851,
+              "name": "_RNvCs5A2ddSvV86n_12memchr_probe4find",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "memchr_probe::find"
+          }
+        ],
+        "track": "core",
+        "version": "2.8.3"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "c62438e103f27ece3f2e51aa85b3b41854c8a9b593455cc43ef7c481d0dd4ff9",
+        "crate": "memchr",
+        "elapsed_ms": 3279,
+        "elf_sha256": "4a174c42016f678a303757004996a02345573d71e7c20c5e34c713888d71e043",
+        "exit_code": 1,
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "memchr-reverse",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "memchr::memrchr",
+            "kind": "upstream",
+            "result": {
+              "reason": "function was not found in the selected Cargo binary",
+              "status": "unsupported",
+              "error": {
+                "message": null
+              }
+            },
+            "source": "memchr::memrchr"
+          },
+          {
+            "function": "memchr_probe::find_last",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 203,
+                "message": "back edge (to a dominating label) without an 'inv' annotation (P1)",
+                "rule": "cfg"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 35,
+              "name": "_RNvCs5A2ddSvV86n_12memchr_probe9find_last",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "memchr_probe::find_last"
+          }
+        ],
+        "track": "core",
+        "version": "2.8.3"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "byteorder",
+        "elapsed_ms": 11843,
+        "elf_sha256": "a512dd4c2d430d551b00589fb10af147315123ba8d78e2bf633dcc7a891874b5",
+        "exit_code": 0,
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "byteorder",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::read_u32",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-fixed/byteorder/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 2622,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe8read_u32",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "byteorder::LittleEndian::read_u32"
+          }
+        ],
+        "track": "core",
+        "version": "1.5.0"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "itoa",
+        "elapsed_ms": 6753,
+        "elf_sha256": "a512dd4c2d430d551b00589fb10af147315123ba8d78e2bf633dcc7a891874b5",
+        "exit_code": 1,
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "itoa",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::decimal_length",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 160,
+                "message": "no signature for '_RNvXsu_Cs8A1a1vm2fxo_4itoayNtB5_8Unsigned3fmt'",
+                "rule": "call-sig"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 10,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe14decimal_length",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "itoa::Buffer::format"
+          }
+        ],
+        "track": "core",
+        "version": "1.0.18"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "httparse",
+        "elapsed_ms": 6736,
+        "elf_sha256": "a512dd4c2d430d551b00589fb10af147315123ba8d78e2bf633dcc7a891874b5",
+        "exit_code": 1,
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "httparse",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::request_header_count",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 220,
+                "message": "no signature for '_RNvMs3_Cso63ZKPBQGX_8httparseNtB5_7Request5parse'",
+                "rule": "call-sig"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 9,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe20request_header_count",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "httparse::Request::parse"
+          }
+        ],
+        "track": "core",
+        "version": "1.10.1"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "10a64cad58bdfa0a91ed92239cdfbd4c031d17e5014940d89d98f856799a45a6",
+        "crate": null,
+        "elapsed_ms": 21711,
+        "elf_sha256": "13e13c03175d6aeabeaa9a8c1c9bc34497957d428156cb89bb6faaec76922e71",
+        "exit_code": 0,
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "rust-alloc",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "global_alloc_probe::rust_alloc_round_trip",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc",
+                  "_RNvCs2oSbTXImU10_7___rustc35___rust_no_alloc_shim_is_unstable_v2",
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc5alloc"
+                ],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [
+                  "_RNvCs2oSbTXImU10_7___rustc35___rust_no_alloc_shim_is_unstable_v2",
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc5alloc",
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc"
+                ],
+                "lean_module": "/var/tmp/noco-rust100/expanded-fixed/rust-alloc/Proof.lean.certs.lean",
+                "theorem": "prog_meets_rel"
+              },
+              "instantiations": [
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc5alloc'",
+                  "binding": "n := 8",
+                  "line": 114
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc5alloc'",
+                  "binding": "a := 8",
+                  "line": 114
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "p := q1",
+                  "line": 129
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "n1 := 8",
+                  "line": 129
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "a1 := 8",
+                  "line": 129
+                }
+              ],
+              "micros": 5171,
+              "name": "_RNvCs9StpMgNlCYi_18global_alloc_probe21rust_alloc_round_trip",
+              "retries": 0,
+              "status": "proved_assuming"
+            },
+            "source": "global_alloc_probe::rust_alloc_round_trip"
+          },
+          {
+            "function": "global_alloc_probe::boxed_release",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc",
+                  "_RNvCs2oSbTXImU10_7___rustc35___rust_no_alloc_shim_is_unstable_v2",
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc5alloc"
+                ],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc"
+                ],
+                "lean_module": "/var/tmp/noco-rust100/expanded-fixed/rust-alloc/Proof.lean.certs.lean",
+                "theorem": "prog_meets_rel"
+              },
+              "instantiations": [
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "p := p0",
+                  "line": 63
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "n1 := 8",
+                  "line": 63
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "a1 := 8",
+                  "line": 63
+                }
+              ],
+              "micros": 617,
+              "name": "_RNvCs9StpMgNlCYi_18global_alloc_probe13boxed_release",
+              "retries": 0,
+              "status": "proved_assuming"
+            },
+            "source": "global_alloc_probe::boxed_release"
+          }
+        ],
+        "track": "alloc",
+        "version": null
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "10a64cad58bdfa0a91ed92239cdfbd4c031d17e5014940d89d98f856799a45a6",
+        "crate": null,
+        "elapsed_ms": 4903,
+        "elf_sha256": "13e13c03175d6aeabeaa9a8c1c9bc34497957d428156cb89bb6faaec76922e71",
+        "exit_code": 0,
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "box-transfer",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "global_alloc_probe::boxed_transfer",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-fixed/box-transfer/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 122,
+              "name": "_RNvCs9StpMgNlCYi_18global_alloc_probe14boxed_transfer",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "global_alloc_probe::boxed_transfer"
+          }
+        ],
+        "track": "alloc",
+        "version": null
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "5f125e674145c45d7550d366e63f14a81b6db0dc42f17da6b952d563dbccd474",
+        "crate": null,
+        "elapsed_ms": 24385,
+        "elf_sha256": "b40ab6472cdede3d7df2e23dd3de3ca0d8dcbf57f411f4df3edb4acb0a8e2159",
+        "exit_code": 0,
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "buffers",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "buffer_ops::sum_after_prefix",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-fixed/buffers/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [
+                {
+                  "at": "head line 302",
+                  "binding": "prefix14_0 := 2",
+                  "line": 291
+                },
+                {
+                  "at": "head line 302",
+                  "binding": "prefix14_0 := 1",
+                  "line": 297
+                },
+                {
+                  "at": "head line 318",
+                  "binding": "remaining1 := n0 - prefix14_0",
+                  "line": 314
+                },
+                {
+                  "at": "head line 318",
+                  "binding": "remaining1 := remaining1 - 1",
+                  "line": 331
+                }
+              ],
+              "micros": 1162,
+              "name": "_RNvCsg00mRGP2fsS_10buffer_ops16sum_after_prefix",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "buffer_ops::sum_after_prefix"
+          },
+          {
+            "function": "buffer_ops::scan_records",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-fixed/buffers/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [
+                {
+                  "at": "head line 129",
+                  "binding": "remaining := n01",
+                  "line": 125
+                },
+                {
+                  "at": "head line 129",
+                  "binding": "remaining := remaining - r - 1",
+                  "line": 150
+                }
+              ],
+              "micros": 886,
+              "name": "_RNvCsg00mRGP2fsS_10buffer_ops12scan_records",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "buffer_ops::scan_records"
+          },
+          {
+            "function": "buffer_ops::read_spilled",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-fixed/buffers/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 142,
+              "name": "_RNvCsg00mRGP2fsS_10buffer_ops12read_spilled",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "buffer_ops::read_spilled"
+          }
+        ],
+        "track": "core",
+        "version": null
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "arrayvec",
+        "elapsed_ms": 12576,
+        "elf_sha256": "a512dd4c2d430d551b00589fb10af147315123ba8d78e2bf633dcc7a891874b5",
+        "exit_code": 1,
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "arrayvec",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::arrayvec_push",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-fixed/arrayvec/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 1226,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe13arrayvec_push",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "arrayvec::ArrayVec::try_push"
+          },
+          {
+            "function": "rust100_probe::arrayvec_last",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 146,
+                "message": "no capability provably covers the 8-byte access at p01 + 8*x",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 2904,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe13arrayvec_last",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "arrayvec::ArrayVec::as_slice"
+          }
+        ],
+        "track": "core",
+        "version": "0.7.8"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "bytemuck",
+        "elapsed_ms": 6440,
+        "elf_sha256": "a512dd4c2d430d551b00589fb10af147315123ba8d78e2bf633dcc7a891874b5",
+        "exit_code": 1,
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "bytemuck",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::cast_u64",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 189,
+                "message": "no capability provably covers the 8-byte access at p0",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 1723,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe8cast_u64",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "bytemuck::try_cast_slice"
+          }
+        ],
+        "track": "core",
+        "version": "1.25.2"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "array-init",
+        "elapsed_ms": 6457,
+        "elf_sha256": "a512dd4c2d430d551b00589fb10af147315123ba8d78e2bf633dcc7a891874b5",
+        "exit_code": 1,
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "array-init",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::initialize_then_index",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 213,
+                "message": "no capability provably covers the 8-byte access at 8*x1 + σ0 - 64",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 2611,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe21initialize_then_index",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "array-init::array_init"
+          }
+        ],
+        "track": "core",
+        "version": "2.1.0"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "arraydeque",
+        "elapsed_ms": 6265,
+        "elf_sha256": "a512dd4c2d430d551b00589fb10af147315123ba8d78e2bf633dcc7a891874b5",
+        "exit_code": 1,
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "arraydeque",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::deque_push",
+            "kind": "wrapper",
+            "result": {
+              "reason": "unsupported return type bool",
+              "status": "unsupported",
+              "error": {
+                "message": null
+              }
+            },
+            "source": "arraydeque::ArrayDeque::push_back"
+          },
+          {
+            "function": "rust100_probe::deque_pop",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 229,
+                "message": "no capability provably covers the 8-byte access at p0 + 8*x1",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 3874,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe9deque_pop",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "arraydeque::ArrayDeque::pop_front"
+          }
+        ],
+        "track": "core",
+        "version": "0.5.1"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "circular-buffer",
+        "elapsed_ms": 6528,
+        "elf_sha256": "a512dd4c2d430d551b00589fb10af147315123ba8d78e2bf633dcc7a891874b5",
+        "exit_code": 1,
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "circular-buffer",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::ring_push",
+            "kind": "wrapper",
+            "result": {
+              "reason": "unsupported return type bool",
+              "status": "unsupported",
+              "error": {
+                "message": null
+              }
+            },
+            "source": "circular_buffer::CircularBuffer::try_push_back"
+          },
+          {
+            "function": "rust100_probe::ring_pop",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 250,
+                "message": "no signature for '_RNvNtCs80YCMH89giB_4core9panicking18panic_bounds_check'",
+                "rule": "call-sig"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 8,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe8ring_pop",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "circular_buffer::CircularBuffer::pop_front"
+          }
+        ],
+        "track": "core",
+        "version": "2.0.1"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "generic-array",
+        "elapsed_ms": 9543,
+        "elf_sha256": "a512dd4c2d430d551b00589fb10af147315123ba8d78e2bf633dcc7a891874b5",
+        "exit_code": 0,
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "generic-array",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::generic_array_read",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-fixed/generic-array/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 668,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe18generic_array_read",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "generic_array::GenericArray::deref"
+          }
+        ],
+        "track": "core",
+        "version": "1.4.5"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "plain",
+        "elapsed_ms": 11510,
+        "elf_sha256": "a512dd4c2d430d551b00589fb10af147315123ba8d78e2bf633dcc7a891874b5",
+        "exit_code": 0,
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "plain",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::plain_read",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-fixed/plain/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 1348,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe10plain_read",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "plain::from_bytes"
+          }
+        ],
+        "track": "core",
+        "version": "0.2.3"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "ryu",
+        "elapsed_ms": 6147,
+        "elf_sha256": "a512dd4c2d430d551b00589fb10af147315123ba8d78e2bf633dcc7a891874b5",
+        "exit_code": 1,
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "ryu",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::ryu_length",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 158,
+                "message": "no signature for '_RNvNtCs2xRbTudmceE_3ryu6pretty8format64'",
+                "rule": "call-sig"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 9,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe10ryu_length",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "ryu::Buffer::format"
+          }
+        ],
+        "track": "core",
+        "version": "1.0.23"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "zerocopy",
+        "elapsed_ms": 20111,
+        "elf_sha256": "a512dd4c2d430d551b00589fb10af147315123ba8d78e2bf633dcc7a891874b5",
+        "exit_code": 0,
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "zerocopy",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::zerocopy_read",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-fixed/zerocopy/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 3339,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe13zerocopy_read",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "zerocopy::Ref::from_bytes"
+          }
+        ],
+        "track": "core",
+        "version": "0.8.66"
+      }
+    ],
+    "rust_checker_passed": 17,
+    "schema_version": 1,
+    "settings": {
+      "chc_solver_enabled": false,
+      "frontend_sha256": "53806874fde9cd9fccd2ed2746398b17e13e5d29155cb35e3289f95fad8cad8b",
+      "jobs": 3,
+      "llvm_hints": false,
+      "locked": true,
+      "mir_hints": true,
+      "profile": "release",
+      "timeout_secs": 600
+    },
+    "target": "riscv64imac-unknown-none-elf",
+    "unique_source_entries": 32,
+    "unique_symbols_in_images": 29
+  },
+  "llvm_hints": {
+    "built_runs": 18,
+    "candidate_crates": 100,
+    "counts": {
+      "all": {
+        "proved": 14,
+        "proved_assuming": 2,
+        "rejected": 13,
+        "unsupported": 5
+      },
+      "category/array_vector": {
+        "proved": 7,
+        "rejected": 5,
+        "unsupported": 1
+      },
+      "category/buffer_queue": {
+        "rejected": 3,
+        "unsupported": 2
+      },
+      "category/fixture": {
+        "proved": 4,
+        "proved_assuming": 2
+      },
+      "category/parsing": {
+        "proved": 1,
+        "rejected": 4,
+        "unsupported": 2
+      },
+      "category/raw_memory": {
+        "proved": 2,
+        "rejected": 1
+      },
+      "kind/fixture": {
+        "proved": 4,
+        "proved_assuming": 2
+      },
+      "kind/upstream": {
+        "proved": 3,
+        "rejected": 1,
+        "unsupported": 3
+      },
+      "kind/wrapper": {
+        "proved": 7,
+        "rejected": 12,
+        "unsupported": 2
+      },
+      "run/array-init": {
+        "rejected": 1
+      },
+      "run/arraydeque": {
+        "rejected": 1,
+        "unsupported": 1
+      },
+      "run/arrayvec": {
+        "proved": 1,
+        "rejected": 1
+      },
+      "run/box-transfer": {
+        "proved": 1
+      },
+      "run/buffers": {
+        "proved": 3
+      },
+      "run/bytemuck": {
+        "rejected": 1
+      },
+      "run/byteorder": {
+        "rejected": 1
+      },
+      "run/circular-buffer": {
+        "rejected": 1,
+        "unsupported": 1
+      },
+      "run/generic-array": {
+        "proved": 1
+      },
+      "run/heapless": {
+        "proved": 5,
+        "rejected": 3,
+        "unsupported": 1
+      },
+      "run/httparse": {
+        "rejected": 1
+      },
+      "run/itoa": {
+        "rejected": 1
+      },
+      "run/memchr-forward": {
+        "proved": 1,
+        "unsupported": 1
+      },
+      "run/memchr-reverse": {
+        "rejected": 1,
+        "unsupported": 1
+      },
+      "run/plain": {
+        "proved": 1
+      },
+      "run/rust-alloc": {
+        "proved_assuming": 2
+      },
+      "run/ryu": {
+        "rejected": 1
+      },
+      "run/zerocopy": {
+        "proved": 1
+      },
+      "track/alloc": {
+        "proved": 1,
+        "proved_assuming": 2
+      },
+      "track/core": {
+        "proved": 13,
+        "rejected": 13,
+        "unsupported": 5
+      }
+    },
+    "lean_proved": 14,
+    "lean_proved_assuming": 2,
+    "measured_crates": [
+      "array-init",
+      "arraydeque",
+      "arrayvec",
+      "bytemuck",
+      "byteorder",
+      "circular-buffer",
+      "generic-array",
+      "heapless",
+      "httparse",
+      "itoa",
+      "memchr",
+      "plain",
+      "ryu",
+      "zerocopy"
+    ],
+    "priority_candidates": 20,
+    "requested_targets": 34,
+    "requested_targets_in_linked_builds": 34,
+    "runs": [
+      {
+        "built": true,
+        "cargo_lock_sha256": "7d862e352d5791e96ab7b8f5b1ea393c9776ceaad33d94cd3f2c8c9ca1277c6d",
+        "crate": "heapless",
+        "elapsed_ms": 22687,
+        "elf_sha256": "b7137aef3a715f5f60f693365e637f3d2125e2a54dbc75302e6128e6e37da384",
+        "exit_code": 1,
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "heapless",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 4]>>::as_slice",
+            "kind": "upstream",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-llvm/heapless/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 85,
+              "name": "_RNvMs_NtCsg4XVHMIcmR2_8heapless3vecINtB4_8VecInneryjINtNtB4_7storage15VecStorageInnerAINtNtNtCs80YCMH89giB_4core3mem12maybe_uninit11MaybeUninityEj4_EE8as_sliceCsb2GjGVXwcwx_14heapless_probe",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "heapless::VecInner::as_slice"
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::as_slice",
+            "kind": "upstream",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-llvm/heapless/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 122,
+              "name": "_RNvMs_NtCsg4XVHMIcmR2_8heapless3vecINtB4_8VecInneryjINtNtB4_7storage15VecStorageInnerAINtNtNtCs80YCMH89giB_4core3mem12maybe_uninit11MaybeUninityEj8_EE8as_sliceCsb2GjGVXwcwx_14heapless_probe",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "heapless::VecInner::as_slice"
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::push",
+            "kind": "upstream",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-llvm/heapless/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 401,
+              "name": "_RNvMs_NtCsg4XVHMIcmR2_8heapless3vecINtB4_8VecInneryjINtNtB4_7storage15VecStorageInnerAINtNtNtCs80YCMH89giB_4core3mem12maybe_uninit11MaybeUninityEj8_EE4pushCsb2GjGVXwcwx_14heapless_probe",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "heapless::VecInner::push"
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::push_unchecked",
+            "kind": "upstream",
+            "result": {
+              "error": {
+                "line": 266,
+                "message": "no capability provably covers the 8-byte access at p03 + 8*x8 + 8",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 263,
+              "name": "_RNvMs_NtCsg4XVHMIcmR2_8heapless3vecINtB4_8VecInneryjINtNtB4_7storage15VecStorageInnerAINtNtNtCs80YCMH89giB_4core3mem12maybe_uninit11MaybeUninityEj8_EE14push_uncheckedCsb2GjGVXwcwx_14heapless_probe",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "heapless::VecInner::push_unchecked"
+          },
+          {
+            "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::len",
+            "kind": "upstream",
+            "result": {
+              "reason": "function was not found in the selected Cargo binary",
+              "status": "unsupported",
+              "error": {
+                "message": null
+              }
+            },
+            "source": "heapless::VecInner::len"
+          },
+          {
+            "function": "heapless_probe::read::<4>",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 37,
+                "message": "no capability provably covers the 8-byte access at p04 + 8*x12 + 8",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 364,
+              "name": "_RINvCsb2GjGVXwcwx_14heapless_probe4readKj4_EB2_",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "heapless_probe::read"
+          },
+          {
+            "function": "heapless_probe::read::<8>",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 76,
+                "message": "no capability provably covers the 8-byte access at p05 + 8*x13 + 8",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 222,
+              "name": "_RINvCsb2GjGVXwcwx_14heapless_probe4readKj8_EB2_",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "heapless_probe::read"
+          },
+          {
+            "function": "heapless_probe::append",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-llvm/heapless/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 367,
+              "name": "_RNvCsb2GjGVXwcwx_14heapless_probe6append",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "heapless_probe::append"
+          },
+          {
+            "function": "heapless_probe::copy_first",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-llvm/heapless/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 524,
+              "name": "_RNvCsb2GjGVXwcwx_14heapless_probe10copy_first",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "heapless_probe::copy_first"
+          }
+        ],
+        "track": "core",
+        "version": "0.9.3"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "c62438e103f27ece3f2e51aa85b3b41854c8a9b593455cc43ef7c481d0dd4ff9",
+        "crate": "memchr",
+        "elapsed_ms": 168923,
+        "elf_sha256": "4a174c42016f678a303757004996a02345573d71e7c20c5e34c713888d71e043",
+        "exit_code": 1,
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "memchr-forward",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "memchr::memchr",
+            "kind": "upstream",
+            "result": {
+              "reason": "function was not found in the selected Cargo binary",
+              "status": "unsupported",
+              "error": {
+                "message": null
+              }
+            },
+            "source": "memchr::memchr"
+          },
+          {
+            "function": "memchr_probe::find",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-llvm/memchr-forward/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [
+                {
+                  "at": "head line 98",
+                  "binding": "remaining := n0",
+                  "line": 94
+                },
+                {
+                  "at": "head line 98",
+                  "binding": "remaining := remaining - 1",
+                  "line": 109
+                },
+                {
+                  "at": "head line 190",
+                  "binding": "remaining2 := n0 + r1 - 8",
+                  "line": 186
+                },
+                {
+                  "at": "head line 190",
+                  "binding": "remaining2 := remaining2 - 1",
+                  "line": 201
+                },
+                {
+                  "at": "head line 209",
+                  "binding": "remaining1 := n0",
+                  "line": 205
+                },
+                {
+                  "at": "head line 209",
+                  "binding": "remaining1 := remaining1 - 1",
+                  "line": 220
+                },
+                {
+                  "at": "head line 235",
+                  "binding": "remaining3 := n0 + r1 - 8",
+                  "line": 231
+                },
+                {
+                  "at": "head line 235",
+                  "binding": "remaining3 := remaining3 - 16",
+                  "line": 265
+                },
+                {
+                  "at": "head line 269",
+                  "binding": "tail89 := n0 + r1 - 8",
+                  "line": 228
+                },
+                {
+                  "at": "head line 269",
+                  "binding": "tail89 := remaining3",
+                  "line": 245
+                },
+                {
+                  "at": "head line 269",
+                  "binding": "tail89 := remaining3",
+                  "line": 259
+                },
+                {
+                  "at": "head line 269",
+                  "binding": "tail89 := remaining3 - 16",
+                  "line": 265
+                },
+                {
+                  "at": "head line 274",
+                  "binding": "remaining5 := tail89",
+                  "line": 270
+                },
+                {
+                  "at": "head line 274",
+                  "binding": "remaining5 := remaining5 - 1",
+                  "line": 282
+                }
+              ],
+              "micros": 19442,
+              "name": "_RNvCs5A2ddSvV86n_12memchr_probe4find",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "memchr_probe::find"
+          }
+        ],
+        "track": "core",
+        "version": "2.8.3"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "c62438e103f27ece3f2e51aa85b3b41854c8a9b593455cc43ef7c481d0dd4ff9",
+        "crate": "memchr",
+        "elapsed_ms": 3199,
+        "elf_sha256": "4a174c42016f678a303757004996a02345573d71e7c20c5e34c713888d71e043",
+        "exit_code": 1,
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "memchr-reverse",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "memchr::memrchr",
+            "kind": "upstream",
+            "result": {
+              "reason": "function was not found in the selected Cargo binary",
+              "status": "unsupported",
+              "error": {
+                "message": null
+              }
+            },
+            "source": "memchr::memrchr"
+          },
+          {
+            "function": "memchr_probe::find_last",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 203,
+                "message": "back edge (to a dominating label) without an 'inv' annotation (P1)",
+                "rule": "cfg"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 29,
+              "name": "_RNvCs5A2ddSvV86n_12memchr_probe9find_last",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "memchr_probe::find_last"
+          }
+        ],
+        "track": "core",
+        "version": "2.8.3"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "byteorder",
+        "elapsed_ms": 6464,
+        "elf_sha256": "c8428ac296fd6da11d7b85de51c9ed5ebc3b4e007c4fe9bedfd9f65fb82851d3",
+        "exit_code": 1,
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "byteorder",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::read_u32",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 196,
+                "message": "the exit constraint (x6 >= 0 && -x6 + 4294967295 >= 0) does not follow",
+                "rule": "ret-out"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 1390,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe8read_u32",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "byteorder::LittleEndian::read_u32"
+          }
+        ],
+        "track": "core",
+        "version": "1.5.0"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "itoa",
+        "elapsed_ms": 6160,
+        "elf_sha256": "c8428ac296fd6da11d7b85de51c9ed5ebc3b4e007c4fe9bedfd9f65fb82851d3",
+        "exit_code": 1,
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "itoa",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::decimal_length",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 160,
+                "message": "no signature for '_RNvXsu_Cs8A1a1vm2fxo_4itoayNtB5_8Unsigned3fmt'",
+                "rule": "call-sig"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 9,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe14decimal_length",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "itoa::Buffer::format"
+          }
+        ],
+        "track": "core",
+        "version": "1.0.18"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "httparse",
+        "elapsed_ms": 7057,
+        "elf_sha256": "c8428ac296fd6da11d7b85de51c9ed5ebc3b4e007c4fe9bedfd9f65fb82851d3",
+        "exit_code": 1,
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "httparse",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::request_header_count",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 220,
+                "message": "no signature for '_RNvMs3_Cso63ZKPBQGX_8httparseNtB5_7Request5parse'",
+                "rule": "call-sig"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 10,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe20request_header_count",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "httparse::Request::parse"
+          }
+        ],
+        "track": "core",
+        "version": "1.10.1"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "10a64cad58bdfa0a91ed92239cdfbd4c031d17e5014940d89d98f856799a45a6",
+        "crate": null,
+        "elapsed_ms": 22164,
+        "elf_sha256": "13e13c03175d6aeabeaa9a8c1c9bc34497957d428156cb89bb6faaec76922e71",
+        "exit_code": 0,
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "rust-alloc",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "global_alloc_probe::rust_alloc_round_trip",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc",
+                  "_RNvCs2oSbTXImU10_7___rustc35___rust_no_alloc_shim_is_unstable_v2",
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc5alloc"
+                ],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [
+                  "_RNvCs2oSbTXImU10_7___rustc35___rust_no_alloc_shim_is_unstable_v2",
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc5alloc",
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc"
+                ],
+                "lean_module": "/var/tmp/noco-rust100/expanded-llvm/rust-alloc/Proof.lean.certs.lean",
+                "theorem": "prog_meets_rel"
+              },
+              "instantiations": [
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc5alloc'",
+                  "binding": "n := 8",
+                  "line": 114
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc5alloc'",
+                  "binding": "a := 8",
+                  "line": 114
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "p := q1",
+                  "line": 129
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "n1 := 8",
+                  "line": 129
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "a1 := 8",
+                  "line": 129
+                }
+              ],
+              "micros": 8827,
+              "name": "_RNvCs9StpMgNlCYi_18global_alloc_probe21rust_alloc_round_trip",
+              "retries": 0,
+              "status": "proved_assuming"
+            },
+            "source": "global_alloc_probe::rust_alloc_round_trip"
+          },
+          {
+            "function": "global_alloc_probe::boxed_release",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc",
+                  "_RNvCs2oSbTXImU10_7___rustc35___rust_no_alloc_shim_is_unstable_v2",
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc5alloc"
+                ],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [
+                  "_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc"
+                ],
+                "lean_module": "/var/tmp/noco-rust100/expanded-llvm/rust-alloc/Proof.lean.certs.lean",
+                "theorem": "prog_meets_rel"
+              },
+              "instantiations": [
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "p := p0",
+                  "line": 63
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "n1 := 8",
+                  "line": 63
+                },
+                {
+                  "at": "call of '_RNvXCs9StpMgNlCYi_18global_alloc_probeNtB2_14ProbeAllocatorNtNtNtCs80YCMH89giB_4core5alloc6global11GlobalAlloc7dealloc'",
+                  "binding": "a1 := 8",
+                  "line": 63
+                }
+              ],
+              "micros": 624,
+              "name": "_RNvCs9StpMgNlCYi_18global_alloc_probe13boxed_release",
+              "retries": 0,
+              "status": "proved_assuming"
+            },
+            "source": "global_alloc_probe::boxed_release"
+          }
+        ],
+        "track": "alloc",
+        "version": null
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "10a64cad58bdfa0a91ed92239cdfbd4c031d17e5014940d89d98f856799a45a6",
+        "crate": null,
+        "elapsed_ms": 4481,
+        "elf_sha256": "13e13c03175d6aeabeaa9a8c1c9bc34497957d428156cb89bb6faaec76922e71",
+        "exit_code": 0,
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "box-transfer",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "global_alloc_probe::boxed_transfer",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-llvm/box-transfer/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 122,
+              "name": "_RNvCs9StpMgNlCYi_18global_alloc_probe14boxed_transfer",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "global_alloc_probe::boxed_transfer"
+          }
+        ],
+        "track": "alloc",
+        "version": null
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "5f125e674145c45d7550d366e63f14a81b6db0dc42f17da6b952d563dbccd474",
+        "crate": null,
+        "elapsed_ms": 21704,
+        "elf_sha256": "a8961542918af52a2392f9177d8f35cc6c5f7a1b378983874764b673f8098e67",
+        "exit_code": 0,
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "buffers",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "buffer_ops::sum_after_prefix",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-llvm/buffers/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [
+                {
+                  "at": "head line 302",
+                  "binding": "prefix14_0 := 2",
+                  "line": 291
+                },
+                {
+                  "at": "head line 302",
+                  "binding": "prefix14_0 := 1",
+                  "line": 297
+                },
+                {
+                  "at": "head line 318",
+                  "binding": "remaining1 := n0 - prefix14_0",
+                  "line": 314
+                },
+                {
+                  "at": "head line 318",
+                  "binding": "remaining1 := remaining1 - 1",
+                  "line": 331
+                }
+              ],
+              "micros": 1182,
+              "name": "_RNvCsg00mRGP2fsS_10buffer_ops16sum_after_prefix",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "buffer_ops::sum_after_prefix"
+          },
+          {
+            "function": "buffer_ops::scan_records",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-llvm/buffers/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [
+                {
+                  "at": "head line 129",
+                  "binding": "remaining := n01",
+                  "line": 125
+                },
+                {
+                  "at": "head line 129",
+                  "binding": "remaining := remaining - r - 1",
+                  "line": 150
+                }
+              ],
+              "micros": 898,
+              "name": "_RNvCsg00mRGP2fsS_10buffer_ops12scan_records",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "buffer_ops::scan_records"
+          },
+          {
+            "function": "buffer_ops::read_spilled",
+            "kind": "fixture",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-llvm/buffers/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 159,
+              "name": "_RNvCsg00mRGP2fsS_10buffer_ops12read_spilled",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "buffer_ops::read_spilled"
+          }
+        ],
+        "track": "core",
+        "version": null
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "arrayvec",
+        "elapsed_ms": 10235,
+        "elf_sha256": "c8428ac296fd6da11d7b85de51c9ed5ebc3b4e007c4fe9bedfd9f65fb82851d3",
+        "exit_code": 1,
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "arrayvec",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::arrayvec_push",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-llvm/arrayvec/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 1373,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe13arrayvec_push",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "arrayvec::ArrayVec::try_push"
+          },
+          {
+            "function": "rust100_probe::arrayvec_last",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 146,
+                "message": "no capability provably covers the 8-byte access at p01 + 8*x",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 2724,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe13arrayvec_last",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "arrayvec::ArrayVec::as_slice"
+          }
+        ],
+        "track": "core",
+        "version": "0.7.8"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "bytemuck",
+        "elapsed_ms": 5780,
+        "elf_sha256": "c8428ac296fd6da11d7b85de51c9ed5ebc3b4e007c4fe9bedfd9f65fb82851d3",
+        "exit_code": 1,
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "bytemuck",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::cast_u64",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 189,
+                "message": "no capability provably covers the 8-byte access at p0",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 1730,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe8cast_u64",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "bytemuck::try_cast_slice"
+          }
+        ],
+        "track": "core",
+        "version": "1.25.2"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "array-init",
+        "elapsed_ms": 5776,
+        "elf_sha256": "c8428ac296fd6da11d7b85de51c9ed5ebc3b4e007c4fe9bedfd9f65fb82851d3",
+        "exit_code": 1,
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "array-init",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::initialize_then_index",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 213,
+                "message": "no capability provably covers the 8-byte access at 8*x1 + σ0 - 64",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 2534,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe21initialize_then_index",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "array-init::array_init"
+          }
+        ],
+        "track": "core",
+        "version": "2.1.0"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "arraydeque",
+        "elapsed_ms": 5679,
+        "elf_sha256": "c8428ac296fd6da11d7b85de51c9ed5ebc3b4e007c4fe9bedfd9f65fb82851d3",
+        "exit_code": 1,
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "arraydeque",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::deque_push",
+            "kind": "wrapper",
+            "result": {
+              "reason": "unsupported return type bool",
+              "status": "unsupported",
+              "error": {
+                "message": null
+              }
+            },
+            "source": "arraydeque::ArrayDeque::push_back"
+          },
+          {
+            "function": "rust100_probe::deque_pop",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 229,
+                "message": "no capability provably covers the 8-byte access at p0 + 8*x1",
+                "rule": "mem-bounds"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 3862,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe9deque_pop",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "arraydeque::ArrayDeque::pop_front"
+          }
+        ],
+        "track": "core",
+        "version": "0.5.1"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "circular-buffer",
+        "elapsed_ms": 5684,
+        "elf_sha256": "c8428ac296fd6da11d7b85de51c9ed5ebc3b4e007c4fe9bedfd9f65fb82851d3",
+        "exit_code": 1,
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "circular-buffer",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::ring_push",
+            "kind": "wrapper",
+            "result": {
+              "reason": "unsupported return type bool",
+              "status": "unsupported",
+              "error": {
+                "message": null
+              }
+            },
+            "source": "circular_buffer::CircularBuffer::try_push_back"
+          },
+          {
+            "function": "rust100_probe::ring_pop",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 250,
+                "message": "no signature for '_RNvNtCs80YCMH89giB_4core9panicking18panic_bounds_check'",
+                "rule": "call-sig"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 10,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe8ring_pop",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "circular_buffer::CircularBuffer::pop_front"
+          }
+        ],
+        "track": "core",
+        "version": "2.0.1"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "generic-array",
+        "elapsed_ms": 9385,
+        "elf_sha256": "c8428ac296fd6da11d7b85de51c9ed5ebc3b4e007c4fe9bedfd9f65fb82851d3",
+        "exit_code": 0,
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "generic-array",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::generic_array_read",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-llvm/generic-array/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 641,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe18generic_array_read",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "generic_array::GenericArray::deref"
+          }
+        ],
+        "track": "core",
+        "version": "1.4.5"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "plain",
+        "elapsed_ms": 10683,
+        "elf_sha256": "c8428ac296fd6da11d7b85de51c9ed5ebc3b4e007c4fe9bedfd9f65fb82851d3",
+        "exit_code": 0,
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "plain",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::plain_read",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-llvm/plain/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 1430,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe10plain_read",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "plain::from_bytes"
+          }
+        ],
+        "track": "core",
+        "version": "0.2.3"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "ryu",
+        "elapsed_ms": 5721,
+        "elf_sha256": "c8428ac296fd6da11d7b85de51c9ed5ebc3b4e007c4fe9bedfd9f65fb82851d3",
+        "exit_code": 1,
+        "proof_attempt": {
+          "reason": "no per-function theorems in the module (needs --image and the linked code)",
+          "status": "failed"
+        },
+        "run": "ryu",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::ryu_length",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "line": 158,
+                "message": "no signature for '_RNvNtCs2xRbTudmceE_3ryu6pretty8format64'",
+                "rule": "call-sig"
+              },
+              "evidence": null,
+              "instantiations": [],
+              "micros": 9,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe10ryu_length",
+              "retries": 0,
+              "status": "rejected"
+            },
+            "source": "ryu::Buffer::format"
+          }
+        ],
+        "track": "core",
+        "version": "1.0.23"
+      },
+      {
+        "built": true,
+        "cargo_lock_sha256": "e9a8424f362bdf2206265a0661753e19c006b9313bbfa71f0b90d816da134591",
+        "crate": "zerocopy",
+        "elapsed_ms": 19313,
+        "elf_sha256": "c8428ac296fd6da11d7b85de51c9ed5ebc3b4e007c4fe9bedfd9f65fb82851d3",
+        "exit_code": 0,
+        "proof_attempt": {
+          "reason": null,
+          "status": "proved"
+        },
+        "run": "zerocopy",
+        "rustc_version": "rustc 1.100.0-nightly (923c95cdf 2026-09-16)",
+        "targets": [
+          {
+            "function": "rust100_probe::zerocopy_read",
+            "kind": "wrapper",
+            "result": {
+              "error": {
+                "message": null
+              },
+              "evidence": {
+                "assumes": [],
+                "axioms": [
+                  "propext",
+                  "Classical.choice",
+                  "Quot.sound"
+                ],
+                "callees": [],
+                "lean_module": "/var/tmp/noco-rust100/expanded-llvm/zerocopy/Proof.lean.certs.lean",
+                "theorem": "prog_meets"
+              },
+              "instantiations": [],
+              "micros": 3230,
+              "name": "_RNvCseuHG3Hgm8Cc_13rust100_probe13zerocopy_read",
+              "retries": 0,
+              "status": "proved"
+            },
+            "source": "zerocopy::Ref::from_bytes"
+          }
+        ],
+        "track": "core",
+        "version": "0.8.66"
+      }
+    ],
+    "rust_checker_passed": 16,
+    "schema_version": 1,
+    "settings": {
+      "chc_solver_enabled": false,
+      "frontend_sha256": "53806874fde9cd9fccd2ed2746398b17e13e5d29155cb35e3289f95fad8cad8b",
+      "jobs": 2,
+      "llvm_hints": true,
+      "locked": true,
+      "mir_hints": true,
+      "profile": "release",
+      "timeout_secs": 600
+    },
+    "target": "riscv64imac-unknown-none-elf",
+    "unique_source_entries": 32,
+    "unique_symbols_in_images": 29
+  },
+  "changed_verdicts": [
+    {
+      "run": "byteorder",
+      "function": "rust100_probe::read_u32",
+      "baseline": "proved",
+      "llvm_hints": "rejected"
+    }
+  ],
+  "byteorder_function_code_sha256": "d98c08fbb2bbe59fa35a25a33b75a96a247b6506a12bc674915078cc25c2105d"
+}

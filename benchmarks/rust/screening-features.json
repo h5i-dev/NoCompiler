@@ -1,0 +1,4 @@
+{
+  "glam": ["nostd-libm"],
+  "serde_json": ["alloc"]
+}

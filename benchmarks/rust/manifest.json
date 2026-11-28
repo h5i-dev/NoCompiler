@@ -1,0 +1,971 @@
+{
+  "schema_version": 1,
+  "target": "riscv64imac-unknown-none-elf",
+  "candidates": [
+    {
+      "name": "arrayvec",
+      "category": "array_vector",
+      "priority": true
+    },
+    {
+      "name": "heapless",
+      "category": "array_vector",
+      "priority": true
+    },
+    {
+      "name": "smallvec",
+      "category": "array_vector",
+      "priority": true
+    },
+    {
+      "name": "array-init",
+      "category": "array_vector",
+      "priority": true
+    },
+    {
+      "name": "array-init-cursor",
+      "category": "array_vector",
+      "priority": false
+    },
+    {
+      "name": "generic-array",
+      "category": "array_vector",
+      "priority": true
+    },
+    {
+      "name": "staticvec",
+      "category": "array_vector",
+      "priority": true
+    },
+    {
+      "name": "smallbitvec",
+      "category": "array_vector",
+      "priority": false
+    },
+    {
+      "name": "bitvec",
+      "category": "array_vector",
+      "priority": false
+    },
+    {
+      "name": "fixedbitset",
+      "category": "array_vector",
+      "priority": true
+    },
+    {
+      "name": "bit-set",
+      "category": "array_vector",
+      "priority": false
+    },
+    {
+      "name": "bit-vec",
+      "category": "array_vector",
+      "priority": false
+    },
+    {
+      "name": "bytemuck",
+      "category": "raw_memory",
+      "priority": true
+    },
+    {
+      "name": "zerocopy",
+      "category": "raw_memory",
+      "priority": true
+    },
+    {
+      "name": "plain",
+      "category": "raw_memory",
+      "priority": true
+    },
+    {
+      "name": "bytecast",
+      "category": "raw_memory",
+      "priority": false
+    },
+    {
+      "name": "safe-transmute",
+      "category": "raw_memory",
+      "priority": false
+    },
+    {
+      "name": "ptr_meta",
+      "category": "raw_memory",
+      "priority": false
+    },
+    {
+      "name": "sptr",
+      "category": "raw_memory",
+      "priority": false
+    },
+    {
+      "name": "scopeguard",
+      "category": "raw_memory",
+      "priority": false
+    },
+    {
+      "name": "maybe-uninit",
+      "category": "raw_memory",
+      "priority": false
+    },
+    {
+      "name": "owning_ref",
+      "category": "raw_memory",
+      "priority": false
+    },
+    {
+      "name": "stable_deref_trait",
+      "category": "raw_memory",
+      "priority": false
+    },
+    {
+      "name": "memoffset",
+      "category": "raw_memory",
+      "priority": false
+    },
+    {
+      "name": "bytes",
+      "category": "buffer_queue",
+      "priority": true
+    },
+    {
+      "name": "bytes-utils",
+      "category": "buffer_queue",
+      "priority": false
+    },
+    {
+      "name": "byteorder",
+      "category": "buffer_queue",
+      "priority": true
+    },
+    {
+      "name": "byteorder-lite",
+      "category": "buffer_queue",
+      "priority": false
+    },
+    {
+      "name": "ringbuf",
+      "category": "buffer_queue",
+      "priority": false
+    },
+    {
+      "name": "circular-buffer",
+      "category": "buffer_queue",
+      "priority": true
+    },
+    {
+      "name": "arraydeque",
+      "category": "buffer_queue",
+      "priority": true
+    },
+    {
+      "name": "bbqueue",
+      "category": "buffer_queue",
+      "priority": false
+    },
+    {
+      "name": "rtrb",
+      "category": "buffer_queue",
+      "priority": false
+    },
+    {
+      "name": "slice-ring-buffer",
+      "category": "buffer_queue",
+      "priority": false
+    },
+    {
+      "name": "buf-min",
+      "category": "buffer_queue",
+      "priority": false
+    },
+    {
+      "name": "slice-deque",
+      "category": "buffer_queue",
+      "priority": false
+    },
+    {
+      "name": "allocator-api2",
+      "category": "heap",
+      "priority": false
+    },
+    {
+      "name": "bumpalo",
+      "category": "heap",
+      "priority": true
+    },
+    {
+      "name": "typed-arena",
+      "category": "heap",
+      "priority": false
+    },
+    {
+      "name": "bump-scope",
+      "category": "heap",
+      "priority": false
+    },
+    {
+      "name": "linked_list_allocator",
+      "category": "heap",
+      "priority": false
+    },
+    {
+      "name": "buddy_system_allocator",
+      "category": "heap",
+      "priority": false
+    },
+    {
+      "name": "dlmalloc",
+      "category": "heap",
+      "priority": false
+    },
+    {
+      "name": "wee_alloc",
+      "category": "heap",
+      "priority": false
+    },
+    {
+      "name": "talc",
+      "category": "heap",
+      "priority": false
+    },
+    {
+      "name": "rlsf",
+      "category": "heap",
+      "priority": false
+    },
+    {
+      "name": "embedded-alloc",
+      "category": "heap",
+      "priority": false
+    },
+    {
+      "name": "slab",
+      "category": "heap",
+      "priority": false
+    },
+    {
+      "name": "hashbrown",
+      "category": "data_structures",
+      "priority": true
+    },
+    {
+      "name": "indexmap",
+      "category": "data_structures",
+      "priority": false
+    },
+    {
+      "name": "slotmap",
+      "category": "data_structures",
+      "priority": false
+    },
+    {
+      "name": "generational-arena",
+      "category": "data_structures",
+      "priority": false
+    },
+    {
+      "name": "intrusive-collections",
+      "category": "data_structures",
+      "priority": false
+    },
+    {
+      "name": "rbtree",
+      "category": "data_structures",
+      "priority": false
+    },
+    {
+      "name": "sized-chunks",
+      "category": "data_structures",
+      "priority": false
+    },
+    {
+      "name": "im",
+      "category": "data_structures",
+      "priority": false
+    },
+    {
+      "name": "im-rc",
+      "category": "data_structures",
+      "priority": false
+    },
+    {
+      "name": "stable-vec",
+      "category": "data_structures",
+      "priority": false
+    },
+    {
+      "name": "thin-vec",
+      "category": "data_structures",
+      "priority": false
+    },
+    {
+      "name": "vec_map",
+      "category": "data_structures",
+      "priority": false
+    },
+    {
+      "name": "memchr",
+      "category": "parsing",
+      "priority": true
+    },
+    {
+      "name": "simdutf8",
+      "category": "parsing",
+      "priority": false
+    },
+    {
+      "name": "bstr",
+      "category": "parsing",
+      "priority": false
+    },
+    {
+      "name": "compact_str",
+      "category": "parsing",
+      "priority": false
+    },
+    {
+      "name": "smartstring",
+      "category": "parsing",
+      "priority": false
+    },
+    {
+      "name": "smol_str",
+      "category": "parsing",
+      "priority": false
+    },
+    {
+      "name": "lexical-core",
+      "category": "parsing",
+      "priority": false
+    },
+    {
+      "name": "atoi",
+      "category": "parsing",
+      "priority": false
+    },
+    {
+      "name": "itoa",
+      "category": "parsing",
+      "priority": true
+    },
+    {
+      "name": "ryu",
+      "category": "parsing",
+      "priority": true
+    },
+    {
+      "name": "httparse",
+      "category": "parsing",
+      "priority": true
+    },
+    {
+      "name": "simd-json",
+      "category": "parsing",
+      "priority": false
+    },
+    {
+      "name": "serde_json",
+      "category": "parsing",
+      "priority": false
+    },
+    {
+      "name": "rkyv",
+      "category": "parsing",
+      "priority": false
+    },
+    {
+      "name": "flatbuffers",
+      "category": "parsing",
+      "priority": false
+    },
+    {
+      "name": "ndarray",
+      "category": "numerical",
+      "priority": false
+    },
+    {
+      "name": "nalgebra",
+      "category": "numerical",
+      "priority": false
+    },
+    {
+      "name": "matrixmultiply",
+      "category": "numerical",
+      "priority": false
+    },
+    {
+      "name": "glam",
+      "category": "numerical",
+      "priority": false
+    },
+    {
+      "name": "lz4_flex",
+      "category": "numerical",
+      "priority": false
+    },
+    {
+      "name": "miniz_oxide",
+      "category": "numerical",
+      "priority": false
+    },
+    {
+      "name": "crc32fast",
+      "category": "numerical",
+      "priority": false
+    },
+    {
+      "name": "blake3",
+      "category": "numerical",
+      "priority": false
+    },
+    {
+      "name": "aes",
+      "category": "numerical",
+      "priority": false
+    },
+    {
+      "name": "sha2",
+      "category": "numerical",
+      "priority": false
+    },
+    {
+      "name": "crossbeam-epoch",
+      "category": "concurrency",
+      "priority": false
+    },
+    {
+      "name": "crossbeam-queue",
+      "category": "concurrency",
+      "priority": false
+    },
+    {
+      "name": "crossbeam-channel",
+      "category": "concurrency",
+      "priority": false
+    },
+    {
+      "name": "arc-swap",
+      "category": "concurrency",
+      "priority": false
+    },
+    {
+      "name": "parking_lot",
+      "category": "concurrency",
+      "priority": false
+    },
+    {
+      "name": "lock_api",
+      "category": "concurrency",
+      "priority": false
+    },
+    {
+      "name": "spin",
+      "category": "concurrency",
+      "priority": false
+    },
+    {
+      "name": "once_cell",
+      "category": "concurrency",
+      "priority": false
+    },
+    {
+      "name": "portable-atomic",
+      "category": "concurrency",
+      "priority": false
+    },
+    {
+      "name": "atomic-waker",
+      "category": "concurrency",
+      "priority": false
+    },
+    {
+      "name": "riscv",
+      "category": "embedded",
+      "priority": false
+    },
+    {
+      "name": "volatile",
+      "category": "embedded",
+      "priority": false
+    },
+    {
+      "name": "vcell",
+      "category": "embedded",
+      "priority": false
+    },
+    {
+      "name": "static_cell",
+      "category": "embedded",
+      "priority": false
+    },
+    {
+      "name": "embassy-executor",
+      "category": "embedded",
+      "priority": false
+    }
+  ],
+  "runs": [
+    {
+      "id": "heapless",
+      "binary": "heapless_probe",
+      "manifest": "../../examples/rust-typed/fixtures/heapless_probe/Cargo.toml",
+      "crate": "heapless",
+      "version": "0.9.3",
+      "track": "core",
+      "targets": [
+        {
+          "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 4]>>::as_slice",
+          "kind": "upstream",
+          "source": "heapless::VecInner::as_slice"
+        },
+        {
+          "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::as_slice",
+          "kind": "upstream",
+          "source": "heapless::VecInner::as_slice"
+        },
+        {
+          "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::push",
+          "kind": "upstream",
+          "source": "heapless::VecInner::push"
+        },
+        {
+          "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::push_unchecked",
+          "kind": "upstream",
+          "source": "heapless::VecInner::push_unchecked"
+        },
+        {
+          "function": "heapless::vec::VecInner::<u64, usize, heapless::vec::storage::VecStorageInner<[core::mem::MaybeUninit<u64>; 8]>>::len",
+          "kind": "upstream",
+          "source": "heapless::VecInner::len"
+        },
+        {
+          "function": "heapless_probe::read::<4>",
+          "kind": "wrapper",
+          "source": "heapless_probe::read"
+        },
+        {
+          "function": "heapless_probe::read::<8>",
+          "kind": "wrapper",
+          "source": "heapless_probe::read"
+        },
+        {
+          "function": "heapless_probe::append",
+          "kind": "wrapper",
+          "source": "heapless_probe::append"
+        },
+        {
+          "function": "heapless_probe::copy_first",
+          "kind": "wrapper",
+          "source": "heapless_probe::copy_first"
+        }
+      ]
+    },
+    {
+      "id": "memchr-forward",
+      "binary": "memchr_probe",
+      "manifest": "../../examples/rust-typed/fixtures/memchr_probe/Cargo.toml",
+      "crate": "memchr",
+      "version": "2.8.3",
+      "track": "core",
+      "targets": [
+        {
+          "function": "memchr::memchr",
+          "kind": "upstream",
+          "source": "memchr::memchr"
+        },
+        {
+          "function": "memchr_probe::find",
+          "kind": "wrapper",
+          "source": "memchr_probe::find"
+        }
+      ]
+    },
+    {
+      "id": "memchr-reverse",
+      "binary": "memchr_probe",
+      "manifest": "../../examples/rust-typed/fixtures/memchr_probe/Cargo.toml",
+      "crate": "memchr",
+      "version": "2.8.3",
+      "track": "core",
+      "targets": [
+        {
+          "function": "memchr::memrchr",
+          "kind": "upstream",
+          "source": "memchr::memrchr"
+        },
+        {
+          "function": "memchr_probe::find_last",
+          "kind": "wrapper",
+          "source": "memchr_probe::find_last"
+        }
+      ]
+    },
+    {
+      "id": "byteorder",
+      "binary": "rust100_probe",
+      "manifest": "probes/Cargo.toml",
+      "crate": "byteorder",
+      "version": "1.5.0",
+      "track": "core",
+      "targets": [
+        {
+          "function": "rust100_probe::read_u32",
+          "kind": "wrapper",
+          "source": "byteorder::LittleEndian::read_u32"
+        }
+      ]
+    },
+    {
+      "id": "itoa",
+      "binary": "rust100_probe",
+      "manifest": "probes/Cargo.toml",
+      "crate": "itoa",
+      "version": "1.0.18",
+      "track": "core",
+      "targets": [
+        {
+          "function": "rust100_probe::decimal_length",
+          "kind": "wrapper",
+          "source": "itoa::Buffer::format"
+        }
+      ]
+    },
+    {
+      "id": "httparse",
+      "binary": "rust100_probe",
+      "manifest": "probes/Cargo.toml",
+      "crate": "httparse",
+      "version": "1.10.1",
+      "track": "core",
+      "targets": [
+        {
+          "function": "rust100_probe::request_header_count",
+          "kind": "wrapper",
+          "source": "httparse::Request::parse"
+        }
+      ]
+    },
+    {
+      "id": "rust-alloc",
+      "binary": "global_alloc_probe",
+      "manifest": "../../examples/rust-typed/fixtures/global_alloc_probe/Cargo.toml",
+      "crate": null,
+      "version": null,
+      "track": "alloc",
+      "targets": [
+        {
+          "function": "global_alloc_probe::rust_alloc_round_trip",
+          "kind": "fixture",
+          "source": "global_alloc_probe::rust_alloc_round_trip"
+        },
+        {
+          "function": "global_alloc_probe::boxed_release",
+          "kind": "fixture",
+          "source": "global_alloc_probe::boxed_release"
+        }
+      ]
+    },
+    {
+      "id": "box-transfer",
+      "binary": "global_alloc_probe",
+      "manifest": "../../examples/rust-typed/fixtures/global_alloc_probe/Cargo.toml",
+      "crate": null,
+      "version": null,
+      "track": "alloc",
+      "targets": [
+        {
+          "function": "global_alloc_probe::boxed_transfer",
+          "kind": "fixture",
+          "source": "global_alloc_probe::boxed_transfer"
+        }
+      ]
+    },
+    {
+      "id": "buffers",
+      "binary": "buffer_ops",
+      "manifest": "../../examples/rust-typed/fixtures/buffer_ops/Cargo.toml",
+      "crate": null,
+      "version": null,
+      "track": "core",
+      "targets": [
+        {
+          "function": "buffer_ops::sum_after_prefix",
+          "kind": "fixture",
+          "source": "buffer_ops::sum_after_prefix"
+        },
+        {
+          "function": "buffer_ops::scan_records",
+          "kind": "fixture",
+          "source": "buffer_ops::scan_records"
+        },
+        {
+          "function": "buffer_ops::read_spilled",
+          "kind": "fixture",
+          "source": "buffer_ops::read_spilled"
+        }
+      ]
+    },
+    {
+      "id": "arrayvec",
+      "binary": "rust100_probe",
+      "manifest": "probes/Cargo.toml",
+      "crate": "arrayvec",
+      "version": "0.7.8",
+      "track": "core",
+      "targets": [
+        {
+          "function": "rust100_probe::arrayvec_push",
+          "kind": "wrapper",
+          "source": "arrayvec::ArrayVec::try_push",
+          "variant": "u64,N=32"
+        },
+        {
+          "function": "rust100_probe::arrayvec_last",
+          "kind": "wrapper",
+          "source": "arrayvec::ArrayVec::as_slice"
+        },
+        {
+          "function": "rust100_probe::arrayvec_push_wide",
+          "kind": "wrapper",
+          "source": "arrayvec::ArrayVec::try_push",
+          "variant": "u64,N=128"
+        },
+        {
+          "function": "rust100_probe::arrayvec_push_byte",
+          "kind": "wrapper",
+          "source": "arrayvec::ArrayVec::try_push",
+          "variant": "u8,N=32"
+        }
+      ]
+    },
+    {
+      "id": "bytemuck",
+      "binary": "rust100_probe",
+      "manifest": "probes/Cargo.toml",
+      "crate": "bytemuck",
+      "version": "1.25.2",
+      "track": "core",
+      "targets": [
+        {
+          "function": "rust100_probe::cast_u64",
+          "kind": "wrapper",
+          "source": "bytemuck::try_cast_slice",
+          "variant": "u64"
+        },
+        {
+          "function": "rust100_probe::cast_u32",
+          "kind": "wrapper",
+          "source": "bytemuck::try_cast_slice",
+          "variant": "u32"
+        }
+      ]
+    },
+    {
+      "id": "array-init",
+      "binary": "rust100_probe",
+      "manifest": "probes/Cargo.toml",
+      "crate": "array-init",
+      "version": "2.1.0",
+      "track": "core",
+      "targets": [
+        {
+          "function": "rust100_probe::initialize_then_index",
+          "kind": "wrapper",
+          "source": "array-init::array_init"
+        }
+      ]
+    },
+    {
+      "id": "arraydeque",
+      "crate": "arraydeque",
+      "version": "0.5.1",
+      "track": "core",
+      "binary": "rust100_probe",
+      "manifest": "probes/Cargo.toml",
+      "targets": [
+        {
+          "function": "rust100_probe::deque_push",
+          "source": "arraydeque::ArrayDeque::push_back",
+          "kind": "wrapper"
+        },
+        {
+          "function": "rust100_probe::deque_pop",
+          "source": "arraydeque::ArrayDeque::pop_front",
+          "kind": "wrapper",
+          "variant": "u64,N=8"
+        },
+        {
+          "function": "rust100_probe::deque_pop_wide",
+          "source": "arraydeque::ArrayDeque::pop_front",
+          "kind": "wrapper",
+          "variant": "u64,N=32"
+        }
+      ]
+    },
+    {
+      "id": "circular-buffer",
+      "crate": "circular-buffer",
+      "version": "2.0.1",
+      "track": "core",
+      "binary": "rust100_probe",
+      "manifest": "probes/Cargo.toml",
+      "targets": [
+        {
+          "function": "rust100_probe::ring_push",
+          "source": "circular_buffer::CircularBuffer::try_push_back",
+          "kind": "wrapper"
+        },
+        {
+          "function": "rust100_probe::ring_pop",
+          "source": "circular_buffer::CircularBuffer::pop_front",
+          "kind": "wrapper",
+          "variant": "u64,N=8"
+        },
+        {
+          "function": "rust100_probe::ring_pop_wide",
+          "source": "circular_buffer::CircularBuffer::pop_front",
+          "kind": "wrapper",
+          "variant": "u64,N=32"
+        }
+      ]
+    },
+    {
+      "id": "generic-array",
+      "crate": "generic-array",
+      "version": "1.4.5",
+      "track": "core",
+      "binary": "rust100_probe",
+      "manifest": "probes/Cargo.toml",
+      "targets": [
+        {
+          "function": "rust100_probe::generic_array_read",
+          "source": "generic_array::GenericArray::deref",
+          "kind": "wrapper"
+        }
+      ]
+    },
+    {
+      "id": "plain",
+      "crate": "plain",
+      "version": "0.2.3",
+      "track": "core",
+      "binary": "rust100_probe",
+      "manifest": "probes/Cargo.toml",
+      "targets": [
+        {
+          "function": "rust100_probe::plain_read",
+          "source": "plain::from_bytes",
+          "kind": "wrapper",
+          "variant": "u64"
+        },
+        {
+          "function": "rust100_probe::plain_read_u32",
+          "source": "plain::from_bytes",
+          "kind": "wrapper",
+          "variant": "u32"
+        }
+      ]
+    },
+    {
+      "id": "ryu",
+      "crate": "ryu",
+      "version": "1.0.23",
+      "track": "core",
+      "binary": "rust100_probe",
+      "manifest": "probes/Cargo.toml",
+      "targets": [
+        {
+          "function": "rust100_probe::ryu_length",
+          "source": "ryu::Buffer::format",
+          "kind": "wrapper"
+        }
+      ]
+    },
+    {
+      "id": "zerocopy",
+      "crate": "zerocopy",
+      "version": "0.8.66",
+      "track": "core",
+      "binary": "rust100_probe",
+      "manifest": "probes/Cargo.toml",
+      "targets": [
+        {
+          "function": "rust100_probe::zerocopy_read",
+          "source": "zerocopy::Ref::from_bytes",
+          "kind": "wrapper"
+        }
+      ]
+    }
+  ],
+  "categories": {
+    "array_vector": {
+      "difficulty": "L2\u20134",
+      "operations": [
+        "initialization",
+        "capacity",
+        "bounds"
+      ]
+    },
+    "raw_memory": {
+      "difficulty": "L1\u20134",
+      "operations": [
+        "alignment",
+        "pointer arithmetic",
+        "layout"
+      ]
+    },
+    "buffer_queue": {
+      "difficulty": "L1\u20135",
+      "operations": [
+        "bounds",
+        "initialization",
+        "ring buffers"
+      ]
+    },
+    "heap": {
+      "difficulty": "L2\u20135",
+      "operations": [
+        "allocation",
+        "ownership",
+        "deallocation"
+      ]
+    },
+    "data_structures": {
+      "difficulty": "L2\u20134",
+      "operations": [
+        "struct invariants",
+        "interprocedural effects"
+      ]
+    },
+    "parsing": {
+      "difficulty": "L1\u20135",
+      "operations": [
+        "bounds",
+        "loops",
+        "path refinement"
+      ]
+    },
+    "numerical": {
+      "difficulty": "L2\u20135",
+      "operations": [
+        "stride",
+        "nested loops",
+        "SIMD"
+      ]
+    },
+    "concurrency": {
+      "difficulty": "L3\u20135",
+      "operations": [
+        "atomics",
+        "concurrency"
+      ]
+    },
+    "embedded": {
+      "difficulty": "L2\u20135",
+      "operations": [
+        "MMIO",
+        "interrupts",
+        "static initialization"
+      ]
+    }
+  }
+}
